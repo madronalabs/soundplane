@@ -744,7 +744,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		float xyCutoff = (newZ - mOnThreshold) / (mMaxForce*0.25);
 		xyCutoff = clamp(xyCutoff, 0.f, 1.f);
 		xyCutoff *= xyCutoff;
-		xyCutoff = xyCutoff*100.;// - 10.f;
+		xyCutoff = xyCutoff*100.;
 		xyCutoff = clamp(xyCutoff, 1.f, 100.f);
 		float x = powf(e, -kMLTwoPi * xyCutoff / (float)mSampleRate);
 		float a0 = 1.f - x;
