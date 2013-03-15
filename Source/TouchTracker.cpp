@@ -741,10 +741,10 @@ void TouchTracker::updateTouches(const MLSignal& in)
 
 		// filter and assign new touch values
 		const float e = 2.718281828;
-		float xyCutoff = newZ / (mMaxForce*0.25);
+		float xyCutoff = (newZ - mOnThreshold) / (mMaxForce*0.25);
 		xyCutoff = clamp(xyCutoff, 0.f, 1.f);
 		xyCutoff *= xyCutoff;
-		xyCutoff = xyCutoff*100. - 10.f;
+		xyCutoff = xyCutoff*100.;// - 10.f;
 		xyCutoff = clamp(xyCutoff, 1.f, 100.f);
 		float x = powf(e, -kMLTwoPi * xyCutoff / (float)mSampleRate);
 		float a0 = 1.f - x;
@@ -814,7 +814,7 @@ Vec3 TouchTracker::closestTouch(Vec2 pos)
 float TouchTracker::getInhibitThreshold(Vec2 a)
 {
 	float inhibitMax = 1.1f;
-	float inhibitRange = 4.f;
+	float inhibitRange = 6.f;
 	float maxInhibit = 0.f;
 	for(int i = 0; i < mTouchesPerFrame; ++i)
 	{
@@ -995,7 +995,6 @@ void TouchTracker::process(int)
 		//
 		mSumOfTouches.clear();
 		int numActiveTouches = 0;
-		
 		for(int i = 0; i < mTouchesPerFrame; ++i)
 		{
 			const Touch& t(mTouches[i]);
@@ -1010,6 +1009,10 @@ void TouchTracker::process(int)
 			}
 		}	
 		
+		// to make sum of touches a bit bigger 
+		//mSumOfTouches.scale(1.5f);
+		//mSumOfTouches.convolve3x3r(kc, ke, kk);
+
 		//
 		// TODO lots of optimization here in onepole, 2D filter
 		//
@@ -1046,6 +1049,10 @@ void TouchTracker::process(int)
 		//
 		updateTouches(mInputMinusBackground);	
 		
+		// TODO can negative values be used to inhibit nearby touches?  
+		// this might prevent sticking touches when a lot of force is
+		// applied then quickly released.
+		
 		// TODO look for retriggers here, touches not fallen to 0 but where 
 		// dz warrants a new note-on. The way to do this is keep a second,
 		// separate set of key states that do not get cleared by current
@@ -1077,7 +1084,7 @@ void TouchTracker::process(int)
 		
 		findTouches();
 		
-		// write filtered touch data to one frame of output signal.
+		// write touch data to one frame of output signal.
 		//
 		MLSignal& out = *mpOut;
 		for(int t = 0; t < mTouchesPerFrame; ++t)

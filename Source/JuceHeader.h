@@ -23,8 +23,6 @@
 #include "modules/juce_opengl/juce_opengl.h"
 #include "BinaryData.h"
 
-//using namespace juce;
-
 namespace ProjectInfo
 {
     const char* const  makerName	  = "Madrona Labs";

@@ -99,7 +99,7 @@ SoundplaneModel::SoundplaneModel() :
 	
 	// setup variable lopass
 	mLopassFilter.setSampleRate(mSampleRate);
-	mLopassFilter.setLopass(100., 0.707);
+	mLopassFilter.setLopass(50., 0.707);
 	
 	mNoteFilters.resize(kSoundplaneMaxTouches);
 	mVibratoFilters.resize(kSoundplaneMaxTouches);
@@ -934,8 +934,7 @@ void SoundplaneModel::processCallback()
 		// filter data in time
 		mNotchFilter.setInputSignal(&mSurface);
 		mNotchFilter.setOutputSignal(&mSurface);
-		mNotchFilter.process(1);
-					
+		mNotchFilter.process(1);					
 		mLopassFilter.setInputSignal(&mSurface);
 		mLopassFilter.setOutputSignal(&mSurface);
 		mLopassFilter.process(1);	

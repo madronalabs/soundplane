@@ -18,7 +18,6 @@
 		B508804D14635BB20039D144 /* Filters2D.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B508804C14635BB20039D144 /* Filters2D.cpp */; };
 		B51485AA14B8C53B008488CD /* MLVector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B51485A914B8C53B008488CD /* MLVector.cpp */; };
 		B51584821629D87B007E50A9 /* MLAppState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B51584811629D87B007E50A9 /* MLAppState.cpp */; };
-		B515860C162B9BD7007E50A9 /* cJSON.c in Sources */ = {isa = PBXBuildFile; fileRef = B515860A162B9BD7007E50A9 /* cJSON.c */; };
 		B51EE9A316BB7F07008DF025 /* MLUIBinaryData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B51EE9A116BB7F07008DF025 /* MLUIBinaryData.cpp */; };
 		B51EE9FE16BB98B2008DF025 /* MLDial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B51EE9FC16BB98B2008DF025 /* MLDial.cpp */; };
 		B51EEAB616BBB3E9008DF025 /* MLDSP.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B51EEAB416BBB3E8008DF025 /* MLDSP.cpp */; };
@@ -39,22 +38,10 @@
 		B55ADF69158BD38100FE9D51 /* SoundplaneMIDIOutput.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B55ADF68158BD38100FE9D51 /* SoundplaneMIDIOutput.cpp */; };
 		B55ADF6C158BD39500FE9D51 /* SoundplaneOSCOutput.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B55ADF6B158BD39500FE9D51 /* SoundplaneOSCOutput.cpp */; };
 		B562200F166E79BC005FAAD1 /* MLOSCListener.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B562200E166E79BC005FAAD1 /* MLOSCListener.cpp */; };
-		B562AC5016209EC800063A15 /* juce_core.mm in Sources */ = {isa = PBXBuildFile; fileRef = B562AC4216209EC800063A15 /* juce_core.mm */; };
-		B562AC5316209EC800063A15 /* juce_events.mm in Sources */ = {isa = PBXBuildFile; fileRef = B562AC4516209EC800063A15 /* juce_events.mm */; };
-		B562AC5416209EC800063A15 /* juce_graphics.mm in Sources */ = {isa = PBXBuildFile; fileRef = B562AC4616209EC800063A15 /* juce_graphics.mm */; };
-		B562AC5516209EC800063A15 /* juce_gui_basics.mm in Sources */ = {isa = PBXBuildFile; fileRef = B562AC4716209EC800063A15 /* juce_gui_basics.mm */; };
-		B562AC5616209EC800063A15 /* juce_gui_extra.mm in Sources */ = {isa = PBXBuildFile; fileRef = B562AC4816209EC800063A15 /* juce_gui_extra.mm */; };
-		B562AC5716209EC800063A15 /* juce_opengl.mm in Sources */ = {isa = PBXBuildFile; fileRef = B562AC4916209EC800063A15 /* juce_opengl.mm */; };
 		B563CE3916263D4100359080 /* GLUT.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B563CE3816263D4100359080 /* GLUT.framework */; };
-		B563CE7816263E6200359080 /* juce_audio_basics.mm in Sources */ = {isa = PBXBuildFile; fileRef = B563CE7516263E6200359080 /* juce_audio_basics.mm */; };
-		B563CE7916263E6200359080 /* juce_audio_devices.mm in Sources */ = {isa = PBXBuildFile; fileRef = B563CE7616263E6200359080 /* juce_audio_devices.mm */; };
-		B563CE7A16263E6200359080 /* juce_audio_formats.mm in Sources */ = {isa = PBXBuildFile; fileRef = B563CE7716263E6200359080 /* juce_audio_formats.mm */; };
-		B563CEA116263FF000359080 /* juce_audio_processors.mm in Sources */ = {isa = PBXBuildFile; fileRef = B563CE9F16263FF000359080 /* juce_audio_processors.mm */; };
-		B563CEA216263FF000359080 /* juce_audio_utils.mm in Sources */ = {isa = PBXBuildFile; fileRef = B563CEA016263FF000359080 /* juce_audio_utils.mm */; };
 		B5648A2D16CB2EC9008446AA /* TrackerCalibrateView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5648A2C16CB2EC9008446AA /* TrackerCalibrateView.cpp */; };
 		B56C60EF1530E40900520D0A /* MLToggleButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B56C60EE1530E40900520D0A /* MLToggleButton.cpp */; };
 		B56DCFC213E9B0DA007E9206 /* SoundplaneDriver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B56DCFC113E9B0DA007E9206 /* SoundplaneDriver.cpp */; };
-		B57A0CBC1622BCC300CF0716 /* juce_data_structures.mm in Sources */ = {isa = PBXBuildFile; fileRef = B57A0CBB1622BCC300CF0716 /* juce_data_structures.mm */; };
 		B57A14EF16261A7000CF0716 /* soundplane.icns in Resources */ = {isa = PBXBuildFile; fileRef = B57A14EE16261A7000CF0716 /* soundplane.icns */; };
 		B5852D26151A5C0D00AA59B5 /* MLAppBorder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5852D25151A5C0D00AA59B5 /* MLAppBorder.cpp */; };
 		B589968914DDC08400F8EE68 /* SoundplaneZoneView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B589968814DDC08400F8EE68 /* SoundplaneZoneView.cpp */; };
@@ -65,6 +52,19 @@
 		B58AD56A15AF50E3007704DE /* NetServiceThread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B58AD56315AF50E3007704DE /* NetServiceThread.cpp */; };
 		B58AD56B15AF50E3007704DE /* Thread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B58AD56515AF50E3007704DE /* Thread.cpp */; };
 		B58FA98F14D4966D004F730D /* SoundplaneTouchView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B58FA98E14D4966D004F730D /* SoundplaneTouchView.cpp */; };
+		B592C68816F36A5E001B578F /* juce_audio_devices.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C67C16F36A5E001B578F /* juce_audio_devices.mm */; };
+		B592C68916F36A5E001B578F /* juce_audio_basics.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C67D16F36A5E001B578F /* juce_audio_basics.mm */; };
+		B592C68A16F36A5E001B578F /* juce_audio_formats.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C67E16F36A5E001B578F /* juce_audio_formats.mm */; };
+		B592C68B16F36A5E001B578F /* juce_core.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C67F16F36A5E001B578F /* juce_core.mm */; };
+		B592C68C16F36A5E001B578F /* juce_audio_processors.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68016F36A5E001B578F /* juce_audio_processors.mm */; };
+		B592C68D16F36A5E001B578F /* juce_audio_utils.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68116F36A5E001B578F /* juce_audio_utils.mm */; };
+		B592C68E16F36A5E001B578F /* juce_data_structures.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68216F36A5E001B578F /* juce_data_structures.mm */; };
+		B592C68F16F36A5E001B578F /* juce_events.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68316F36A5E001B578F /* juce_events.mm */; };
+		B592C69016F36A5E001B578F /* juce_graphics.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68416F36A5E001B578F /* juce_graphics.mm */; };
+		B592C69116F36A5E001B578F /* juce_gui_basics.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68516F36A5E001B578F /* juce_gui_basics.mm */; };
+		B592C69216F36A5E001B578F /* juce_gui_extra.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68616F36A5E001B578F /* juce_gui_extra.mm */; };
+		B592C69316F36A5E001B578F /* juce_opengl.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68716F36A5E001B578F /* juce_opengl.mm */; };
+		B592C6AB16F36BB4001B578F /* cJSON.c in Sources */ = {isa = PBXBuildFile; fileRef = B592C6A916F36BB4001B578F /* cJSON.c */; };
 		B59D217514B5425300F061EA /* TouchTracker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B59D217314B5425300F061EA /* TouchTracker.cpp */; };
 		B59E90E21583BB72004830C9 /* MLMenuButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B59E90E11583BB72004830C9 /* MLMenuButton.cpp */; };
 		B5A2432F1593F264008D8662 /* SoundplaneDataListener.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5A2432E1593F264008D8662 /* SoundplaneDataListener.cpp */; };
@@ -123,8 +123,6 @@
 		B51485A914B8C53B008488CD /* MLVector.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLVector.cpp; sourceTree = "<group>"; };
 		B51584801629D87B007E50A9 /* MLAppState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLAppState.h; path = ../../../MadronaLib/MLJuceApp/MLAppState.h; sourceTree = SOURCE_ROOT; };
 		B51584811629D87B007E50A9 /* MLAppState.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLAppState.cpp; path = ../../../MadronaLib/MLJuceApp/MLAppState.cpp; sourceTree = SOURCE_ROOT; };
-		B515860A162B9BD7007E50A9 /* cJSON.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = cJSON.c; path = ../../../cJSON/cJSON.c; sourceTree = SOURCE_ROOT; };
-		B515860B162B9BD7007E50A9 /* cJSON.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cJSON.h; path = ../../../cJSON/cJSON.h; sourceTree = SOURCE_ROOT; };
 		B51EE9A116BB7F07008DF025 /* MLUIBinaryData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLUIBinaryData.cpp; sourceTree = "<group>"; };
 		B51EE9A216BB7F07008DF025 /* MLUIBinaryData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLUIBinaryData.h; sourceTree = "<group>"; };
 		B51EE9FC16BB98B2008DF025 /* MLDial.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLDial.cpp; sourceTree = "<group>"; };
@@ -170,25 +168,13 @@
 		B55ADF6B158BD39500FE9D51 /* SoundplaneOSCOutput.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneOSCOutput.cpp; sourceTree = "<group>"; };
 		B562200D166E79BC005FAAD1 /* MLOSCListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLOSCListener.h; path = ../../../MadronaLib/MLApp/MLOSCListener.h; sourceTree = SOURCE_ROOT; };
 		B562200E166E79BC005FAAD1 /* MLOSCListener.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLOSCListener.cpp; path = ../../../MadronaLib/MLApp/MLOSCListener.cpp; sourceTree = SOURCE_ROOT; };
-		B562AC4216209EC800063A15 /* juce_core.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_core.mm; path = ../../../juce2/modules/juce_core/juce_core.mm; sourceTree = SOURCE_ROOT; };
-		B562AC4516209EC800063A15 /* juce_events.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_events.mm; path = ../../../juce2/modules/juce_events/juce_events.mm; sourceTree = SOURCE_ROOT; };
-		B562AC4616209EC800063A15 /* juce_graphics.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_graphics.mm; path = ../../../juce2/modules/juce_graphics/juce_graphics.mm; sourceTree = SOURCE_ROOT; };
-		B562AC4716209EC800063A15 /* juce_gui_basics.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_gui_basics.mm; path = ../../../juce2/modules/juce_gui_basics/juce_gui_basics.mm; sourceTree = SOURCE_ROOT; };
-		B562AC4816209EC800063A15 /* juce_gui_extra.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_gui_extra.mm; path = ../../../juce2/modules/juce_gui_extra/juce_gui_extra.mm; sourceTree = SOURCE_ROOT; };
-		B562AC4916209EC800063A15 /* juce_opengl.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_opengl.mm; path = ../../../juce2/modules/juce_opengl/juce_opengl.mm; sourceTree = SOURCE_ROOT; };
 		B563CE3816263D4100359080 /* GLUT.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLUT.framework; path = System/Library/Frameworks/GLUT.framework; sourceTree = SDKROOT; };
-		B563CE7516263E6200359080 /* juce_audio_basics.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_basics.mm; path = ../../../juce2/modules/juce_audio_basics/juce_audio_basics.mm; sourceTree = SOURCE_ROOT; };
-		B563CE7616263E6200359080 /* juce_audio_devices.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_devices.mm; path = ../../../juce2/modules/juce_audio_devices/juce_audio_devices.mm; sourceTree = SOURCE_ROOT; };
-		B563CE7716263E6200359080 /* juce_audio_formats.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_formats.mm; path = ../../../juce2/modules/juce_audio_formats/juce_audio_formats.mm; sourceTree = SOURCE_ROOT; };
-		B563CE9F16263FF000359080 /* juce_audio_processors.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_processors.mm; path = ../../../juce2/modules/juce_audio_processors/juce_audio_processors.mm; sourceTree = SOURCE_ROOT; };
-		B563CEA016263FF000359080 /* juce_audio_utils.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_utils.mm; path = ../../../juce2/modules/juce_audio_utils/juce_audio_utils.mm; sourceTree = SOURCE_ROOT; };
 		B5648A2B16CB2EC9008446AA /* TrackerCalibrateView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TrackerCalibrateView.h; sourceTree = "<group>"; };
 		B5648A2C16CB2EC9008446AA /* TrackerCalibrateView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TrackerCalibrateView.cpp; sourceTree = "<group>"; };
 		B56C60ED1530E40900520D0A /* MLToggleButton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLToggleButton.h; sourceTree = "<group>"; };
 		B56C60EE1530E40900520D0A /* MLToggleButton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLToggleButton.cpp; sourceTree = "<group>"; };
 		B56DCFA313E9AB8E007E9206 /* SoundplaneDriver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneDriver.h; sourceTree = "<group>"; };
 		B56DCFC113E9B0DA007E9206 /* SoundplaneDriver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneDriver.cpp; sourceTree = "<group>"; };
-		B57A0CBB1622BCC300CF0716 /* juce_data_structures.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_data_structures.mm; path = ../../../juce2/modules/juce_data_structures/juce_data_structures.mm; sourceTree = SOURCE_ROOT; };
 		B57A14EE16261A7000CF0716 /* soundplane.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = soundplane.icns; path = ../../Data/soundplane.icns; sourceTree = SOURCE_ROOT; };
 		B5852D24151A5C0D00AA59B5 /* MLAppBorder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLAppBorder.h; path = ../../../MadronaLib/MLJuceApp/MLAppBorder.h; sourceTree = SOURCE_ROOT; };
 		B5852D25151A5C0D00AA59B5 /* MLAppBorder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLAppBorder.cpp; path = ../../../MadronaLib/MLJuceApp/MLAppBorder.cpp; sourceTree = SOURCE_ROOT; };
@@ -208,6 +194,20 @@
 		B58AD56615AF50E3007704DE /* Thread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Thread.h; path = ../../../osctools/trunk/zeroconf/Thread.h; sourceTree = SOURCE_ROOT; };
 		B58FA98D14D4966D004F730D /* SoundplaneTouchView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneTouchView.h; sourceTree = "<group>"; };
 		B58FA98E14D4966D004F730D /* SoundplaneTouchView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneTouchView.cpp; sourceTree = "<group>"; };
+		B592C67C16F36A5E001B578F /* juce_audio_devices.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_devices.mm; path = ../../../juce/modules/juce_audio_devices/juce_audio_devices.mm; sourceTree = SOURCE_ROOT; };
+		B592C67D16F36A5E001B578F /* juce_audio_basics.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_basics.mm; path = ../../../juce/modules/juce_audio_basics/juce_audio_basics.mm; sourceTree = SOURCE_ROOT; };
+		B592C67E16F36A5E001B578F /* juce_audio_formats.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_formats.mm; path = ../../../juce/modules/juce_audio_formats/juce_audio_formats.mm; sourceTree = SOURCE_ROOT; };
+		B592C67F16F36A5E001B578F /* juce_core.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_core.mm; path = ../../../juce/modules/juce_core/juce_core.mm; sourceTree = SOURCE_ROOT; };
+		B592C68016F36A5E001B578F /* juce_audio_processors.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_processors.mm; path = ../../../juce/modules/juce_audio_processors/juce_audio_processors.mm; sourceTree = SOURCE_ROOT; };
+		B592C68116F36A5E001B578F /* juce_audio_utils.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_utils.mm; path = ../../../juce/modules/juce_audio_utils/juce_audio_utils.mm; sourceTree = SOURCE_ROOT; };
+		B592C68216F36A5E001B578F /* juce_data_structures.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_data_structures.mm; path = ../../../juce/modules/juce_data_structures/juce_data_structures.mm; sourceTree = SOURCE_ROOT; };
+		B592C68316F36A5E001B578F /* juce_events.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_events.mm; path = ../../../juce/modules/juce_events/juce_events.mm; sourceTree = SOURCE_ROOT; };
+		B592C68416F36A5E001B578F /* juce_graphics.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_graphics.mm; path = ../../../juce/modules/juce_graphics/juce_graphics.mm; sourceTree = SOURCE_ROOT; };
+		B592C68516F36A5E001B578F /* juce_gui_basics.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_gui_basics.mm; path = ../../../juce/modules/juce_gui_basics/juce_gui_basics.mm; sourceTree = SOURCE_ROOT; };
+		B592C68616F36A5E001B578F /* juce_gui_extra.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_gui_extra.mm; path = ../../../juce/modules/juce_gui_extra/juce_gui_extra.mm; sourceTree = SOURCE_ROOT; };
+		B592C68716F36A5E001B578F /* juce_opengl.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_opengl.mm; path = ../../../juce/modules/juce_opengl/juce_opengl.mm; sourceTree = SOURCE_ROOT; };
+		B592C6A916F36BB4001B578F /* cJSON.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = cJSON.c; path = ../../../madronalib/cJSON/cJSON.c; sourceTree = SOURCE_ROOT; };
+		B592C6AA16F36BB4001B578F /* cJSON.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cJSON.h; path = ../../../madronalib/cJSON/cJSON.h; sourceTree = SOURCE_ROOT; };
 		B59D217314B5425300F061EA /* TouchTracker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TouchTracker.cpp; path = ../../../soundplane/Source/TouchTracker.cpp; sourceTree = SOURCE_ROOT; };
 		B59D217414B5425300F061EA /* TouchTracker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TouchTracker.h; path = ../../../soundplane/Source/TouchTracker.h; sourceTree = SOURCE_ROOT; };
 		B59E90E01583BB72004830C9 /* MLMenuButton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLMenuButton.h; sourceTree = "<group>"; };
@@ -280,8 +280,8 @@
 		B5D5FC9A156C7DD6006A05E6 /* MLDrawing.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLDrawing.cpp; sourceTree = "<group>"; };
 		B5D5FC9C156C7DDE006A05E6 /* MLPanel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLPanel.h; sourceTree = "<group>"; };
 		B5D5FC9D156C7DDE006A05E6 /* MLPanel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLPanel.cpp; sourceTree = "<group>"; };
-		B5DD1B3E13E79F87002BD9C7 /* AppConfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppConfig.h; path = ../../Source/AppConfig.h; sourceTree = "<group>"; };
-		B5DD1B3F13E79F87002BD9C7 /* JuceHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = JuceHeader.h; path = ../../Source/JuceHeader.h; sourceTree = "<group>"; };
+		B5DD1B3E13E79F87002BD9C7 /* AppConfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppConfig.h; sourceTree = "<group>"; };
+		B5DD1B3F13E79F87002BD9C7 /* JuceHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JuceHeader.h; sourceTree = "<group>"; };
 		B5DD1B4113E79F87002BD9C7 /* SoundplaneView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneView.cpp; sourceTree = "<group>"; };
 		B5DD1B4213E79F87002BD9C7 /* SoundplaneView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneView.h; sourceTree = "<group>"; };
 		B5DD1B4313E79F87002BD9C7 /* SoundplaneApp.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneApp.cpp; sourceTree = "<group>"; };
@@ -328,8 +328,8 @@
 			isa = PBXGroup;
 			children = (
 				B5DD1B3D13E79F87002BD9C7 /* Soundplane Source */,
+				B592C67B16F36A5E001B578F /* Juce App */,
 				B56DCF7C13E8D0DD007E9206 /* SoundplaneLib */,
-				B562AC3C16209E4400063A15 /* Juce App */,
 				B5D4DE84166564BB000C34B7 /* MLApp */,
 				E9187C22BD3E64A16116DF8C /* MLJuceApp */,
 				B5CA7A9C13E0C559003BCFA3 /* LookAndFeel */,
@@ -337,7 +337,7 @@
 				B51585FF162B9BCA007E50A9 /* cJSON */,
 				B5CA7A9813E0C559003BCFA3 /* portaudio */,
 				B53AED0F142FE4B50072A5A4 /* ip */,
-				B53AEC93142F89650072A5A4 /* osc */,
+				B53AEC93142F89650072A5A4 /* oscpack */,
 				B58AD53F15AF4FD3007704DE /* zeroconf */,
 				AE86EC0712AA99EF212AD4AE /* Resources */,
 				C134A2DBF8134BD791778F0F /* Frameworks */,
@@ -359,13 +359,13 @@
 		B51585FF162B9BCA007E50A9 /* cJSON */ = {
 			isa = PBXGroup;
 			children = (
-				B515860A162B9BD7007E50A9 /* cJSON.c */,
-				B515860B162B9BD7007E50A9 /* cJSON.h */,
+				B592C6A916F36BB4001B578F /* cJSON.c */,
+				B592C6AA16F36BB4001B578F /* cJSON.h */,
 			);
 			name = cJSON;
 			sourceTree = "<group>";
 		};
-		B53AEC93142F89650072A5A4 /* osc */ = {
+		B53AEC93142F89650072A5A4 /* oscpack */ = {
 			isa = PBXGroup;
 			children = (
 				B53AEC94142F89650072A5A4 /* MessageMappingOscPacketListener.h */,
@@ -381,7 +381,7 @@
 				B53AECA1142F89650072A5A4 /* OscTypes.cpp */,
 				B53AECA2142F89650072A5A4 /* OscTypes.h */,
 			);
-			name = osc;
+			name = oscpack;
 			path = ../../../oscpack/osc;
 			sourceTree = SOURCE_ROOT;
 		};
@@ -409,27 +409,6 @@
 			path = posix;
 			sourceTree = "<group>";
 		};
-		B562AC3C16209E4400063A15 /* Juce App */ = {
-			isa = PBXGroup;
-			children = (
-				B5DD1B3F13E79F87002BD9C7 /* JuceHeader.h */,
-				B5DD1B3E13E79F87002BD9C7 /* AppConfig.h */,
-				B563CE7516263E6200359080 /* juce_audio_basics.mm */,
-				B563CE7616263E6200359080 /* juce_audio_devices.mm */,
-				B563CE7716263E6200359080 /* juce_audio_formats.mm */,
-				B563CE9F16263FF000359080 /* juce_audio_processors.mm */,
-				B563CEA016263FF000359080 /* juce_audio_utils.mm */,
-				B562AC4216209EC800063A15 /* juce_core.mm */,
-				B57A0CBB1622BCC300CF0716 /* juce_data_structures.mm */,
-				B562AC4516209EC800063A15 /* juce_events.mm */,
-				B562AC4616209EC800063A15 /* juce_graphics.mm */,
-				B562AC4716209EC800063A15 /* juce_gui_basics.mm */,
-				B562AC4816209EC800063A15 /* juce_gui_extra.mm */,
-				B562AC4916209EC800063A15 /* juce_opengl.mm */,
-			);
-			name = "Juce App";
-			sourceTree = "<group>";
-		};
 		B56DCF7C13E8D0DD007E9206 /* SoundplaneLib */ = {
 			isa = PBXGroup;
 			children = (
@@ -455,6 +434,25 @@
 				B58AD56615AF50E3007704DE /* Thread.h */,
 			);
 			name = zeroconf;
+			sourceTree = "<group>";
+		};
+		B592C67B16F36A5E001B578F /* Juce App */ = {
+			isa = PBXGroup;
+			children = (
+				B592C67C16F36A5E001B578F /* juce_audio_devices.mm */,
+				B592C67D16F36A5E001B578F /* juce_audio_basics.mm */,
+				B592C67E16F36A5E001B578F /* juce_audio_formats.mm */,
+				B592C67F16F36A5E001B578F /* juce_core.mm */,
+				B592C68016F36A5E001B578F /* juce_audio_processors.mm */,
+				B592C68116F36A5E001B578F /* juce_audio_utils.mm */,
+				B592C68216F36A5E001B578F /* juce_data_structures.mm */,
+				B592C68316F36A5E001B578F /* juce_events.mm */,
+				B592C68416F36A5E001B578F /* juce_graphics.mm */,
+				B592C68516F36A5E001B578F /* juce_gui_basics.mm */,
+				B592C68616F36A5E001B578F /* juce_gui_extra.mm */,
+				B592C68716F36A5E001B578F /* juce_opengl.mm */,
+			);
+			name = "Juce App";
 			sourceTree = "<group>";
 		};
 		B5CA79DE13E0C54D003BCFA3 /* DSP */ = {
@@ -563,6 +561,8 @@
 		B5DD1B3D13E79F87002BD9C7 /* Soundplane Source */ = {
 			isa = PBXGroup;
 			children = (
+				B5DD1B3F13E79F87002BD9C7 /* JuceHeader.h */,
+				B5DD1B3E13E79F87002BD9C7 /* AppConfig.h */,
 				B508804C14635BB20039D144 /* Filters2D.cpp */,
 				B508804B14635BB20039D144 /* Filters2D.h */,
 				B5DD1B4413E79F87002BD9C7 /* SoundplaneApp.h */,
@@ -771,20 +771,7 @@
 				B58AD56A15AF50E3007704DE /* NetServiceThread.cpp in Sources */,
 				B58AD56B15AF50E3007704DE /* Thread.cpp in Sources */,
 				B5B2D0C515C7573900FF08A5 /* MLWidgetContainer.cpp in Sources */,
-				B563CE7816263E6200359080 /* juce_audio_basics.mm in Sources */,
-				B563CE7916263E6200359080 /* juce_audio_devices.mm in Sources */,
-				B563CE7A16263E6200359080 /* juce_audio_formats.mm in Sources */,
-				B563CEA116263FF000359080 /* juce_audio_processors.mm in Sources */,
-				B563CEA216263FF000359080 /* juce_audio_utils.mm in Sources */,
-				B562AC5016209EC800063A15 /* juce_core.mm in Sources */,
-				B57A0CBC1622BCC300CF0716 /* juce_data_structures.mm in Sources */,
-				B562AC5316209EC800063A15 /* juce_events.mm in Sources */,
-				B562AC5416209EC800063A15 /* juce_graphics.mm in Sources */,
-				B562AC5516209EC800063A15 /* juce_gui_basics.mm in Sources */,
-				B562AC5616209EC800063A15 /* juce_gui_extra.mm in Sources */,
-				B562AC5716209EC800063A15 /* juce_opengl.mm in Sources */,
 				B51584821629D87B007E50A9 /* MLAppState.cpp in Sources */,
-				B515860C162B9BD7007E50A9 /* cJSON.c in Sources */,
 				B5A8777616628FCC00F9764D /* MLMenu.cpp in Sources */,
 				B5D4DEA216656ABA000C34B7 /* MLPath.cpp in Sources */,
 				B5D4DEA316656ABA000C34B7 /* MLSymbol.cpp in Sources */,
@@ -801,6 +788,19 @@
 				B51EE9FE16BB98B2008DF025 /* MLDial.cpp in Sources */,
 				B51EEAB616BBB3E9008DF025 /* MLDSP.cpp in Sources */,
 				B5648A2D16CB2EC9008446AA /* TrackerCalibrateView.cpp in Sources */,
+				B592C68816F36A5E001B578F /* juce_audio_devices.mm in Sources */,
+				B592C68916F36A5E001B578F /* juce_audio_basics.mm in Sources */,
+				B592C68A16F36A5E001B578F /* juce_audio_formats.mm in Sources */,
+				B592C68B16F36A5E001B578F /* juce_core.mm in Sources */,
+				B592C68C16F36A5E001B578F /* juce_audio_processors.mm in Sources */,
+				B592C68D16F36A5E001B578F /* juce_audio_utils.mm in Sources */,
+				B592C68E16F36A5E001B578F /* juce_data_structures.mm in Sources */,
+				B592C68F16F36A5E001B578F /* juce_events.mm in Sources */,
+				B592C69016F36A5E001B578F /* juce_graphics.mm in Sources */,
+				B592C69116F36A5E001B578F /* juce_gui_basics.mm in Sources */,
+				B592C69216F36A5E001B578F /* juce_gui_extra.mm in Sources */,
+				B592C69316F36A5E001B578F /* juce_opengl.mm in Sources */,
+				B592C6AB16F36BB4001B578F /* cJSON.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -844,17 +844,16 @@
 				);
 				GCC_PREPROCESSOR_DEFINITIONS_NOT_USED_IN_PRECOMPS = "JUCE_ObjCExtraSuffix=Soundplane";
 				GCC_VERSION = com.apple.compilers.llvmgcc42;
-				HEADER_SEARCH_PATHS = "$(HOME)/Dev/oscpack/**";
+				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
-				JUCE_PATH = /Users/rej/Dev/juce2;
+				JUCE_PATH = "$(HOME)/dev/juce";
 				KERNEL_PATH = /System/Library/Frameworks/Kernel.framework/Headers;
-				ML_DSP_PATH = /Users/rej/Dev/MadronaLib/DSP;
-				ML_LOOKANDFEEL_PATH = /Users/rej/Dev/MadronaLib/LookAndFeel;
-				ML_PATH = /Users/rej/Dev/MadronaLib;
+				ML_PATH = "$(HOME)/dev/madronalib";
+				OSCPACK_PATH = "$(HOME)/dev/oscpack";
 				PREBINDING = NO;
 				PRODUCT_NAME = Soundplane;
-				USER_HEADER_SEARCH_PATHS = "\"$JUCE_PATH\"/** \"$ML_PATH\"/**";
+				USER_HEADER_SEARCH_PATHS = "\"$OSCPACK_PATH\"/** \"$ML_PATH\"/** \"$JUCE_PATH\"/**";
 				WARNING_CFLAGS = "";
 			};
 			name = Debug;
@@ -895,17 +894,16 @@
 				);
 				GCC_PREPROCESSOR_DEFINITIONS_NOT_USED_IN_PRECOMPS = "JUCE_ObjCExtraSuffix=Soundplane";
 				GCC_VERSION = com.apple.compilers.llvmgcc42;
-				HEADER_SEARCH_PATHS = "$(HOME)/Dev/oscpack/**";
+				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
-				JUCE_PATH = /Users/rej/Dev/juce2;
+				JUCE_PATH = "$(HOME)/dev/juce";
 				KERNEL_PATH = /System/Library/Frameworks/Kernel.framework/Headers;
-				ML_DSP_PATH = /Users/rej/Dev/MadronaLib/DSP;
-				ML_LOOKANDFEEL_PATH = /Users/rej/Dev/MadronaLib/LookAndFeel;
-				ML_PATH = /Users/rej/Dev/MadronaLib;
+				ML_PATH = "$(HOME)/dev/madronalib";
+				OSCPACK_PATH = "$(HOME)/dev/oscpack";
 				PREBINDING = NO;
 				PRODUCT_NAME = Soundplane;
-				USER_HEADER_SEARCH_PATHS = "\"$JUCE_PATH\"/** \"$ML_PATH\"/**";
+				USER_HEADER_SEARCH_PATHS = "\"$OSCPACK_PATH\"/** \"$ML_PATH\"/** \"$JUCE_PATH\"/**";
 				WARNING_CFLAGS = "";
 			};
 			name = "Debug Optimized";
@@ -950,17 +948,16 @@
 				);
 				GCC_PREPROCESSOR_DEFINITIONS_NOT_USED_IN_PRECOMPS = "JUCE_ObjCExtraSuffix=Soundplane";
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
-				HEADER_SEARCH_PATHS = "$(HOME)/Dev/oscpack/**";
+				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
-				JUCE_PATH = /Users/rej/Dev/juce2;
+				JUCE_PATH = "$(HOME)/dev/juce";
 				KERNEL_PATH = /System/Library/Frameworks/Kernel.framework/Headers;
-				ML_DSP_PATH = /Users/rej/Dev/MadronaLib/DSP;
-				ML_LOOKANDFEEL_PATH = /Users/rej/Dev/MadronaLib/LookAndFeel;
-				ML_PATH = /Users/rej/Dev/MadronaLib;
+				ML_PATH = "$(HOME)/dev/madronalib";
+				OSCPACK_PATH = "$(HOME)/dev/oscpack";
 				PREBINDING = NO;
 				PRODUCT_NAME = Soundplane;
-				USER_HEADER_SEARCH_PATHS = "\"$JUCE_PATH\"/** \"$ML_PATH\"/**";
+				USER_HEADER_SEARCH_PATHS = "\"$OSCPACK_PATH\"/** \"$ML_PATH\"/** \"$JUCE_PATH\"/**";
 				WARNING_CFLAGS = "";
 			};
 			name = Release;
