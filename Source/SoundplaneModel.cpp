@@ -99,7 +99,7 @@ SoundplaneModel::SoundplaneModel() :
 	
 	// setup variable lopass
 	mLopassFilter.setSampleRate(mSampleRate);
-	mLopassFilter.setLopass(50., 0.707);
+	mLopassFilter.setLopass(100., 0.707);
 	
 	mNoteFilters.resize(kSoundplaneMaxTouches);
 	mVibratoFilters.resize(kSoundplaneMaxTouches);

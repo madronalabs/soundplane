@@ -35,6 +35,7 @@ const int kTouchHistorySize = 128;
 const int kTouchTrackerMaxPeaks = 16;
 
 const int kPassesToCalibrate = 2;
+const float kCalibrateTrackerThresh = 0.02;
 
 // Soundplane A
 const int kCalibrateWidth = 58;

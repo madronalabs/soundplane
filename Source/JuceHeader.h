@@ -1,4 +1,3 @@
-
 //
 // JuceHeader.h
 // 
@@ -6,7 +5,6 @@
 
 #ifndef __JUCE_HEADER_H__
 #define __JUCE_HEADER_H__
-
 
 #include "AppConfig.h"
 #include "modules/juce_audio_basics/juce_audio_basics.h"
@@ -21,7 +19,6 @@
 #include "modules/juce_gui_basics/juce_gui_basics.h"
 #include "modules/juce_gui_extra/juce_gui_extra.h"
 #include "modules/juce_opengl/juce_opengl.h"
-#include "BinaryData.h"
 
 namespace ProjectInfo
 {

@@ -1390,7 +1390,8 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	ipy = clamp(ipy, 0, 7);
 		
 	// get float correct peak
-	Vec2 fPeak = mFilteredInput.correctPeak(inPeak.x(), inPeak.y());
+//	Vec2 fPeak = mFilteredInput.correctPeak(inPeak.x(), inPeak.y());
+	Vec2 fPeak(inPeak.x(), inPeak.y());
 	
 	// lowpass
 	if(age == 0)
@@ -1399,10 +1400,11 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	}
 	else
 	{
-		mPeak += (fPeak - mPeak) * 0.125f;
+		mPeak += (fPeak - mPeak) * 0.1f;
 	}
-
-	float peakC = mFilteredInput(mPeak);
+	
+//	float peakC = mFilteredInput(mPeak);
+	float peakC = mFilteredInput((int)mPeak.x(), (int)mPeak.y());
 
 	// get integer bin
 	Vec2 binPeak = getBinPosition(mPeak);
@@ -1423,7 +1425,10 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	else if (mTotalSamples == startupSamples)
 	{
 		age = 0;
-		mAutoThresh = mStartupSum / (float)startupSamples * 10.f;	
+		// mAutoThresh = mStartupSum / (float)startupSamples * 10.f;	
+		
+		mAutoThresh = kCalibrateTrackerThresh;
+		
 		debug() << "\n\nRight. Now please slide a single finger over the  \n";
 		debug() << "Soundplane surface with a light and even touch, \n";
 		debug() << "visiting each key twice until all the keys are \n";
