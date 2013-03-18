@@ -472,11 +472,23 @@ void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 // set template threshold based on average distance
 void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& norm, float avgDistance)
 {
-	setModelParam("tracker_calibration", cal);	
-	setModelParam("tracker_normalize", norm);	
-	float thresh = avgDistance;
-	debug() << "SoundplaneModel::hasNewCalibration: calculated template threshold: " << thresh << "\n";	
-	setModelParam("t_thresh", thresh);	
+	if(avgDistance > 0.f)
+	{
+		setModelParam("tracker_calibration", cal);	
+		setModelParam("tracker_normalize", norm);	
+		float thresh = avgDistance;
+		debug() << "SoundplaneModel::hasNewCalibration: calculated template threshold: " << thresh << "\n";	
+		setModelParam("t_thresh", thresh);	
+	}
+	else
+	{
+		// set default calibration
+		setModelParam("tracker_calibration", cal);	
+		setModelParam("tracker_normalize", norm);	
+		float thresh = 0.2f;
+		debug() << "SoundplaneModel::hasNewCalibration: default template threshold: " << thresh << "\n";	
+		setModelParam("t_thresh", thresh);	
+	}
 }
 
 const char* SoundplaneModel::getHardwareStr()
@@ -1328,7 +1340,20 @@ void SoundplaneModel::cancelCalibrateTracker()
 
 bool SoundplaneModel::trackerIsCalibrating()
 {
-	return mTracker.isCalibrating();
+	int r = 0;
+	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
+	{	
+		r = mTracker.isCalibrating();
+	}
+	return r;
+}
+
+void SoundplaneModel::setDefaultTrackerCalibration()
+{
+	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
+	{	
+		mTracker.setDefaultCalibration();
+	}
 }
 
 /*NRPN stands for "Non-Registered Parameter Number" and is part of the MIDI specification for control of electronic musical instruments. NRPNs allow for manufacturer-specific or instrument-specific MIDI controllers that are not part of the basic MIDI standard.

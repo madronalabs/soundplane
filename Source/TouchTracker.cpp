@@ -974,6 +974,8 @@ void TouchTracker::process(int)
 		int done = mCalibrator.addSample(in);
 		if(done == 1)
 		{
+			// Tell the listener we have a new calibration. We still do the calibration here in the Tracker, 
+			// but the Model will be responsible for saving and restoring the calibration maps.
 			if(mpListener)
 			{
 				mpListener->hasNewCalibration(mCalibrator.mCalibrateSignal, mCalibrator.mNormalizeMap, mCalibrator.mAvgDistance);
@@ -1110,6 +1112,12 @@ void TouchTracker::process(int)
 #endif	
 }
 
+void TouchTracker::setDefaultCalibration()
+{
+	mCalibrator.setDefaultCalibration();
+	mpListener->hasNewCalibration(mNullSig, mNullSig, -1.f);
+}
+
 // --------------------------------------------------------------------------------
 #pragma mark calibration
 
@@ -1117,7 +1125,6 @@ void TouchTracker::process(int)
 TouchTracker::Calibrator::Calibrator(int w, int h) :
 	mActive(false),
 	mHasCalibration(false),
-	mHasNewCalibration(false),
 	mHasNormalizeMap(false),
 	mSrcWidth(w),
 	mSrcHeight(h),
@@ -1189,6 +1196,13 @@ void TouchTracker::Calibrator::cancel()
 	}
 }
 
+void TouchTracker::Calibrator::setDefaultCalibration()
+{
+	mActive = false;
+	mHasCalibration = false;
+	mHasNormalizeMap = false;
+}
+
 void TouchTracker::Calibrator::makeDefaultTemplate()
 {
 	mDefaultTemplate.setDims (kTemplateSize, kTemplateSize);
@@ -1254,6 +1268,7 @@ const MLSignal& TouchTracker::Calibrator::getTemplate(Vec2 p) const
 
 Vec2 TouchTracker::Calibrator::getBinPosition(Vec2 pIn) const
 {
+	// Soundplane A
 	Vec2 pOut = vclamp(pIn, Vec2(2.5, 0.5), Vec2(60.49, 6.49));
 	pOut -= Vec2(2.5, 0.5);
 	Vec2 pOutI, pOutF;
@@ -1261,7 +1276,6 @@ Vec2 TouchTracker::Calibrator::getBinPosition(Vec2 pIn) const
 	
 	
 	/*
-	// Soundplane A
 	static MLRange binRangeX(3.5, 59.5, 1., 29.);
 	static MLRange binRangeY(1.25, 5.75, 1., 4.);
 	Vec2 minPos(0., 0.);
@@ -1270,11 +1284,9 @@ Vec2 TouchTracker::Calibrator::getBinPosition(Vec2 pIn) const
 	return vclamp(pos, minPos, maxPos);
 	*/
 	
-
 //debug() << "bin: " << pOutI << "\n";
 	
 	return pOut; // TEST
-	
 }
 
 void TouchTracker::Calibrator::normalizeInput(MLSignal& in)
@@ -1493,10 +1505,8 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 				}
 				
 				getAverageTemplateDistance();
-				makeNormalizeMap();
-				
+				makeNormalizeMap();				
 				mHasCalibration = true;
-				mHasNewCalibration = true;
 				mActive = false;	
 				r = 1;	
 							
@@ -1549,8 +1559,17 @@ done:
 	
 void TouchTracker::Calibrator::setCalibration(const MLSignal& v)
 {
-	mCalibrateSignal = v;
-	mHasCalibration = true;
+	if((v.getHeight() == mSrcHeight) && v.getWidth() == mSrcWidth)
+	{
+		mCalibrateSignal = v;
+		mHasCalibration = true;
+	}
+	else
+	{
+		debug() << "TouchTracker::Calibrator::setCalibration: restoring default.\n";
+		mCalibrateSignal = v;
+		mHasCalibration = false;
+	}
 }
 
 void TouchTracker::Calibrator::setNormalizeMap(const MLSignal& v)
@@ -1558,12 +1577,14 @@ void TouchTracker::Calibrator::setNormalizeMap(const MLSignal& v)
 	if((v.getHeight() == mSrcHeight) && v.getWidth() == mSrcWidth)
 	{
 		mNormalizeMap = v;
+		mHasNormalizeMap = true;
 	}
 	else
 	{
-		debug() << "TouchTracker::Calibrator::setNormalizeMap: map parameter wrong size!\n";
+		debug() << "TouchTracker::Calibrator::setNormalizeMap: restoring default.\n";
+		mNormalizeMap.fill(1.f);
+		mHasNormalizeMap = false;
 	}
-	mHasNormalizeMap = true;
 }
 
 

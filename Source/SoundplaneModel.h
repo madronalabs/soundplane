@@ -147,6 +147,7 @@ public:
 	void beginCalibrateTracker();
 	void cancelCalibrateTracker();
 	bool trackerIsCalibrating();
+	void setDefaultTrackerCalibration();
 	Vec2 getTrackerCalibrateDims() { return Vec2(kCalibrateWidth, kCalibrateHeight); }	
 
 	Vec2 xyToKeyGrid(Vec2 xy);

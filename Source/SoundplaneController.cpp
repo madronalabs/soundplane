@@ -99,6 +99,10 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 	{
 		mpSoundplaneModel->cancelCalibrateTracker();
 	}
+	else if (p == "calibrate_tracker_default")
+	{
+		mpSoundplaneModel->setDefaultTrackerCalibration();
+	}
 }
 
 

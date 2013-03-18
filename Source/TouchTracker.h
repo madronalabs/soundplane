@@ -123,6 +123,7 @@ public:
 		bool hasCalibration();
 		Vec2 getBinPosition(Vec2 p) const;		
 		void setCalibration(const MLSignal& v);
+		void setDefaultCalibration();
 		void setNormalizeMap(const MLSignal& m);
 		
 		float getZAdjust(const Vec2 p);
@@ -144,7 +145,6 @@ public:
 		float mOnThreshold;
 		bool mActive;
 		bool mHasCalibration;	
-		bool mHasNewCalibration;	
 		bool mHasNormalizeMap;	
 		int mSrcWidth;
 		int mSrcHeight;
@@ -251,15 +251,14 @@ public:
 	const MLSignal& getCalibrationProgressSignal() { return mCalibrationProgressSignal; } 
 	const MLSignal& getCalibrateSignal() { return mCalibrator.mVisSignal; }	
 	float getCalibrateAvgDistance() {return mCalibrator.mAvgDistance; }
-	Vec3 getCalibratePeak() { return mCalibrator.mVisPeak; }	
-	
+	Vec3 getCalibratePeak() { return mCalibrator.mVisPeak; }		
 	void beginCalibrate() { mCalibrator.begin(); }	
 	void cancelCalibrate() { mCalibrator.cancel(); }	
 	bool isCalibrating() { return(mCalibrator.isCalibrating()); }	
 	void setCalibration(const MLSignal& v) { mCalibrator.setCalibration(v); }
 	void setNormalizeMap(const MLSignal& v) { mCalibrator.setNormalizeMap(v); }
-	
 	void setListener(Listener* pL) { mpListener = pL; }
+	void setDefaultCalibration();
 
 private:	
 
@@ -333,6 +332,7 @@ private:
 	MLSignal mCalibrationProgressSignal;
 	MLSignal mTemplate;
 	MLSignal mTemplateScaled;
+	MLSignal mNullSig;
 
 	MLSignal mTemplateMask;
 	

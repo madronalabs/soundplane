@@ -394,7 +394,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	// utility buttons
 	page2->addTextButton("select carriers", MLRect(0, 1, 3, 0.4), "select_carriers");	
 	page2->addTextButton("calibrate tracker", MLRect(3.5, 1, 3, 0.4), "calibrate_tracker");	
-	pB = page2->addTextButton("cancel", MLRect(3.5, 1.5, 3, 0.4), "calibrate_tracker_cancel");	
+	page2->addTextButton("cancel", MLRect(3.5, 1.5, 3, 0.4), "calibrate_tracker_cancel");	
+	page2->addTextButton("use default", MLRect(3.5, 2., 3, 0.4), "calibrate_tracker_default");	
 	
 	// tracker calibration view
 	MLRect TCVRect(0, 3.f, 6.5, 3.); 
