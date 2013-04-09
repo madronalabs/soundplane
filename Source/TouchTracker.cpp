@@ -777,12 +777,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 														
 		mTemp.add2D(mTemplateScaled, Vec2(pos - Vec2(kTemplateRadius, kTemplateRadius)));
 		mTemp.sigMax(0.0);
-		
-if(i == 0)
-{
-			mTestSignal.copy(mTemp);		
 
-}		
 		// add touch neighborhood to template mask. This allows crowded touches
 		// to pass the template test by ignoring areas shared with other touches.
 		Vec2 maskPos(t.x, t.y);
@@ -856,10 +851,6 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 			int key = getKeyIndexAtPoint(pos);
 			if(within(key, 0, mNumKeys))
 			{
-	if(!mCount)
-	{		
-	debug() << "peak @ " << pos << " ->  key " << key << "\n";
-	}
 				// send peak energy to key under peak.
 				KeyState& keyState = mKeyStates[key];
 				MLRange kdzRange(mOnThreshold, mMaxForce*0.5, 0.001f, 1.f);
@@ -909,7 +900,7 @@ void TouchTracker::findTouches()
 			
 			if (ageTest && inhibitTest && kCoeffTest)
 			{	
-debug() << "key:" << i << " z:" << z << " dz:" << kdz << " template:" << templateTest << " inhibit:" << inhibitTest << "\n";
+//debug() << "key:" << i << " z:" << z << " dz:" << kdz << " template:" << templateTest << " inhibit:" << inhibitTest << "\n";
 			
 				// if difference of peak neighborhood from template at subpixel position 
 				// is under threshold, we may have a new touch.		
@@ -926,11 +917,11 @@ debug() << "key:" << i << " z:" << z << " dz:" << kdz << " template:" << templat
 						{		
 							mKeyStates[i].age = 0;										
 							
+
+/*
 												
 debug() << newIdx << " ON z:" << z << " kdt:" << kdt << " at " << pos << "\n";	
 debug() << "          template: " << templateTest << " override: " << override << "\n";
-
-/*
 			debug() << "********\n";
 			debug() << "KC " << kCoeff << "\n";
 			debug() << "KDZ " << kdz << "\n";
@@ -1092,7 +1083,7 @@ void TouchTracker::process(int)
 		// TODO optimize: we only have to copy these each time a view is needed
 		mCalibratedSignal.copy(mInputMinusBackground);
 		mCookedSignal.copy(mSumOfTouches);		
-//		mTestSignal.copy(mResidual);		
+		mTestSignal.copy(mResidual);		
 		
 		// get subpixel xyz peak from residual
 		addPeakToKeyState(mResidual);
