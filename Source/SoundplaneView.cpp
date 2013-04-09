@@ -411,7 +411,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	
 	pD = page2->addDial("bg filter", dialRect.withCenter(2, dialY), "bg_filter", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
-	pD->setDefault(0.01);
+	pD->setDefault(0.05);
 	
 	pD = page2->addDial("hysteresis", dialRect.withCenter(4, dialY), "hysteresis", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
@@ -432,34 +432,23 @@ SoundplaneView::~SoundplaneView()
 
 void SoundplaneView::initialize()
 {
-	goToPage(0);		
+	goToPage(0);	
+		
 	startTimer(500);
+	
 	setAnimationsActive(true);
+	
 	updateAllParams();
 }
 
 void SoundplaneView::timerCallback()
 {
 	if (mDoAnimations)
-	{
-	
+	{	
 		if (mpGridView && mpGridView->isShowing())
 		{
 			mpGridView->repaint();
 		}
-
-		/*
-		if (mpTouchView && mpTouchView->isShowing())
-		{
-			mpTouchView->repaint();
-		}
-
-		if (mpGLView3 && mpGLView3->isShowing())
-		{
-			mpGLView3->repaint();
-		}
-		*/
-		
 		
 	// TODO different intervals!
 

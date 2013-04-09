@@ -231,9 +231,7 @@ public:
 	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
 	void setTemplateThresh(float f) { mTemplateThresh = f; }
-	void setHysteresis(float f) { mHysteresis = f; }
 	void setTaxelsThresh(int t) { mTaxelsThresh = t; }
-	void setRetrigThresh(float f) { mRetrigThresh = f; }
 	void setQuantize(bool q) { mQuantizeToKey = q; }
 	void setBackgroundFilter(float v) { mBackgroundFilterFreq = v; }
 	void setLopass(float k); 	
@@ -300,8 +298,6 @@ private:
 
 	float mMatchDistance;
 	float mMaxForce;
-	
-	float mHysteresis;
 	int mTaxelsThresh;
 	
 	float mSmoothing;
@@ -311,7 +307,7 @@ private:
 	
 	float mOnThreshold;
 	float mOffThreshold;
-	float mRetrigThresh;
+	float mOverrideThresh;
 	float mBackgroundFilterFreq;
 	float mTemplateThresh;
 		

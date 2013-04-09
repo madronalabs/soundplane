@@ -24,7 +24,7 @@ namespace ProjectInfo
 {
     const char* const  makerName	  = "Madrona Labs";
     const char* const  projectName    = "Soundplane";
-    const char* const  versionString  = "0.99";
+    const char* const  versionString  = "0.995";
     const int          versionNumber  = 0x10000;
 }
 

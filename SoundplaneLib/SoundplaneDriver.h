@@ -109,6 +109,15 @@ typedef enum MLSoundplaneState
 	kDeviceResume = 5
 };
 
+// device states
+//
+typedef enum MLSoundplaneErrorType
+{
+	kDevNoErr = 0,
+	kDevDataDiffTooLarge = 1,
+	kDevGapInSequence = 2
+};
+
 void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest);
 
 int SuspendDevice( IOUSBDeviceInterface187 **dev, bool suspend );
@@ -119,6 +128,8 @@ public:
 	SoundplaneDriverListener() {}
 	virtual ~SoundplaneDriverListener() {}
 	virtual void deviceStateChanged(MLSoundplaneState s) = 0;
+	virtual void handleDeviceError(int errorType, int di1, int di2, float df1, float df2) = 0;
+	virtual void handleDeviceDataDump(float* pData, int size) = 0;
 };
 
 class SoundplaneDriver;
@@ -195,6 +206,8 @@ private:
 
 	void reclockFrameToBuffer(float* pSurface);
 	void setDeviceState(MLSoundplaneState n);
+	void reportDeviceError(int errCode, int d1, int d2, float df1, float df2);
+	void dumpDeviceData(float* pData, int size);
 	void removeDevice();
 	
 	MLSoundplaneState mState;

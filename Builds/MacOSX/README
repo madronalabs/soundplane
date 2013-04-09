@@ -1,0 +1,2 @@
+
+To build in XCode version, open Soundplane.xcodeproj and choose Edit Active Target “Soundplane’. Then click "Build" to see build settings.  Paths are set up via user-defined settings, at the bottom of this list. It is assumed you have a "Dev" directory in your home directory, and that all other source directories are in there. If this is not true you will need to adjust the paths.

@@ -290,8 +290,9 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 				int iy;
 				int newNote = prevNote;
 				
-				// hysteresis: make it harder to move out of current key 
-				// (needed for retrig mode where model is not quantizing x)
+				// hysteresis: make it harder to move out of current key.
+				// needed for retrig mode when model is not quantizing x
+				// and applying its own hysteresis.
 				if(!prevNote)
 				{
 					newNote = clamp((int)lround(note) + mTranspose, 1, 127);

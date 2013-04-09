@@ -38,7 +38,6 @@ void SoundplaneTouchView::mouseDrag (const MouseEvent& e)
 {
 }
 
-
 void SoundplaneTouchView::renderOpenGL()
 {
 	if (!mpModel) return;
@@ -58,9 +57,6 @@ void SoundplaneTouchView::renderOpenGL()
 	const MLSignal& currentTouch = mpModel->getTouchFrame();
 	const MLSignal& touchHistory = mpModel->getTouchHistory();
 	const int frames = mpModel->getModelFloatParam("max_touches");
-	//	const int zColumn = 2;
-	//	const int dColumn = 3;
-	//	const int ageColumn = 4;
 		
 	// erase
 	const Colour c = findColour(MLLookAndFeel::backgroundColor);

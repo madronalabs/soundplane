@@ -36,11 +36,10 @@ TouchTracker::TouchTracker(int w, int h) :
 	mNumPeaks(0),
 	mOnThreshold(0.03f),
 	mOffThreshold(0.02f),
-	mHysteresis(0.01f),
 	mTaxelsThresh(9),
 	mQuantizeToKey(false),
 	mTemplateThresh(0.003),
-	mRetrigThresh(0.002),
+	mOverrideThresh(0.01),
 	mCombineRadius(1.),
 	mCount(0),
 	mTouchesPerFrame(0),
@@ -144,13 +143,13 @@ int TouchTracker::getKeyIndexAtPoint(const Vec2 p)
 			MLRange xRange(3.5f, 59.5f);
 			xRange.convertTo(MLRange(1.f, 29.f));
 			float kx = xRange(x);
-			kx = clamp(kx, 0.f, 30.f);
+			kx = clamp(kx, 0.f, 29.f);
 			ix = kx;
 			
 			MLRange yRange(1.25, 5.75);  // Soundplane A as measured
 			yRange.convertTo(MLRange(1.f, 4.f));
 			float ky = yRange(y);
-			ky = clamp(ky, 0.f, 5.f);
+			ky = clamp(ky, 0.f, 4.f);
 			iy = ky;
 
 			k = iy*30 + ix;
@@ -383,7 +382,7 @@ void TouchTracker::setThresh(float f)
 	const float kHysteresis = 0.002f;
 	mOffThreshold = f; 
 	mOnThreshold = f + kHysteresis; 
-	mRetrigThresh = mOnThreshold*2.f;
+	mOverrideThresh = mOnThreshold*5.f;
 	mCalibrator.setThreshold(mOnThreshold);
 }
 
@@ -703,7 +702,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		bool inhibitTest = (newZ > inhibit);
 		t.tDist = mCalibrator.differenceFromTemplateTouchWithMask(mTemp, pos, mTemplateMask);
 		bool templateTest = (t.tDist < mTemplateThresh);
-		bool override = (newZ > mRetrigThresh);
+		bool override = (newZ > mOverrideThresh);
 						
 		t.age++;
 
@@ -779,6 +778,11 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		mTemp.add2D(mTemplateScaled, Vec2(pos - Vec2(kTemplateRadius, kTemplateRadius)));
 		mTemp.sigMax(0.0);
 		
+if(i == 0)
+{
+			mTestSignal.copy(mTemp);		
+
+}		
 		// add touch neighborhood to template mask. This allows crowded touches
 		// to pass the template test by ignoring areas shared with other touches.
 		Vec2 maskPos(t.x, t.y);
@@ -847,10 +851,15 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 		// add peak to key state, or bail
 		if (z > mOnThreshold*0.25f)
 		{	
+		
 			Vec2 pos = in.correctPeak(peak.x(), peak.y());	
 			int key = getKeyIndexAtPoint(pos);
 			if(within(key, 0, mNumKeys))
 			{
+	if(!mCount)
+	{		
+	debug() << "peak @ " << pos << " ->  key " << key << "\n";
+	}
 				// send peak energy to key under peak.
 				KeyState& keyState = mKeyStates[key];
 				MLRange kdzRange(mOnThreshold, mMaxForce*0.5, 0.001f, 1.f);
@@ -893,14 +902,14 @@ void TouchTracker::findTouches()
 			float inhibit = getInhibitThreshold(pos);			
 			bool inhibitTest = (z > inhibit);
 			bool templateTest = (kdt < mTemplateThresh);
-			bool override = (z > mRetrigThresh);
+			bool override = (z > mOverrideThresh);
 			bool kCoeffTest = (kCoeff > 0.001f);
 
 			bool ageTest = mKeyStates[i].age > 10;
 			
 			if (ageTest && inhibitTest && kCoeffTest)
 			{	
-//	debug() << "key:" << i << " z:" << z << " dz:" << kdz << " template:" << templateTest << " inhibit:" << inhibitTest << "\n";
+debug() << "key:" << i << " z:" << z << " dz:" << kdz << " template:" << templateTest << " inhibit:" << inhibitTest << "\n";
 			
 				// if difference of peak neighborhood from template at subpixel position 
 				// is under threshold, we may have a new touch.		
@@ -916,15 +925,18 @@ void TouchTracker::findTouches()
 						if(newIdx >= 0)
 						{		
 							mKeyStates[i].age = 0;										
-/*								
+							
 												
 debug() << newIdx << " ON z:" << z << " kdt:" << kdt << " at " << pos << "\n";	
 debug() << "          template: " << templateTest << " override: " << override << "\n";
+
+/*
 			debug() << "********\n";
 			debug() << "KC " << kCoeff << "\n";
 			debug() << "KDZ " << kdz << "\n";
 			debug() << "********\n";
-*/			
+*/
+			
 			// set age for key state to inhibit retrigger
 			
 						}
@@ -971,7 +983,14 @@ void TouchTracker::process(int)
 		
 	if (mCalibrator.isCalibrating())
 	{		
-		int done = mCalibrator.addSample(in);
+		mFilteredInput.copy(in);
+
+		// smooth input	
+		float kc, ke, kk;
+		kc = 4./16.; ke = 2./16.; kk=1./16.;
+		mFilteredInput.convolve3x3r(kc, ke, kk);
+		int done = mCalibrator.addSample(mFilteredInput);
+		
 		if(done == 1)
 		{
 			// Tell the listener we have a new calibration. We still do the calibration here in the Tracker, 
@@ -1058,7 +1077,7 @@ void TouchTracker::process(int)
 		// TODO look for retriggers here, touches not fallen to 0 but where 
 		// dz warrants a new note-on. The way to do this is keep a second,
 		// separate set of key states that do not get cleared by current
-		// touches.  These can be used to get the dz values an using the exact
+		// touches.  These can be used to get the dz values and using the exact
 		// same math, velocities will match other note-ons.
 
 		// after update Touches, subtract sum of touches to get residual R
@@ -1073,7 +1092,7 @@ void TouchTracker::process(int)
 		// TODO optimize: we only have to copy these each time a view is needed
 		mCalibratedSignal.copy(mInputMinusBackground);
 		mCookedSignal.copy(mSumOfTouches);		
-		mTestSignal.copy(mResidual);		
+//		mTestSignal.copy(mResidual);		
 		
 		// get subpixel xyz peak from residual
 		addPeakToKeyState(mResidual);
@@ -1347,10 +1366,10 @@ void TouchTracker::Calibrator::makeNormalizeMap()
 		mNormalizeMap(i, mSrcHeight - 1) *= 1.33;
 	}
 	
-	/*
+	
 	debug() << "************ MAP: \n";
 	mNormalizeMap.dump(mNormalizeMap.getBoundsRect());
-	*/
+	
 	mHasNormalizeMap = true;
 }
 

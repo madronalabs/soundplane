@@ -61,7 +61,9 @@ public:
 
 	// SoundplaneDriverListener
 	void deviceStateChanged(MLSoundplaneState s);
-	
+	void handleDeviceError(int errorType, int data1, int data2, float fd1, float fd2);
+	void handleDeviceDataDump(float* pData, int size);
+
 	// TouchTracker::Listener
 	void hasNewCalibration(const MLSignal& cal, const MLSignal& norm, float avgDist);
 
@@ -118,9 +120,7 @@ public:
 	void setFilter(bool b);
 	
 	void getMinMaxHistory(int n);
-	const MLSignal& getCorrelation();
-	
-	void setHysteresis(float f) { mTracker.setHysteresis(f); }
+	const MLSignal& getCorrelation();	
 	void setTaxelsThresh(int t) { mTracker.setTaxelsThresh(t); }
 
 	const MLSignal& getTouchFrame() { return mTouchFrame; }

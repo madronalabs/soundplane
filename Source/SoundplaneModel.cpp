@@ -147,7 +147,9 @@ SoundplaneModel::SoundplaneModel() :
 	
 	setModelParam("bend_range", 48);
 	setModelParam("transpose", 0);
-	setModelParam("bg_filter", 0.15);
+	setModelParam("bg_filter", 0.05);
+	
+	setModelParam("hysteresis", 0.5);
 	
 	// menu param defaults
 	setModelParam("preset", "continuous pitch x");
@@ -306,10 +308,6 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 	{
 		mTracker.setBackgroundFilter(v);
 	}
-	else if (p == "retrig_thresh")
-	{
-		mTracker.setRetrigThresh(v);
-	}
 	else if (p == "quantize")
 	{
 		bool b = v;
@@ -466,6 +464,51 @@ void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 		case kDeviceResume:
 		break;
 	}
+}
+
+void SoundplaneModel::handleDeviceError(int errorType, int data1, int data2, float fd1, float fd2)
+{
+	debug() << "SoundplaneModel::handleDeviceError: ";
+	switch(errorType)
+	{
+		case kDevDataDiffTooLarge:
+			debug() << "diff too large (" << fd1 << ")\n";
+			beginCalibrate();
+			break;
+		case kDevGapInSequence:
+			debug() << "gap in sequence (" << data1 << " -> " << data2 << ")\n";
+			break;
+		case kDevNoErr:
+		default:
+			debug() << "unknown error!\n";
+			break;
+	}
+}
+
+void SoundplaneModel::handleDeviceDataDump(float* pData, int size)
+{
+	debug() << "----------------------------------------------------------------\n ";
+	int c = 0;
+	int w = getWidth();
+	int row = 0;
+	debug() << std::setprecision(2);
+	
+	debug() << "[0] ";
+	for(int i=0; i<size; ++i)
+	{
+		debug() << pData[i] << " ";
+		c++;
+		if(c >= w)
+		{
+			debug() << "\n";
+			c = 0;
+			if (i < (size - 1))
+			{				
+				debug() << "[" << ++row << "] ";
+			}
+		}
+	}
+	debug() << "\n";
 }
 
 // when calibration is done, set params to save entire calibration signal and
@@ -708,7 +751,7 @@ void SoundplaneModel::postProcessTouchData()
 					float cy = mCurrentKeyY[i] ;
 					float dy = keyXY.y() - cy;
 					
-					float hystThresh = 0.5f + hysteresis*0.5f;
+					float hystThresh = 0.5f + hysteresis*0.25f;
 					if(fabs(dy) > hystThresh)
 					{
 						mCurrentKeyY[i] = iy;
@@ -738,7 +781,7 @@ void SoundplaneModel::postProcessTouchData()
 					float dx = keyXY.x() - cx;
 					float dy = keyXY.y() - cy;
 					
-					float hystThresh = 0.5f + hysteresis*0.5f;
+					float hystThresh = 0.5f + hysteresis*0.25f;
 					changedY = (fabs(dy) > hystThresh);
 					bool changedX = (fabs(dx) > hystThresh);
 					if(changedX || changedY)
@@ -931,15 +974,17 @@ void SoundplaneModel::processCallback()
 			}
 		}
 			
+// TODO NOT WHEN CALIBRATING!
 		{	
+		
 			// fill in null data at edges
 			int ww = mSurface.getWidth() - 1;
 			for(int j=0; j<mSurface.getHeight(); ++j)
 			{
 				mSurface(0, j) = 0.;   
-				mSurface(1, j) = 0.;    
+				mSurface(1, j) = mSurface(2, j);    
 				mSurface(ww, j) = 0.;
-				mSurface(ww - 1, j) = 0.;
+				mSurface(ww - 1, j) = mSurface(ww - 2, j);
 			}
 		}
 			

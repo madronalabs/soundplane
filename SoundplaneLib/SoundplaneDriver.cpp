@@ -291,6 +291,24 @@ void SoundplaneDriver::setDeviceState(MLSoundplaneState n)
 	}
 }
 
+void SoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
+{
+	PaUtil_WriteMemoryBarrier(); 
+	for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
+	{
+		(*it)->handleDeviceError(errCode, d1, d2, df1, df2);
+	}
+}
+
+void SoundplaneDriver::dumpDeviceData(float* pData, int size)
+{
+	PaUtil_WriteMemoryBarrier(); 
+	for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
+	{
+		(*it)->handleDeviceDataDump(pData, size);
+	}
+}
+
 // add a positive or negative offset to the current (buffer, frame) position.
 //
 void SoundplaneDriver::addOffset(int& buffer, int& frame, int offset) 
@@ -584,6 +602,19 @@ void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest)
 	}
 }
 
+// set data from edge carriers, unused on Soundplane A, to 0.
+void K1_clear_edges(float *pDest)
+{
+	float *pDestRow;
+	for(int i=0; i<MLK1_N_PICKUPS_PER_BOARD; ++i)
+	{
+		pDestRow = pDest + MLK1_N_CARRIERS*2*i;
+		pDestRow[0] = 0.;
+		pDestRow[1] = 0.;
+		pDestRow[MLK1_N_CARRIERS*2 - 1] = 0.;
+		pDestRow[MLK1_N_CARRIERS*2 - 2] = 0.;
+	}
+}
 
 /*
 
@@ -1322,7 +1353,7 @@ float frameDiff(float * p1, float * p2, int frameSize)
 	float sum = 0.f;
 	for(int i=0; i<frameSize; ++i)
 	{
-		sum += p2[i] - p1[i];
+		sum += fabs(p2[i] - p1[i]);
 	}
 	return sum;
 }
@@ -1574,7 +1605,7 @@ void *soundplaneProcessThread(void *arg)
 					int sequenceWanted = ((int)currentCompleteSequence + 1)&0x0000FFFF;					
 					if (newestCompleteSequence != sequenceWanted)
 					{
-						printf("GAP: %d -> %d \n", currentCompleteSequence, newestCompleteSequence );
+						k1->reportDeviceError(kDevGapInSequence, currentCompleteSequence, newestCompleteSequence, 0., 0.);
 						printThis = true;
 						gaps++;
 												
@@ -1612,11 +1643,10 @@ void *soundplaneProcessThread(void *arg)
 					if (pPayload0 && pPayload1)
 					{
 						K1_unpack_float2((unsigned char *)pPayload0, (unsigned char *)pPayload1, pWorkingFrame);
+						K1_clear_edges(pWorkingFrame);
 						if(initCtr > 100)
 						{
-							// normal operation
-							// ignore possible sensor board glitch
-							float df = fabs(frameDiff(pPrevFrame, pWorkingFrame, kSoundplaneWidth * kSoundplaneHeight));
+							float df = frameDiff(pPrevFrame, pWorkingFrame, kSoundplaneWidth * kSoundplaneHeight);
 							if (df < kMaxFrameDiff)
 							{
 								// we are OK, the data gets out normally
@@ -1624,10 +1654,11 @@ void *soundplaneProcessThread(void *arg)
 							}
 							else
 							{
+								// possible sensor glitch
 								initCtr = 0;
-#ifdef DEBUG								
-								printf("sensor glitch? (frame diff = %f)\n", df);
-#endif							
+								k1->reportDeviceError(kDevDataDiffTooLarge, 0, 0, df, 0.);
+								k1->dumpDeviceData(pPrevFrame, kSoundplaneWidth * kSoundplaneHeight);
+								k1->dumpDeviceData(pWorkingFrame, kSoundplaneWidth * kSoundplaneHeight);
 							}
 						}
 						else
