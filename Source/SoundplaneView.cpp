@@ -269,7 +269,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	// page0->addTextButton("test", textButtonRect2.withCenter(7., 8.), "test");
 
 	pD = page0->addDial("view scale", dialRectSmall.withCenter(13.5, 0.75), "display_scale", c2);
-	pD->setRange(0.5, 5., 0.5);	
+	pD->setRange(0.01, 5., 0.01);	
 	pD->setDefault(1.);	
 	
 	pD = page0->addDial("touches", dialRect.withCenter(0.5, dialY), "max_touches", c2);

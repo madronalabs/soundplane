@@ -35,11 +35,12 @@ const int kTouchHistorySize = 128;
 const int kTouchTrackerMaxPeaks = 16;
 
 const int kPassesToCalibrate = 2;
-const float kCalibrateTrackerThresh = 0.02;
+const float kCalibrateTrackerThresh = 0.003;
+const int kNormMapSamples = 1000;
 
 // Soundplane A
-const int kCalibrateWidth = 58;
-const int kCalibrateHeight = 6;
+const int kCalibrateWidth = 64;
+const int kCalibrateHeight = 8;
 
 const int kTrackerMaxTouches = 16;
 
@@ -120,6 +121,7 @@ public:
 		void cancel();
 		bool isCalibrating();
 		bool isDone();
+		bool doneCollectingNormalizeMap();
 		bool hasCalibration();
 		Vec2 getBinPosition(Vec2 p) const;		
 		void setCalibration(const MLSignal& v);
@@ -130,18 +132,21 @@ public:
 		float differenceFromTemplateTouch(const MLSignal& in, Vec2 inPos);
 		float differenceFromTemplateTouchWithMask(const MLSignal& in, Vec2 inPos, const MLSignal& mask);
 		void normalizeInput(MLSignal& in);
+		bool isWithinCalibrateArea(int i, int j);
 		
 		MLSignal mCalibrateSignal;
 		MLSignal mVisSignal;
 		MLSignal mNormalizeMap;
+		bool mCollectingNormalizeMap;
 		Vec2 mVisPeak;
 		float mAvgDistance;
 		
 	private:	
 		void makeDefaultTemplate();
-		void makeNormalizeMap();
+		float makeNormalizeMap();
 		void getAverageTemplateDistance();
-				
+		Vec2 centroidPeak(const MLSignal& in);	
+					
 		float mOnThreshold;
 		bool mActive;
 		bool mHasCalibration;	
@@ -158,8 +163,10 @@ public:
 		MLSignal mDefaultTemplate;
 		MLSignal mNormalizeCount;
 		MLSignal mFilteredInput;
+		MLSignal mTemp;
 		int mCount;
 		int mTotalSamples;
+		int mWaitSamplesAfterNormalize;
 		float mStartupSum;
 		float mAutoThresh;
 		Vec2 mPeak;
@@ -247,13 +254,18 @@ public:
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; } 
 	const MLSignal& getCookedSignal() { return mCookedSignal; } 
 	const MLSignal& getCalibrationProgressSignal() { return mCalibrationProgressSignal; } 
-	const MLSignal& getCalibrateSignal() { return mCalibrator.mVisSignal; }	
+	const MLSignal& getCalibrateSignal() { return mCalibrator.mVisSignal; }		
+	
 	float getCalibrateAvgDistance() {return mCalibrator.mAvgDistance; }
 	Vec3 getCalibratePeak() { return mCalibrator.mVisPeak; }		
 	void beginCalibrate() { mCalibrator.begin(); }	
 	void cancelCalibrate() { mCalibrator.cancel(); }	
 	bool isCalibrating() { return(mCalibrator.isCalibrating()); }	
+	bool isCollectingNormalizeMap() { return(mCalibrator.mCollectingNormalizeMap); }	
 	void setCalibration(const MLSignal& v) { mCalibrator.setCalibration(v); }
+	bool isWithinCalibrateArea(int i, int j) { return mCalibrator.isWithinCalibrateArea(i, j); }
+	
+	const MLSignal& getNormalizeMap() { return mCalibrator.mNormalizeMap; }
 	void setNormalizeMap(const MLSignal& v) { mCalibrator.setNormalizeMap(v); }
 	void setListener(Listener* pL) { mpListener = pL; }
 	void setDefaultCalibration();
@@ -349,7 +361,6 @@ private:
 	std::vector<Vec3> mPeaks;
 	std::vector<Touch> mTouches;
 	std::vector<Touch> mTouchesToSort;
-//	std::vector<TouchFilter> mTouchFilters;
 	
 	int mNumKeys;
 	std::vector<KeyState> mKeyStates;

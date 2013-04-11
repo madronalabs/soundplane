@@ -132,6 +132,7 @@ public:
 	const MLSignal& getSignalForViewMode(SoundplaneViewMode m);
 	const MLSignal& getTrackerCalibrateSignal();
 	Vec3 getTrackerCalibratePeak();
+	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 
 	// TEMP
@@ -147,6 +148,7 @@ public:
 	void beginCalibrateTracker();
 	void cancelCalibrateTracker();
 	bool trackerIsCalibrating();
+	bool trackerIsCollectingMap();
 	void setDefaultTrackerCalibration();
 	Vec2 getTrackerCalibrateDims() { return Vec2(kCalibrateWidth, kCalibrateHeight); }	
 

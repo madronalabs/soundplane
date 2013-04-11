@@ -1349,7 +1349,8 @@ const MLSignal& SoundplaneModel::getSignalForViewMode(SoundplaneViewMode m)
 			return mCalibratedSignal; 
 			break;
 		case kTest:
-			return mTestSignal; 
+//			return mTestSignal; 
+			return mTracker.getNormalizeMap(); 
 			break;
 	}
 }
@@ -1362,6 +1363,11 @@ const MLSignal& SoundplaneModel::getTrackerCalibrateSignal()
 Vec3 SoundplaneModel::getTrackerCalibratePeak()
 {
 	return mTracker.getCalibratePeak();
+}
+
+bool SoundplaneModel::isWithinTrackerCalibrateArea(int i, int j)
+{
+	return mTracker.isWithinCalibrateArea(i, j);
 }
 
 // --------------------------------------------------------------------------------
@@ -1389,6 +1395,16 @@ bool SoundplaneModel::trackerIsCalibrating()
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
 	{	
 		r = mTracker.isCalibrating();
+	}
+	return r;
+}
+
+bool SoundplaneModel::trackerIsCollectingMap()
+{
+	int r = 0;
+	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
+	{	
+		r = mTracker.isCollectingNormalizeMap();
 	}
 	return r;
 }

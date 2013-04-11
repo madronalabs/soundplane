@@ -126,7 +126,9 @@ void TrackerCalibrateView::renderOpenGL()
 	Vec4 fillColor1(0.2f, 0.2f, 0.2f, 1.f);	
 	Vec4 fillColor2(0.9f, 0.9f, 0.9f, 1.f);	
 	Vec4 whiteColor(1.f, 1.f, 1.4f, 1.f);	
+	Vec4 blue(0.4f, 0.4f, 1.f, 1.f);	
 	Vec4 green(0.4f, 1.f, 0.4f, 1.f);	
+	Vec4 doneColor(0.4f, 1.f, 0.4f, 1.f);	
 //	const Colour c = findColour(MLLookAndFeel::backgroundColor2);
 
 	// erase
@@ -161,6 +163,15 @@ void TrackerCalibrateView::renderOpenGL()
 	if (mpModel->trackerIsCalibrating())
 	{	
 		// draw stuff in immediate mode. TODO vertex buffers and modern GL code in general. 
+		
+		if(mpModel->trackerIsCollectingMap())
+		{
+			doneColor = blue;
+		}
+		else
+		{
+			doneColor = green;
+		}
 
 		const MLSignal& viewSignal = mpModel->getTrackerCalibrateSignal();
 		// draw grid
@@ -169,40 +180,44 @@ void TrackerCalibrateView::renderOpenGL()
 		{
 			for(int i=0; i<width; ++i)
 			{
-				float x0 = xRange.convert(i);
-				float y0 = yRange.convert(j);
-				float x1 = xRange.convert(i+1);
-				float y1 = yRange.convert(j+1);
+				if(mpModel->isWithinTrackerCalibrateArea(i, j))
 				{
-					glBegin(GL_QUADS);
-					float mix = viewSignal(i, j);
-					if(mix < 1.0f)
+					float x0 = xRange.convert(i);
+					float y0 = yRange.convert(j);
+					float x1 = xRange.convert(i+1);
+					float y1 = yRange.convert(j+1);
 					{
-						Vec4 elementColor = vlerp(fillColor1, fillColor2, mix);
-						glColor4fv(&elementColor[0]);
+						glBegin(GL_QUADS);
+						float mix = viewSignal(i, j);
+						if(mix < 1.0f)
+						{
+							Vec4 elementColor = vlerp(fillColor1, fillColor2, mix);
+							glColor4fv(&elementColor[0]);
+						}
+						else
+						{
+							glColor4fv(&doneColor[0]);
+						}
+
+						float z = 0.f;
+						glVertex3f(x0, y0, z);
+						glVertex3f(x1, y0, z);
+						glVertex3f(x1, y1, z);
+						glVertex3f(x0, y1, z);
+						glEnd();
 					}
-					else
 					{
-						glColor4fv(&green[0]);
+						glBegin(GL_LINE_LOOP);
+						glColor4fv(&fillColor2[0]);
+						float z = 0.f;
+						glVertex3f(x0, y0, z);
+						glVertex3f(x1, y0, z);
+						glVertex3f(x1, y1, z);
+						glVertex3f(x0, y1, z);
+
+						glEnd();
 					}
-
-					float z = 0.f;
-					glVertex3f(x0, y0, z);
-					glVertex3f(x1, y0, z);
-					glVertex3f(x1, y1, z);
-					glVertex3f(x0, y1, z);
-					glEnd();
-				}
-				{
-					glBegin(GL_LINE_LOOP);
-					glColor4fv(&fillColor2[0]);
-					float z = 0.f;
-					glVertex3f(x0, y0, z);
-					glVertex3f(x1, y0, z);
-					glVertex3f(x1, y1, z);
-					glVertex3f(x0, y1, z);
-
-					glEnd();
+					
 				}
 			}
 		}
