@@ -97,9 +97,9 @@ SoundplaneModel::SoundplaneModel() :
 	mNotchFilter.setSampleRate(mSampleRate);
 	mNotchFilter.setNotch(300., 0.1);
 	
-	// setup variable lopass
+	// setup fixed lopass.
 	mLopassFilter.setSampleRate(mSampleRate);
-	mLopassFilter.setLopass(100., 0.707);
+	mLopassFilter.setLopass(50, 0.707);
 	
 	mNoteFilters.resize(kSoundplaneMaxTouches);
 	mVibratoFilters.resize(kSoundplaneMaxTouches);
@@ -313,6 +313,11 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 		bool b = v;
 		mTracker.setQuantize(b);
 	}
+	else if (p == "rotate")
+	{
+		bool b = v;
+		mTracker.setRotate(b);
+	}
 	else if (p == "retrig")
 	{
 		mMIDIOutput.setRetrig(bool(v));
@@ -468,25 +473,29 @@ void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 
 void SoundplaneModel::handleDeviceError(int errorType, int data1, int data2, float fd1, float fd2)
 {
-	debug() << "SoundplaneModel::handleDeviceError: ";
 	switch(errorType)
 	{
 		case kDevDataDiffTooLarge:
-			debug() << "diff too large (" << fd1 << ")\n";
-			beginCalibrate();
+			if(!mSelectingCarriers)
+			{
+				debug() << "SoundplaneModel::handleDeviceError: diff too large (" << fd1 << ")\n";
+				beginCalibrate();
+			}
 			break;
 		case kDevGapInSequence:
-			debug() << "gap in sequence (" << data1 << " -> " << data2 << ")\n";
+			debug() << "SoundplaneModel::handleDeviceError: gap in sequence (" << data1 << " -> " << data2 << ")\n";
 			break;
 		case kDevNoErr:
 		default:
-			debug() << "unknown error!\n";
+			debug() << "SoundplaneModel::handleDeviceError: unknown error!\n";
 			break;
 	}
 }
 
 void SoundplaneModel::handleDeviceDataDump(float* pData, int size)
 {
+	if(mSelectingCarriers) return;
+
 	debug() << "----------------------------------------------------------------\n ";
 	int c = 0;
 	int w = getWidth();
@@ -661,7 +670,7 @@ Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy)
 	xRange.convertTo(MLRange(1.f, 29.f));
 	float kx = xRange(xy.x());
 	
-	MLRange yRange(1.2, 5.7);  		
+	MLRange yRange(1.2, 5.8);  		
 	yRange.convertTo(MLRange(0.5f, 3.5f));
 	float ky = yRange(xy.y());
 
@@ -675,7 +684,7 @@ Vec2 SoundplaneModel::keyGridToXY(Vec2 g)
 	float kx = xRange(g.x());
 	
 	MLRange yRange(0.5f, 3.5f);  		
-	yRange.convertTo(MLRange(1.2, 5.7));
+	yRange.convertTo(MLRange(1.2, 5.8));
 	float ky = yRange(g.y());
 
 	return Vec2(kx, ky);
@@ -973,19 +982,15 @@ void SoundplaneModel::processCallback()
 				}
 			}
 		}
-			
-// TODO NOT WHEN CALIBRATING!
-		{	
 		
-			// fill in null data at edges
-			int ww = mSurface.getWidth() - 1;
-			for(int j=0; j<mSurface.getHeight(); ++j)
-			{
-				mSurface(0, j) = 0.;   
-				mSurface(1, j) = mSurface(2, j);    
-				mSurface(ww, j) = 0.;
-				mSurface(ww - 1, j) = mSurface(ww - 2, j);
-			}
+		// fill in null data at edges
+		int ww = mSurface.getWidth() - 1;
+		for(int j=0; j<mSurface.getHeight(); ++j)
+		{
+			mSurface(0, j) = 0.;   
+			mSurface(1, j) = mSurface(2, j);    
+			mSurface(ww, j) = 0.;
+			mSurface(ww - 1, j) = mSurface(ww - 2, j);
 		}
 			
 		// filter data in time
@@ -1111,7 +1116,6 @@ void SoundplaneModel::beginCalibrate()
 		sendTouchDataToClients();	
 
 		mCalibrateCount = 0;
-		debug() << "calibrating...\n";
 		mCalibrating = true;
 	}
 }
@@ -1158,13 +1162,9 @@ void SoundplaneModel::endCalibrate()
 
 	mCalibrating = false;
 	mHasCalibration = true;	
-	debug() << "calibration done.\n";
 	
 	mNotchFilter.clear();	
 	mLopassFilter.clear();
-	
-//	debug() << "CALIBRATE MEAN:\n";
-//	mCalibrateMean.dump(mCalibrateMean.getBoundsRect());
 		
 	enableOutput(true);	
 }	
@@ -1349,8 +1349,10 @@ const MLSignal& SoundplaneModel::getSignalForViewMode(SoundplaneViewMode m)
 			return mCalibratedSignal; 
 			break;
 		case kTest:
-//			return mTestSignal; 
-			return mTracker.getNormalizeMap(); 
+			return mTestSignal; 
+			break;
+		case kNrmMap:
+			return mTracker.getNormalizeMap();
 			break;
 	}
 }

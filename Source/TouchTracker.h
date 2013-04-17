@@ -36,7 +36,7 @@ const int kTouchTrackerMaxPeaks = 16;
 
 const int kPassesToCalibrate = 2;
 const float kCalibrateTrackerThresh = 0.003;
-const int kNormMapSamples = 1000;
+const int kNormMapSamples = 512;
 
 // Soundplane A
 const int kCalibrateWidth = 64;
@@ -132,6 +132,7 @@ public:
 		float differenceFromTemplateTouch(const MLSignal& in, Vec2 inPos);
 		float differenceFromTemplateTouchWithMask(const MLSignal& in, Vec2 inPos, const MLSignal& mask);
 		void normalizeInput(MLSignal& in);
+		void correctEdges(MLSignal& in);
 		bool isWithinCalibrateArea(int i, int j);
 		
 		MLSignal mCalibrateSignal;
@@ -164,6 +165,7 @@ public:
 		MLSignal mNormalizeCount;
 		MLSignal mFilteredInput;
 		MLSignal mTemp;
+		MLSignal mTemp2;
 		int mCount;
 		int mTotalSamples;
 		int mWaitSamplesAfterNormalize;
@@ -269,12 +271,14 @@ public:
 	void setNormalizeMap(const MLSignal& v) { mCalibrator.setNormalizeMap(v); }
 	void setListener(Listener* pL) { mpListener = pL; }
 	void setDefaultCalibration();
+	
+	void setRotate(bool b);
 
 private:	
 
 	Listener* mpListener;
 
-	Vec2 correctPeak(const MLSignal& in, int px, int py);
+	Vec2 correctPeakWithBorder(const MLSignal& in, int px, int py);
 	Vec3 closestTouch(Vec2 pos);
 	float getInhibitThreshold(Vec2 a);
 	void addPeakToKeyState(const MLSignal& in);
@@ -331,6 +335,7 @@ private:
 	MLSignal mSumOfTouches;
 	MLSignal mInhibitMask;
 	MLSignal mTemp;
+	MLSignal mTempWithBorder;
 	MLSignal mTestSignal;
 	MLSignal mCalibratedSignal;
 	MLSignal mCookedSignal;
@@ -341,15 +346,11 @@ private:
 	MLSignal mTemplate;
 	MLSignal mTemplateScaled;
 	MLSignal mNullSig;
-
-	MLSignal mTemplateMask;
-	
-	MLSignal mDzSignal;
-	
+	MLSignal mTemplateMask;	
+	MLSignal mDzSignal;	
 	MLSignal mRetrigTimer;
 
 	AsymmetricOnepoleMatrix mBackgroundFilter;
-//	OnepoleMatrix mBackgroundFilter;
 	MLSignal mBackgroundFilterFrequency;
 	MLSignal mBackgroundFilterFrequency2;
 	MLSignal mBackground;
@@ -357,6 +358,8 @@ private:
 	int mRetrigClock;
 	
 	int mTouchesPerFrame;
+	int mRotateOffset;
+	bool mRotate;
 	
 	std::vector<Vec3> mPeaks;
 	std::vector<Touch> mTouches;

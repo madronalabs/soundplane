@@ -88,6 +88,7 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 	}
 	else if (p == "calibrate_tracker")
 	{
+		mpSoundplaneModel->beginCalibrate();
 		mpSoundplaneModel->beginCalibrateTracker();
 		if(mpSoundplaneView)
 		{
@@ -137,6 +138,7 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("cooked");
 	viewMenu->addItem("xy");
 	viewMenu->addItem("test");
+	viewMenu->addItem("norm. map");
 	
 	// collect MIDI menu each time
 	MLMenuPtr midiMenu = MLMenuPtr(new MLMenu());

@@ -48,7 +48,9 @@ TouchTracker::TouchTracker(int w, int h) :
 	mKeyboardType(rectangularA),
 	mCalibrator(w, h),
 	mSampleRate(1000.f),
-	mBackgroundFilterFreq(0.125f)
+	mBackgroundFilterFreq(0.125f),
+	mRotateOffset(0),
+	mRotate(false)
 {
 	mTouches.resize(kTrackerMaxTouches);	
 	mTouchesToSort.resize(kTrackerMaxTouches);	
@@ -76,6 +78,7 @@ TouchTracker::TouchTracker(int w, int h) :
 	mResidual.setDims(w, h);
 	mFilteredResidual.setDims(w, h);
 	mTemp.setDims(w, h);
+	mTempWithBorder.setDims(w + 2, h + 2);
 	mRetrigTimer.setDims(w, h);
 	mDzSignal.setDims(w, h);
 	mBackgroundFilter.setDims(w, h);
@@ -289,6 +292,16 @@ int TouchTracker::getNeighborFlags(int key)
 	return (nw<<7) + (n<<6) + (ne<<5) + (w<<4) + (e<<3) + (sw<<2) + (s<<1) + (se<<0);
 }
 	
+void TouchTracker::setRotate(bool b)
+{ 
+	mRotate = b; 
+	if(!b)
+	{
+		mRotateOffset = 0;
+	}
+}
+	 
+	 
 // add new touch at first free slot.  TODO touch allocation modes including rotate.
 // return index of new touch.
 //
@@ -297,8 +310,22 @@ int TouchTracker::addTouch(const Touch& t)
 	int newIdx = -1;
 	int minIdx = 0;
 	float minZ = 1.f;
-	for(int j=0; j<mTouchesPerFrame; ++j)
+	int offset = 0;
+	
+	if(mRotate)
 	{
+		offset = mRotateOffset;
+		mRotateOffset++;
+		if(mRotateOffset >= mTouchesPerFrame)
+		{
+			mRotateOffset = 0;
+		}
+	}
+	
+	for(int jr=offset; jr<mTouchesPerFrame + offset; ++jr)
+	{
+		int j = jr%mTouchesPerFrame;
+
 		Touch& r = mTouches[j];
 		if (!r.isActive())
 		{		
@@ -476,20 +503,27 @@ Vec2 TouchTracker::adjustPeakToTemplate(const MLSignal& in, int x, int y)
 	}
 	return Vec2(xMin, yMin);
 }
-/*
-// given an integer position and signal, return the peak of
-// the smoothed signal using 2nd order Taylor series
-//
-Vec2 TouchTracker::correctPeak(const MLSignal& in, int px, int py)
+
+
+Vec2 TouchTracker::correctPeakWithBorder(const MLSignal& in, int px, int py)
 {
-
-	Vec2 pos = fractionalPeakTaylor(in, px, py); 	
-	 // debug() << "correct: [" << px << ", " << py << "] -> [" << pos.x() <<  ", " << pos.y() << "]\n";
-
-	pos = vclamp(pos, minPos, maxPos);
-	return pos;
+	Vec2 pb = in.correctPeak(px, py);	
+	float x = pb.x();
+	float y = pb.y();
+	if(y < 1.f)
+	{
+		y -= (1.f - y);
+		y = clamp(y, 0.125f, mHeight - 1.125f);
+		pb = Vec2(x, y);
+	}
+	else if(y > mHeight - 2.f)
+	{
+		y += (y - (mHeight - 2.f));
+		y = clamp(y, 0.125f, mHeight - 1.125f);
+		pb = Vec2(x, y);
+	}
+	return pb;
 }
-*/
 
 class compareZ 
 {
@@ -674,7 +708,8 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			int newPy = newPeakI.y();
 			
 			// get exact location and new key
-			Vec2 correctPos = mTemp.correctPeak(newPx, newPy);
+//			Vec2 correctPos = mTemp.correctPeak(newPx, newPy);
+			Vec2 correctPos = correctPeakWithBorder(mTemp, newPx, newPy);
 			newPos = correctPos;	
 			int newKey = getKeyIndexAtPoint(newPos);												
 			
@@ -732,10 +767,11 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			t.releaseCtr = 0;	
 		}
 
-		// filter and assign new touch values
+		// filter position and assign new touch values
 		const float e = 2.718281828;
 		float xyCutoff = (newZ - mOnThreshold) / (mMaxForce*0.25);
 		xyCutoff = clamp(xyCutoff, 0.f, 1.f);
+		xyCutoff *= xyCutoff;
 		xyCutoff *= xyCutoff;
 		xyCutoff = xyCutoff*100.;
 		xyCutoff = clamp(xyCutoff, 1.f, 100.f);
@@ -840,7 +876,8 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 		// add peak to key state, or bail
 		if (z > mOnThreshold*0.25f)
 		{			
-			Vec2 pos = in.correctPeak(peak.x(), peak.y());	
+//			Vec2 pos = in.correctPeak(peak.x(), peak.y());	
+			Vec2 pos = correctPeakWithBorder(in, peak.x(), peak.y());	
 			int key = getKeyIndexAtPoint(pos);
 			if(within(key, 0, mNumKeys))
 			{
@@ -968,6 +1005,7 @@ void TouchTracker::process(int)
 	if (mCalibrator.isCalibrating())
 	{		
 		mFilteredInput.copy(in);
+		mCalibrator.normalizeInput(mFilteredInput);
 
 		// smooth input	
 		float kc, ke, kk;
@@ -991,13 +1029,12 @@ void TouchTracker::process(int)
 		// normalize before smoothing!
 		mFilteredInput.copy(in);
 		mCalibrator.normalizeInput(mFilteredInput);
+// 		mCalibrator.correctEdges(mFilteredInput);
 
 		// smooth input	
 		float kc, ke, kk;
 		kc = 4./16.; ke = 2./16.; kk=1./16.;
 		mFilteredInput.convolve3x3r(kc, ke, kk);
-		
-		// fix up edges
 		
 	
 		// build sum of currently tracked touches	
@@ -1161,6 +1198,7 @@ TouchTracker::Calibrator::Calibrator(int w, int h) :
 	mNormalizeCount.setDims(mSrcWidth, mSrcHeight);
 	mFilteredInput.setDims(mSrcWidth, mSrcHeight);
 	mTemp.setDims(mSrcWidth, mSrcHeight);
+	mTemp2.setDims(mSrcWidth, mSrcHeight);
 
 	makeDefaultTemplate();
 }
@@ -1172,8 +1210,8 @@ TouchTracker::Calibrator::~Calibrator()
 void TouchTracker::Calibrator::begin()
 {
 	debug() << "\n****************************************************************\n\n";
-	debug() << "Hello and welcome to calibration. \n";
-	debug() << "Collecting silence, please don't touch...";
+	debug() << "Hello and welcome to tracker calibration. \n";
+	debug() << "Collecting silence, please don't touch.";
 	
 	mFilteredInput.clear();
 	mSampleCount.clear();
@@ -1286,15 +1324,16 @@ Vec2 TouchTracker::Calibrator::getBinPosition(Vec2 pIn) const
 	pOut -= Vec2(2.5, 0.5);
 	pOut = vclamp(pOut, Vec2(0., 0.), Vec2(57.99, 5.99));
 	*/
-//	static MLRange binRangeX(2.0, 61.0, -0.5, mWidth - 0.5);
-//	static MLRange binRangeY(0.5, 6.5, 0, mHeight);
+	static MLRange binRangeX(2.0, 61.0, 0., mWidth);
+	static MLRange binRangeY(0.5, 6.5, 0., mHeight);
 	
-	Vec2 minPos(0., 0.);
-	Vec2 maxPos(mWidth - 0.01f, mHeight - 0.01f);
-//	Vec2 pos(binRangeX(pIn.x()), binRangeY(pIn.y()));
+	Vec2 minPos(2.5, 0.5);
+	Vec2 maxPos(mWidth - 2.5f, mHeight - 0.5f);
+	Vec2 pos(binRangeX(pIn.x()), binRangeY(pIn.y()));
 
-	Vec2 pos = pIn;
-	return vclamp(pos + Vec2(0.5f, 0.5f), minPos, maxPos);
+//	Vec2 pos = pIn;
+//	return vclamp(pos + Vec2(0.5f, 0.5f), minPos, maxPos);
+	return vclamp(pos, minPos, maxPos);
 
 	
 //debug() << "bin: " << pOutI << "\n";
@@ -1310,68 +1349,47 @@ void TouchTracker::Calibrator::normalizeInput(MLSignal& in)
 	}
 }
 
+// tweak edge data at low pressures to compensate for weird mechanical stuff
+void TouchTracker::Calibrator::correctEdges(MLSignal& in)
+{
+	float z;
+	const float ct = 0.05f;
+	const float lo = ct*0.1;
+//	const float oneOverCt = 1.f/ct;
+	const float m = 0.5f;
+	for(int i=0; i<mSrcWidth; ++i)
+	{			
+		z = in(i, 0);
+		if((z < ct) && (z > lo))
+		{	
+			z = ct - (ct - z)*m;
+			in(i, 0) = z;
+		}
+		
+		z = in(i, mHeight - 1);
+		if((z < ct) && (z > lo))
+		{
+			z = ct - (ct - z)*m;
+			in(i, mHeight - 1) = z;
+		}
+	}
+}
+
 // return true if the current cell (i, j) is used by the current stage of calibration
 bool TouchTracker::Calibrator::isWithinCalibrateArea(int i, int j)
 {
 	if(mCollectingNormalizeMap)
 	{
-		return(within(i, 1, mWidth - 1) && within(j, 1, mHeight - 1));
+		return(within(i, 1, mWidth - 1) && within(j, 0, mHeight));
 	}
 	else
 	{
-		return(within(i, 2, mWidth - 2) && within(j, 1, mHeight - 1));
+		return(within(i, 2, mWidth - 2) && within(j, 0, mHeight));
 	}
 }
 
 float TouchTracker::Calibrator::makeNormalizeMap()
-{	
-	
-	// blur 
-	float kc, ke, kk;
-	kc = 4./16.; ke = 2./16.; kk=1./16.;
-//	mNormalizeMap.convolve3x3r(kc, ke, kk);
-//	mNormalizeMap.convolve3x3r(kc, ke, kk);
-//	mNormalizeCount.convolve3x3r(kc, ke, kk);
-
-	/*
-	// get mean of nonzero data
-	int samples = 0;
-	float sum = 0.;
-	for(int j=0; j<mSrcHeight; ++j)
-	{
-		for(int i=0; i<mSrcWidth; ++i)
-		{			
-			float c = mNormalizeCount(i, j);
-			if(c > 0.)
-			{
-				sum += mNormalizeMap(i, j) / c;
-				samples++;
-			}
-		}
-	}
-	float m = sum / (float)samples;
-	
-	// fill in zeroes and get scale.
-	for(int j=0; j<mSrcHeight; ++j)
-	{
-		for(int i=0; i<mSrcWidth; ++i)
-		{			
-			float c = mNormalizeCount(i, j);
-			if(c <= 0.)
-			{
-				mNormalizeCount(i, j) = 1.;
-				mNormalizeMap(i, j) = m;
-			}						
-			mNormalizeMap(i, j) = m / (mNormalizeMap(i, j) / mNormalizeCount(i, j));
-		}
-	}
-	*/
-	debug() << "************ MAP IN: \n";
-	mNormalizeMap.dump(mNormalizeMap.getBoundsRect());
-	debug() << "************ COUNT IN: \n";
-	mNormalizeCount.dump(mNormalizeCount.getBoundsRect());
-	
-	
+{			
 	// get mean within calibratable area
 	int samples = 0;
 	float sum = 0.f;
@@ -1389,12 +1407,9 @@ float TouchTracker::Calibrator::makeNormalizeMap()
 	}	
 	float mean = sum/(float)samples;
 			
-	debug() << "************ MEAN:" << mean << " \n";
-
 	// convert map to (mean) / (z).
 	mNormalizeMap.inv();
-	mNormalizeMap.scale(mean);
-	
+	mNormalizeMap.scale(mean);	
 	
 	// zero uncalibratable area
 	for(int j=0; j<mSrcHeight; ++j)
@@ -1409,28 +1424,30 @@ float TouchTracker::Calibrator::makeNormalizeMap()
 	}	
 	
 	/*
-	// convert map to (mean + mean) / (z + mean).
-	mNormalizeMap.add(mean);
-	mNormalizeMap.inv();
-	mNormalizeMap.scale(mean*2);
-	*/
-	
-	/*
-	// correct data at top/bottom edges (ad-hoc)
+	// correct data at top/bottom edges for edge mechanics
 	for(int i=0; i<mSrcWidth; ++i)
 	{
-		mNormalizeMap(i, 0) *= 1.7;
-		mNormalizeMap(i, 1) *= 1.45;
-		mNormalizeMap(i, mSrcHeight - 2) *= 1.1;
-		mNormalizeMap(i, mSrcHeight - 1) *= 1.33;
+		mNormalizeMap(i, 0) *= 1.6;
+		mNormalizeMap(i, 1) *= 1.3;
+		mNormalizeMap(i, 2) *= 1.15;
+		mNormalizeMap(i, mSrcHeight - 3) *= 1.15;
+		mNormalizeMap(i, mSrcHeight - 2) *= 1.3;
+		mNormalizeMap(i, mSrcHeight - 1) *= 1.6;
 	}
 	*/
 	
-	debug() << "************ MAP: \n";
+	
+	
+	
+	// return maximum
+	Vec3 vmax = mNormalizeMap.findPeak();
+	float rmax = vmax.z();
+	
+	debug() << "************ MAP: (max " << rmax << ")\n";
 	mNormalizeMap.dump(mNormalizeMap.getBoundsRect());
 	
 	mHasNormalizeMap = true;
-	return mean;
+	return rmax;
 }
 
 void TouchTracker::Calibrator::getAverageTemplateDistance()
@@ -1503,17 +1520,13 @@ Vec2 TouchTracker::Calibrator::centroidPeak(const MLSignal& in)
 
 int TouchTracker::Calibrator::addSample(const MLSignal& m)
 {
-	float mean = 0.f;
 	int r = 0;
 	static Vec2 intPeak1;
 	static MLSignal f2(mSrcWidth, mSrcHeight);
+	static MLSignal tare(mSrcWidth, mSrcHeight);
 	
 	// simple lopass filter for calibration
 	f2 = m;
-	if(mHasNormalizeMap)
-	{
-		f2.multiply(mNormalizeMap);
-	}
 	f2.subtract(mFilteredInput);
 	f2.scale(0.1f);
 	mFilteredInput.add(f2);
@@ -1522,28 +1535,6 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	Vec3 testPeak = mFilteredInput.findPeak();	
 	float testZ = testPeak.z();
 	
-	// get centroid of peak neighborhood
-	
-//	mPeak = mFilteredInput.correctPeak(int(inPeak.x()), int(inPeak.y()));
-	
-	//mPeak = centroidPeak(mFilteredInput);
-	
-//	mPeak += Vec2(0.5f, 0.5f);
-
-	//float peakZ = mFilteredInput(mPeak);
-//	mPeak = fPeak;
-	
-//	float peakC = mFilteredInput((int)mPeak.x(), (int)mPeak.y());
-
-	// add noise so peak falls into more difficult-to-reach bins
-	//mPeak += Vec2(MLRand()*0.1f, MLRand()*0.1f);
-
-if(	mTotalSamples % 100 == 0)
-{
-	debug() << "test peak: " << testZ << "\n";
-}	
-	// TODO double check bounds clamp
-
 	const int startupSamples = 1000;
 	if (mTotalSamples < startupSamples)
 	{
@@ -1558,13 +1549,12 @@ if(	mTotalSamples % 100 == 0)
 	{
 		age = 0;
 		//mAutoThresh = kCalibrateTrackerThresh;
-		mAutoThresh = mStartupSum / (float)startupSamples * 5.f;	
+		mAutoThresh = mStartupSum / (float)startupSamples * 10.f;	
 		debug() << "\n****************************************************************\n\n";
 		debug() << "OK, done collecting silence (auto threshold: " << mAutoThresh << "). \n";
-		debug() << "Now please slide a palm or fingers across the surface,  \n";
+		debug() << "Now please slide a palm or other flat object across the surface,  \n";
 		debug() << "applying a constant and even pressure, until all the rectangles \n";
 		debug() << "at left turn blue.  \n\n";
-		debug() << "You can also use another object, such as a small book,\n to apply even pressure.\n";
 		
 		mNormalizeMap.clear();
 		mNormalizeCount.clear();
@@ -1574,30 +1564,42 @@ if(	mTotalSamples % 100 == 0)
 	{
 		if(testZ > mAutoThresh)
 		{
-			// where input > thresh and input is near max current input, add to sample count. 
+			// collect additions in temp signals
+			mTemp.clear();
+			mTemp2.clear();
+			
+			// where input > thresh and input is near max current input, add to sample count. 		
 			for(int j=0; j<mHeight; ++j)
 			{
 				for(int i=0; i<mWidth; ++i)
 				{
 					float z = mFilteredInput(i, j);
-					if(z > testZ * 0.5f)
+					if(z > testZ * 0.25f)
 					{
-						mNormalizeMap(i, j) += z;
-						mNormalizeCount(i, j) += 1.0;		
-						mVisSignal(i, j) = mNormalizeCount(i, j) / (float)kNormMapSamples;
+						mTemp(i, j) += z;
+						mTemp2(i, j) += 1.0;		
 					}
 				}
 			}
 			
-			// TEST  add the whole thing
-	//		mNormalizeMap.add(mFilteredInput);
+			// blur temp signals
+			float kc, ke, kk;
+			kc = 4./16.; ke = 2./16.; kk=1./16.;
+			mTemp.convolve3x3r(kc, ke, kk);				
+			mTemp2.convolve3x3r(kc, ke, kk);	
 			
+			// add temp signals to data						
+			mNormalizeMap.add(mTemp);
+			mNormalizeCount.add(mTemp2);		
+			
+			mVisSignal.copy(mNormalizeCount);
+			mVisSignal.scale(1.f / (float)kNormMapSamples);
 		}
 		
 		if(doneCollectingNormalizeMap())
 		{				
-			mean = makeNormalizeMap();	
-			mHasNormalizeMap = true;
+			float mapMaximum = makeNormalizeMap();	
+			mAutoThresh *= mapMaximum;	
 						
 			debug() << "\n****************************************************************\n\n";
 			debug() << "\n\nOK, done collecting normalize map. Please lift your hands...\n";
@@ -1616,7 +1618,6 @@ if(	mTotalSamples % 100 == 0)
 		}
 		else if(mWaitSamplesAfterNormalize == startupSamples)
 		{
-//			mAutoThresh = mStartupSum / (float)startupSamples * 5.f;	
 			mWaitSamplesAfterNormalize++;
 			debug() << "OK, done collecting silence again (auto threshold: " << mAutoThresh << "). \n";
 
@@ -1632,25 +1633,30 @@ if(	mTotalSamples % 100 == 0)
 		}
 		else if(testZ > mAutoThresh)
 		{
-			//mPeak = centroidPeak(mFilteredInput);
-			//float peakZ = mFilteredInput(mPeak);
-
-			mPeak = mFilteredInput.findPeak();	
-			mPeak = mFilteredInput.correctPeak(int(mPeak.x()), int(mPeak.y()));
-			float peakZ = mFilteredInput(mPeak);
-	
-			// get integer bin	
-			Vec2 binPeak = getBinPosition(mPeak);
-			int bix = binPeak.x();
-			int biy = binPeak.y();
-			Vec2 bIntPeak(bix, biy);
-		
-if(	mTotalSamples % 100 == 0)
-{
-	debug() << "peak: " << peakZ << " @ " << mPeak << " -> binPeak " << binPeak << " -> bin " << bIntPeak << "\n";
-}
+			// normalize input
+			mTemp.copy(mFilteredInput);
+			mTemp.multiply(mNormalizeMap);
+			mPeak = mTemp.findPeak();
 			
+// TODO for better kernel			
+			mPeak = mTemp.correctPeak(mPeak.x(), mPeak.y());	
+			
+			
+	//		mPeak += cPeak;
+	//		mPeak *= (0.5f);
+
+			/*
+
+			Vec2 dPeak = newPeak - mPeak;
+			mPeak += dPeak*0.1f;
+			*/
+			
+			Vec2 minPos(2.0, 0.);
+			Vec2 maxPos(mWidth - 3., mHeight - 1.);
+			mPeak = vclamp(mPeak, minPos, maxPos);
 		
+			//float peakZ = mTemp(mPeak);
+			
 			age++; // continue touch
 			// get sample from input around peak and normalize
 			mIncomingSample.clear();
@@ -1659,39 +1665,25 @@ if(	mTotalSamples % 100 == 0)
 						
 			float kc, ke, kk;
 			kc = 4./16.; ke = 2./16.; kk=1./16.;
-			mIncomingSample.convolve3x3r(kc, ke, kk);				
-			
+			mIncomingSample.convolve3x3r(kc, ke, kk);							
 			mIncomingSample.scale(1.f / mIncomingSample(kTemplateRadius, kTemplateRadius));
 
-			// get sum and minimum of all samples
+			// get integer bin	
+			Vec2 binPeak = getBinPosition(mPeak);
+			mVisPeak = binPeak - Vec2(0.5, 0.5);		
+			int bix = binPeak.x();			
+			int biy = binPeak.y();
+			// clamp to calibratable area
+			bix = clamp(bix, 2, mWidth - 3);
+			biy = clamp(biy, 0, mHeight - 1);
+			Vec2 bIntPeak(bix, biy);
+
+			// count sum and minimum of all kernel samples for the bin
 			int dataIdx = biy*mWidth + bix;
 			mDataSum[dataIdx].add(mIncomingSample); 
 			mData[dataIdx].sigMin(mIncomingSample); 
 			mSampleCount[dataIdx]++;
-			
-			mVisPeak = mPeak;		
-			
-			
-			// TODO add peak to bin, stop when reachable bins are covered
-			
-			// add neighborhood of peak, covering entire input surface, to normalize map. 
-			
-			
-
-		/*	
-			// store peak data for normalize 
-			mNormalizeMap(ipx, ipy) += peakC;
-			mNormalizeCount(ipx, ipy) += 1.0;		
-		*/
-		
-			/*
-			// TEST add whole input for normalize map
-			mTemp.copy(mFilteredInput);
-			mTemp.convolve3x3r(kc, ke, kk);
-			mTemp.convolve3x3r(kc, ke, kk);
-			mNormalizeMap.add(mFilteredInput);												
-			*/
-																																																
+																																																			
 			if(bIntPeak != intPeak1)
 			{
 				// entering new bin.
@@ -1706,14 +1698,7 @@ if(	mTotalSamples % 100 == 0)
 			// check for done
 			if(isDone())
 			{
-
 				mCalibrateSignal.setDims(kTemplateSize, kTemplateSize, mWidth*mHeight);
-				
-				// TODO normalize touch data!!
-				
-				
-				
-				
 				
 				// get result for each junction
 				for(int j=0; j<mHeight; ++j)
@@ -1947,8 +1932,8 @@ float TouchTracker::Calibrator::differenceFromTemplateTouchWithMask(const MLSign
 	// add differences in z from template
 	a2.copy(a);
 	b2.copy(b);
-	a2.dx();
-	b2.dx();
+	a2.partialDiffX();
+	b2.partialDiffX();
 	for(int j=0; j < kTemplateSize; ++j)
 	{
 		for(int i=0; i < kTemplateSize; ++i)

@@ -292,6 +292,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pD->setRange(1., 250., 1);	
 	pD->setDefault(100.);	
 	
+	pB = page0->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
+	
 //	page0->addToggleButton("show frets", toggleRect.withCenter(10, dialY - 0.25), "frets", c2);
 	mpViewModeButton = page0->addMenuButton("view mode", textButtonRect2.withCenter(13, 8.), "viewmode");
 
@@ -319,8 +321,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 //	mpGLView3->setModel(pModel);
 //	page1->addWidgetToView (mpGLView3, GLRect1, "zone_view");		
 	
-	// 
-	// page1->addLabel("COMPLEX OSCILLATOR", MLRect(0, 4, 6, 0.5), titleSize, eMLTitle);
 	MLRect zoneLabelRect(0, 0, 3., 0.25);
 	float sectionLabelsY = 5.125;
 	page1->addLabel("ZONE", zoneLabelRect.withCenter(3.75, sectionLabelsY), 1.00f, eMLTitle);
@@ -329,6 +329,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 
 	// all-zone controls up top
 	float topDialsY = 0.66f;
+
 	pB = page1->addToggleButton("quantize", toggleRect.withCenter(4.5, topDialsY), "quantize", c2);
 	pB = page1->addToggleButton("note lock", toggleRect.withCenter(5.5, topDialsY), "lock", c2);
 	pB = page1->addToggleButton("retrig", toggleRect.withCenter(6.5, topDialsY), "retrig", c2);
@@ -521,6 +522,10 @@ void SoundplaneView::doParamChangeAction(MLSymbol param, const MLModelParam & ol
 		else if(v == "test")
 		{
 			setViewMode(kTest);
+		}
+		else if(v == "norm. map")
+		{
+			setViewMode(kNrmMap);
 		}
 	}
 	else if(param == "")

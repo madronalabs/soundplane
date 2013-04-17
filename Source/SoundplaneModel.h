@@ -35,7 +35,8 @@ typedef enum SoundplaneViewMode
 	kCalibrated = 1,
 	kCooked = 2,
 	kXY = 3,
-	kTest = 4
+	kTest = 4,
+	kNrmMap = 5
 };
 
 class ColumnStats
