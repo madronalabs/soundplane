@@ -668,11 +668,11 @@ Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy)
 {
 	MLRange xRange(4.5f, 60.5f);
 	xRange.convertTo(MLRange(1.f, 29.f));
-	float kx = xRange(xy.x());
+	float kx = clamp(xRange(xy.x()), -0.5f, 29.5f);
 	
 	MLRange yRange(1.2, 5.8);  		
 	yRange.convertTo(MLRange(0.5f, 3.5f));
-	float ky = yRange(xy.y());
+	float ky = clamp(yRange(xy.y()), -0.5f, 4.5f);
 
 	return Vec2(kx, ky);
 }
@@ -747,7 +747,7 @@ void SoundplaneModel::postProcessTouchData()
 			{
 				// get fractional note using interpolated x and integer y.
 				// don't add vibrato
-				float fx = keyXY.x();
+				float fx = clamp(keyXY.x(), 0.f, 29.f);
 				int iy = (float)lround(keyXY.y());			
 				
 				// do hysteresis between rows

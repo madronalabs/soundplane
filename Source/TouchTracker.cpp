@@ -778,7 +778,10 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		float x = powf(e, -kMLTwoPi * xyCutoff / (float)mSampleRate);
 		float a0 = 1.f - x;
 		float b1 = -x;
-		t.dz = newZ - t.z;		
+		t.dz = newZ - t.z;	
+		
+		// these can't be filtered too much or updateTouches will not work
+		// for fast movements.  Revisit when we rewrite the touch tracker.		
 		t.x = a0*newX - b1*t.x;
 		t.y = a0*newY - b1*t.y;
 		t.z = newZ;
@@ -786,12 +789,15 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		// filter z based on user lowpass setting and touch age
 		float lp = mLopass;
 		lp -= t.age*(mLopass*0.75f/kAttackFrames);
-		lp = clamp(lp, mLopass, mLopass*0.25f);		
+		lp = clamp(lp, mLopass, mLopass*0.25f);	// WTF???
+		
+				
 		float xz = powf(e, -kMLTwoPi * lp / (float)mSampleRate);
 		float a0z = 1.f - xz;
 		float b1z = -xz;
 		t.zf = a0z*(newZ - mOnThreshold) - b1z*t.zf;	
-
+				
+		
 		// remove touch if filtered z is below threshold
 		if(t.zf < 0.)
 		{
@@ -1129,19 +1135,32 @@ void TouchTracker::process(int)
 		}
 		
 		findTouches();
-		
-		// write touch data to one frame of output signal.
+
+		// filter touches
+		// filter x and y for output
+		// filter touches and write touch data to one frame of output signal.
 		//
 		MLSignal& out = *mpOut;
-		for(int t = 0; t < mTouchesPerFrame; ++t)
+		for(int i = 0; i < mTouchesPerFrame; ++i)
 		{
-			int age = mTouches[t].age;
-			out(xColumn, t) = mTouches[t].x;
-			out(yColumn, t) = mTouches[t].y;
-			out(zColumn, t) = (age > 0) ? mTouches[t].zf : 0.;			
-			out(dzColumn, t) = mTouches[t].dz;
-			out(ageColumn, t) = age;
-			out(dtColumn, t) = mTouches[t].tDist;
+			Touch& t = mTouches[i];			
+			if(t.age > 1)
+			{
+				float xyc = 1.0f - powf(2.71828f, -kMLTwoPi * mLopass*0.1f / (float)mSampleRate);
+				t.xf += (t.x - t.xf)*xyc;
+				t.yf += (t.y - t.yf)*xyc;
+			}
+			else if(t.age == 1)
+			{
+				t.xf = t.x;
+				t.yf = t.y;
+			}
+			out(xColumn, i) = t.xf;
+			out(yColumn, i) = t.yf;
+			out(zColumn, i) = (t.age > 0) ? t.zf : 0.;			
+			out(dzColumn, i) = t.dz;
+			out(ageColumn, i) = t.age;
+			out(dtColumn, i) = t.tDist;
 			// NOTE: the note column is filled in later by the Model.
 		}
 	}

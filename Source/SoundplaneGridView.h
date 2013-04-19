@@ -46,10 +46,10 @@ public:
 private:
 	Vec2 worldToScreen(const Vec3& world); 
 
+	void drawDot(Vec2 pos);
 	void drawTextAt(float x, float y, float z, const char* ps);
 	void drawInfoBox(Vec3 pos, char* text, int colorIndex);
 	void drawTestVec();
-    void drawCalibrate();
 
     OpenGLContext* mpGLContext;
 	SoundplaneModel* mpModel;

@@ -4,6 +4,7 @@
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
 #include "SoundplaneGridView.h"
+#include "SoundplaneBinaryData.h"
 
 SoundplaneGridView::SoundplaneGridView() :
 	mpModel(nullptr),
@@ -28,6 +29,28 @@ SoundplaneGridView::~SoundplaneGridView()
 // we'll use the opportunity to create the textures needed.
 void SoundplaneGridView::newOpenGLContextCreated()
 {
+#if ! JUCE_IOS
+	// (no need to call makeCurrentContextActive(), as that will have
+	// been done for us before the method call).
+	glClearColor (0.0f, 0.0f, 0.0f, 0.0f);
+	glClearDepth (1.0);
+
+	glDisable (GL_DEPTH_TEST);
+	glEnable (GL_TEXTURE_2D);
+	glEnable (GL_BLEND);
+	glShadeModel (GL_SMOOTH);
+
+	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glPixelStorei (GL_UNPACK_ALIGNMENT, 4);
+
+	glHint (GL_LINE_SMOOTH_HINT, GL_NICEST);
+	glHint (GL_POINT_SMOOTH_HINT, GL_NICEST);
+	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+#endif
 }
 
 void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
@@ -145,67 +168,29 @@ Vec2 SoundplaneGridView::worldToScreen(const Vec3& world)
 	}
 }
 
-// calibrate UI
-// TODO clean this up
-void SoundplaneGridView::drawCalibrate()
+// temporary, ugly
+void SoundplaneGridView::drawDot(Vec2 pos)
 {
-	int viewW = getWidth();
-	int viewH = getHeight();
-	glColor3f(0.f, 0.f, 0.f);
-	drawTextAt(viewW / 2, viewH /2, 0., "CALIBRATING...");
-	
-	float p = mpModel->getCalibrateProgress();
 
-	// draw progress bar
-	// TODO nicer code
-	float margin = 20.f;
-	float barSize = 20.f;
-	float top = viewH/2 - barSize/2;
-	float bottom = viewH/2 + barSize/2;
-	float left = margin;
-	float right = viewW - margin;
-	MLRange pRange(0., 1.);
-	pRange.convertTo(MLRange(left, right));
-	float pr = pRange(p);
+	Vec4 dotColor(0.8f, 0.8f, 0.8f, 1.f);
+	glColor4fv(&dotColor[0]);
+	int steps = 16;
+	float r = 0.04f;
 
-	glColor4f(0, 0, 0, 1);
-	orthoView(viewW, viewH);
-	
-	// draw frame
-	glBegin(GL_LINE_LOOP);	
-	glVertex2f(left, top);
-	glVertex2f(right, top);
-	glVertex2f(right, bottom);
-	glVertex2f(left, bottom);
+	float x = pos.x();
+	float y = pos.y();
+
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex2f(x, y);
+	for(int i=0; i<=steps; ++i)
+	{
+		float theta = kMLTwoPi * (float)i / (float)steps;
+		float rx = r*cosf(theta);
+		float ry = r*sinf(theta);		
+		glVertex3f(x + rx, y + ry, 0.f);
+	}
 	glEnd();
-
-	glBegin(GL_QUADS);	
-	glVertex2f(left, top);
-	glVertex2f(pr, top);
-	glVertex2f(pr, bottom);
-	glVertex2f(left, bottom);
-	glEnd();
-					
-	return;
-}
-
-/*
-Vec2 xyToKeyGrid(float x, float y) 
-{
-	// TODO make on init
-	MLRange xRange(4.5f, 60.5f);
-	xRange.convertTo(MLRange(1.f, 29.f));
-	float kx = xRange(x);
-	
-	MLRange yRange(1.2, 5.7);  	
-	
-	yRange.convertTo(MLRange(0.5f, 3.5f));
-	float ky = yRange(y);
-	ky = clamp(ky, 0.f, 4.f);
-		
-	return Vec2(kx, ky);
-}
-*/
+}	
 
 void SoundplaneGridView::renderXYGrid()
 {
@@ -244,10 +229,11 @@ void SoundplaneGridView::renderXYGrid()
 	MLRange ymRange(0, modelHeight);
 	ymRange.convertTo(MLRange(-sh, sh));	
 		
-//	const MLSignal& viewSignal = mpModel->getSignalForViewMode(kXY);
 	const MLSignal& calSignal = mpModel->getSignalForViewMode(kCalibrated);
+	float displayScale = mpModel->getModelFloatParam("display_scale");
 	
-	// draw stuff in immediate mode. TODO vertex buffers and modern GL code in general. 
+	// draw stuff in immediate mode. 
+	// TODO don't use fixed function pipeline.
 	//
 	Vec4 lineColor;
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
@@ -255,30 +241,6 @@ void SoundplaneGridView::renderXYGrid()
 	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
 
-	/*
-	// fill key areas
-	for(int j=0; j<height; ++j)
-	{
-		for(int i=0; i<width; ++i)
-		{
-			float mix = viewSignal(i, j);
-			Vec4 dataColor = vlerp(gray, lightGray, mix);
-			glColor4fv(&dataColor[0]);
-			glBegin(GL_QUADS);
-			float x1 = xRange.convert(i);
-			float y1 = yRange.convert(j);
-			float x2 = xRange.convert(i + 1);
-			float y2 = yRange.convert(j + 1);
-			float z = 0.;
-			glVertex3f(x1, y1, -z);
-			glVertex3f(x2, y1, -z);
-			glVertex3f(x2, y2, -z);
-			glVertex3f(x1, y2, -z);
-			glEnd();
-		}
-	}	
-	*/
-	
 	// fill calibrated data areas
 	for(int j=0; j<modelHeight; ++j)
 	{
@@ -286,6 +248,7 @@ void SoundplaneGridView::renderXYGrid()
 		for(int i=2; i<modelWidth - 2; ++i)
 		{
 			float mix = calSignal(i, j) / fMax;
+			mix *= displayScale;
 			Vec4 dataColor = vlerp(gray, lightGray, mix);
 			glColor4fv(&dataColor[0]);
 			glBegin(GL_QUADS);
@@ -302,6 +265,7 @@ void SoundplaneGridView::renderXYGrid()
 		}
 	}	
 	
+	// draw lines at key grid
 	lineColor = darkBlue;
 	if(state != kDeviceHasIsochSync)
 	{
@@ -333,6 +297,24 @@ void SoundplaneGridView::renderXYGrid()
 			glVertex3f(x, y, -z);
 		}
 		glEnd();
+	}
+	
+	// draw dots
+	for(int i=0; i<=width; ++i)
+	{
+		float x = xRange.convert(i + 0.5);
+		float y = yRange.convert(2.5);
+		int k = i%12;
+		if(k == 0)
+		{
+			float d = 0.1f;
+			drawDot(Vec2(x, y - d));
+			drawDot(Vec2(x, y + d));
+		}
+		if((k == 3)||(k == 5)||(k == 7)||(k == 9))
+		{
+			drawDot(Vec2(x, y));
+		}
 	}
 	
 	// render current touches on top of surface
@@ -455,9 +437,6 @@ void SoundplaneGridView::renderOpenGL()
 	yRange.convertTo(MLRange(-sh, sh));	
 		
 	const MLSignal& viewSignal = mpModel->getSignalForViewMode(mViewMode);
-
-	// TEMP
-	const MLSignal& cookedSignal = mpModel->getSignalForViewMode(kCooked);
 	
 	float displayScale = mpModel->getModelFloatParam("display_scale");
 	float scale = displayScale;
@@ -476,6 +455,10 @@ void SoundplaneGridView::renderOpenGL()
 		case kCooked:
 			scale *= 10.;
 			break;
+		case kNrmMap:
+			offset = -displayScale;
+			scale *= 1.;
+			break;
 		case kTest:
 		default:
 			scale *= 10.;
@@ -489,6 +472,14 @@ void SoundplaneGridView::renderOpenGL()
 	Vec4 green(0.f, 0.5f, 0.1f, 1.f);
 	Vec4 blue(0.1f, 0.1f, 0.9f, 1.f);
 	Vec4 purple(0.7f, 0.2f, 0.7f, 0.5f);
+	
+	int leftEdge = 0;
+	int rightEdge = width;
+	if(mViewMode == kNrmMap)
+	{
+		 leftEdge += 1;
+		 rightEdge -= 1;
+	}
 	
 	if (separateSurfaces)
 	{
@@ -545,7 +536,7 @@ void SoundplaneGridView::renderOpenGL()
 		for(int j=0; j<height; ++j)
 		{
 			glBegin(GL_LINE_STRIP);
-			for(int i=0; i<width; ++i)
+			for(int i=leftEdge; i<rightEdge; ++i)
 			{
 				float x = xRange.convert(i);
 				float y = yRange.convert(j);
@@ -555,7 +546,7 @@ void SoundplaneGridView::renderOpenGL()
 			glEnd();
 		}	
 		// vert lines
-		for(int i=0; i<width; ++i)
+		for(int i=leftEdge; i<rightEdge; ++i)
 		{
 			glBegin(GL_LINE_STRIP);
 			for(int j=0; j<height; ++j)
@@ -567,55 +558,11 @@ void SoundplaneGridView::renderOpenGL()
 			}
 			glEnd();
 		}
-		
-		
-		// TEMP show cooked
-		if(mViewMode == kCalibrated)
-		{
-			lineColor = purple;
-			if(state != kDeviceHasIsochSync)
-			{
-				lineColor[3] = 0.1f;
-			}
-			glColor4fv(&lineColor[0]);
-			for(int j=0; j<height; ++j)
-			{
-				glBegin(GL_LINE_STRIP);
-				for(int i=0; i<width; ++i)
-				{
-					float x = xRange.convert(i);
-					float y = yRange.convert(j);
-					float z = cookedSignal(i, j)*scale + offset;
-					glVertex3f(x, y, -z);
-				}
-				glEnd();
-			}	
-			// vert lines
-			for(int i=0; i<width; ++i)
-			{
-				glBegin(GL_LINE_STRIP);
-				for(int j=0; j<height; ++j)
-				{
-					float x = xRange.convert(i);
-					float y = yRange.convert(j);
-					float z = cookedSignal(i, j)*scale + offset;
-					glVertex3f(x, y, -z);
-				}
-				glEnd();
-			}
-		}
 	}
-
+		
 	if(state != kDeviceHasIsochSync)
 	{	// TODO draw question mark
 
-	}
-
-	// calibrate UI
-	if (mpModel->isCalibrating())
-	{
-		drawCalibrate();
-		return;
 	}
 
 	// render current touches on top of surface

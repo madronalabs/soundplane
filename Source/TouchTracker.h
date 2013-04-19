@@ -80,6 +80,8 @@ public:
 	float y;
 	float z;
 	float dz;
+	float xf; // filtered x
+	float yf; // filtered y
 	float zf; // filtered z
 	float zf10; // const 10Hz filtered z
 	float dzf; // d(filtered z)

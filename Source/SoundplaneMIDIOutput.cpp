@@ -180,9 +180,9 @@ void SoundplaneMIDIOutput::setPressureActive(bool v)
 	if (!mpCurrentDevice) return;
 	for(int c=1; c<=16; ++c)
 	{				
-		int press = 127;
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(c, press));
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(c, 11, press));
+		int maxPressure = 127;
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(c, maxPressure));
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(c, 11, maxPressure));
 	}
 }
 

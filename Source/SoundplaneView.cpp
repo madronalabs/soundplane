@@ -108,6 +108,34 @@ void SoundplaneFooterView::setDevice (const char* c)
 	}
 }
 
+/*
+// calibrate UI
+// TODO clean this up
+void SoundplaneFooterView::drawCalibrate()
+{
+	int viewW = getWidth();
+	int viewH = getHeight();
+	glColor3f(0.f, 0.f, 0.f);
+	drawTextAt(viewW/2, viewH/2, 0., "CALIBRATING...");
+	
+	float p = mpModel->getCalibrateProgress();
+
+	// draw progress bar
+	// TODO nicer code
+	float margin = 20.f;
+	float barSize = 20.f;
+	float top = viewH/2 - barSize/2;
+	float bottom = viewH/2 + barSize/2;
+	float left = margin;
+	float right = viewW - margin;
+	MLRange pRange(0., 1.);
+	pRange.convertTo(MLRange(left, right));
+	float pr = pRange(p);
+
+
+}
+
+*/
 
 void SoundplaneFooterView::paint (Graphics& g)
 {
@@ -125,6 +153,13 @@ void SoundplaneFooterView::paint (Graphics& g)
 	// top line
 //	g.setColour(c2);
 //	g.drawLine(0, 0.25f, w, 0.25f);
+
+	// calibrate UI
+	if (mpModel->isCalibrating())
+	{
+//		drawCalibrate();
+	}
+
 }
 
 #pragma mark main view
@@ -183,11 +218,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	const Colour c3 = Colours::white;
 
 	// get drawing resources
-	myLookAndFeel->addPicture("prevarrow", 
-		SoundplaneBinaryData::arrowleft_svg, SoundplaneBinaryData::arrowleft_svgSize);
-	myLookAndFeel->addPicture("nextarrow", 
-		SoundplaneBinaryData::arrowright_svg, SoundplaneBinaryData::arrowright_svgSize);
-
 	myLookAndFeel->addPicture ("arrowleft", SoundplaneBinaryData::arrowleft_svg, SoundplaneBinaryData::arrowleft_svgSize);
 	myLookAndFeel->addPicture ("arrowleftdown", SoundplaneBinaryData::arrowleftdown_svg, SoundplaneBinaryData::arrowleftdown_svgSize);
 	myLookAndFeel->addPicture ("arrowright", SoundplaneBinaryData::arrowright_svg, SoundplaneBinaryData::arrowright_svgSize);
@@ -197,7 +227,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	setInterceptsMouseClicks (false, true);	
 
 	// setup controls on main view
-
 	MLRect t(0, 0, 0.5, 0.75);
 	MLRect prevRect = t.withCenter(0.175, kViewGridUnitsY/2.f);
 	MLRect nextRect = t.withCenter(kViewGridUnitsX - 0.175, kViewGridUnitsY/2.f);
@@ -446,10 +475,13 @@ void SoundplaneView::timerCallback()
 {
 	if (mDoAnimations)
 	{	
+		/*
 		if (mpGridView && mpGridView->isShowing())
 		{
 			mpGridView->repaint();
 		}
+		*/
+		
 		
 	// TODO different intervals!
 
