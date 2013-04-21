@@ -24,6 +24,7 @@
 #include "MLMultiSlider.h"
 #include "MLMultiButton.h"
 #include "MLEnvelope.h"
+#include "MLProgressBar.h"
 #include "MLGraph.h"
 
 #include "MLVector.h"
@@ -69,12 +70,18 @@ public:
     void paint (Graphics& g);
  	void setStatus(const char* stat, const char* client);
 	void setDevice(const char* s);
+	void setCalibrateProgress(float p);
+	void setCalibrateState(bool b);
 
 private:
 	SoundplaneModel* mpModel;
 	
+	float mCalibrateProgress;
+	bool mCalibrateState;
 	MLLabel* mpDevice;
 	MLLabel* mpStatus;
+	MLLabel* mpCalibrateText;
+	MLProgressBar* mpCalibrateProgress; 
 	String mStatusStr;
 };
 
@@ -149,6 +156,7 @@ private:
 	std::vector<MLWidget*> mpCarrierToggles; // TEMP TODO use getWidget()
 	std::vector<MLWidget*> mpCarrierLabels; // TEMP TODO use getWidget()
 	
+	int mCalibrateState;
 	int mSoundplaneState;
 	int mSoundplaneClientState;
 	SoundplaneViewMode mViewMode;

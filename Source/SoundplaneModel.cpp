@@ -591,7 +591,7 @@ const char* SoundplaneModel::getStatusStr()
 			break;
 			
 		default:
-			snprintf(mStatusStr, miscStrSize, "?");
+			snprintf(mStatusStr, miscStrSize, "unknown status.");
 			break;
 	}
 	return mStatusStr;

@@ -59,7 +59,9 @@ SoundplaneFooterView::SoundplaneFooterView(SoundplaneModel* pModel, MLResponder*
 	MLAppView(pResp, pRep),
 	mpModel(pModel),
 	mpDevice(0),
-	mpStatus(0)
+	mpStatus(0),
+	mCalibrateState(0),
+	mCalibrateProgress(0.)
 {
 	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();	
 	
@@ -76,13 +78,21 @@ SoundplaneFooterView::SoundplaneFooterView(SoundplaneModel* pModel, MLResponder*
 	mpStatus->setJustification(Justification::topRight);
 	mpStatus->setResizeToText(false);
 	
-	// TODO add calibration progress in footer
+	mpCalibrateText = addLabel("calibrating...", MLRect(w - labelWidth*0.75f, 0, labelWidth*0.25, h));
+	mpCalibrateText->setFont(myLookAndFeel->mCaptionFont);
+	mpCalibrateText->setJustification(Justification::topLeft);
+	mpCalibrateText->setResizeToText(false);
+	
+	mpCalibrateProgress = addProgressBar(MLRect(w - labelWidth*0.5f, 0, labelWidth*0.5f, h/2));
+	
+	setCalibrateState(false);
 }
 
 SoundplaneFooterView::~SoundplaneFooterView(){}
 
 void SoundplaneFooterView::setStatus (const char* stat, const char* client)
 {
+debug() << "new status: " << stat << ", " << client << "\n";
 	if(mpStatus)
 	{
 		std::string temp(stat);
@@ -108,58 +118,28 @@ void SoundplaneFooterView::setDevice (const char* c)
 	}
 }
 
-/*
-// calibrate UI
-// TODO clean this up
-void SoundplaneFooterView::drawCalibrate()
+void SoundplaneFooterView::setCalibrateProgress(float p)
 {
-	int viewW = getWidth();
-	int viewH = getHeight();
-	glColor3f(0.f, 0.f, 0.f);
-	drawTextAt(viewW/2, viewH/2, 0., "CALIBRATING...");
-	
-	float p = mpModel->getCalibrateProgress();
-
-	// draw progress bar
-	// TODO nicer code
-	float margin = 20.f;
-	float barSize = 20.f;
-	float top = viewH/2 - barSize/2;
-	float bottom = viewH/2 + barSize/2;
-	float left = margin;
-	float right = viewW - margin;
-	MLRange pRange(0., 1.);
-	pRange.convertTo(MLRange(left, right));
-	float pr = pRange(p);
-
-
+	mCalibrateProgress = p;
+	mpCalibrateProgress->setAttribute("progress", p);
+	mpCalibrateProgress->repaint();
 }
 
-*/
+void SoundplaneFooterView::setCalibrateState(bool b)
+{
+	mCalibrateState = b;
+	mpStatus->setVisible(!b);
+	mpCalibrateText->setVisible(b);
+	mpCalibrateProgress->setVisible(b);
+}
 
 void SoundplaneFooterView::paint (Graphics& g)
 {
-	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
-	const Colour c1 = findColour(MLLookAndFeel::backgroundColor);
-	const Colour c2 = findColour(MLLookAndFeel::backgroundColor2);
-//	int h = getHeight();
-//	int w = getWidth();
-
-	myLookAndFeel->drawBackground(g, this);	
-
-	// TEST paint grid
-//	myLookAndFeel->drawUnitGrid(g);	
-
+//	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
+//	const Colour c2 = findColour(MLLookAndFeel::backgroundColor2);	
 	// top line
 //	g.setColour(c2);
 //	g.drawLine(0, 0.25f, w, 0.25f);
-
-	// calibrate UI
-	if (mpModel->isCalibrating())
-	{
-//		drawCalibrate();
-	}
-
 }
 
 #pragma mark main view
@@ -174,6 +154,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	mpGridView(0),
 	mpTouchView(0),
 	mpGLView3(0),
+	mCalibrateState(-1),
 	mSoundplaneState(-1),
 	mSoundplaneClientState(-1),
 	mpCurveGraph(0),
@@ -464,7 +445,7 @@ void SoundplaneView::initialize()
 {
 	goToPage(0);	
 		
-	startTimer(500);
+	startTimer(50);
 	
 	setAnimationsActive(true);
 	
@@ -473,33 +454,50 @@ void SoundplaneView::initialize()
 
 void SoundplaneView::timerCallback()
 {
-	if (mDoAnimations)
-	{	
-		/*
-		if (mpGridView && mpGridView->isShowing())
-		{
-			mpGridView->repaint();
-		}
-		*/
-		
-		
-	// TODO different intervals!
-
-		// poll soundplane status and get info every second or so.
+//.	if (mDoAnimations)
+	{			
+		// poll soundplane status and get info.
 		// we don't have to know what the states mean -- just an index. 
-		// if the index changes, pull current info from Soundplane and redraw.
+		// if the status changes, pull current info from Soundplane and redraw.
 		//
 		if (mpFooter)
 		{
+			bool needsRepaint = false;
+			int calState = mpModel->isCalibrating();
 			int state = mpModel->getDeviceState();
 			int clientState = mpModel->getClientState();
-			if ((state != mSoundplaneState) || (clientState != mSoundplaneClientState))
+			
+			if(calState)
 			{
-				mpFooter->setDevice(mpModel->getHardwareStr());
+				mpFooter->setCalibrateProgress(mpModel->getCalibrateProgress());
+				needsRepaint = true;
+			}
+
+			if(calState != mCalibrateState)
+			{
+				mpFooter->setCalibrateState(calState);
+				needsRepaint = true;
+				mCalibrateState = calState;
+			}
+			
+			if (state != mSoundplaneState)
+			{
 				mpFooter->setStatus(mpModel->getStatusStr(), mpModel->getClientStr());
-				repaint();
+				needsRepaint = true;
 				mSoundplaneState = state;
+			}
+			
+			if (clientState != mSoundplaneClientState)
+			{
+
+				mpFooter->setDevice(mpModel->getHardwareStr());
+				needsRepaint = true;
 				mSoundplaneClientState = clientState;
+			}
+			
+			if(needsRepaint)
+			{
+				mpFooter->repaint();
 			}
 		}
 	}

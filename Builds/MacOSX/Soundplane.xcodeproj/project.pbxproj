@@ -72,6 +72,7 @@
 		B5A2432F1593F264008D8662 /* SoundplaneDataListener.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5A2432E1593F264008D8662 /* SoundplaneDataListener.cpp */; };
 		B5A244771594E5C7008D8662 /* MLTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5A244761594E5C7008D8662 /* MLTime.cpp */; };
 		B5A8777616628FCC00F9764D /* MLMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5A8777516628FCC00F9764D /* MLMenu.cpp */; };
+		B5AE8F2C1724573F00C088C1 /* MLProgressBar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5AE8F2B1724573F00C088C1 /* MLProgressBar.cpp */; };
 		B5B2D0C515C7573900FF08A5 /* MLWidgetContainer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5B2D0C415C7573900FF08A5 /* MLWidgetContainer.cpp */; };
 		B5C02C4B14F6BC4100F57610 /* MLGraph.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5C02C4A14F6BC4100F57610 /* MLGraph.cpp */; };
 		B5CA79DC13E0C512003BCFA3 /* MLDefaultFileLocations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5CA79D913E0C512003BCFA3 /* MLDefaultFileLocations.cpp */; };
@@ -221,6 +222,8 @@
 		B5A244761594E5C7008D8662 /* MLTime.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLTime.cpp; path = ../../../MadronaLib/MLJuceApp/MLTime.cpp; sourceTree = SOURCE_ROOT; };
 		B5A8777416628FCC00F9764D /* MLMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLMenu.h; path = ../../../MadronaLib/MLJuceApp/MLMenu.h; sourceTree = SOURCE_ROOT; };
 		B5A8777516628FCC00F9764D /* MLMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLMenu.cpp; path = ../../../MadronaLib/MLJuceApp/MLMenu.cpp; sourceTree = SOURCE_ROOT; };
+		B5AE8F2A1724573F00C088C1 /* MLProgressBar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLProgressBar.h; sourceTree = "<group>"; };
+		B5AE8F2B1724573F00C088C1 /* MLProgressBar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLProgressBar.cpp; sourceTree = "<group>"; };
 		B5B2D0C315C7573900FF08A5 /* MLWidgetContainer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLWidgetContainer.h; path = ../../../MadronaLib/MLJuceApp/MLWidgetContainer.h; sourceTree = SOURCE_ROOT; };
 		B5B2D0C415C7573900FF08A5 /* MLWidgetContainer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLWidgetContainer.cpp; path = ../../../MadronaLib/MLJuceApp/MLWidgetContainer.cpp; sourceTree = SOURCE_ROOT; };
 		B5C02C4914F6BC4100F57610 /* MLGraph.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLGraph.h; sourceTree = "<group>"; };
@@ -517,6 +520,8 @@
 				B5D5FC9D156C7DDE006A05E6 /* MLPanel.cpp */,
 				B5D5FC8D156C7DC0006A05E6 /* MLPositioner.cpp */,
 				B5D5FC8C156C7DC0006A05E6 /* MLPositioner.h */,
+				B5AE8F2A1724573F00C088C1 /* MLProgressBar.h */,
+				B5AE8F2B1724573F00C088C1 /* MLProgressBar.cpp */,
 				B5CA7ABB13E0C559003BCFA3 /* MLSeparator.h */,
 				B5CA7ABA13E0C559003BCFA3 /* MLSeparator.cpp */,
 				B54E8C0C14DB358900E6FE66 /* MLTextButton.cpp */,
@@ -805,6 +810,7 @@
 				B592C69316F36A5E001B578F /* juce_opengl.mm in Sources */,
 				B592C6AB16F36BB4001B578F /* cJSON.c in Sources */,
 				B591CC63172196EA0048CA19 /* SoundplaneBinaryData.cpp in Sources */,
+				B5AE8F2C1724573F00C088C1 /* MLProgressBar.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
