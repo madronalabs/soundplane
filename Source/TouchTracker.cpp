@@ -42,7 +42,7 @@ TouchTracker::TouchTracker(int w, int h) :
 	mOverrideThresh(0.01),
 	mCombineRadius(1.),
 	mCount(0),
-	mTouchesPerFrame(0),
+	mMaxTouchesPerFrame(0),
 	mBackgroundFilter(1, 1),
 	mNeedsClear(true),
 	mKeyboardType(rectangularA),
@@ -50,7 +50,8 @@ TouchTracker::TouchTracker(int w, int h) :
 	mSampleRate(1000.f),
 	mBackgroundFilterFreq(0.125f),
 	mRotateOffset(0),
-	mRotate(false)
+	mRotate(false),
+	mDoNormalize(true)
 {
 	mTouches.resize(kTrackerMaxTouches);	
 	mTouchesToSort.resize(kTrackerMaxTouches);	
@@ -115,7 +116,7 @@ void TouchTracker::setOutputSignal(MLSignal* pOut)
 		debug() << "TouchTracker: output signal too narrow!\n";
 		return;
 	}
-	if (h < mTouchesPerFrame)
+	if (h < mMaxTouchesPerFrame)
 	{
 		debug() << "error: TouchTracker: output signal too short to contain touches!\n";
 		return;
@@ -125,9 +126,9 @@ void TouchTracker::setOutputSignal(MLSignal* pOut)
 void TouchTracker::setMaxTouches(int t)
 {
 	int newT = clamp(t, 0, kTrackerMaxTouches);
-	if(newT != mTouchesPerFrame)
+	if(newT != mMaxTouchesPerFrame)
 	{
-		mTouchesPerFrame = newT;
+		mMaxTouchesPerFrame = newT;
 	}
 }
 
@@ -219,7 +220,7 @@ Vec2 TouchTracker::getKeyCenterByIndex(int idx)
 int TouchTracker::touchOccupyingKey(int k)
 {
 	int r = -1;
-	for(int i=0; i<mTouchesPerFrame; ++i)
+	for(int i=0; i<mMaxTouchesPerFrame; ++i)
 	{
 		Touch& t = mTouches[i];
 		if (t.isActive())
@@ -300,6 +301,11 @@ void TouchTracker::setRotate(bool b)
 		mRotateOffset = 0;
 	}
 }
+	
+void TouchTracker::setNormalize(bool b)
+{ 
+	mDoNormalize = b;
+}
 	 
 	 
 // add new touch at first free slot.  TODO touch allocation modes including rotate.
@@ -316,15 +322,15 @@ int TouchTracker::addTouch(const Touch& t)
 	{
 		offset = mRotateOffset;
 		mRotateOffset++;
-		if(mRotateOffset >= mTouchesPerFrame)
+		if(mRotateOffset >= mMaxTouchesPerFrame)
 		{
 			mRotateOffset = 0;
 		}
 	}
 	
-	for(int jr=offset; jr<mTouchesPerFrame + offset; ++jr)
+	for(int jr=offset; jr<mMaxTouchesPerFrame + offset; ++jr)
 	{
-		int j = jr%mTouchesPerFrame;
+		int j = jr%mMaxTouchesPerFrame;
 
 		Touch& r = mTouches[j];
 		if (!r.isActive())
@@ -369,7 +375,7 @@ int TouchTracker::addTouch(const Touch& t)
 int TouchTracker::getTouchIndexAtKey(const int k)
 {
 	int r = -1;
-	for(int i=0; i<mTouchesPerFrame; ++i)
+	for(int i=0; i<mMaxTouchesPerFrame; ++i)
 	{
 		Touch& t = mTouches[i];
 		if (t.isActive())
@@ -396,7 +402,7 @@ void TouchTracker::removeTouchAtIndex(int touchIdx)
 
 void TouchTracker::clear()
 {
-	for (int i=0; i<mTouchesPerFrame; i++)	
+	for (int i=0; i<mMaxTouchesPerFrame; i++)	
 	{
 		mTouches[i] = Touch();	
 	}
@@ -668,7 +674,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 	// sort active touches by Z
 	// copy into sorting container, referring back to unsorted touches
 	int activeTouches = 0;
-	for(int i = 0; i < mTouchesPerFrame; ++i)
+	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
 		Touch& t = mTouches[i];
 		if (t.isActive())
@@ -708,7 +714,6 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			int newPy = newPeakI.y();
 			
 			// get exact location and new key
-//			Vec2 correctPos = mTemp.correctPeak(newPx, newPy);
 			Vec2 correctPos = correctPeakWithBorder(mTemp, newPx, newPy);
 			newPos = correctPos;	
 			int newKey = getKeyIndexAtPoint(newPos);												
@@ -826,7 +831,7 @@ Vec3 TouchTracker::closestTouch(Vec2 pos)
 {
 	float minDist = MAXFLOAT;
 	int minIdx = 0;
-	for(int i = 0; i < mTouchesPerFrame; ++i)
+	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
 		Touch& t = mTouches[i];
 		if (t.isActive())
@@ -851,7 +856,7 @@ float TouchTracker::getInhibitThreshold(Vec2 a)
 	float inhibitMax = 1.1f;
 	float inhibitRange = 6.f;
 	float maxInhibit = 0.f;
-	for(int i = 0; i < mTouchesPerFrame; ++i)
+	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
 		const Touch& u = mTouches[i];
 		if (u.isActive())
@@ -1008,16 +1013,10 @@ void TouchTracker::process(int)
 		return;
 	}
 		
+	mFilteredInput.copy(in);
+	
 	if (mCalibrator.isCalibrating())
 	{		
-		mFilteredInput.copy(in);
-		mCalibrator.normalizeInput(mFilteredInput);
-
-		// smooth input	
-		float kc, ke, kk;
-		kc = 4./16.; ke = 2./16.; kk=1./16.;
-		mFilteredInput.convolve3x3r(kc, ke, kk);
-		mFilteredInput.convolve3x3r(kc, ke, kk);
 		int done = mCalibrator.addSample(mFilteredInput);
 		
 		if(done == 1)
@@ -1032,71 +1031,75 @@ void TouchTracker::process(int)
 	}
 	else
 	{
-		// normalize before smoothing!
-		mFilteredInput.copy(in);
-		mCalibrator.normalizeInput(mFilteredInput);
-// 		mCalibrator.correctEdges(mFilteredInput);
-
-		// smooth input	
-		float kc, ke, kk;
-		kc = 4./16.; ke = 2./16.; kk=1./16.;
-		mFilteredInput.convolve3x3r(kc, ke, kk);
-		
-	
-		// build sum of currently tracked touches	
-		//
-		mSumOfTouches.clear();
-		int numActiveTouches = 0;
-		for(int i = 0; i < mTouchesPerFrame; ++i)
+		if(mDoNormalize)
 		{
-			const Touch& t(mTouches[i]);
-			if(t.isActive())
+			mCalibrator.normalizeInput(mFilteredInput);
+		}
+		
+		if(mMaxTouchesPerFrame > 0)
+		{
+			// smooth input	
+			float kc, ke, kk;
+			kc = 4./16.; ke = 2./16.; kk=1./16.;
+			mFilteredInput.convolve3x3r(kc, ke, kk);
+
+			// build sum of currently tracked touches	
+			//
+			mSumOfTouches.clear();
+			int numActiveTouches = 0;
+			for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 			{
-				Vec2 touchPos(t.x, t.y);
-				mTemplateScaled.clear();
-				mTemplateScaled.add2D(mCalibrator.getTemplate(touchPos), 0, 0);
-				mTemplateScaled.scale(t.z*mCalibrator.getZAdjust(touchPos));
-				mSumOfTouches.add2D(mTemplateScaled, touchPos - Vec2(kTemplateRadius, kTemplateRadius));
-				numActiveTouches++;
-			}
-		}	
-		
-		// to make sum of touches a bit bigger 
-		//mSumOfTouches.scale(1.5f);
-		//mSumOfTouches.convolve3x3r(kc, ke, kk);
+				const Touch& t(mTouches[i]);
+				if(t.isActive())
+				{
+					Vec2 touchPos(t.x, t.y);
+					mTemplateScaled.clear();
+					mTemplateScaled.add2D(mCalibrator.getTemplate(touchPos), 0, 0);
+					mTemplateScaled.scale(t.z*mCalibrator.getZAdjust(touchPos));
+					mSumOfTouches.add2D(mTemplateScaled, touchPos - Vec2(kTemplateRadius, kTemplateRadius));
+					numActiveTouches++;
+				}
+			}	
+			
+			// to make sum of touches a bit bigger 
+			//mSumOfTouches.scale(1.5f);
+			//mSumOfTouches.convolve3x3r(kc, ke, kk);
 
-		//
-		// TODO lots of optimization here in onepole, 2D filter
-		//
-		// TODO the mean of lowpass background can be its own control source that will 
-		// act like an accelerometer!  tilt controls even. 
-		
-		mBackgroundFilterFrequency.fill(mBackgroundFilterFreq);
-		
-		// build background: lowpass filter rest state.  Filter freq.
-		// is nonzero where there are no touches, 0 where there are touches.
-		mTemp.copy(mSumOfTouches);
-		mTemp.scale(100.f); 
-		mBackgroundFilterFrequency.subtract(mTemp);
-		mBackgroundFilterFrequency.sigMax(0.);		
-		
-		// TODO allow filter to move a little if touch template distance is near threshold
-		// this will fix most stuck touches
+			//
+			// TODO lots of optimization here in onepole, 2D filter
+			//
+			// TODO the mean of lowpass background can be its own control source that will 
+			// act like an accelerometer!  tilt controls even. 
+			
+			mBackgroundFilterFrequency.fill(mBackgroundFilterFreq);
+			
+			// build background: lowpass filter rest state.  Filter freq.
+			// is nonzero where there are no touches, 0 where there are touches.
+			mTemp.copy(mSumOfTouches);
+			mTemp.scale(100.f); 
+			mBackgroundFilterFrequency.subtract(mTemp);
+			mBackgroundFilterFrequency.sigMax(0.);		
+			
+			// TODO allow filter to move a little if touch template distance is near threshold
+			// this will fix most stuck touches
 
-		// filter background in up direction 
-		mBackgroundFilterFrequency2.fill(mBackgroundFilterFreq);
-		mBackgroundFilter.setInputSignal(&mFilteredInput);
-		mBackgroundFilter.setOutputSignal(&mBackground);
+			// filter background in up direction 
+			mBackgroundFilterFrequency2.fill(mBackgroundFilterFreq);
+			mBackgroundFilter.setInputSignal(&mFilteredInput);
+			mBackgroundFilter.setOutputSignal(&mBackground);
 
-		// set asymmetric filter coeffs and get background
-		mBackgroundFilter.setCoeffs(mBackgroundFilterFrequency, mBackgroundFilterFrequency2);
-		mBackgroundFilter.process(1);	
+			// set asymmetric filter coeffs and get background
+			mBackgroundFilter.setCoeffs(mBackgroundFilterFrequency, mBackgroundFilterFrequency2);
+			mBackgroundFilter.process(1);	
+
+ 		}
 
 		// subtract background from input 
 		//
 		mInputMinusBackground.copy(mFilteredInput);
 		mInputMinusBackground.subtract(mBackground);
- 						
+		
+						
 		// move or remove and filter existing touches
 		//
 		updateTouches(mInputMinusBackground);	
@@ -1114,10 +1117,13 @@ void TouchTracker::process(int)
 		// after update Touches, subtract sum of touches to get residual R
 		// R = input - T.
 		// This represents any pressure data not currently part of a touch.
-		mInputMinusBackground.sigMax(0.);	
-		mResidual.copy(mInputMinusBackground);
-		mResidual.subtract(mSumOfTouches);
-		mResidual.sigMax(0.);
+		if(mMaxTouchesPerFrame > 0)
+		{
+			mInputMinusBackground.sigMax(0.);	
+			mResidual.copy(mInputMinusBackground);
+			mResidual.subtract(mSumOfTouches);
+			mResidual.sigMax(0.);
+		}
 
 		// get signals for viewer
 		// TODO optimize: we only have to copy these each time a view is needed
@@ -1141,7 +1147,7 @@ void TouchTracker::process(int)
 		// filter touches and write touch data to one frame of output signal.
 		//
 		MLSignal& out = *mpOut;
-		for(int i = 0; i < mTouchesPerFrame; ++i)
+		for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 		{
 			Touch& t = mTouches[i];			
 			if(t.age > 1)
@@ -1212,7 +1218,6 @@ TouchTracker::Calibrator::Calibrator(int w, int h) :
 	}
 	mIncomingSample.setDims(kTemplateSize, kTemplateSize);
 	mVisSignal.setDims(mWidth, mHeight);
-	
 	mNormalizeMap.setDims(mSrcWidth, mSrcHeight);
 	mNormalizeCount.setDims(mSrcWidth, mSrcHeight);
 	mFilteredInput.setDims(mSrcWidth, mSrcHeight);
@@ -1242,7 +1247,8 @@ void TouchTracker::Calibrator::begin()
 	mStartupSum = 0.;
 	for(int i=0; i<mWidth*mHeight; ++i)
 	{
-		mData[i].fill(MAXFLOAT);  // for minimum gathering
+		float maxSample = 1.f;
+		mData[i].fill(maxSample);
 		mDataSum[i].clear(); 
 		mSampleCount[i] = 0;
 		mPassesCount[i] = 0;
@@ -1368,32 +1374,6 @@ void TouchTracker::Calibrator::normalizeInput(MLSignal& in)
 	}
 }
 
-// tweak edge data at low pressures to compensate for weird mechanical stuff
-void TouchTracker::Calibrator::correctEdges(MLSignal& in)
-{
-	float z;
-	const float ct = 0.05f;
-	const float lo = ct*0.1;
-//	const float oneOverCt = 1.f/ct;
-	const float m = 0.5f;
-	for(int i=0; i<mSrcWidth; ++i)
-	{			
-		z = in(i, 0);
-		if((z < ct) && (z > lo))
-		{	
-			z = ct - (ct - z)*m;
-			in(i, 0) = z;
-		}
-		
-		z = in(i, mHeight - 1);
-		if((z < ct) && (z > lo))
-		{
-			z = ct - (ct - z)*m;
-			in(i, mHeight - 1) = z;
-		}
-	}
-}
-
 // return true if the current cell (i, j) is used by the current stage of calibration
 bool TouchTracker::Calibrator::isWithinCalibrateArea(int i, int j)
 {
@@ -1430,6 +1410,10 @@ float TouchTracker::Calibrator::makeNormalizeMap()
 	mNormalizeMap.inv();
 	mNormalizeMap.scale(mean);	
 	
+	// constrain output values to salvage situation in case of weird outliers
+	mNormalizeMap.sigMin(2.5f);	
+	mNormalizeMap.sigMax(0.25f);	
+	
 	// zero uncalibratable area
 	for(int j=0; j<mSrcHeight; ++j)
 	{
@@ -1441,23 +1425,19 @@ float TouchTracker::Calibrator::makeNormalizeMap()
 			}
 		}
 	}	
-	
-	/*
-	// correct data at top/bottom edges for edge mechanics
-	for(int i=0; i<mSrcWidth; ++i)
+		
+	// correct edges
+	for(int j=0; j<mSrcHeight; ++j)
 	{
-		mNormalizeMap(i, 0) *= 1.6;
-		mNormalizeMap(i, 1) *= 1.3;
-		mNormalizeMap(i, 2) *= 1.15;
-		mNormalizeMap(i, mSrcHeight - 3) *= 1.15;
-		mNormalizeMap(i, mSrcHeight - 2) *= 1.3;
-		mNormalizeMap(i, mSrcHeight - 1) *= 1.6;
-	}
-	*/
-	
-	
-	
-	
+		for(int i=0; i<mSrcWidth; ++i)
+		{			
+			if((j == 0) || (j == mSrcHeight - 1))
+			{
+				mNormalizeMap(i, j) *= 2.f;
+			}
+		}
+	}	
+		
 	// return maximum
 	Vec3 vmax = mNormalizeMap.findPeak();
 	float rmax = vmax.z();
@@ -1537,28 +1517,40 @@ Vec2 TouchTracker::Calibrator::centroidPeak(const MLSignal& in)
 	return Vec2(sxz/sz, syz/sz);
 }
 
+// input: the pressure data, after static calibration (tare) but otherwise raw.
+// input feeds a state machine that first collects a normalization map, then
+// collects a touch shape, or kernel, at each point. 
 int TouchTracker::Calibrator::addSample(const MLSignal& m)
 {
 	int r = 0;
 	static Vec2 intPeak1;
-	static MLSignal f2(mSrcWidth, mSrcHeight);
-	static MLSignal tare(mSrcWidth, mSrcHeight);
 	
-	// simple lopass filter for calibration
+	static MLSignal f2(mSrcWidth, mSrcHeight);
+	static MLSignal input(mSrcWidth, mSrcHeight);
+	static MLSignal tare(mSrcWidth, mSrcHeight);
+	static MLSignal normTemp(mSrcWidth, mSrcHeight);
+	
+	float kc, ke, kk;
+	kc = 4./16.; ke = 2./16.; kk=1./16.;
+	
+	// simple lopass time filter for calibration
 	f2 = m;
 	f2.subtract(mFilteredInput);
 	f2.scale(0.1f);
 	mFilteredInput.add(f2);
-	
+	input = mFilteredInput;
+	input.sigMax(0.);		
+		
 	// get peak of sample data
-	Vec3 testPeak = mFilteredInput.findPeak();	
-	float testZ = testPeak.z();
+	Vec3 testPeak = input.findPeak();	
+	float peakZ = testPeak.z();
 	
 	const int startupSamples = 1000;
+	const int waitAfterNormalize = 2000;
 	if (mTotalSamples < startupSamples)
 	{
 		age = 0;
-		mStartupSum += testZ;
+		mStartupSum += peakZ;
 		if(mTotalSamples % 100 == 0)
 		{
 			debug() << ".";
@@ -1572,7 +1564,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 		debug() << "\n****************************************************************\n\n";
 		debug() << "OK, done collecting silence (auto threshold: " << mAutoThresh << "). \n";
 		debug() << "Now please slide a palm or other flat object across the surface,  \n";
-		debug() << "applying a constant and even pressure, until all the rectangles \n";
+		debug() << "applying a firm and even pressure, until all the rectangles \n";
 		debug() << "at left turn blue.  \n\n";
 		
 		mNormalizeMap.clear();
@@ -1581,31 +1573,42 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	}		
 	else if (mCollectingNormalizeMap)
 	{
-		if(testZ > mAutoThresh)
+		// smooth temp signal
+		normTemp.copy(input);
+		
+		// TODO smoothing is good but the zeroes at edges are a problem! 
+		
+//		What if we make a border with ones?
+		
+		normTemp.convolve3x3r(kc, ke, kk);		
+//		normTemp.convolve3x3r(kc, ke, kk);		
+				
+		if(peakZ > mAutoThresh)
 		{
 			// collect additions in temp signals
-			mTemp.clear();
-			mTemp2.clear();
+			mTemp.clear(); // adds to map
+			mTemp2.clear(); // adds to sample count
 			
-			// where input > thresh and input is near max current input, add to sample count. 		
+			// where input > thresh and input is near max current input, add data. 		
 			for(int j=0; j<mHeight; ++j)
 			{
 				for(int i=0; i<mWidth; ++i)
 				{
-					float z = mFilteredInput(i, j);
-					if(z > testZ * 0.25f)
+					// test threshold with smoothed data
+					float testZ = normTemp(i, j);
+					// but add actual samples from unsmoothed input
+					float z = input(i, j);
+					if(testZ > peakZ * 0.25f)
 					{
-						mTemp(i, j) += z;
+						mTemp(i, j) += z / testZ;
 						mTemp2(i, j) += 1.0;		
 					}
 				}
 			}
 			
-			// blur temp signals
-			float kc, ke, kk;
-			kc = 4./16.; ke = 2./16.; kk=1./16.;
-			mTemp.convolve3x3r(kc, ke, kk);				
-			mTemp2.convolve3x3r(kc, ke, kk);	
+	// blurring sample may not be needed			
+	//	mTemp.convolve3x3r(kc, ke, kk);		
+	//	mTemp2.convolve3x3r(kc, ke, kk);		
 			
 			// add temp signals to data						
 			mNormalizeMap.add(mTemp);
@@ -1618,10 +1621,10 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 		if(doneCollectingNormalizeMap())
 		{				
 			float mapMaximum = makeNormalizeMap();	
-			mAutoThresh *= mapMaximum;	
 						
 			debug() << "\n****************************************************************\n\n";
-			debug() << "\n\nOK, done collecting normalize map. Please lift your hands...\n";
+			debug() << "\n\nOK, done collecting normalize map. (max = " << mapMaximum << ").\n";
+			debug() << "Please lift your hands.";
 			mCollectingNormalizeMap = false;
 			mWaitSamplesAfterNormalize = 0;
 			mVisSignal.clear();
@@ -1630,15 +1633,19 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	}
 	else
 	{
-		if(mWaitSamplesAfterNormalize < startupSamples)
+		if(mWaitSamplesAfterNormalize < waitAfterNormalize)
 		{
-			mStartupSum += testZ;
+			mStartupSum += peakZ;
 			mWaitSamplesAfterNormalize++;
+			if(mTotalSamples % 100 == 0)
+			{
+				debug() << ".";
+			}
 		}
-		else if(mWaitSamplesAfterNormalize == startupSamples)
+		else if(mWaitSamplesAfterNormalize == waitAfterNormalize)
 		{
 			mWaitSamplesAfterNormalize++;
-			debug() << "OK, done collecting silence again (auto threshold: " << mAutoThresh << "). \n";
+			debug() << "\nOK, done collecting silence again (auto threshold: " << mAutoThresh << "). \n";
 
 			debug() << "\n****************************************************************\n\n";
 			debug() << "Now please slide a single finger over the  \n";
@@ -1650,41 +1657,27 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 			debug() << "\n";
 		
 		}
-		else if(testZ > mAutoThresh)
+		else if(peakZ > mAutoThresh)
 		{
 			// normalize input
-			mTemp.copy(mFilteredInput);
+			mTemp.copy(input);
 			mTemp.multiply(mNormalizeMap);
+		
+			// smooth input	
+			mTemp.convolve3x3r(kc, ke, kk);
+			
+			// get corrected peak
 			mPeak = mTemp.findPeak();
-			
-// TODO for better kernel			
-			mPeak = mTemp.correctPeak(mPeak.x(), mPeak.y());	
-			
-			
-	//		mPeak += cPeak;
-	//		mPeak *= (0.5f);
-
-			/*
-
-			Vec2 dPeak = newPeak - mPeak;
-			mPeak += dPeak*0.1f;
-			*/
-			
+			mPeak = mTemp.correctPeak(mPeak.x(), mPeak.y());							
 			Vec2 minPos(2.0, 0.);
 			Vec2 maxPos(mWidth - 3., mHeight - 1.);
 			mPeak = vclamp(mPeak, minPos, maxPos);
 		
-			//float peakZ = mTemp(mPeak);
-			
 			age++; // continue touch
 			// get sample from input around peak and normalize
 			mIncomingSample.clear();
 			mIncomingSample.add2D(m, -mPeak + Vec2(kTemplateRadius, kTemplateRadius)); 
 			mIncomingSample.sigMax(0.f);
-						
-			float kc, ke, kk;
-			kc = 4./16.; ke = 2./16.; kk=1./16.;
-			mIncomingSample.convolve3x3r(kc, ke, kk);							
 			mIncomingSample.scale(1.f / mIncomingSample(kTemplateRadius, kTemplateRadius));
 
 			// get integer bin	
@@ -1982,7 +1975,7 @@ float TouchTracker::Calibrator::differenceFromTemplateTouchWithMask(const MLSign
 void TouchTracker::dumpTouches()
 {
 	int c = 0;
-	for(int i = 0; i < mTouchesPerFrame; ++i)
+	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
 		const Touch& t = mTouches[i];
 		if(t.isActive())
@@ -2000,7 +1993,7 @@ void TouchTracker::dumpTouches()
 int TouchTracker::countActiveTouches()
 {
 	int c = 0;
-	for(int i = 0; i < mTouchesPerFrame; ++i)
+	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
 		const Touch& t = mTouches[i];
 		if( t.isActive())

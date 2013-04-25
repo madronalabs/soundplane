@@ -69,7 +69,7 @@ public:
     ~SoundplaneFooterView();
     void paint (Graphics& g);
  	void setStatus(const char* stat, const char* client);
-	void setDevice(const char* s);
+	void setHardware(const char* s);
 	void setCalibrateProgress(float p);
 	void setCalibrateState(bool b);
 
@@ -157,8 +157,8 @@ private:
 	std::vector<MLWidget*> mpCarrierLabels; // TEMP TODO use getWidget()
 	
 	int mCalibrateState;
-	int mSoundplaneState;
 	int mSoundplaneClientState;
+	int mSoundplaneDeviceState;
 	SoundplaneViewMode mViewMode;
 	
 };

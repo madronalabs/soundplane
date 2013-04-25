@@ -29,7 +29,7 @@ typedef unsigned char e_pixdata;
 #define NO_MATCH	-1
 
 const int kHysteresisSamples = 25;
-const int kTemplateRadius = 5;
+const int kTemplateRadius = 4;
 const int kTemplateSize = kTemplateRadius*2 + 1;
 const int kTouchHistorySize = 128;
 const int kTouchTrackerMaxPeaks = 16;
@@ -134,7 +134,6 @@ public:
 		float differenceFromTemplateTouch(const MLSignal& in, Vec2 inPos);
 		float differenceFromTemplateTouchWithMask(const MLSignal& in, Vec2 inPos, const MLSignal& mask);
 		void normalizeInput(MLSignal& in);
-		void correctEdges(MLSignal& in);
 		bool isWithinCalibrateArea(int i, int j);
 		
 		MLSignal mCalibrateSignal;
@@ -275,6 +274,7 @@ public:
 	void setDefaultCalibration();
 	
 	void setRotate(bool b);
+	void setNormalize(bool b);
 
 private:	
 
@@ -359,9 +359,10 @@ private:
 	
 	int mRetrigClock;
 	
-	int mTouchesPerFrame;
+	int mMaxTouchesPerFrame;
 	int mRotateOffset;
 	bool mRotate;
+	bool mDoNormalize;
 	
 	std::vector<Vec3> mPeaks;
 	std::vector<Touch> mTouches;

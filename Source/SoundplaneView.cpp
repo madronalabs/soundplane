@@ -92,7 +92,6 @@ SoundplaneFooterView::~SoundplaneFooterView(){}
 
 void SoundplaneFooterView::setStatus (const char* stat, const char* client)
 {
-debug() << "new status: " << stat << ", " << client << "\n";
 	if(mpStatus)
 	{
 		std::string temp(stat);
@@ -106,15 +105,15 @@ debug() << "new status: " << stat << ", " << client << "\n";
 	}
 }
 
-void SoundplaneFooterView::setDevice (const char* c)
+void SoundplaneFooterView::setHardware(const char* c)
 {
 	if(mpDevice)
 	{
 		std::string temp(c);
-		temp += " [client ";
+		temp += ", client v.";
 		temp += ProjectInfo::versionString;
-		temp += "]";
 		mpDevice->setText(temp.c_str());
+		mpDevice->repaint();
 	}
 }
 
@@ -155,8 +154,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	mpTouchView(0),
 	mpGLView3(0),
 	mCalibrateState(-1),
-	mSoundplaneState(-1),
 	mSoundplaneClientState(-1),
+	mSoundplaneDeviceState(-1),
 	mpCurveGraph(0),
 	mpViewModeButton(0),
 	mpMIDIDeviceButton(0),
@@ -303,6 +302,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pD->setDefault(100.);	
 	
 	pB = page0->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
+	
+	// TEMP
+	pB = page0->addToggleButton("normalize", toggleRect.withCenter(9.5, dialY), "normalize", c2);
 	
 //	page0->addToggleButton("show frets", toggleRect.withCenter(10, dialY - 0.25), "frets", c2);
 	mpViewModeButton = page0->addMenuButton("view mode", textButtonRect2.withCenter(13, 8.), "viewmode");
@@ -454,7 +456,7 @@ void SoundplaneView::initialize()
 
 void SoundplaneView::timerCallback()
 {
-//.	if (mDoAnimations)
+//	if (mDoAnimations)
 	{			
 		// poll soundplane status and get info.
 		// we don't have to know what the states mean -- just an index. 
@@ -464,7 +466,7 @@ void SoundplaneView::timerCallback()
 		{
 			bool needsRepaint = false;
 			int calState = mpModel->isCalibrating();
-			int state = mpModel->getDeviceState();
+			int deviceState = mpModel->getDeviceState();
 			int clientState = mpModel->getClientState();
 			
 			if(calState)
@@ -480,19 +482,13 @@ void SoundplaneView::timerCallback()
 				mCalibrateState = calState;
 			}
 			
-			if (state != mSoundplaneState)
+			if ((clientState != mSoundplaneClientState) || (deviceState != mSoundplaneDeviceState))
 			{
+				mpFooter->setHardware(mpModel->getHardwareStr());
 				mpFooter->setStatus(mpModel->getStatusStr(), mpModel->getClientStr());
-				needsRepaint = true;
-				mSoundplaneState = state;
-			}
-			
-			if (clientState != mSoundplaneClientState)
-			{
-
-				mpFooter->setDevice(mpModel->getHardwareStr());
-				needsRepaint = true;
 				mSoundplaneClientState = clientState;
+				mSoundplaneDeviceState = deviceState;
+				needsRepaint = true;
 			}
 			
 			if(needsRepaint)

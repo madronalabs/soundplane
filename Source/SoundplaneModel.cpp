@@ -318,6 +318,11 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 		bool b = v;
 		mTracker.setRotate(b);
 	}
+	else if (p == "normalize")
+	{
+		bool b = v;
+		mTracker.setNormalize(b);
+	}
 	else if (p == "retrig")
 	{
 		mMIDIOutput.setRetrig(bool(v));
@@ -418,18 +423,17 @@ void SoundplaneModel::initialize()
 	setThreadPriority(mProcessThread, 96, true);
 }
 
-int SoundplaneModel::getDeviceState(void)
-{
-	PaUtil_ReadMemoryBarrier(); 
-	return mDeviceState;
-}
-
 int SoundplaneModel::getClientState(void)
 {
 	PaUtil_ReadMemoryBarrier(); 
 	return mKymaIsConnected;
 }
 
+int SoundplaneModel::getDeviceState(void)
+{
+	PaUtil_ReadMemoryBarrier(); 
+	return mDeviceState;
+}
 void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 {
 	unsigned long instrumentModel = 1; // Soundplane A
@@ -543,6 +547,7 @@ void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& nor
 	}
 }
 
+// get a string that explains what Soundplane hardware and firmware and client versions are running.
 const char* SoundplaneModel::getHardwareStr()
 {
 	long v;
@@ -552,7 +557,7 @@ const char* SoundplaneModel::getHardwareStr()
 	switch(mDeviceState)
 	{
 		case kNoDevice:
-			snprintf(mHardwareStr, miscStrSize, "<no device>");
+			snprintf(mHardwareStr, miscStrSize, "no device");
 			break;
 		case kDeviceConnected:
 		case kDeviceHasIsochSync:
@@ -564,7 +569,7 @@ const char* SoundplaneModel::getHardwareStr()
 			b = v >> 4 & 0x0F, 
 			c = v & 0x0F;
 	
-			snprintf(mHardwareStr, miscStrSize, "%s #%s [firmware %d.%d.%d]", kSoundplaneAName, serial, a, b, c);
+			snprintf(mHardwareStr, miscStrSize, "%s #%s, firmware %d.%d.%d", kSoundplaneAName, serial, a, b, c);
 			break;
 
 		default:
@@ -574,16 +579,17 @@ const char* SoundplaneModel::getHardwareStr()
 	return mHardwareStr;
 }
 
+// get the string to report general connection status.
 const char* SoundplaneModel::getStatusStr()
 {
 	switch(mDeviceState)
 	{
 		case kNoDevice:
-			snprintf(mStatusStr, miscStrSize, "waiting for Soundplane..");
+			snprintf(mStatusStr, miscStrSize, "waiting for Soundplane...");
 			break;
 			
 		case kDeviceConnected:
-			snprintf(mStatusStr, miscStrSize, "waiting for isochronous data..");
+			snprintf(mStatusStr, miscStrSize, "waiting for isochronous data...");
 			break;
 			
 		case kDeviceHasIsochSync:
@@ -597,7 +603,8 @@ const char* SoundplaneModel::getStatusStr()
 	return mStatusStr;
 }
 
-// TODO more clients
+// get the string to report a specific client connection above and beyond the usual
+// OSC / MIDI communication.
 const char* SoundplaneModel::getClientStr()
 {
 	switch(mKymaIsConnected)
