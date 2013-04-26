@@ -602,17 +602,20 @@ void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest)
 	}
 }
 
-// set data from edge carriers, unused on Soundplane A, to 0.
+// set data from edge carriers, unused on Soundplane A, to duplicate 
+// actual data nearby.
 void K1_clear_edges(float *pDest)
 {
 	float *pDestRow;
 	for(int i=0; i<MLK1_N_PICKUPS_PER_BOARD; ++i)
 	{
 		pDestRow = pDest + MLK1_N_CARRIERS*2*i;
-		pDestRow[0] = 0.;
-		pDestRow[1] = 0.;
-		pDestRow[MLK1_N_CARRIERS*2 - 1] = 0.;
-		pDestRow[MLK1_N_CARRIERS*2 - 2] = 0.;
+		const float zl = pDestRow[2];
+		pDestRow[0] = zl;
+		pDestRow[1] = zl;
+		const float zr = pDestRow[MLK1_N_CARRIERS*2 - 3];
+		pDestRow[MLK1_N_CARRIERS*2 - 1] = zr;
+		pDestRow[MLK1_N_CARRIERS*2 - 2] = zr;
 	}
 }
 

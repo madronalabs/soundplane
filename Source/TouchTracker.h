@@ -139,6 +139,7 @@ public:
 		MLSignal mCalibrateSignal;
 		MLSignal mVisSignal;
 		MLSignal mNormalizeMap;
+		MLSignal mEdgeCorrectMap;
 		bool mCollectingNormalizeMap;
 		Vec2 mVisPeak;
 		float mAvgDistance;
@@ -146,6 +147,8 @@ public:
 	private:	
 		void makeDefaultTemplate();
 		float makeNormalizeMap();
+		void makeEdgeCorrectMap();
+		
 		void getAverageTemplateDistance();
 		Vec2 centroidPeak(const MLSignal& in);	
 					

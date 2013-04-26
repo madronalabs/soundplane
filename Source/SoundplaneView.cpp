@@ -287,7 +287,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 
 	pD = page0->addDial("thresh", dialRect.withCenter(2.0, dialY), "z_thresh", c2);
 	pD->setRange(0., 0.025, 0.001);	
-	pD->setDefault(0.005);	
+	pD->setDefault(0.01);	
 	
 	pD = page0->addDial("max force", dialRect.withCenter(3.5, dialY), "z_max", c2);
 	pD->setRange(0.01, 0.1, 0.001);	

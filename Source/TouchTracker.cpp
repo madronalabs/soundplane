@@ -1219,6 +1219,9 @@ TouchTracker::Calibrator::Calibrator(int w, int h) :
 	mIncomingSample.setDims(kTemplateSize, kTemplateSize);
 	mVisSignal.setDims(mWidth, mHeight);
 	mNormalizeMap.setDims(mSrcWidth, mSrcHeight);
+	mEdgeCorrectMap.setDims(mSrcWidth, mSrcHeight);
+	makeEdgeCorrectMap();
+	
 	mNormalizeCount.setDims(mSrcWidth, mSrcHeight);
 	mFilteredInput.setDims(mSrcWidth, mSrcHeight);
 	mTemp.setDims(mSrcWidth, mSrcHeight);
@@ -1389,7 +1392,6 @@ bool TouchTracker::Calibrator::isWithinCalibrateArea(int i, int j)
 
 float TouchTracker::Calibrator::makeNormalizeMap()
 {			
-	// get mean within calibratable area
 	int samples = 0;
 	float sum = 0.f;
 	for(int j=0; j<mSrcHeight; ++j)
@@ -1398,55 +1400,84 @@ float TouchTracker::Calibrator::makeNormalizeMap()
 		{			
 			if(isWithinCalibrateArea(i, j))
 			{
-				mNormalizeMap(i, j) /= mNormalizeCount(i, j);
-				sum += mNormalizeMap(i, j);
+				float sampleSum = mNormalizeMap(i, j);
+				float sampleCount = mNormalizeCount(i, j);
+				float sampleAvg = sampleSum / sampleCount;
+				mNormalizeMap(i, j) = 1.f / sampleAvg;
+				sum += sampleAvg;
 				samples++;
 			}
-		}
-	}	
-	float mean = sum/(float)samples;
-			
-	// convert map to (mean) / (z).
-	mNormalizeMap.inv();
-	mNormalizeMap.scale(mean);	
-	
-	// constrain output values to salvage situation in case of weird outliers
-	mNormalizeMap.sigMin(2.5f);	
-	mNormalizeMap.sigMax(0.25f);	
-	
-	// zero uncalibratable area
-	for(int j=0; j<mSrcHeight; ++j)
-	{
-		for(int i=0; i<mSrcWidth; ++i)
-		{			
-			if(!isWithinCalibrateArea(i, j))
+			else
 			{
 				mNormalizeMap(i, j) = 0.f;
 			}
 		}
 	}	
-		
-	// correct edges
-	for(int j=0; j<mSrcHeight; ++j)
-	{
-		for(int i=0; i<mSrcWidth; ++i)
-		{			
-			if((j == 0) || (j == mSrcHeight - 1))
-			{
-				mNormalizeMap(i, j) *= 2.f;
-			}
-		}
-	}	
-		
+
+	float mean = sum/(float)samples;
+	mNormalizeMap.scale(mean);	
+
+	// constrain output values to salvage situation in case of weird outliers
+	mNormalizeMap.sigMin(8.f);	
+	mNormalizeMap.sigMax(0.125f);	
+	
 	// return maximum
 	Vec3 vmax = mNormalizeMap.findPeak();
 	float rmax = vmax.z();
 	
-	debug() << "************ MAP: (max " << rmax << ")\n";
-	mNormalizeMap.dump(mNormalizeMap.getBoundsRect());
-	
 	mHasNormalizeMap = true;
 	return rmax;
+}
+
+void TouchTracker::Calibrator::makeEdgeCorrectMap()
+{			
+	float bx = 1.0f;
+	float by = 1.0f;
+	float k = 4.f;
+	int nx = 2; // null columns at edges
+	Vec2 nv(1.f/bx, 1.f/by);
+	Vec2 minPos(bx + nx, by);
+	Vec2 maxPos(mWidth - bx - nx, mHeight - by);
+
+	float xMin = bx + nx;
+	float xMax = mWidth - bx - nx;
+	float yMin = by;
+	float yMax = mHeight - by;
+	
+	mEdgeCorrectMap.clear();
+	for(int j=0; j<mHeight; ++j)
+	{
+		for(int i=nx; i<mWidth - nx; ++i)
+		{			
+			float m = 1.f;
+			/*
+			Vec2 p1(i + 0.5f, j + 0.5f);
+			Vec2 p2 = vclamp(p1, minPos, maxPos);
+			Vec2 dv = p1 - p2;
+			dv *= nv;
+			float dist = dv.magnitude();
+			mEdgeCorrectMap(i, j) = 1.f + dist*dist*k;
+			*/
+			
+			float x1 = i + 0.5f;
+			float x2 = clamp(x1, xMin, xMax);
+			float dx = fabs(x1 - x2);
+			dx /= bx; // normalize
+			m = dx;
+						
+			float y1 = j + 0.5f;
+			float y2 = clamp(y1, yMin, yMax);
+			float dy = fabs(y1 - y2);
+			dy /= by; // normalize
+			m *= dy;
+			m *= k;
+			m += 1.f;
+			
+			mEdgeCorrectMap(i, j) = m;
+			
+		}
+	}	
+	mEdgeCorrectMap.dump(mEdgeCorrectMap.getBoundsRect());
 }
 
 void TouchTracker::Calibrator::getAverageTemplateDistance()
@@ -1474,47 +1505,6 @@ void TouchTracker::Calibrator::getAverageTemplateDistance()
 		}
 	}
 	mAvgDistance = sum / (float)samples;
-}
-
-
-// the problem with getting a touch location in the uncalibrated data is that junctions
-// with less response to pressure will never become the peak.  One way to solve this
-// problem would be to do a two-pass calibration: first gathering the normalize map
-// and then getting the peaks from the normalized data. 
-//
-// Instead, since the normalize function is smooth, we can make things easier for the
-// user and collect peaks while collecting normalize data, using this function.
-// It looks at the general area where values are higher, and determines the approximate
-// center. 
-
- 
-Vec2 TouchTracker::Calibrator::centroidPeak(const MLSignal& in)
-{
-	float sxz = 0.f;
-	float syz = 0.f;
-	float sz = 0.f;
-	
-	mTemp.copy(in);
-	
-	const int numPeaks = 3;
-	Vec2 peaks[numPeaks];
-	
-	for(int p=0; p<numPeaks; ++p)
-	{
-		peaks[p] = mTemp.findPeak();
-		mTemp((int)peaks[p].x(), (int)peaks[p].y()) = 0.;
-	}
-	
-	for(int p=0; p<numPeaks; ++p)
-	{
-		int x = peaks[p].x();
-		int y = peaks[p].y();		
-		float z = in(x, y);
-		sxz += x*z;
-		syz += y*z;
-		sz += z;
-	}		
-	return Vec2(sxz/sz, syz/sz);
 }
 
 // input: the pressure data, after static calibration (tare) but otherwise raw.
@@ -1573,16 +1563,10 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	}		
 	else if (mCollectingNormalizeMap)
 	{
-		// smooth temp signal
-		normTemp.copy(input);
-		
-		// TODO smoothing is good but the zeroes at edges are a problem! 
-		
-//		What if we make a border with ones?
-		
-		normTemp.convolve3x3r(kc, ke, kk);		
-//		normTemp.convolve3x3r(kc, ke, kk);		
-				
+		// smooth temp signal, duplicating values at border
+		normTemp.copy(input);		
+		normTemp.convolve3x3rb(kc, ke, kk);		
+	
 		if(peakZ > mAutoThresh)
 		{
 			// collect additions in temp signals
@@ -1595,20 +1579,17 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 				for(int i=0; i<mWidth; ++i)
 				{
 					// test threshold with smoothed data
-					float testZ = normTemp(i, j);
+					float zSmooth = normTemp(i, j);
 					// but add actual samples from unsmoothed input
 					float z = input(i, j);
-					if(testZ > peakZ * 0.25f)
+					if(zSmooth > peakZ * 0.25f)
 					{
-						mTemp(i, j) += z / testZ;
-						mTemp2(i, j) += 1.0;		
+						// map must = count * z/peakZ
+						mTemp(i, j) = z / peakZ;
+						mTemp2(i, j) = 1.0f;	
 					}
 				}
 			}
-			
-	// blurring sample may not be needed			
-	//	mTemp.convolve3x3r(kc, ke, kk);		
-	//	mTemp2.convolve3x3r(kc, ke, kk);		
 			
 			// add temp signals to data						
 			mNormalizeMap.add(mTemp);

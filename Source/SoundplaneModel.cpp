@@ -126,7 +126,7 @@ SoundplaneModel::SoundplaneModel() :
 	setModelParam("lopass", 100.);
 	
 	setModelParam("snap", 1.);
-	setModelParam("z_thresh", 0.005);
+	setModelParam("z_thresh", 0.01);
 	setModelParam("z_max", 0.05);
 	setModelParam("z_curve", 0.25);
 	setModelParam("display_scale", 1.);
