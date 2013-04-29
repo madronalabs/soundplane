@@ -303,9 +303,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	
 	pB = page0->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
 	
-	// TEMP
-	pB = page0->addToggleButton("normalize", toggleRect.withCenter(9.5, dialY), "normalize", c2);
-	
 //	page0->addToggleButton("show frets", toggleRect.withCenter(10, dialY - 0.25), "frets", c2);
 	mpViewModeButton = page0->addMenuButton("view mode", textButtonRect2.withCenter(13, 8.), "viewmode");
 
@@ -344,7 +341,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 
 	pB = page1->addToggleButton("quantize", toggleRect.withCenter(4.5, topDialsY), "quantize", c2);
 	pB = page1->addToggleButton("note lock", toggleRect.withCenter(5.5, topDialsY), "lock", c2);
-	pB = page1->addToggleButton("retrig", toggleRect.withCenter(6.5, topDialsY), "retrig", c2);
+	pB = page1->addToggleButton("glissando", toggleRect.withCenter(6.5, topDialsY), "retrig", c2);
 
 	pD = page1->addDial("portamento", dialRectSmall.withCenter(8., topDialsY), "snap", c2);
 	pD->setRange(0., 1000., 10);	
@@ -406,9 +403,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	
 	// utility buttons
 	page2->addTextButton("select carriers", MLRect(0, 1, 3, 0.4), "select_carriers");	
-	page2->addTextButton("calibrate tracker", MLRect(3.5, 1, 3, 0.4), "calibrate_tracker");	
-	page2->addTextButton("cancel", MLRect(3.5, 1.5, 3, 0.4), "calibrate_tracker_cancel");	
-	page2->addTextButton("use default", MLRect(3.5, 2., 3, 0.4), "calibrate_tracker_default");	
+	page2->addTextButton("normalize", MLRect(3.5, 1, 3, 0.4), "normalize");	
+	page2->addTextButton("cancel normalize", MLRect(3.5, 1.5, 3, 0.4), "normalize_cancel");	
+	page2->addTextButton("use defaults", MLRect(3.5, 2., 3, 0.4), "normalize_default");	
 	
 	// tracker calibration view
 	MLRect TCVRect(0, 3.f, 6.5, 3.); 

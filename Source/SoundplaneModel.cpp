@@ -247,10 +247,6 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 		mMIDIOutput.setMaxTouches(v);
 		mOSCOutput.setMaxTouches(v);
 	}
-	else if (p == "combine_radius")
-	{
-		mTracker.setCombineRadius(v);
-	}
 	else if (p == "lopass")
 	{
 		mTracker.setLopass(v);
@@ -483,7 +479,7 @@ void SoundplaneModel::handleDeviceError(int errorType, int data1, int data2, flo
 			if(!mSelectingCarriers)
 			{
 				debug() << "SoundplaneModel::handleDeviceError: diff too large (" << fd1 << ")\n";
-				beginCalibrate();
+				debug() << "startup count = " << data1 << "\n";
 			}
 			break;
 		case kDevGapInSequence:
@@ -662,12 +658,6 @@ void SoundplaneModel::setupZones()
 	}
 }
 
-/*
-{1.2, 2.7, 4.2, 5.7}
-1.55, 1.55, 1.55
-(3.5)
-*/
-
 // turn (x, y) position into a continuous 2D key position. Integer values of the
 // x and y axes will be centered on the Soundplane surface keys. 
 //
@@ -676,23 +666,10 @@ Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy)
 	MLRange xRange(4.5f, 60.5f);
 	xRange.convertTo(MLRange(1.f, 29.f));
 	float kx = clamp(xRange(xy.x()), -0.5f, 29.5f);
-	
-	MLRange yRange(1.2, 5.8);  		
+
+	MLRange yRange(1.35, 5.65);  // Soundplane A as measured		
 	yRange.convertTo(MLRange(0.5f, 3.5f));
 	float ky = clamp(yRange(xy.y()), -0.5f, 4.5f);
-
-	return Vec2(kx, ky);
-}
-
-Vec2 SoundplaneModel::keyGridToXY(Vec2 g) 
-{
-	MLRange xRange(1.f, 29.f);
-	xRange.convertTo(MLRange(4.5f, 60.5f));
-	float kx = xRange(g.x());
-	
-	MLRange yRange(0.5f, 3.5f);  		
-	yRange.convertTo(MLRange(1.2, 5.8));
-	float ky = yRange(g.y());
 
 	return Vec2(kx, ky);
 }
@@ -1208,6 +1185,20 @@ void SoundplaneModel::beginSelectCarriers()
 	}
 }
 
+float SoundplaneModel::getSelectCarriersProgress()
+{
+	float p;
+	if(mSelectingCarriers)
+	{
+		p = (float)mSelectCarriersStep / (float)kStandardCarrierSets;
+	}
+	else
+	{
+		p = 0.f;
+	}
+	return p;
+}
+
 void SoundplaneModel::nextSelectCarriersStep()
 {
 	// clear data
@@ -1382,7 +1373,7 @@ bool SoundplaneModel::isWithinTrackerCalibrateArea(int i, int j)
 // --------------------------------------------------------------------------------
 #pragma mark tracker calibration
 
-void SoundplaneModel::beginCalibrateTracker()
+void SoundplaneModel::beginNormalize()
 {
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
 	{	
@@ -1390,7 +1381,7 @@ void SoundplaneModel::beginCalibrateTracker()
 	}
 }
 
-void SoundplaneModel::cancelCalibrateTracker()
+void SoundplaneModel::cancelNormalize()
 {
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
 	{	
@@ -1418,16 +1409,10 @@ bool SoundplaneModel::trackerIsCollectingMap()
 	return r;
 }
 
-void SoundplaneModel::setDefaultTrackerCalibration()
+void SoundplaneModel::setDefaultNormalize()
 {
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
 	{	
-		mTracker.setDefaultCalibration();
+		mTracker.setDefaultNormalizeMap();
 	}
 }
-
-/*NRPN stands for "Non-Registered Parameter Number" and is part of the MIDI specification for control of electronic musical instruments. NRPNs allow for manufacturer-specific or instrument-specific MIDI controllers that are not part of the basic MIDI standard.
-Unlike other MIDI controllers (such as velocity, modulation, volume, etc), NRPNs require more than one piece of controller data to be sent. First, controller 99 - NRPN Most Significant Bit (MSB) - followed by 98 - NRPN Least Significant Bit (LSB) sent as a pair specify the parameter to be changed. Controller 6 then sets the value of the parameter in question. Controller 38 may optionally then be sent as a fine adjustment to the value set by controller 6.
-This fine adjustment is part of the conventional MIDI controller specification, where any of the first 32 controls can be optionally paired with a control offset 32 higher. This is the rare 14-bit Continuous Controller feature of the MIDI specification, and NRPNs simply take advantage of that existing option in the same way to offer 16,384 possible values instead of only 128.
-NRPNs allow for MIDI control of a vastly greater number of parameters than the basic 121 set out in the basic MIDI standard.
-*/

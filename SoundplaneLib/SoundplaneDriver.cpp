@@ -51,7 +51,8 @@ SoundplaneDriver::SoundplaneDriver() :
 	mpTransactionData(0),
 	mpOutputData(0),
 	mTransactionsInFlight(0),
-	mState(kNoDevice)
+	mState(kNoDevice),
+	startupCtr(0)
 {
 
 	clientRef = 0;
@@ -520,6 +521,10 @@ int SoundplaneDriver::setCarriers(const unsigned char *cData)
 	{
 		mCurrentCarriers[i] = cData[i];
 	}
+	
+	// wait for data to settle after setting carriers
+	// TODO understand this better
+	startupCtr = 0;
 
 	request.bmRequestType = USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
     request.bRequest = MLSP_REQUEST_CARRIERS;
@@ -535,6 +540,8 @@ int SoundplaneDriver::enableCarriers(unsigned long mask)
 	if (!dev) return 0;
     IOUSBDevRequest	request;
 
+	startupCtr = 0;
+
     request.bmRequestType = USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
     request.bRequest = 1;
 	request.wValue = mask >> 16;
@@ -547,6 +554,7 @@ int SoundplaneDriver::enableCarriers(unsigned long mask)
 
 void SoundplaneDriver::setDefaultCarriers()
 {
+	startupCtr = 0;
 	for(int i=0; i < kSoundplaneSensorWidth; ++i)
 	{
 		mCurrentCarriers[i] = kDefaultCarriers[i];
@@ -1647,7 +1655,7 @@ void *soundplaneProcessThread(void *arg)
 					{
 						K1_unpack_float2((unsigned char *)pPayload0, (unsigned char *)pPayload1, pWorkingFrame);
 						K1_clear_edges(pWorkingFrame);
-						if(initCtr > 100)
+						if(k1->startupCtr > kSoundplaneStartupFrames)
 						{
 							float df = frameDiff(pPrevFrame, pWorkingFrame, kSoundplaneWidth * kSoundplaneHeight);
 							if (df < kMaxFrameDiff)
@@ -1657,19 +1665,19 @@ void *soundplaneProcessThread(void *arg)
 							}
 							else
 							{
-								// possible sensor glitch
-								initCtr = 0;
-								k1->reportDeviceError(kDevDataDiffTooLarge, 0, 0, df, 0.);
+								// possible sensor glitch.  also occurs when changing carriers.
+								k1->reportDeviceError(kDevDataDiffTooLarge, k1->startupCtr, 0, df, 0.);
 								k1->dumpDeviceData(pPrevFrame, kSoundplaneWidth * kSoundplaneHeight);
 								k1->dumpDeviceData(pWorkingFrame, kSoundplaneWidth * kSoundplaneHeight);
+								k1->startupCtr = 0;
 							}
 						}
 						else
 						{
 							// wait for initialization
-							//k1->reclockFrameToBuffer(pWorkingFrame);
-							initCtr++;
+							k1->startupCtr++;
 						}
+						
 						memcpy(pPrevFrame, pWorkingFrame, outputFrameSize);
 						
 						// TODO if there is a small constant difference like an offset across the surface, 

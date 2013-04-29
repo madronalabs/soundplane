@@ -29,14 +29,14 @@ typedef unsigned char e_pixdata;
 #define NO_MATCH	-1
 
 const int kHysteresisSamples = 25;
-const int kTemplateRadius = 4;
+const int kTemplateRadius = 3;
 const int kTemplateSize = kTemplateRadius*2 + 1;
 const int kTouchHistorySize = 128;
 const int kTouchTrackerMaxPeaks = 16;
 
 const int kPassesToCalibrate = 2;
-const float kCalibrateTrackerThresh = 0.003;
-const int kNormMapSamples = 512;
+const float kNormalizeThresh = 0.003;
+const int kNormMapSamples = 1024;
 
 // Soundplane A
 const int kCalibrateWidth = 64;
@@ -127,7 +127,7 @@ public:
 		bool hasCalibration();
 		Vec2 getBinPosition(Vec2 p) const;		
 		void setCalibration(const MLSignal& v);
-		void setDefaultCalibration();
+		void setDefaultNormalizeMap();
 		void setNormalizeMap(const MLSignal& m);
 		
 		float getZAdjust(const Vec2 p);
@@ -139,7 +139,6 @@ public:
 		MLSignal mCalibrateSignal;
 		MLSignal mVisSignal;
 		MLSignal mNormalizeMap;
-		MLSignal mEdgeCorrectMap;
 		bool mCollectingNormalizeMap;
 		Vec2 mVisPeak;
 		float mAvgDistance;
@@ -147,7 +146,6 @@ public:
 	private:	
 		void makeDefaultTemplate();
 		float makeNormalizeMap();
-		void makeEdgeCorrectMap();
 		
 		void getAverageTemplateDistance();
 		Vec2 centroidPeak(const MLSignal& in);	
@@ -233,8 +231,6 @@ public:
 	int touchOccupyingKey(int k);
 	bool keyIsOccupied(int k) { return (touchOccupyingKey(k) >= 0); }
 	int getNeighborFlags(int key);
-
-	void setCombineRadius(float r) { mCombineRadius = r; }
 	
 	int addTouch(const Touch& t);
 	int getTouchIndexAtKey(const int k);
@@ -274,7 +270,7 @@ public:
 	const MLSignal& getNormalizeMap() { return mCalibrator.mNormalizeMap; }
 	void setNormalizeMap(const MLSignal& v) { mCalibrator.setNormalizeMap(v); }
 	void setListener(Listener* pL) { mpListener = pL; }
-	void setDefaultCalibration();
+	void setDefaultNormalizeMap();
 	
 	void setRotate(bool b);
 	void setNormalize(bool b);
@@ -283,7 +279,6 @@ private:
 
 	Listener* mpListener;
 
-	Vec2 correctPeakWithBorder(const MLSignal& in, int px, int py);
 	Vec3 closestTouch(Vec2 pos);
 	float getInhibitThreshold(Vec2 a);
 	void addPeakToKeyState(const MLSignal& in);
@@ -323,8 +318,6 @@ private:
 	
 	float mSmoothing;
 	float mForceCurve;
-	
-	float mCombineRadius;
 	
 	float mOnThreshold;
 	float mOffThreshold;

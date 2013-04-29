@@ -60,6 +60,10 @@ public:
 
 	SoundplaneModel* getModel() { return mpSoundplaneModel; }
 	
+	// show nice message, run calibration, etc. if prefs are not found. 
+	void doWelcomeTasks(bool forced);
+	bool confirmForceSetup();
+	
 private:
 	SoundplaneModel* mpSoundplaneModel;	
 	SoundplaneView* mpSoundplaneView;

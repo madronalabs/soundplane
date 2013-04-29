@@ -86,23 +86,23 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 	{
 	
 	}
-	else if (p == "calibrate_tracker")
+	else if (p == "normalize")
 	{
 		mpSoundplaneModel->beginCalibrate();
-		mpSoundplaneModel->beginCalibrateTracker();
+		mpSoundplaneModel->beginNormalize();
 		if(mpSoundplaneView)
 		{
-			MLWidget* pB = mpSoundplaneView->getWidget("calibrate_tracker_cancel");
+			MLWidget* pB = mpSoundplaneView->getWidget("normalize_cancel");
 			pB->getComponent()->setEnabled(true);
 		}
 	}
-	else if (p == "calibrate_tracker_cancel")
+	else if (p == "normalize_cancel")
 	{
-		mpSoundplaneModel->cancelCalibrateTracker();
+		mpSoundplaneModel->cancelNormalize();
 	}
-	else if (p == "calibrate_tracker_default")
+	else if (p == "normalize_default")
 	{
-		mpSoundplaneModel->setDefaultTrackerCalibration();
+		mpSoundplaneModel->setDefaultNormalize();
 	}
 }
 
@@ -311,16 +311,76 @@ debug() << "kyma mode " << isProbablyKyma << "\n";
 }
 
 
-/*
-void SoundplaneController::doMidiMenuItem(int result)
+
+
+
+//
+class SoundplaneSetupThread  : public ThreadWithProgressWindow
 {
+public:
+    SoundplaneSetupThread(SoundplaneModel* m, Component* parent)
+        : ThreadWithProgressWindow (String::empty, true, true, 1000, "Cancel", parent),
+		mpModel(m)
+    {
+        setStatusMessage ("Welcome to Soundplane!");
+    }
 
-debug() << "MIDI channel :"	<< result << "\n";
+    ~SoundplaneSetupThread()
+    {
+    }
 
-//	if(pTrigButton)
-//		pTrigButton->setToggleState(false, false);
+    void run()
+    {
+        setProgress (-1.0); // setting a value beyond the range 0 -> 1 will show a spinning bar..
+        wait (2000);
+		
+		while(mpModel->getDeviceState() != kDeviceHasIsochSync)
+		{
+			if (threadShouldExit()) return;
+			wait (1000);
+			setStatusMessage ("Looking for Soundplane. Please connect your Soundplane via USB.");
+		}
+		
+		setStatusMessage ("Selecting carrier frequencies...");
+		mpModel->beginSelectCarriers();
+		while(mpModel->isSelectingCarriers())
+        {
+            if (threadShouldExit()) return;					
+            setProgress (mpModel->getSelectCarriersProgress());
+        }
+    }
+	
+	private:
+		SoundplaneModel* mpModel;
+};
+
+void SoundplaneController::doWelcomeTasks(bool forced)
+{
+	SoundplaneSetupThread demoThread(getModel(), getCurrMenuInstigator());
+	if (demoThread.runThread())
+	{
+		// thread finished normally..
+		AlertWindow::showMessageBox (AlertWindow::NoIcon,
+			String::empty, "Setup successful.", "OK", getCurrMenuInstigator());
+	}
+	else
+	{
+		// user pressed the cancel button..
+		AlertWindow::showMessageBox (AlertWindow::NoIcon,
+			String::empty, "Setup cancelled. Calibration not complete. ",
+			"OK", getCurrMenuInstigator());
+	}
 }
 
-
-*/
+bool SoundplaneController::confirmForceSetup()
+{
+	bool doSetup = AlertWindow::showOkCancelBox(AlertWindow::NoIcon,
+			String::empty,
+			"Reset was triggered by control key.\nTrash existing Soundplane settings?" ,
+			"OK",
+			"Cancel",
+			getCurrMenuInstigator());
+			
+	return doSetup;
+}
 

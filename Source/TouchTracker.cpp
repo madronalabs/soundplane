@@ -40,7 +40,6 @@ TouchTracker::TouchTracker(int w, int h) :
 	mQuantizeToKey(false),
 	mTemplateThresh(0.003),
 	mOverrideThresh(0.01),
-	mCombineRadius(1.),
 	mCount(0),
 	mMaxTouchesPerFrame(0),
 	mBackgroundFilter(1, 1),
@@ -510,27 +509,6 @@ Vec2 TouchTracker::adjustPeakToTemplate(const MLSignal& in, int x, int y)
 	return Vec2(xMin, yMin);
 }
 
-
-Vec2 TouchTracker::correctPeakWithBorder(const MLSignal& in, int px, int py)
-{
-	Vec2 pb = in.correctPeak(px, py);	
-	float x = pb.x();
-	float y = pb.y();
-	if(y < 1.f)
-	{
-		y -= (1.f - y);
-		y = clamp(y, 0.125f, mHeight - 1.125f);
-		pb = Vec2(x, y);
-	}
-	else if(y > mHeight - 2.f)
-	{
-		y += (y - (mHeight - 2.f));
-		y = clamp(y, 0.125f, mHeight - 1.125f);
-		pb = Vec2(x, y);
-	}
-	return pb;
-}
-
 class compareZ 
 {
 public:
@@ -714,7 +692,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			int newPy = newPeakI.y();
 			
 			// get exact location and new key
-			Vec2 correctPos = correctPeakWithBorder(mTemp, newPx, newPy);
+			Vec2 correctPos = mTemp.correctPeak(newPx, newPy);
 			newPos = correctPos;	
 			int newKey = getKeyIndexAtPoint(newPos);												
 			
@@ -850,21 +828,23 @@ Vec3 TouchTracker::closestTouch(Vec2 pos)
 	return(Vec3(t.x, t.y, t.z));
 }
 
+// currently, touches inhibit other new touches near them, below
+// a threshold defined by a 1/r curve from the touch.
 // return the greatest inhibit threshold of any touch at the given position.		
 float TouchTracker::getInhibitThreshold(Vec2 a)
 {
 	float inhibitMax = 1.1f;
-	float inhibitRange = 6.f;
+	float inhibitRange = 4.f;
 	float maxInhibit = 0.f;
 	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
 		const Touch& u = mTouches[i];
 		if (u.isActive())
 		{
-			// don't check against touch at same exact position (self)
 			Vec2 b(u.x, u.y);				
 			float dab = (a - b).magnitude();			
-			if(dab > 0.1f)
+			// don't check against touch at input position (same touch)
+			if(dab > 0.01f)
 			{
 				float dr = 1.f / (1.f + dab*(1.f/inhibitRange));							
 				float inhibitZ = inhibitMax*u.z*dr;
@@ -887,8 +867,7 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 		// add peak to key state, or bail
 		if (z > mOnThreshold*0.25f)
 		{			
-//			Vec2 pos = in.correctPeak(peak.x(), peak.y());	
-			Vec2 pos = correctPeakWithBorder(in, peak.x(), peak.y());	
+			Vec2 pos = in.correctPeak(peak.x(), peak.y());	
 			int key = getKeyIndexAtPoint(pos);
 			if(within(key, 0, mNumKeys))
 			{
@@ -917,6 +896,7 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 	}
 }							
 
+// this is where new touches are born
 void TouchTracker::findTouches()
 {
 	for(int i=0; i<mNumKeys; ++i)
@@ -1098,8 +1078,7 @@ void TouchTracker::process(int)
 		//
 		mInputMinusBackground.copy(mFilteredInput);
 		mInputMinusBackground.subtract(mBackground);
-		
-						
+								
 		// move or remove and filter existing touches
 		//
 		updateTouches(mInputMinusBackground);	
@@ -1181,9 +1160,9 @@ void TouchTracker::process(int)
 #endif	
 }
 
-void TouchTracker::setDefaultCalibration()
+void TouchTracker::setDefaultNormalizeMap()
 {
-	mCalibrator.setDefaultCalibration();
+	mCalibrator.setDefaultNormalizeMap();
 	mpListener->hasNewCalibration(mNullSig, mNullSig, -1.f);
 }
 
@@ -1219,8 +1198,6 @@ TouchTracker::Calibrator::Calibrator(int w, int h) :
 	mIncomingSample.setDims(kTemplateSize, kTemplateSize);
 	mVisSignal.setDims(mWidth, mHeight);
 	mNormalizeMap.setDims(mSrcWidth, mSrcHeight);
-	mEdgeCorrectMap.setDims(mSrcWidth, mSrcHeight);
-	makeEdgeCorrectMap();
 	
 	mNormalizeCount.setDims(mSrcWidth, mSrcHeight);
 	mFilteredInput.setDims(mSrcWidth, mSrcHeight);
@@ -1273,7 +1250,7 @@ void TouchTracker::Calibrator::cancel()
 	}
 }
 
-void TouchTracker::Calibrator::setDefaultCalibration()
+void TouchTracker::Calibrator::setDefaultNormalizeMap()
 {
 	mActive = false;
 	mHasCalibration = false;
@@ -1429,57 +1406,6 @@ float TouchTracker::Calibrator::makeNormalizeMap()
 	return rmax;
 }
 
-void TouchTracker::Calibrator::makeEdgeCorrectMap()
-{			
-	float bx = 1.0f;
-	float by = 1.0f;
-	float k = 4.f;
-	int nx = 2; // null columns at edges
-	Vec2 nv(1.f/bx, 1.f/by);
-	Vec2 minPos(bx + nx, by);
-	Vec2 maxPos(mWidth - bx - nx, mHeight - by);
-
-	float xMin = bx + nx;
-	float xMax = mWidth - bx - nx;
-	float yMin = by;
-	float yMax = mHeight - by;
-	
-	mEdgeCorrectMap.clear();
-	for(int j=0; j<mHeight; ++j)
-	{
-		for(int i=nx; i<mWidth - nx; ++i)
-		{			
-			float m = 1.f;
-			/*
-			Vec2 p1(i + 0.5f, j + 0.5f);
-			Vec2 p2 = vclamp(p1, minPos, maxPos);
-			Vec2 dv = p1 - p2;
-			dv *= nv;
-			float dist = dv.magnitude();
-			mEdgeCorrectMap(i, j) = 1.f + dist*dist*k;
-			*/
-			
-			float x1 = i + 0.5f;
-			float x2 = clamp(x1, xMin, xMax);
-			float dx = fabs(x1 - x2);
-			dx /= bx; // normalize
-			m = dx;
-						
-			float y1 = j + 0.5f;
-			float y2 = clamp(y1, yMin, yMax);
-			float dy = fabs(y1 - y2);
-			dy /= by; // normalize
-			m *= dy;
-			m *= k;
-			m += 1.f;
-			
-			mEdgeCorrectMap(i, j) = m;
-			
-		}
-	}	
-	mEdgeCorrectMap.dump(mEdgeCorrectMap.getBoundsRect());
-}
-
 void TouchTracker::Calibrator::getAverageTemplateDistance()
 {
 	MLSignal temp(mWidth, mHeight);
@@ -1549,7 +1475,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	else if (mTotalSamples == startupSamples)
 	{
 		age = 0;
-		//mAutoThresh = kCalibrateTrackerThresh;
+		//mAutoThresh = kNormalizeThresh;
 		mAutoThresh = mStartupSum / (float)startupSamples * 10.f;	
 		debug() << "\n****************************************************************\n\n";
 		debug() << "OK, done collecting silence (auto threshold: " << mAutoThresh << "). \n";
@@ -1565,6 +1491,8 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	{
 		// smooth temp signal, duplicating values at border
 		normTemp.copy(input);		
+		normTemp.convolve3x3rb(kc, ke, kk);		
+		normTemp.convolve3x3rb(kc, ke, kk);		
 		normTemp.convolve3x3rb(kc, ke, kk);		
 	
 		if(peakZ > mAutoThresh)
@@ -1626,6 +1554,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 		else if(mWaitSamplesAfterNormalize == waitAfterNormalize)
 		{
 			mWaitSamplesAfterNormalize++;
+			mAutoThresh *= 1.5f;
 			debug() << "\nOK, done collecting silence again (auto threshold: " << mAutoThresh << "). \n";
 
 			debug() << "\n****************************************************************\n\n";

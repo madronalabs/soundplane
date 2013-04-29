@@ -91,6 +91,8 @@ const int kSoundplanePossibleCarriers = 64;
 const int kSoundplaneWidth = 64;
 const int kSoundplaneHeight = 8;
 
+const int kSoundplaneStartupFrames = 50;
+
 // device name. someday, an array of these
 //
 extern const char* kSoundplaneAName;
@@ -187,6 +189,8 @@ public:
 	
 	void addListener(SoundplaneDriverListener* pL) { mListeners.push_back(pL); }
 	int mTransactionsInFlight;
+	
+	int startupCtr;
 	
 private:
 	// these fns in global namespace need to set the device state.

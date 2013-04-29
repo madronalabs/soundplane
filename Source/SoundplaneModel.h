@@ -115,6 +115,8 @@ public:
 	void endCalibrate();
 
 	void beginSelectCarriers();
+	bool isSelectingCarriers() { return mSelectingCarriers; }
+	float getSelectCarriersProgress();
 	void nextSelectCarriersStep();
 	void endSelectCarriers();
 
@@ -146,15 +148,13 @@ public:
 	SoundplaneOSCOutput& getOSCOutput() { return mOSCOutput; }  // TODO NO
 	
 	void setKymaMode(bool m);
-	void beginCalibrateTracker();
-	void cancelCalibrateTracker();
+	void beginNormalize();
+	void cancelNormalize();
 	bool trackerIsCalibrating();
 	bool trackerIsCollectingMap();
-	void setDefaultTrackerCalibration();
+	void setDefaultNormalize();
 	Vec2 getTrackerCalibrateDims() { return Vec2(kCalibrateWidth, kCalibrateHeight); }	
-
 	Vec2 xyToKeyGrid(Vec2 xy);
-	Vec2 keyGridToXY(Vec2 g);
 		
 private:	
 
