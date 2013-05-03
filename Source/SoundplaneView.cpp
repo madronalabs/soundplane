@@ -403,6 +403,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	
 	// utility buttons
 	page2->addTextButton("select carriers", MLRect(0, 1, 3, 0.4), "select_carriers");	
+	page2->addTextButton("restore defaults", MLRect(0, 2., 3, 0.4), "restore_defaults");	
+	
 	page2->addTextButton("normalize", MLRect(3.5, 1, 3, 0.4), "normalize");	
 	page2->addTextButton("cancel normalize", MLRect(3.5, 1.5, 3, 0.4), "normalize_cancel");	
 	page2->addTextButton("use defaults", MLRect(3.5, 2., 3, 0.4), "normalize_default");	

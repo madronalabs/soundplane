@@ -12,7 +12,8 @@ SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
 	MLReporter(pModel),
 	mpSoundplaneModel(pModel),
 	mpSoundplaneView(0),
-	mCurrMenuInstigator(nullptr)
+	mCurrMenuInstigator(nullptr),
+	mNeedsLateInitialize(true)
 {
 	MLReporter::mpModel = pModel;
 	initialize();
@@ -73,6 +74,14 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 	else if (p == "select_carriers")
 	{		
 		mpSoundplaneModel->beginSelectCarriers();
+	}
+	else if (p == "restore_defaults")
+	{		
+		if(confirmRestoreDefaults())
+		{
+			mpSoundplaneModel->setAllParamsToDefaults();
+			doWelcomeTasks();
+		}
 	}
 	else if (p == "default_carriers")
 	{		
@@ -310,11 +319,6 @@ debug() << "kyma mode " << isProbablyKyma << "\n";
 	
 }
 
-
-
-
-
-//
 class SoundplaneSetupThread  : public ThreadWithProgressWindow
 {
 public:
@@ -331,14 +335,14 @@ public:
 
     void run()
     {
-        setProgress (-1.0); // setting a value beyond the range 0 -> 1 will show a spinning bar..
-        wait (2000);
-		
+		setProgress (-1.0); 
+        wait (1000);	
+			
 		while(mpModel->getDeviceState() != kDeviceHasIsochSync)
 		{
+			setStatusMessage ("Looking for Soundplane. Please connect your Soundplane via USB.");
 			if (threadShouldExit()) return;
 			wait (1000);
-			setStatusMessage ("Looking for Soundplane. Please connect your Soundplane via USB.");
 		}
 		
 		setStatusMessage ("Selecting carrier frequencies...");
@@ -354,7 +358,7 @@ public:
 		SoundplaneModel* mpModel;
 };
 
-void SoundplaneController::doWelcomeTasks(bool forced)
+void SoundplaneController::doWelcomeTasks()
 {
 	SoundplaneSetupThread demoThread(getModel(), getCurrMenuInstigator());
 	if (demoThread.runThread())
@@ -372,11 +376,11 @@ void SoundplaneController::doWelcomeTasks(bool forced)
 	}
 }
 
-bool SoundplaneController::confirmForceSetup()
+bool SoundplaneController::confirmRestoreDefaults()
 {
 	bool doSetup = AlertWindow::showOkCancelBox(AlertWindow::NoIcon,
 			String::empty,
-			"Reset was triggered by control key.\nTrash existing Soundplane settings?" ,
+			"Really restore all settings to defaults?\nCurrent settings will be lost." ,
 			"OK",
 			"Cancel",
 			getCurrMenuInstigator());

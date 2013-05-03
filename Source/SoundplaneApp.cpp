@@ -36,27 +36,9 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mWindow.setContent(mpView);
 	mWindow.setGridUnits(kViewGridUnitsX, kViewGridUnitsY);
 	mWindow.centreWithSize(800, 800*kViewGridUnitsY/kViewGridUnitsX);
-	mWindow.setResizable (true, /*useBottomRightCornerResizer*/ true);
-
-	ModifierKeys m = juce::ModifierKeys::getCurrentModifiersRealtime();
-	bool forceSetup = m.isCtrlDown();
-	bool foundState = false;
-	bool confirmSetup = false;
 	
 	mpState = new MLAppState(mpModel, mpView, ProjectInfo::makerName, ProjectInfo::projectName, ProjectInfo::versionNumber);
-	
-	if(forceSetup)
-	{
-		// confirm trashing of prefs
-//		mWindow.setVisible(true);
-		confirmSetup = mpController->confirmForceSetup();
-	}
-	
-	if(!confirmSetup)
-	{
-		foundState = mpState->loadSavedState();
-		forceSetup = false;
-	}
+	bool foundState = mpState->loadSavedState();
 	
 	mpController->setView(mpView);
 	mpController->setupMenus(); 
@@ -66,10 +48,9 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpModel->initialize();
 	
 	// do setup first time or after trashed prefs, or if control is held down
-	if (!foundState || forceSetup) 
+	if (!foundState) 
 	{
-		// make welcome / progress window
-		mpController->doWelcomeTasks(forceSetup);
+		mpController->doWelcomeTasks();
 	}
 }
 

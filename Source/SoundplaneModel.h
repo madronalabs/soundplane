@@ -59,6 +59,8 @@ class SoundplaneModel :
 public:
 	SoundplaneModel();
 	~SoundplaneModel();	
+	
+	void setAllParamsToDefaults();
 
 	// SoundplaneDriverListener
 	void deviceStateChanged(MLSoundplaneState s);

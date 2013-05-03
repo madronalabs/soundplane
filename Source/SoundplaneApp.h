@@ -24,7 +24,6 @@ public:
 
     void initialise (const String& commandLine);
     void shutdown();
-	void timerCallback();
 	
     const String getApplicationName()
     {

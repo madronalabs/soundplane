@@ -121,6 +121,26 @@ SoundplaneModel::SoundplaneModel() :
 		mCarriers[car] = kModelDefaultCarriers[car];
 	}			
 	
+	setAllParamsToDefaults();
+
+	mTracker.setListener(this);
+}
+
+SoundplaneModel::~SoundplaneModel()
+{
+	notifyClients(0);
+		
+	// delete driver -- this will cause process thread to terminate.
+	//  
+	if (mpDriver) 
+	{ 
+		delete mpDriver; 
+		mpDriver = 0; 
+	}
+}
+
+void SoundplaneModel::setAllParamsToDefaults()
+{
 	// parameter defaults and creation
 	setModelParam("max_touches", 4);
 	setModelParam("lopass", 100.);
@@ -158,22 +178,6 @@ SoundplaneModel::SoundplaneModel() :
 	for(int i=0; i<32; ++i)
 	{
 		setModelParam(MLSymbol("carrier_toggle").withFinalNumber(i), 1);		
-	}
-	
-	mTracker.setListener(this);
-
-}
-
-SoundplaneModel::~SoundplaneModel()
-{
-	notifyClients(0);
-		
-	// delete driver -- this will cause process thread to terminate.
-	//  
-	if (mpDriver) 
-	{ 
-		delete mpDriver; 
-		mpDriver = 0; 
 	}
 }
 

@@ -71,6 +71,7 @@
 		B59E90E21583BB72004830C9 /* MLMenuButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B59E90E11583BB72004830C9 /* MLMenuButton.cpp */; };
 		B5A2432F1593F264008D8662 /* SoundplaneDataListener.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5A2432E1593F264008D8662 /* SoundplaneDataListener.cpp */; };
 		B5A244771594E5C7008D8662 /* MLTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5A244761594E5C7008D8662 /* MLTime.cpp */; };
+		B5A338ED173326700003DB89 /* MLBoundsConstrainer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5A338EB173326700003DB89 /* MLBoundsConstrainer.cpp */; };
 		B5A8777616628FCC00F9764D /* MLMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5A8777516628FCC00F9764D /* MLMenu.cpp */; };
 		B5AE8F2C1724573F00C088C1 /* MLProgressBar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5AE8F2B1724573F00C088C1 /* MLProgressBar.cpp */; };
 		B5B2D0C515C7573900FF08A5 /* MLWidgetContainer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5B2D0C415C7573900FF08A5 /* MLWidgetContainer.cpp */; };
@@ -220,6 +221,8 @@
 		B5A2432E1593F264008D8662 /* SoundplaneDataListener.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneDataListener.cpp; sourceTree = "<group>"; };
 		B5A244751594E5C7008D8662 /* MLTime.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLTime.h; path = ../../../MadronaLib/MLJuceApp/MLTime.h; sourceTree = SOURCE_ROOT; };
 		B5A244761594E5C7008D8662 /* MLTime.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLTime.cpp; path = ../../../MadronaLib/MLJuceApp/MLTime.cpp; sourceTree = SOURCE_ROOT; };
+		B5A338EB173326700003DB89 /* MLBoundsConstrainer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLBoundsConstrainer.cpp; path = ../../../MadronaLib/MLJuceApp/MLBoundsConstrainer.cpp; sourceTree = SOURCE_ROOT; };
+		B5A338EC173326700003DB89 /* MLBoundsConstrainer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLBoundsConstrainer.h; path = ../../../MadronaLib/MLJuceApp/MLBoundsConstrainer.h; sourceTree = SOURCE_ROOT; };
 		B5A8777416628FCC00F9764D /* MLMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLMenu.h; path = ../../../MadronaLib/MLJuceApp/MLMenu.h; sourceTree = SOURCE_ROOT; };
 		B5A8777516628FCC00F9764D /* MLMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLMenu.cpp; path = ../../../MadronaLib/MLJuceApp/MLMenu.cpp; sourceTree = SOURCE_ROOT; };
 		B5AE8F2A1724573F00C088C1 /* MLProgressBar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLProgressBar.h; sourceTree = "<group>"; };
@@ -643,6 +646,8 @@
 				B53D5CE314D34C6F00B510A6 /* MLAppView.h */,
 				B5DD1C2C13E85C3A002BD9C7 /* MLAppWindow.cpp */,
 				B5DD1C2D13E85C3A002BD9C7 /* MLAppWindow.h */,
+				B5A338EB173326700003DB89 /* MLBoundsConstrainer.cpp */,
+				B5A338EC173326700003DB89 /* MLBoundsConstrainer.h */,
 				B5CA79D913E0C512003BCFA3 /* MLDefaultFileLocations.cpp */,
 				B5CA79D813E0C512003BCFA3 /* MLDefaultFileLocations.h */,
 				B5CA79DB13E0C512003BCFA3 /* MLJuceFilesMac.cpp */,
@@ -811,6 +816,7 @@
 				B592C6AB16F36BB4001B578F /* cJSON.c in Sources */,
 				B591CC63172196EA0048CA19 /* SoundplaneBinaryData.cpp in Sources */,
 				B5AE8F2C1724573F00C088C1 /* MLProgressBar.cpp in Sources */,
+				B5A338ED173326700003DB89 /* MLBoundsConstrainer.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
