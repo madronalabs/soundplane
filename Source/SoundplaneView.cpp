@@ -435,6 +435,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pD = page2->addDial("template", dialRect.withCenter(6, dialY), "t_thresh", c2);
 	pD->setRange(0., 1., 0.001);	
 	pD->setDefault(0.2);
+
+	pB = page2->addToggleButton("poll kyma", toggleRect.withCenter(12, dialY), "kyma_poll", c2);
 		
 	pModel->addParamListener(this); 
 	

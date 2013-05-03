@@ -163,7 +163,9 @@ void SoundplaneModel::setAllParamsToDefaults()
 	setModelParam("midi_multi_chan", 1);
 	setModelParam("midi_start_chan", 1);
 	setModelParam("data_freq_midi", 250.);
-
+	
+	setModelParam("kyma_poll", 1);
+	
 	setModelParam("osc_active", 1);	
 	setModelParam("data_freq_osc", 250.);
 	
@@ -348,6 +350,10 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 	else if (p == "debug_pause")
 	{
 		debug().setActive(!bool(v));
+	}
+	else if (p == "kyma_poll")
+	{
+		mMIDIOutput.setKymaPoll(bool(v));
 	}
 }
 

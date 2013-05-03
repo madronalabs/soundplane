@@ -97,6 +97,7 @@ public:
 
 	void setMultiChannel(bool v);
 	void setStartChannel(int v);
+	void setKymaPoll(bool v) { mKymaPoll = v; }
 	
 private:
 
@@ -121,6 +122,7 @@ private:
 	
 	bool mMultiChannel;
 	int mStartChannel;
+	bool mKymaPoll;
 };
 
 

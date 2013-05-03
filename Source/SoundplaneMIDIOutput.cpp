@@ -82,7 +82,8 @@ SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mTranspose(0),
 	mHysteresis(0.5f),
 	mMultiChannel(true),
-	mStartChannel(1)
+	mStartChannel(1),
+	mKymaPoll(true)
 
 {
 	findMIDIDevices();
@@ -417,22 +418,24 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 		}
 	}
 	
-	
-	// send NRPN with Soundplane identifier every few secs. for Kyma.
-	if (now > mLastTimeNRPNWasSent + nrpnPeriodMicrosecs)
+	if(mKymaPoll)
 	{
-		mLastTimeNRPNWasSent = now;
-		// set NRPN
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0x53));
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0x50));
+		// send NRPN with Soundplane identifier every few secs. for Kyma.
+		if (now > mLastTimeNRPNWasSent + nrpnPeriodMicrosecs)
+		{
+			mLastTimeNRPNWasSent = now;
+			// set NRPN
+			mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0x53));
+			mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0x50));
 
-		// data entry -- send # of voices for Kyma
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 6, mVoices));
-		
-		// null NRPN
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0xFF));
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0xFF));
+			// data entry -- send # of voices for Kyma
+			mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 6, mVoices));
+			
+			// null NRPN
+			mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0xFF));
+			mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0xFF));
 
+		}
 	}
 }
 
