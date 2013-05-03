@@ -371,6 +371,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pD = page1->addDial("bend range", dialRect.withCenter(10, bottomDialsY), "bend_range", c2);
 	pD->setRange(0., 48., 1.);	
 	
+	pB = page1->addToggleButton("multi", toggleRect.withCenter(9, bottomDialsY2), "midi_multi_chan", c2);
+	pD = page1->addDial("start chan", dialRect.withCenter(10, bottomDialsY2), "midi_start_chan", c2);
+	pD->setRange(1., 16., 1.);		
 	
 //	pB = page1->addToggleButton("one / multi", toggleRect.withCenter(6.5, 5.25), "single_multi", c2);
 //	pB->setSplitMode(true);

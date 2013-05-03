@@ -160,6 +160,8 @@ void SoundplaneModel::setAllParamsToDefaults()
 	setModelParam("t_thresh", 0.2);
 	
 	setModelParam("midi_active", 0);
+	setModelParam("midi_multi_chan", 1);
+	setModelParam("midi_start_chan", 1);
 	setModelParam("data_freq_midi", 250.);
 
 	setModelParam("osc_active", 1);	
@@ -289,6 +291,14 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 	else if (p == "midi_active")
 	{
 		mMIDIOutput.setActive(bool(v));
+	}
+	else if (p == "midi_multi_chan")
+	{
+		mMIDIOutput.setMultiChannel(bool(v));
+	}
+	else if (p == "midi_start_chan")
+	{
+		mMIDIOutput.setStartChannel(int(v));
 	}
 	else if (p == "midi_pressure_active")
 	{

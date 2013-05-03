@@ -80,7 +80,10 @@ SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mLastTimeNRPNWasSent(0),
 	mBendRange(1.),
 	mTranspose(0),
-	mHysteresis(0.5f)
+	mHysteresis(0.5f),
+	mMultiChannel(true),
+	mStartChannel(1)
+
 {
 	findMIDIDevices();
 }
@@ -186,6 +189,28 @@ void SoundplaneMIDIOutput::setPressureActive(bool v)
 	}
 }
 
+void SoundplaneMIDIOutput::setMultiChannel(bool v)
+{
+	if(mMultiChannel == v) return;
+	mMultiChannel = v;
+	if (!mpCurrentDevice) return;
+	for(int i=1; i<=16; ++i)
+	{
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::allNotesOff(i));
+	}
+}
+
+void SoundplaneMIDIOutput::setStartChannel(int v)
+{
+	if(mStartChannel == v) return;
+	mStartChannel = v;
+	if (!mpCurrentDevice) return;
+	for(int i=1; i<=16; ++i)
+	{
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::allNotesOff(i));
+	}
+}
+
 void SoundplaneMIDIOutput::modelStateChanged()
 {
 
@@ -202,7 +227,23 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 	const UInt64 dataPeriodMicrosecs = 1000*1000 / mDataFreq;
 	const UInt64 nrpnPeriodMicrosecs = 1000*1000*4;
 	bool sendData = false;
-
+	
+	// get most recent active voice played
+	unsigned int minAge = (unsigned int)-1;
+	int newestVoiceIdx = -1;
+	for(int i=0; i<mVoices; ++i)
+	{
+		int age = touchFrame(ageColumn, i);
+		if(age > 0)
+		{
+			if(age < minAge)
+			{
+				minAge = age;
+				newestVoiceIdx = i;
+			}
+		}
+	}
+	
 	// store touch ages. 
 	// if there are any note-ons, send this frame of data.
 	for(int i=0; i<mVoices; ++i)
@@ -251,13 +292,14 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 			dz = touchFrame(dzColumn, i);
 			note = touchFrame(noteColumn, i);
 			int prevNote = pVoice->mMIDINote;
-						
-			// TODO single-channel mode.  use most recent pitch bend.
 			
+			int chan = mMultiChannel ? (((mStartChannel + i - 1)%15) + 1) : mStartChannel;
+
+						
 			if(pVoice->mNoteOff)
 			{
 				// note off
-				mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(i + 1, pVoice->mMIDINote));
+				mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
 				pVoice->mMIDIVel = 0;
 				pVoice->mMIDINote = 0;		
 			}
@@ -266,7 +308,7 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 				// turn note off if needed
 				if(prevNote)
 				{
-					mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(i + 1, prevNote));				
+					mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, prevNote));				
 				}
 								
 				// get nearest integer note
@@ -280,8 +322,8 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 				pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
 
 				// reset pitch at note on!
-				mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(i + 1, 8192));
-				mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(i + 1, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));				
+				mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, 8192));
+				mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));				
 			}						
 			
 			// if note is on, send controllers.
@@ -316,56 +358,59 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 					pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
 					
 					// retrigger 
-					mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(i + 1, pVoice->mMIDINote));
+					mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
 					pVoice->mMIDINote = newNote;		
-					mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(i + 1, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));				
+					mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));				
 				}
 				
-				
-				// get pitch bend for note difference 
-				//
-				float fp = note - pVoice->mStartNote;		
-				if (mBendRange > 0)
+				// send controllers etc. if in multichannel mode, or if this is the youngest voice. 
+				if((newestVoiceIdx == i) || mMultiChannel)
 				{
-					fp *= 8192.f;
-					fp /= (float)mBendRange;
-				}
-				else
-				{
-					fp = 0.;
-				}
-				fp += 8192.f;
-				
-				// TODO if want pitch bend > 8192 distance from current note, 
-				// get closest note to new pitch, find remainder pitch bend and retrigger note. 
-			
-				int ip = fp;
-				ip = clamp(ip, 0, 16383);
-				if(ip != pVoice->mMIDIBend)
-				{
-					mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(i + 1, ip));
-					pVoice->mMIDIBend = ip;
-				}
-				
-				// send y controller absolute
-				iy = y*127.f;
-				iy = clamp(iy, 0, 127);
-				if(iy != pVoice->mMIDIYCtrl)
-				{
-					mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(i + 1, kSoundplaneMIDIControllerY, iy));
-					pVoice->mMIDIYCtrl = iy;
-				}
-						
-				if(mPressureActive)
-				{				
-					// send pressure
-					int press = 127. * z;
-					press = clamp(press, 0, 127);
-					if(press != pVoice->mMIDIPressure)
+					// get pitch bend for note difference 
+					//
+					float fp = note - pVoice->mStartNote;		
+					if (mBendRange > 0)
 					{
-						mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(i + 1, press));
-						mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(i + 1, 11, press));
-						pVoice->mMIDIPressure = press;
+						fp *= 8192.f;
+						fp /= (float)mBendRange;
+					}
+					else
+					{
+						fp = 0.;
+					}
+					fp += 8192.f;
+					
+					// TODO if want pitch bend > 8192 distance from current note, 
+					// get closest note to new pitch, find remainder pitch bend and retrigger note. 
+				
+					int ip = fp;
+					ip = clamp(ip, 0, 16383);
+					if(ip != pVoice->mMIDIBend)
+					{
+						mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, ip));
+						pVoice->mMIDIBend = ip;
+					}
+					
+					// send y controller absolute
+					iy = y*127.f;
+					iy = clamp(iy, 0, 127);
+					if(iy != pVoice->mMIDIYCtrl)
+					{
+						mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, kSoundplaneMIDIControllerY, iy));
+						pVoice->mMIDIYCtrl = iy;
+					}
+							
+					if(mPressureActive)
+					{				
+						// send pressure
+						int press = 127. * z;
+						press = clamp(press, 0, 127);
+						if(press != pVoice->mMIDIPressure)
+						{
+							mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, press));
+							mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, press));
+							pVoice->mMIDIPressure = press;
+						}
 					}
 				}
 			}		
@@ -373,7 +418,7 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 	}
 	
 	
-	// send NRPN with Soundplane identifier every few secs.
+	// send NRPN with Soundplane identifier every few secs. for Kyma.
 	if (now > mLastTimeNRPNWasSent + nrpnPeriodMicrosecs)
 	{
 		mLastTimeNRPNWasSent = now;
@@ -389,6 +434,5 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0xFF));
 
 	}
-	 
 }
 

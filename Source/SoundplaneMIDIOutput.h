@@ -26,7 +26,7 @@ public:
 	MIDIVoice();
 	~MIDIVoice();
 
-	int mAge;
+	unsigned int mAge;
 	float mX;
 	float mY;
 	float mZ;
@@ -94,6 +94,9 @@ public:
 	void setRetrig(int t) { mRetrig = t; }
 	void setAbsRel(int t) { mAbsRel = t; }
 	void setHysteresis(float t) { mHysteresis = t; }
+
+	void setMultiChannel(bool v);
+	void setStartChannel(int v);
 	
 private:
 
@@ -115,6 +118,9 @@ private:
 	int mRetrig;
 	int mAbsRel;
 	float mHysteresis;
+	
+	bool mMultiChannel;
+	int mStartChannel;
 };
 
 
