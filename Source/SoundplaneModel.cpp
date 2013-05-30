@@ -209,7 +209,12 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 			int newTouches = clamp((int)a1, 0, kSoundplaneMaxTouches);
 			if(mKymaIsConnected)
 			{
-				setModelParam("max_touches", newTouches);
+				// Kyma is sending 0 sometimes, which there is probably 
+				// no reason to respond to
+				if(newTouches > 0)
+				{
+					setModelParam("max_touches", newTouches);
+				}
 			}
 		}
 	}

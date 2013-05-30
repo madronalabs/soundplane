@@ -14,10 +14,14 @@ SoundplaneZoneView::SoundplaneZoneView() :
 #endif
 	setInterceptsMouseClicks (false, false);	
 	MLWidget::setComponent(this);
-}
+
+	mGLContext.setRenderer (this);
+//	mGLContext.setComponentPaintingEnabled (true);
+	mGLContext.attachTo (*this);}
 
 SoundplaneZoneView::~SoundplaneZoneView()
 {
+	mGLContext.detach();
 }
 
 void SoundplaneZoneView::setModel(SoundplaneModel* m)
@@ -51,6 +55,10 @@ void SoundplaneZoneView::newOpenGLContextCreated()
 #endif
 }
 
+void SoundplaneZoneView::openGLContextClosing()
+{
+}
+
 void SoundplaneZoneView::mouseDrag (const MouseEvent& e)
 {
 }
@@ -64,7 +72,6 @@ void SoundplaneZoneView::renderOpenGL()
 	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
 
 	const MLSignal& currentTouch = mpModel->getTouchFrame();
-	const int frames = mpModel->getModelFloatParam("max_touches");
 		
 	// erase
 	const Colour c = findColour(MLLookAndFeel::backgroundColor);
@@ -72,8 +79,6 @@ void SoundplaneZoneView::renderOpenGL()
 	glClearColor (p, p, p, 1.0f);
 	glClearColor (0, 1.0, 0, 1.0f);
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	
-	
-	if (!frames) return;
 	
 	int margin = myLookAndFeel->getSmallMargin();
 	int numSize = margin*2;
@@ -83,35 +88,8 @@ void SoundplaneZoneView::renderOpenGL()
 	int top = margin;
 	int bottom = viewH - margin;
 	
-	int frameWidth = right - left;
-	int frameOffset = (bottom - top)/frames;
-	int frameHeight = frameOffset - margin;
-	MLRect frameSize(0, 0, frameWidth, frameHeight);		
 
 	orthoView(viewW, viewH);	
-	for(int j=0; j<frames; ++j)
-	{
-		// draw frame outlines
-		p = 0.9f;
-		glColor4f(p, p, p, 1.0f);
-		MLRect fr = frameSize.translated(Vec2(left, margin + j*frameOffset));
-		fillRect(fr);	
-		p = 0.6f;
-		glColor4f(p, p, p, 1.0f);
-		frameRect(fr);
-		
-		// draw indicators at left
-		int cIdx = j % kGLViewNColors;
-		glColor4fv(kGLViewIndicatorColors + 4*cIdx);
-		
-		MLRect r(0, 0, numSize, numSize);		
-		MLRect tr = r.translated(Vec2(margin, margin + j*frameOffset + (frameHeight - numSize)/2));		
-		
-		int age = currentTouch(4, j);		
-		if (age > 0)
-			fillRect(tr);	
-		else
-			frameRect(tr);
-	}
+
 }
 	

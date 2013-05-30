@@ -35,9 +35,11 @@ public:
     void newOpenGLContextCreated();
     void mouseDrag (const MouseEvent& e);
     void renderOpenGL();
+    void openGLContextClosing();
  	void setModel(SoundplaneModel* m);
 	
 private:
+    OpenGLContext mGLContext;
 
 	SoundplaneModel* mpModel;
 

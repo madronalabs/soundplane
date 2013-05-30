@@ -28,9 +28,8 @@ void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageTy
 void *soundplaneGrabThread(void *arg);
 void *soundplaneProcessThread(void *arg);
 
-
 // default carriers.  avoiding 32 (always bad)	
-// in use these should be overridden by calibration.
+// in use these should be overridden by the selected carriers.
 //
 const unsigned char kDefaultCarriers[kSoundplaneSensorWidth] = 
 {	
@@ -39,7 +38,6 @@ const unsigned char kDefaultCarriers[kSoundplaneSensorWidth] =
 	20, 21, 22, 23, 24, 25, 26, 27, 
 	28, 29, 30, 31, 33, 34
 };
-
 
 // -------------------------------------------------------------------------------
 #pragma mark SoundplaneDriver
@@ -54,16 +52,14 @@ SoundplaneDriver::SoundplaneDriver() :
 	mState(kNoDevice),
 	startupCtr(0)
 {
-
 	clientRef = 0;
-//	userInputCallback = userFunc;
 	
-	for(int i=0; i<MLSP_N_ISO_ENDPOINTS; ++i)
+	for(int i=0; i<kSoundplaneANumEndpoints; ++i)
 	{
 		busFrameNumber[i] = 0;
 	}
 	
-	size_t transactionsSize = MLSP_N_ISO_ENDPOINTS * SP_N_BUFFERS * sizeof(K1IsocTransaction);
+	size_t transactionsSize = kSoundplaneANumEndpoints * kSoundplaneABuffers * sizeof(K1IsocTransaction);
 	mpTransactionData = (K1IsocTransaction*)malloc(transactionsSize); 
 	if (mpTransactionData)
 	{
@@ -113,7 +109,7 @@ void SoundplaneDriver::init()
 	err = pthread_create(&mGrabThread, &attr, soundplaneGrabThread, this);
 	assert(!err);
 
-	// create isoch read and process thread
+	// create isochronous read and process thread
 	err = pthread_attr_init(&attr);
 	assert(!err);
 	err = pthread_create(&mProcessThread, &attr, soundplaneProcessThread, this);
@@ -186,9 +182,9 @@ void SoundplaneDriver::shutdown()
 	if (intf)
 	{
 		unsigned i, n;
-		for (n = 0; n < MLSP_N_ISO_ENDPOINTS; n++)
+		for (n = 0; n < kSoundplaneANumEndpoints; n++)
 		{
-			for (i = 0; i < SP_N_BUFFERS; i++)
+			for (i = 0; i < kSoundplaneABuffers; i++)
 			{
 				K1IsocTransaction* t = getTransactionData(n, i);
 				if (t->payloads)
@@ -221,9 +217,9 @@ void SoundplaneDriver::removeDevice()
 	{
 		unsigned i, n;
 
-		for (n = 0; n < MLSP_N_ISO_ENDPOINTS; n++)
+		for (n = 0; n < kSoundplaneANumEndpoints; n++)
 		{
-			for (i = 0; i < SP_N_BUFFERS; i++)
+			for (i = 0; i < kSoundplaneABuffers; i++)
 			{
 				K1IsocTransaction* t = getTransactionData(n, i);
 				if (t->payloads)
@@ -252,6 +248,9 @@ void SoundplaneDriver::removeDevice()
 	kr = IOObjectRelease(notification);
 }
 			
+// Called by client to put one frame of data from the ring buffer into memory at pDest. 
+// This mechanism assumes we have only one consumer of data. 
+//			
 int SoundplaneDriver::readSurface(float* pDest)
 {
 	int result = 0;
@@ -273,6 +272,7 @@ void SoundplaneDriver::flushOutputBuffer()
 void SoundplaneDriver::reclockFrameToBuffer(float* pFrame)
 {
 	// currently, clock is ignored and we simply ship out data as quickly as possible.
+	// TODO timestamps that will allow reconstituting the data with lower jitter. 
 	PaUtil_WriteRingBuffer(&mOutputBuf, pFrame, 1);	
 }				
 
@@ -315,18 +315,19 @@ void SoundplaneDriver::dumpDeviceData(float* pData, int size)
 void SoundplaneDriver::addOffset(int& buffer, int& frame, int offset) 
 { 
 	// add offset to (buffer, frame) position
-	int totalFrames = buffer*SP_NUM_FRAMES + frame + offset;
-	int remainder = totalFrames % SP_NUM_FRAMES;
+	if(!offset) return;
+	int totalFrames = buffer*kSoundplaneANumIsochFrames + frame + offset;
+	int remainder = totalFrames % kSoundplaneANumIsochFrames;
 	if (remainder < 0)
 	{
-		remainder += SP_NUM_FRAMES;
-		totalFrames -= SP_NUM_FRAMES;
+		remainder += kSoundplaneANumIsochFrames;
+		totalFrames -= kSoundplaneANumIsochFrames;
 	}
 	frame = remainder;
-	buffer = (totalFrames / SP_NUM_FRAMES) % SP_N_BUFFERS;
+	buffer = (totalFrames / kSoundplaneANumIsochFrames) % kSoundplaneABuffers;
 	if (buffer < 0)
 	{
-		buffer += SP_N_BUFFERS;
+		buffer += kSoundplaneABuffers;
 	}
 }
 
@@ -334,8 +335,7 @@ UInt16 SoundplaneDriver::getTransferBytesRequested(int endpoint, int buffer, int
 { 
 	if(getDeviceState() < kDeviceConnected) return 0;
 	UInt16 b = 0;
-	if(offset)
-		addOffset(buffer, frame, offset);
+	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
 	
 	if (t)
@@ -350,8 +350,7 @@ UInt16 SoundplaneDriver::getTransferBytesReceived(int endpoint, int buffer, int 
 { 
 	if(getDeviceState() < kDeviceConnected) return 0;
 	UInt16 b = 0;
-	if(offset)
-		addOffset(buffer, frame, offset);
+	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
 	
 	if (t)
@@ -366,8 +365,7 @@ AbsoluteTime SoundplaneDriver::getTransferTimeStamp(int endpoint, int buffer, in
 { 
 	if(getDeviceState() < kDeviceConnected) return AbsoluteTime();
 	AbsoluteTime b;
-	if(offset)
-		addOffset(buffer, frame, offset);
+	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
 	
 	if (t)
@@ -382,10 +380,7 @@ IOReturn SoundplaneDriver::getTransferStatus(int endpoint, int buffer, int frame
 { 
 	if(getDeviceState() < kDeviceConnected) return kIOReturnNoDevice;
 	IOReturn b = kIOReturnSuccess;
-	if(offset)
-	{
-		addOffset(buffer, frame, offset);
-	}
+	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
 	
 	if (t)
@@ -400,31 +395,26 @@ UInt16 SoundplaneDriver::getSequenceNumber(int endpoint, int buffer, int frame, 
 { 
 	if(getDeviceState() < kDeviceConnected) return 0;
 	UInt16 s = 0;
-	if(offset)
-	{
-		addOffset(buffer, frame, offset);
-	}
+	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
 	
 	if (t && t->payloads)
 	{
-		s = t->payloads[MLSP_N_ISOCH_WORDS*frame + MLSP_N_TAXEL_WORDS]; 
+		SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
+		s = p[frame].seqNum;
 	}
 	return s;
 }
 
-UInt16* SoundplaneDriver::getPayloadPtr(int endpoint, int buffer, int frame, int offset)
+unsigned char* SoundplaneDriver::getPayloadPtr(int endpoint, int buffer, int frame, int offset)
 {
 	if(getDeviceState() < kDeviceConnected) return 0;
-	UInt16* p = NULL;
-	if(offset)
-	{
-		addOffset(buffer, frame, offset);
-	}
+	unsigned char* p = 0;
+	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
 	if (t && t->payloads)
 	{
-		p = (t->payloads + frame*MLSP_N_ISOCH_WORDS);
+		p = t->payloads + frame*sizeof(SoundplaneADataPacket);
 	}
 	return p;
 }
@@ -523,13 +513,13 @@ int SoundplaneDriver::setCarriers(const unsigned char *cData)
 	}
 	
 	// wait for data to settle after setting carriers
-	// TODO understand this better
+	// TODO understand this startup behavior better
 	startupCtr = 0;
 
 	request.bmRequestType = USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
-    request.bRequest = MLSP_REQUEST_CARRIERS;
+    request.bRequest = kRequestCarriers;
 	request.wValue = 0;
-	request.wIndex = MLSP_REQUEST_INDEX_CARRIERS;
+	request.wIndex = kRequestCarriersIndex;
 	request.wLength = 32;
 	request.pData = mCurrentCarriers;
 	return (*dev)->DeviceRequest(dev, &request);
@@ -577,11 +567,11 @@ void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest)
 	// ml Lh HM
 	//
 	int c = 0;
-	for(int i=0; i<MLK1_N_PICKUPS_PER_BOARD; ++i)
+	for(int i=0; i<kSoundplaneAPickupsPerBoard; ++i)
 	{
-		pDestRow0 = pDest + MLK1_N_CARRIERS*2*i;
-		pDestRow1 = pDestRow0 + MLK1_N_CARRIERS;
-		for (int j = 0; j < MLK1_N_CARRIERS; j += 2)
+		pDestRow0 = pDest + kSoundplaneANumCarriers*2*i;
+		pDestRow1 = pDestRow0 + kSoundplaneANumCarriers;
+		for (int j = 0; j < kSoundplaneANumCarriers; j += 2)
 		{
 			a = pSrc0[c+1] & 0x0F;	// 000h
 			a <<= 8;				// 0h00
@@ -598,12 +588,12 @@ void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest)
 			b = pSrc1[c+1] & 0x0F;	// 000h
 			b <<= 8;				// 0h00
 			b |= pSrc1[c];			// 0hml
-			pDestRow1[MLK1_N_CARRIERS - 1 - j] = b / 4096.f;	
+			pDestRow1[kSoundplaneANumCarriers - 1 - j] = b / 4096.f;	
 			
 			b = pSrc1[c+2];			// 00HM
 			b <<= 4;				// 0HM0
 			b |= ((pSrc1[c+1] & 0xF0) >> 4);	// 0HML
-			pDestRow1[MLK1_N_CARRIERS - 2 - j] = b / 4096.f;	
+			pDestRow1[kSoundplaneANumCarriers - 2 - j] = b / 4096.f;	
 			
 			c += 3;		
 		}
@@ -615,15 +605,15 @@ void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest)
 void K1_clear_edges(float *pDest)
 {
 	float *pDestRow;
-	for(int i=0; i<MLK1_N_PICKUPS_PER_BOARD; ++i)
+	for(int i=0; i<kSoundplaneAPickupsPerBoard; ++i)
 	{
-		pDestRow = pDest + MLK1_N_CARRIERS*2*i;
+		pDestRow = pDest + kSoundplaneANumCarriers*2*i;
 		const float zl = pDestRow[2];
 		pDestRow[0] = zl;
 		pDestRow[1] = zl;
-		const float zr = pDestRow[MLK1_N_CARRIERS*2 - 3];
-		pDestRow[MLK1_N_CARRIERS*2 - 1] = zr;
-		pDestRow[MLK1_N_CARRIERS*2 - 2] = zr;
+		const float zr = pDestRow[kSoundplaneANumCarriers*2 - 3];
+		pDestRow[kSoundplaneANumCarriers*2 - 1] = zr;
+		pDestRow[kSoundplaneANumCarriers*2 - 2] = zr;
 	}
 }
 
@@ -659,6 +649,14 @@ number has already passed. This is normal.
 
 void isochComplete(void *refCon, IOReturn result, void *arg0);
 
+// Schedule an isochronous transfer. LowLatencyReadIsochPipeAsync() is used for all transfers
+// to get the lowest possible latency. In order to complete, the transfer should be scheduled for a 
+// time in the future, but as soon as possible for low latency. 
+//
+// The OS X low latency async code requires all transfer data to be in special blocks created by 
+// LowLatencyCreateBuffer() to manage communication with the kernel.
+// These are made in deviceAdded() when a Soundplane is connected.
+//
 IOReturn scheduleIsoch(SoundplaneDriver *k1, K1IsocTransaction *t)
 {	
 	if (!k1->dev) return kIOReturnNoDevice;
@@ -672,39 +670,41 @@ IOReturn scheduleIsoch(SoundplaneDriver *k1, K1IsocTransaction *t)
 	t->parent = k1;	
 	t->busFrameNumber = k1->busFrameNumber[t->endpointIndex];
 
-	for (int k = 0; k < SP_NUM_FRAMES; k++)
+	for (int k = 0; k < kSoundplaneANumIsochFrames; k++)
 	{
 		t->isocFrames[k].frStatus = 0;
-		t->isocFrames[k].frReqCount = MLSP_N_ISOCH_BYTES;
+		t->isocFrames[k].frReqCount = sizeof(SoundplaneADataPacket);
 		t->isocFrames[k].frActCount = 0;
 		t->isocFrames[k].frTimeStamp.hi = 0;
 		t->isocFrames[k].frTimeStamp.lo = 0;
 		setSequenceNumber(t, k, 0);
 	}
 	
-	size_t payloadSize = MLSP_N_ISOCH_BYTES * SP_NUM_FRAMES;
+	size_t payloadSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
 	bzero(t->payloads, payloadSize);
 	
 #ifdef SHOW_BUS_FRAME_NUMBER
 	fprintf(stderr, "read(%d, %p, %llu, %p, %p)\n", t->endpointNum, t->payloads, t->busFrameNumber, t->isocFrames, t);
 #endif
 	err = (*k1->intf)->LowLatencyReadIsochPipeAsync(k1->intf, t->endpointNum, t->payloads, 
-		t->busFrameNumber, SP_NUM_FRAMES, SP_UPDATE_FREQUENCY, t->isocFrames, isochComplete, t);
+		t->busFrameNumber, kSoundplaneANumIsochFrames, kSoundplaneAUpdateFrequency, t->isocFrames, isochComplete, t);
 		
-	k1->busFrameNumber[t->endpointIndex] += SP_NUM_FRAMES;
+	k1->busFrameNumber[t->endpointIndex] += kSoundplaneANumIsochFrames;
 	k1->mTransactionsInFlight++;
 	
 	return err;
 }
 
+// isochComplete() is the callback executed whenever an isochronous transfer completes. 
+// Since this is called at main interrupt time, it must return as quickly as possible. 
+// It is only responsible for scheduling the next transfer into the next transaction buffer. 
+// 
 void isochComplete(void *refCon, IOReturn result, void *arg0)
 {
 	IOReturn err;
 	
-//	IOUSBLowLatencyIsocFrame *frameList = (IOUSBLowLatencyIsocFrame *)arg0;
 	K1IsocTransaction *t = (K1IsocTransaction *)refCon;
 	SoundplaneDriver *k1 = t->parent;
-//	assert(frameList);
 	assert(k1);	
 	
 	k1->mTransactionsInFlight--;
@@ -729,25 +729,25 @@ void isochComplete(void *refCon, IOReturn result, void *arg0)
 			break;
 	}
 	
-	t = k1->getTransactionData(t->endpointIndex, (t->bufIndex + SP_N_BUFFERS_IN_FLIGHT) & SP_MASK_BUFFERS);
+	K1IsocTransaction *pNextTransactionBuffer = k1->getTransactionData(t->endpointIndex, (t->bufIndex + kSoundplaneABuffersInFlight) & kSoundplaneABuffersMask);
 	
 #ifdef SHOW_ALL_SEQUENCE_NUMBERS
-	int index = t->endpointIndex;
-	int start = getTransactionSequenceNumber(t, 0);
-	int end = getTransactionSequenceNumber(t, SP_NUM_FRAMES - 1);
+	int index = pNextTransactionBuffer->endpointIndex;
+	int start = getTransactionSequenceNumber(pNextTransaction, 0);
+	int end = getTransactionSequenceNumber(pNextTransactionBuffer, kSoundplaneANumIsochFrames - 1);
 	printf("endpoint %d: %d - %d\n", index, start, end);
 	if (start > end)
 	{		
-		for(int f=0; f<SP_NUM_FRAMES; ++f)
+		for(int f=0; f<kSoundplaneANumIsochFrames; ++f)
 		{
 			if (f % 5 == 0) printf("\n");
-			printf("%d ", getTransactionSequenceNumber(t, f));
+			printf("%d ", getTransactionSequenceNumber(pNextTransactionBuffer, f));
 		}
 		printf("\n\n");
 	}
 #endif
 		
-	err = scheduleIsoch(k1, t);
+	err = scheduleIsoch(k1, pNextTransactionBuffer);
 }
 
 // --------------------------------------------------------------------------------
@@ -851,6 +851,9 @@ IOReturn SetBusFrameNumber(SoundplaneDriver *k1)
 	return kIOReturnSuccess;
 }
 
+
+// deviceAdded() is called by the callback set up in the grab thread when a new Soundplane device is found. 
+//
 void deviceAdded(void *refCon, io_iterator_t iterator)
 {
 	SoundplaneDriver			*k1 = (SoundplaneDriver *)refCon;
@@ -1025,9 +1028,7 @@ void deviceAdded(void *refCon, io_iterator_t iterator)
 					}
 					if (!CFRunLoopContainsSource(CFRunLoopGetCurrent(), source, kCFRunLoopDefaultMode))
 						CFRunLoopAddSource(CFRunLoopGetCurrent(), source, kCFRunLoopDefaultMode);
-#ifdef VERBOSE
-					// err = ShowInterfaceEndpoints(intf);
-#endif
+
 					err = (*intf)->GetNumEndpoints(intf, &n);
 					if (kIOReturnSuccess != err)
 					{
@@ -1056,14 +1057,14 @@ void deviceAdded(void *refCon, io_iterator_t iterator)
 						}
 					}
 					// create and setup transaction data structures for each buffer in each isoch endpoint
-					for (i = 0; i < MLSP_N_ISO_ENDPOINTS; i++)
+					for (i = 0; i < kSoundplaneANumEndpoints; i++)
 					{
-						for (j = 0; j < SP_N_BUFFERS; j++)
+						for (j = 0; j < kSoundplaneABuffers; j++)
 						{
-							k1->getTransactionData(i, j)->endpointNum = MLSP_EP_SURFACE1 + i;
+							k1->getTransactionData(i, j)->endpointNum = kSoundplaneAEndpointStartIdx + i;
 							k1->getTransactionData(i, j)->endpointIndex = i;
 							k1->getTransactionData(i, j)->bufIndex = j;
-							size_t payloadSize = MLSP_N_ISOCH_BYTES * SP_NUM_FRAMES;
+							size_t payloadSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
 
 							err = (*intf)->LowLatencyCreateBuffer(intf, (void **)&k1->getTransactionData(i, j)->payloads, payloadSize, kUSBLowLatencyReadBuffer);
 							if (kIOReturnSuccess != err)
@@ -1073,7 +1074,7 @@ void deviceAdded(void *refCon, io_iterator_t iterator)
 							}
 							bzero(k1->getTransactionData(i, j)->payloads, payloadSize);
 							
-							size_t isocFrameSize = SP_NUM_FRAMES * sizeof(IOUSBLowLatencyIsocFrame);
+							size_t isocFrameSize = kSoundplaneANumIsochFrames * sizeof(IOUSBLowLatencyIsocFrame);
 							err = (*intf)->LowLatencyCreateBuffer(intf, (void **)&k1->getTransactionData(i, j)->isocFrames, isocFrameSize, kUSBLowLatencyFrameListBuffer);
 							if (kIOReturnSuccess != err)
 							{
@@ -1081,37 +1082,20 @@ void deviceAdded(void *refCon, io_iterator_t iterator)
 								goto close;
 							}
 							bzero(k1->getTransactionData(i, j)->isocFrames, isocFrameSize);
-#ifdef VERBOSE
-							// NOTE: isocFrames will be initialized in scheduleIsoch()
-							printf("frame request count: %d\n", MLSP_N_ISOCH_BYTES);
-#endif
 							k1->getTransactionData(i, j)->parent = k1;
 						}
 					}
 					
-					// set state before isoch schedule
-					k1->setDeviceState(kDeviceConnected);	
-									
+					// set initial state before isoch schedule
+					k1->setDeviceState(kDeviceConnected);										
 					err = SetBusFrameNumber(k1);
-					assert(!err);
-					
+					assert(!err);					
 				
-					// for each endpoint, schedule first transaction
-					for (i = 0; i < MLSP_N_ISO_ENDPOINTS; i++)
+					// for each endpoint, schedule first transaction and
+					// a few buffers into the future
+					for (j = 0; j < kSoundplaneABuffersInFlight; j++)
 					{
-						err = scheduleIsoch(k1, k1->getTransactionData(i, 0));
-						if (kIOReturnSuccess != err)
-						{
-							show_io_err("scheduleIsoch", err);
-							goto close;
-						}
-					}
-	
-					// for each endpoint, 
-					// schedule up a few buffers into the future
-					for (j = 1; j < SP_N_BUFFERS_IN_FLIGHT; j++)
-					{
-						for (i = 0; i < MLSP_N_ISO_ENDPOINTS; i++)
+						for (i = 0; i < kSoundplaneANumEndpoints; i++)
 						{
 							err = scheduleIsoch(k1, k1->getTransactionData(i, j));
 							if (kIOReturnSuccess != err)
@@ -1121,7 +1105,6 @@ void deviceAdded(void *refCon, io_iterator_t iterator)
 							}
 						}
 					}
-
 				}
 				else
 				{
@@ -1168,20 +1151,6 @@ void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageTy
 	{
 		k1->removeDevice();
 	}
-}
-
-// unused
-int SuspendDevice( IOUSBDeviceInterface187 **dev, bool suspend ) 
-{
-    IOReturn err;
-    
-    err = (*dev)->USBDeviceSuspend(dev, suspend);
-    if (err) 
-	{
-        printf("USBDeviceSuspend() failed  0x%x", err);
-        return err;
-    }
-    return 0;
 }
 
 // -------------------------------------------------------------------------------
@@ -1302,9 +1271,41 @@ void displayThreadInfo(pthread_t inThread)
 		
 }
 
+
+float frameDiff(float * p1, float * p2, int frameSize);
+float frameDiff(float * p1, float * p2, int frameSize)
+{
+	float sum = 0.f;
+	for(int i=0; i<frameSize; ++i)
+	{
+		sum += fabs(p2[i] - p1[i]);
+	}
+	return sum;
+}
+
+void dumpFrame(float* frame);
+void dumpFrame(float* frame)
+{
+	for(int j=0; j<kSoundplaneHeight; ++j)
+	{
+		printf("row %d: ", j);
+		for(int i=0; i<kSoundplaneWidth; ++i)
+		{
+			printf("%f ", frame[j*kSoundplaneWidth + i]);
+		}
+		printf("\n");
+	}
+}
+
 // -------------------------------------------------------------------------------
 #pragma mark main thread routines
 
+// This thread is responsible for finding and adding USB devices matching the Soundplane.
+// Execution is controlled by a Core Foundation (Cocoa) run loop. 
+// 
+// TODO investigate using a pthread here for consistency and code that looks more
+// similar across multiple platforms. 
+//
 void *soundplaneGrabThread(void *arg)
 {
 	SoundplaneDriver* k1 = static_cast<SoundplaneDriver*>(arg);
@@ -1338,7 +1339,8 @@ void *soundplaneGrabThread(void *arg)
 		runLoopSource = IONotificationPortGetRunLoopSource(k1->notifyPort);
 		CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopDefaultMode);
 
-		// REVIEW: Check out IOServiceMatching() and IOServiceNameMatching()
+		// Set up asynchronous callback to call deviceAdded() when a Soundplane is found.
+		// TODO REVIEW: Check out IOServiceMatching() and IOServiceNameMatching()
 		kr = IOServiceAddMatchingNotification(  k1->notifyPort,
 												kIOFirstMatchNotification,
 												matchingDict,
@@ -1349,7 +1351,11 @@ void *soundplaneGrabThread(void *arg)
 		// Iterate once to get already-present devices and arm the notification
 		deviceAdded(k1, k1->matchedIter);
 		
-		// Start the run loop. Now we'll receive notifications.
+		// Start the run loop. Now we'll receive notifications and remain looping here until the 
+		// run loop is stopped with CFRunLoopStop or all the sources and timers are removed from 
+		// the default run loop mode.
+		// For more information about how Core Foundation run loops behave, see “Run Loops” in 
+		// Apple’s Threading Programming Guide.
 		CFRunLoopRun();
 		
 		// clean up
@@ -1358,31 +1364,13 @@ void *soundplaneGrabThread(void *arg)
 	return NULL;
 }
 
-float frameDiff(float * p1, float * p2, int frameSize);
-float frameDiff(float * p1, float * p2, int frameSize)
-{
-	float sum = 0.f;
-	for(int i=0; i<frameSize; ++i)
-	{
-		sum += fabs(p2[i] - p1[i]);
-	}
-	return sum;
-}
-
-void dumpFrame(float* frame);
-void dumpFrame(float* frame)
-{
-	for(int j=0; j<kSoundplaneHeight; ++j)
-	{
-		printf("row %d: ", j);
-		for(int i=0; i<kSoundplaneWidth; ++i)
-		{
-			printf("%f ", frame[j*kSoundplaneWidth + i]);
-		}
-		printf("\n");
-	}
-}
-
+// This thread is responsible for collecting all data from the Soundplane. The routines isochComplete()
+// and scheduleIsoch() combine to keep data running into the transfer buffers in round-robin fashion. 
+// This thread looks at those buffers and attempts to stay in sync with incoming data, first
+// bu finding the most recent transfer to start from, then watching as transfers are filled in
+// with successive sequence numbers. When a matching pair of endpoints is found, reclockFrameToBuffer()
+// is called to send the data to any listeners.
+// 
 void *soundplaneProcessThread(void *arg)
 {
 	SoundplaneDriver* k1 = static_cast<SoundplaneDriver*>(arg);
@@ -1390,17 +1378,17 @@ void *soundplaneProcessThread(void *arg)
 	UInt16 maxSeqNum0, maxSeqNum1;	
 	UInt16 currentCompleteSequence = 0;		
 	UInt16 newestCompleteSequence = 0;
-	UInt16* pPayload0 = 0; 
-	UInt16* pPayload1 = 0;
+	unsigned char* pPayload0 = 0; 
+	unsigned char* pPayload1 = 0;
 	UInt16 curBytes0, curBytes1;
 	UInt16 nextBytes0, nextBytes1;
 	float * pWorkingFrame;
 	float * pPrevFrame;
 	
-	// transaction data buffer index, 0 to SP_N_BUFFERS-1
+	// transaction data buffer index, 0 to kSoundplaneABuffers-1
 	int bufferIndex = 0; 
 	
-	// current frame within transaction buffer, 0 to SP_NUM_FRAMES-1
+	// current frame within transaction buffer, 0 to kSoundplaneANumIsochFrames-1
 	int frameIndex = 0; 
 	
 	int droppedTransactions = 0;
@@ -1446,7 +1434,7 @@ void *soundplaneProcessThread(void *arg)
 			// initialize: find latest scheduled transaction
 			UInt64 maxTransactionStartFrame = 0; 
 			int maxIdx = -1;
-			for(int j=0; j < SP_N_BUFFERS; ++j)
+			for(int j=0; j < kSoundplaneABuffers; ++j)
 			{
 				K1IsocTransaction* t = k1->getTransactionData(0, j);
 				UInt64 frame = t->busFrameNumber;
@@ -1467,7 +1455,7 @@ void *soundplaneProcessThread(void *arg)
 				
 				for(bufferIndex=maxIdx; (bufferIndex >= 0) && lost; bufferIndex--)
 				{
-					for(frameIndex=SP_NUM_FRAMES - 1; (frameIndex >= 0) && lost; frameIndex--)
+					for(frameIndex=kSoundplaneANumIsochFrames - 1; (frameIndex >= 0) && lost; frameIndex--)
 					{
 						int l0 = k1->getSequenceNumber(0, bufferIndex, frameIndex);
 						int l1 = k1->getSequenceNumber(1, bufferIndex, frameIndex);
@@ -1508,7 +1496,7 @@ void *soundplaneProcessThread(void *arg)
 			// initialize: find latest scheduled transaction
 			UInt64 maxTransactionStartFrame = 0; 
 			int maxIdx = -1;
-			for(int j=0; j < SP_N_BUFFERS; ++j)
+			for(int j=0; j < kSoundplaneABuffers; ++j)
 			{
 				K1IsocTransaction* t = k1->getTransactionData(0, j);
 				UInt64 frame = t->busFrameNumber;
@@ -1529,7 +1517,7 @@ void *soundplaneProcessThread(void *arg)
 				
 				for(bufferIndex=maxIdx; (bufferIndex >= 0) && lost; bufferIndex--)
 				{
-					for(frameIndex=SP_NUM_FRAMES - 1; (frameIndex >= 0) && lost; frameIndex--)
+					for(frameIndex=kSoundplaneANumIsochFrames - 1; (frameIndex >= 0) && lost; frameIndex--)
 					{
 						int l0 = k1->getSequenceNumber(0, bufferIndex, frameIndex);
 						int l1 = k1->getSequenceNumber(1, bufferIndex, frameIndex);
@@ -1631,7 +1619,7 @@ void *soundplaneProcessThread(void *arg)
 					pPayload0 = pPayload1 = 0;
 					int b = bufferIndex; 
 					int f = frameIndex; 
-					for(int k = 0; k > -SP_BUF_LENGTH; k--)
+					for(int k = 0; k > -kSoundplaneABuffers * kSoundplaneANumIsochFrames; k--)
 					{
 						int seq0 = k1->getSequenceNumber(0, b, f, k);
 						if (seq0 == currentCompleteSequence)
@@ -1653,7 +1641,7 @@ void *soundplaneProcessThread(void *arg)
 			
 					if (pPayload0 && pPayload1)
 					{
-						K1_unpack_float2((unsigned char *)pPayload0, (unsigned char *)pPayload1, pWorkingFrame);
+						K1_unpack_float2(pPayload0, pPayload1, pWorkingFrame);
 						K1_clear_edges(pWorkingFrame);
 						if(k1->startupCtr > kSoundplaneStartupFrames)
 						{
@@ -1686,11 +1674,11 @@ void *soundplaneProcessThread(void *arg)
 				}
 			
 				// increment current frame / buffer position
-				if (++frameIndex >= SP_NUM_FRAMES)
+				if (++frameIndex >= kSoundplaneANumIsochFrames)
 				{
 					frameIndex = 0;
 					bufferIndex++;
-					bufferIndex &= SP_MASK_BUFFERS;
+					bufferIndex &= kSoundplaneABuffersMask;
 				}
 			}
 			else 
@@ -1746,13 +1734,6 @@ void *soundplaneProcessThread(void *arg)
 // -------------------------------------------------------------------------------
 #pragma mark transfer utilities
 
-
-UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f) 
-{ 
-	if (!t->payloads) return 0;
-	return t->payloads[MLSP_N_ISOCH_WORDS*f + MLSP_N_TAXEL_WORDS]; 
-}
-
 int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang) 
 {
     IOUSBDevRequest req;
@@ -1805,7 +1786,7 @@ int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *de
 void dumpTransactions(void *arg, int bufferIndex, int frameIndex)
 {
 	SoundplaneDriver* k1 = static_cast<SoundplaneDriver*>(arg);
-	for (int j=0; j<SP_N_BUFFERS; ++j)
+	for (int j=0; j<kSoundplaneABuffers; ++j)
 	{
 		K1IsocTransaction* t0 = k1->getTransactionData(0, j);
 		K1IsocTransaction* t1 = k1->getTransactionData(1, j);
@@ -1816,7 +1797,7 @@ void dumpTransactions(void *arg, int bufferIndex, int frameIndex)
 		{
 			printf(" *current*");
 		}
-		for(int f=0; f<SP_NUM_FRAMES; ++f)
+		for(int f=0; f<kSoundplaneANumIsochFrames; ++f)
 		{
 			IOUSBLowLatencyIsocFrame* frame0, *frame1;
 			UInt16 seq0, seq1;

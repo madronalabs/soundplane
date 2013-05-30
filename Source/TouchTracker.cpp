@@ -1559,11 +1559,10 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 
 			debug() << "\n****************************************************************\n\n";
 			debug() << "Now please slide a single finger over the  \n";
-			debug() << "Soundplane surface with a light and even touch, \n";
-			debug() << "visiting each area twice until all the areas are \n";
-			debug() << "colored green at left.  Sliding over a key the \n";
-			debug() << "first time will turn it gray.  Sliding over a \n";
-			debug() << "key the second time will turn it green.\n";
+			debug() << "Soundplane surface, visiting each area twice \n";
+			debug() << "until all the areas are colored green at left.  \n";
+			debug() << "Sliding over a key the first time will turn it gray.  \n";
+			debug() << "Sliding over a key the second time will turn it green.\n";
 			debug() << "\n";
 		
 		}

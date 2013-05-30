@@ -1,8 +1,10 @@
 
+// Driver for Soundplane Model A.
+// Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
+// Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
 #ifndef __SOUNDPLANE_DRIVER__
 #define __SOUNDPLANE_DRIVER__
-
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/usb/USB.h>
@@ -21,83 +23,82 @@
 #include "pa_memorybarrier.h"
 #include "pa_ringbuffer.h"
 
-/*
+// Soundplane data format:
+// The Soundplane Model A sends frames of data over USB using an isochronous interface with two endpoints. 
+// Each endpoint carries the data for one of the two sensor boards in the Soundplane. There is a left sensor board, endpoint 0,
+// and a right sensor board, endpoint 1.  Each sensor board has 8 pickups (horizontal) and 32 carriers (vertical)
+// for a total of 256 taxels of data. 
+// 
+// The data is generated from FFTs run on the DSP inside the Soundplane. The sampling rate is 125000 Hz, which is created by
+// the Soundplane processor’s internal clock dividing a 12 mHz crystal clock by 96. An FFT is performed every 128 samples
+// to make data blocks for each endpoint at a post-FFT rate of 976.5625 Hz. 
+//
+// Each data block for a surface contains 256 12-bit taxels packed into 192 16-bit words, followed by one 16-bit
+// sequence number for a total of 388 bytes. The taxel data are packed as follows:
+// 12 bits taxel 1 [hhhhmmmmllll]
+// 12 bits taxel 2 [HHHHMMMMLLLL]
+// 24 bits combined in three bytes: [mmmmllll LLLLhhhh HHHHMMMM]
+//
+// The packed data are followed by a 16-bit sequence number.  
+// Two bytes of padding are also present in the data packet. A full packet is always requested, and the
+// Soundplane hardware returns either 0, or the data minus the padding. The padding is needed for some
+// arcane reason to do with USB communication. 
 
-MLK1_N_SURFACE_TAXELS = the total number of taxels per surface, for Soundplane A 256 (32*8). It can only be used to derive the size of unpacked arrays, which excludes the USB packet data.
-MLSP_N_TAXEL_WORDS = the number of 16-bit words in the packed USB data that are dedicated to surface data (without the sequence number).
-MLSP_N_TAXEL_BYTES = the number of bytes in the packed USB data that are dedicated to surface data (without the sequence number).
-MLSP_N_SURFACE_WORDS = the number of 16-bit words in the packed USB data including both surface data and sequence number.
-MLSP_N_SURFACE_BYTES = the number of bytes in the packed USB data including both surface data and sequence number.
-MLSP_N_ISOCH_WORDS = the number of 16-bit words for the Isochronous packet size (there is never a packet sent that is actually this long).
-MLSP_N_ISOCH_BYTES = the number of bytes declared in the USB descriptors for the Isochronous packet size (there is never a packet sent that is actually this long).
-
-I use MLSP_N_ISOCH_* for interactions directly with the USB API, even though the system should always return a packet that is shorter than this (by two bytes).
-MLSP_N_SURFACE_* represents the actual size of the packed data from the Soundplane A, regardless of interpretation.
-MLSP_N_TAXEL_* is a handy define to calculate the size of the Isoch packet that represents the surface data without the appended sequence number or any checksum that we might add.
-
-*/
-
+// Soundplane A hardware
 const int kSoundplaneASampleRate = 125000;
 const int kSoundplaneAFFTSize = 128;
-
-// K1 (Soundplane A) hardware
-#define MLK1_N_USER_INPUTS			8
-#define MLK1_N_CARRIERS				32
-#define MLK1_N_PICKUPS_PER_BOARD	8
-#define MLK1_N_DSP_BITS				16
-#define MLK1_N_SURFACE_TAXELS		(MLK1_N_CARRIERS * MLK1_N_PICKUPS_PER_BOARD)
-
-// K1 (Soundplane A) USB firmware
-#define MLSP_ALT_INTERFACE_A		2
-#define MLSP_N_ISO_ENDPOINTS		2
-#define MLSP_EP_SURFACE1			1
-#define MLSP_EP_SURFACE2			2
-#define MLSP_N_MAGNITUDE_BITS		12
-#define MLSP_N_TAXEL_WORDS			(MLK1_N_SURFACE_TAXELS * MLSP_N_MAGNITUDE_BITS / MLK1_N_DSP_BITS)
-#define MLSP_N_TAXEL_BYTES			(MLSP_N_TAXEL_WORDS * 2)
-#define MLSP_N_SURFACE_WORDS		(MLSP_N_TAXEL_WORDS + 1)
-#define MLSP_N_SURFACE_BYTES		(MLSP_N_SURFACE_WORDS * 2)
-#define MLSP_N_ISOCH_WORDS			(MLSP_N_SURFACE_WORDS + 1)
-#define MLSP_N_ISOCH_BYTES			(MLSP_N_ISOCH_WORDS * 2)
-
-#define MLSP_REQUEST_STATUS			0
-#define MLSP_REQUEST_MASK			1
-#define MLSP_REQUEST_CARRIERS		2
-#define MLSP_REQUEST_INDEX_CARRIERS	0
-#define MLSP_REQUEST_INDEX_MASK		1
-
-// user inputs - unused
-#define MLSP_EP_USER				3
-#define MLSP_N_USER_WORDS			(MLK1_N_USER_INPUTS + 1)
-#define MLSP_N_USER_BYTES			(MLSP_N_USER_WORDS * 2)
-#define MLSP_MASK_USER_CHANNEL		0x0007
-#define MLSP_MASK_USER_VALUE		0xFFC0
-
-// K1 (Soundplane A) OSX client software
-#define SP_EXPONENT_N_BUFFERS		3
-#define SP_N_BUFFERS				(1<<SP_EXPONENT_N_BUFFERS)
-#define SP_MASK_BUFFERS				(SP_N_BUFFERS-1)
-#define SP_N_BUFFERS_IN_FLIGHT		4
-
-#define SP_NUM_FRAMES				20
-#define SP_BUF_LENGTH				SP_N_BUFFERS * SP_NUM_FRAMES
-
-// isoc frame data updates in ms. see LowLatencyReadIsochPipeAsync docs in IOUSBLib.h.
-#define SP_UPDATE_FREQUENCY			1
-
+const int kSoundplaneANumCarriers = 32;
+const int kSoundplaneAPickupsPerBoard = 8;
+const int kSoundplaneATaxelsPerSurface = kSoundplaneANumCarriers*kSoundplaneAPickupsPerBoard; // 256
 const int kSoundplaneSensorWidth = 32;
-const int kSoundplaneOutputBufFrames = 128;
 const int kSoundplanePossibleCarriers = 64;
 const int kSoundplaneWidth = 64;
 const int kSoundplaneHeight = 8;
 
+// Soundplane A USB firmware
+const int kSoundplaneANumEndpoints = 2;
+const int kSoundplaneAEndpointStartIdx = 1;
+const int kSoundplaneADataBitsPerTaxel = 12;
+const int kSoundplaneAPackedDataSize = (kSoundplaneATaxelsPerSurface * kSoundplaneADataBitsPerTaxel / 8); // 384 bytes
+
+typedef struct
+{
+	char packedData[kSoundplaneAPackedDataSize];
+	UInt16 seqNum;
+	UInt16 padding;
+}	SoundplaneADataPacket; // 388 bytes
+
+// Soundplane A OSX client software
+const int kSoundplaneABuffersExp = 3;
+const int kSoundplaneABuffers = 1 << kSoundplaneABuffersExp;
+const int kSoundplaneABuffersMask = kSoundplaneABuffers - 1;
+const int kSoundplaneABuffersInFlight = 4;
+const int kSoundplaneANumIsochFrames = 20;
+const int kSoundplaneOutputBufFrames = 128;
 const int kSoundplaneStartupFrames = 50;
+extern const unsigned char kDefaultCarriers[kSoundplaneSensorWidth];
+
+// isoc frame data update rate in ms. see LowLatencyReadIsochPipeAsync docs in IOUSBLib.h.
+const int kSoundplaneAUpdateFrequency = 1;
 
 // device name. someday, an array of these
 //
 extern const char* kSoundplaneAName;
 
-extern const unsigned char kDefaultCarriers[kSoundplaneSensorWidth];
+// USB device requests and indexes
+//
+typedef enum MLSoundplaneUSBRequest
+{
+	kRequestStatus = 0,
+	kRequestMask = 1,
+	kRequestCarriers = 2
+};
+
+typedef enum MLSoundplaneUSBRequestIndex
+{
+	kRequestCarriersIndex = 0,
+	kRequestMaskIndex = 1
+};
 
 // device states
 //
@@ -121,8 +122,6 @@ typedef enum MLSoundplaneErrorType
 };
 
 void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest);
-
-int SuspendDevice( IOUSBDeviceInterface187 **dev, bool suspend );
 	
 class SoundplaneDriverListener
 {
@@ -136,12 +135,12 @@ public:
 
 class SoundplaneDriver;
 
-typedef struct K1IsocTransaction
+typedef struct
 {
 	UInt64						busFrameNumber;
 	SoundplaneDriver			*parent;
 	IOUSBLowLatencyIsocFrame	*isocFrames;
-	UInt16						*payloads;
+	unsigned char				*payloads;
 	UInt8						endpointNum;
 	UInt8						endpointIndex; 
 	UInt8						bufIndex;
@@ -175,12 +174,11 @@ public:
 	IOUSBDeviceInterface187		**dev;
 	IOUSBInterfaceInterface192	**intf;
 	
-	UInt64						busFrameNumber[MLSP_N_ISO_ENDPOINTS];
-	UInt16						user[MLSP_N_USER_WORDS];
+	UInt64						busFrameNumber[kSoundplaneANumEndpoints];
 	K1IsocTransaction*			mpTransactionData;
-	UInt8						payloadIndex[MLSP_N_ISO_ENDPOINTS];
+	UInt8						payloadIndex[kSoundplaneANumEndpoints];
 
-	K1IsocTransaction* getTransactionData(int endpoint, int buf) { return mpTransactionData + SP_N_BUFFERS*endpoint + buf; }
+	inline K1IsocTransaction* getTransactionData(int endpoint, int buf) { return mpTransactionData + kSoundplaneABuffers*endpoint + buf; }
 
 	UInt16 getFirmwareVersion();
 	int getSerialNumberString(char* destStr, int maxLen);
@@ -189,7 +187,6 @@ public:
 	
 	void addListener(SoundplaneDriverListener* pL) { mListeners.push_back(pL); }
 	int mTransactionsInFlight;
-	
 	int startupCtr;
 	
 private:
@@ -206,7 +203,7 @@ private:
 	AbsoluteTime getTransferTimeStamp(int endpoint, int buffer, int frame, int offset = 0);
 	IOReturn getTransferStatus(int endpoint, int buffer, int frame, int offset = 0);
 	UInt16 getSequenceNumber(int endpoint, int buf, int frame, int offset = 0);
-	UInt16* getPayloadPtr(int endpoint, int buf, int frame, int offset = 0);
+	unsigned char* getPayloadPtr(int endpoint, int buf, int frame, int offset = 0);
 
 	void reclockFrameToBuffer(float* pSurface);
 	void setDeviceState(MLSoundplaneState n);
@@ -223,8 +220,19 @@ private:
 	std::list<SoundplaneDriverListener*> mListeners;
 };
 
-UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f);
-inline void setSequenceNumber(K1IsocTransaction* t, int f, UInt16 s) { t->payloads[MLSP_N_ISOCH_WORDS*f + MLSP_N_TAXEL_WORDS] = s; }
+inline UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f) 
+{ 
+	if (!t->payloads) return 0;
+	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
+	return p[f].seqNum; 
+}
+
+inline void setSequenceNumber(K1IsocTransaction* t, int f, UInt16 s) 
+{ 
+	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
+	p[f].seqNum = s;
+}
+
 void setThreadPriority (pthread_t inThread, UInt32 inPriority, Boolean inIsFixed);
 UInt32 getThreadPriority(pthread_t inThread, int inWhichPriority);
 UInt32 getThreadPolicy(pthread_t inThread);
@@ -234,6 +242,5 @@ int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *de
 void show_io_err(const char *msg, IOReturn err);
 void show_kern_err(const char *msg, kern_return_t kr);
 const char *io_err_string(IOReturn err);
-
 
 #endif // __SOUNDPLANE_DRIVER__

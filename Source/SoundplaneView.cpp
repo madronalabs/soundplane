@@ -238,7 +238,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 
 	// GL views
 	//
-	MLRect GLRect1(0, 1.f, pageWidth, 2.5);  // top GL rect on all pages
+	MLRect GLRect1(0, 1.f, pageWidth, 2.5);
 	mpGridView = new SoundplaneGridView();
 	mpGridView->setModel(pModel);
 	page0->addWidgetToView (mpGridView, GLRect1, "grid_view");		
@@ -326,9 +326,10 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pL = page1->addLabel("Zones", pageTitleRect, 1.5f, eMLTitle);
 	pL->setJustification(Justification::centredLeft); 
 	
-//	mpGLView3 = new SoundplaneZoneView();
-//	mpGLView3->setModel(pModel);
-//	page1->addWidgetToView (mpGLView3, GLRect1, "zone_view");		
+	mpGLView3 = new SoundplaneZoneView();
+	mpGLView3->setModel(pModel);
+	MLRect zoneViewRect(0, 1.f, pageWidth, 3.75);
+	page1->addWidgetToView (mpGLView3, zoneViewRect, "zone_view");		
 	
 	MLRect zoneLabelRect(0, 0, 3., 0.25);
 	float sectionLabelsY = 5.125;
