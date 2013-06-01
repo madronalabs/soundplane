@@ -58,7 +58,7 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 	MLParamValue t = pButton->getToggleState();
 
 	mpModel->setModelParam(p, t);
-	
+
 	/*
 	if (p == "carriers")
 	{
@@ -113,8 +113,22 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 	{
 		mpSoundplaneModel->setDefaultNormalize();
 	}
+	else if(p == "prev")
+	{
+	
+		if(mpSoundplaneView)
+		{
+			mpSoundplaneView->prevPage();
+		}
+	}
+	else if (p == "next")
+	{
+		if(mpSoundplaneView)
+		{
+			mpSoundplaneView->nextPage();
+		}
+	}	
 }
-
 
 void SoundplaneController::dialValueChanged (MLDial* pDial)
 {

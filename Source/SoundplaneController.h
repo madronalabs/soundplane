@@ -38,18 +38,20 @@ public:
 	void shutdown();
 	void timerCallback();
 
-    void buttonClicked (MLButton* pB);
-
-    void dialValueChanged (MLDial*);
+	// from MLResponder
+	void buttonClicked (MLButton*);
+	void showMenu (MLSymbol menuName, MLMenuButton* instigator);	
+	void menuItemChosen(MLSymbol menuName, int result);
+	void dialValueChanged (MLDial*);
+	void multiSliderValueChanged (MLMultiSlider* , int ) {} // no multiSliders
+	void multiButtonValueChanged (MLMultiButton* , int ) {} // no multiButtons	
 	
 	// menus
 	void setupMenus();
-	void showMenu (MLSymbol menuName, MLMenuButton* instigator);	
-	void menuItemChosen(MLSymbol menuName, int result);
 	
 	MLSymbol getCurrMenuName() { return mCurrMenuName; }
 	void setCurrMenuInstigator(MLMenuButton* pI) { mCurrMenuInstigator = pI; }
-	MLMenuButton* getCurrMenuInstigator() { return mCurrMenuInstigator; }
+	MLMenuButton* getCurrMenuInstigator() { return mCurrMenuInstigator; } 
 	
 	void formatServiceName(const std::string& inName, std::string& outName);
 	const std::string& getServiceName(int idx);
@@ -74,8 +76,7 @@ private:
 
 	PopupMenu mOSCServicesMenu;
 	
-	std::map<MLSymbol, MLMenuPtr> mMenuMap; // to go to controller class
-	
+	std::map<MLSymbol, MLMenuPtr> mMenuMap; 	
 	std::vector<std::string> mServiceNames;
 	std::vector<String> mFormattedServiceNames; // for popup menu
 

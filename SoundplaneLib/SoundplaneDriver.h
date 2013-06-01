@@ -41,8 +41,9 @@
 //
 // The packed data are followed by a 16-bit sequence number.  
 // Two bytes of padding are also present in the data packet. A full packet is always requested, and the
-// Soundplane hardware returns either 0, or the data minus the padding. The padding is needed for some
-// arcane reason to do with USB communication. 
+// Soundplane hardware returns either 0, or the data minus the padding. The padding is needed because for some
+// arcane reason the data sent should be less than the negotiated size. So the negotiated size includes the
+// padding (388 bytes) while 386 bytes are typically received in any transaction. 
 
 // Soundplane A hardware
 const int kSoundplaneASampleRate = 125000;

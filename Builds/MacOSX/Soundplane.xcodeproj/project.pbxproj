@@ -95,7 +95,6 @@
 		B5D066C2166574B400296086 /* MLModelParam.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5D066BC166574B400296086 /* MLModelParam.cpp */; };
 		B5D066C3166574B400296086 /* MLNetServiceHub.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5D066BE166574B400296086 /* MLNetServiceHub.cpp */; };
 		B5D066DA166574C500296086 /* MLReporter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5D066D6166574C500296086 /* MLReporter.cpp */; };
-		B5D066DB166574C500296086 /* MLResponder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5D066D8166574C500296086 /* MLResponder.cpp */; };
 		B5D066F116658A6300296086 /* MLDebugDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5D066F016658A6300296086 /* MLDebugDisplay.cpp */; };
 		B5D4DEA216656ABA000C34B7 /* MLPath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5D4DE9B16656AB9000C34B7 /* MLPath.cpp */; };
 		B5D4DEA316656ABA000C34B7 /* MLSymbol.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5D4DE9E16656AB9000C34B7 /* MLSymbol.cpp */; };
@@ -271,7 +270,6 @@
 		B5D066BF166574B400296086 /* MLNetServiceHub.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLNetServiceHub.h; path = ../../../MadronaLib/MLApp/MLNetServiceHub.h; sourceTree = SOURCE_ROOT; };
 		B5D066D6166574C500296086 /* MLReporter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLReporter.cpp; path = ../../../MadronaLib/MLApp/MLReporter.cpp; sourceTree = SOURCE_ROOT; };
 		B5D066D7166574C500296086 /* MLReporter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLReporter.h; path = ../../../MadronaLib/MLApp/MLReporter.h; sourceTree = SOURCE_ROOT; };
-		B5D066D8166574C500296086 /* MLResponder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLResponder.cpp; path = ../../../MadronaLib/MLApp/MLResponder.cpp; sourceTree = SOURCE_ROOT; };
 		B5D066D9166574C500296086 /* MLResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLResponder.h; path = ../../../MadronaLib/MLApp/MLResponder.h; sourceTree = SOURCE_ROOT; };
 		B5D066EA16657C2E00296086 /* MLTextStreamListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLTextStreamListener.h; path = ../../../MadronaLib/MLApp/MLTextStreamListener.h; sourceTree = SOURCE_ROOT; };
 		B5D066EF16658A6300296086 /* MLDebugDisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLDebugDisplay.h; sourceTree = "<group>"; };
@@ -558,7 +556,6 @@
 				B5D4DE9D16656AB9000C34B7 /* MLPlatform.h */,
 				B5D066D6166574C500296086 /* MLReporter.cpp */,
 				B5D066D7166574C500296086 /* MLReporter.h */,
-				B5D066D8166574C500296086 /* MLResponder.cpp */,
 				B5D066D9166574C500296086 /* MLResponder.h */,
 				B5D4DE9E16656AB9000C34B7 /* MLSymbol.cpp */,
 				B5D4DE9F16656AB9000C34B7 /* MLSymbol.h */,
@@ -794,7 +791,6 @@
 				B5D066C2166574B400296086 /* MLModelParam.cpp in Sources */,
 				B5D066C3166574B400296086 /* MLNetServiceHub.cpp in Sources */,
 				B5D066DA166574C500296086 /* MLReporter.cpp in Sources */,
-				B5D066DB166574C500296086 /* MLResponder.cpp in Sources */,
 				B5D066F116658A6300296086 /* MLDebugDisplay.cpp in Sources */,
 				B562200F166E79BC005FAAD1 /* MLOSCListener.cpp in Sources */,
 				B51EE9A316BB7F07008DF025 /* MLUIBinaryData.cpp in Sources */,

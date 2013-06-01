@@ -90,7 +90,6 @@ private:
 
 class SoundplaneView : 
 	public MLAppView,
-	public MLResponder,
 	public MLModelListener,
 	public Timer
 {
@@ -115,11 +114,10 @@ public:
 	
 	// to go away
 	void setMIDIDeviceString(const std::string& str);
-
 	void setOSCServicesString(const std::string& str);
-
-	// from MLResponder, atypical for a view to have a responder but used for prev / next buttons
-    void buttonClicked (MLButton* pB);
+	
+	void prevPage();
+	void nextPage();
 
 	SoundplaneHeaderView* mpHeader;	// TEMP
 

@@ -214,11 +214,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	mpPrevButton = addRawImageButton(prevRect, "prev", c1, myLookAndFeel->getPicture("arrowleft"));
 	mpNextButton = addRawImageButton(nextRect, "next", c1, myLookAndFeel->getPicture("arrowright"));
 
-	mpPrevButton->setListener(this);
-	mpNextButton->setListener(this);
-	mpPrevButton->setConnectedEdges(Button::ConnectedOnLeft);
-	mpNextButton->setConnectedEdges(Button::ConnectedOnRight);
-
 	// setup pages
 	float mx = 0.5;
 	float pageWidth = width - mx*2.;
@@ -440,7 +435,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pB = page2->addToggleButton("poll kyma", toggleRect.withCenter(12, dialY), "kyma_poll", c2);
 		
 	pModel->addParamListener(this); 
-	
 }
 
 SoundplaneView::~SoundplaneView()
@@ -654,20 +648,23 @@ void SoundplaneView::goToPage (int page)
 	}
 }
 
-// SoundplaneView just listens to the prev / next buttons directly.
-// 
-void SoundplaneView::buttonClicked (MLButton* pButton)
+void SoundplaneView::prevPage()
 {
-	MLSymbol p (pButton->getParamName());
-	if (!mpPages) return;
-	int page = mpPages->getCurrentPage();
-	if(p == "prev")
+	if (mpPages)
 	{
-		goToPage(--page);
+		int page = mpPages->getCurrentPage();
+		goToPage(page - 1);
 	}
-	else if (p == "next")
-	{
-		goToPage(++page);
-	}		
 }
+
+void SoundplaneView::nextPage()
+{
+	if (mpPages)
+	{
+		int page = mpPages->getCurrentPage();
+		goToPage(page + 1);
+	}
+}
+
+
 

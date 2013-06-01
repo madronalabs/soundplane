@@ -63,15 +63,14 @@ void SoundplaneZoneView::mouseDrag (const MouseEvent& e)
 {
 }
 
-
 void SoundplaneZoneView::renderOpenGL()
 {
 	if (!mpModel) return;
 	int viewW = getWidth();
 	int viewH = getHeight();
-	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
+//	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
 
-	const MLSignal& currentTouch = mpModel->getTouchFrame();
+//	const MLSignal& currentTouch = mpModel->getTouchFrame();
 		
 	// erase
 	const Colour c = findColour(MLLookAndFeel::backgroundColor);
@@ -80,13 +79,12 @@ void SoundplaneZoneView::renderOpenGL()
 	glClearColor (0, 1.0, 0, 1.0f);
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	
 	
-	int margin = myLookAndFeel->getSmallMargin();
-	int numSize = margin*2;
-	int left = margin*2 + numSize;
+//	int margin = myLookAndFeel->getSmallMargin();
+//	int left = margin*2 + numSize;
 	
-	int right = viewW - margin;
-	int top = margin;
-	int bottom = viewH - margin;
+//	int right = viewW - margin;
+//	int top = margin;
+//	int bottom = viewH - margin;
 	
 
 	orthoView(viewW, viewH);	
