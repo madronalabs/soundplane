@@ -5,7 +5,6 @@
 
 #include "SoundplaneApp.h"
 
-
 SoundplaneApp::SoundplaneApp() :
 	mpModel(0),
 	mpView(0),
@@ -23,7 +22,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpController = new SoundplaneController(mpModel);
 	mpController->initialize();
 	mpView = new SoundplaneView(mpModel, mpController, mpController);
-
 
 #ifdef DEBUG	
 	// DEBUG send output back to stdout

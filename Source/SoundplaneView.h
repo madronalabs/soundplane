@@ -6,18 +6,12 @@
 #ifndef __SOUNDPLANE_VIEW_H__
 #define __SOUNDPLANE_VIEW_H__
 
-// soundplane widgets
+#include "JuceHeader.h"
 #include "SoundplaneGridView.h"
 #include "SoundplaneTouchView.h"
 #include "SoundplaneZoneView.h"
 #include "TrackerCalibrateView.h"
-
-
-//#include <vector>
-//#include <map>
-
 #include "SoundplaneModel.h"
-
 #include "MLButton.h"
 #include "MLDrawableButton.h"
 #include "MLTextButton.h"
@@ -26,19 +20,11 @@
 #include "MLEnvelope.h"
 #include "MLProgressBar.h"
 #include "MLGraph.h"
-
 #include "MLVector.h"
-
-//#include "MLDefaultFileLocations.h"
-//#include "MLJuceFilesMac.h"
 #include "MLAppView.h"
 #include "MLPageView.h"
 #include "MLResponder.h"
-
 #include "SoundplaneBinaryData.h"
-
-#include "JuceHeader.h"
-
 
 const int kViewGridUnitsX = 15;
 const int kViewGridUnitsY = 10;

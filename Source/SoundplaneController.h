@@ -42,9 +42,13 @@ public:
 	void buttonClicked (MLButton*);
 	void showMenu (MLSymbol menuName, MLMenuButton* instigator);	
 	void menuItemChosen(MLSymbol menuName, int result);
+	void dialDragStarted (MLDial*) {} // don’t care about drag start.
 	void dialValueChanged (MLDial*);
-	void multiSliderValueChanged (MLMultiSlider* , int ) {} // no multiSliders
+	void dialDragEnded (MLDial*) {} // don’t care about drag end.
 	void multiButtonValueChanged (MLMultiButton* , int ) {} // no multiButtons	
+	void multiSliderDragStarted (MLMultiSlider* pSlider, int idx) {} // no multiSliders
+	void multiSliderValueChanged (MLMultiSlider* , int ) {} // no multiSliders
+	void multiSliderDragEnded (MLMultiSlider* pSlider, int idx) {} // no multiSliders
 	
 	// menus
 	void setupMenus();

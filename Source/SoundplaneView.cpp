@@ -194,8 +194,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	// set gradient size so that area around OpenGL views is flat color.
 	myLookAndFeel->setGradientSize(0.07f); 
 	const Colour c1 = findColour(MLLookAndFeel::backgroundColor);
-	const Colour c2 = Colours::white;//findColour(MLLookAndFeel::backgroundColor2);
-	const Colour c3 = Colours::white;
+	const Colour c2 = findColour(MLLookAndFeel::defaultDialFillColor);
 
 	// get drawing resources
 	myLookAndFeel->addPicture ("arrowleft", SoundplaneBinaryData::arrowleft_svg, SoundplaneBinaryData::arrowleft_svgSize);

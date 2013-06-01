@@ -38,17 +38,13 @@ public:
     bool moreThanOneInstanceAllowed();
     void anotherInstanceStarted (const String& commandLine){}
 
-private:
-	
+private:	
 	SoundplaneModel* mpModel;
 	SoundplaneView* mpView;
 	SoundplaneController* mpController;	
 	MLAppState* mpState;
 	MLAppWindow mWindow;
 	MLNetServiceHub mNetServices;
-	
-	
-	
 };
 
 // This macro creates the application's main() function.
