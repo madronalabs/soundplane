@@ -83,7 +83,7 @@ public:
 	void setDevice(const std::string& deviceStr);
 	int getNumDevices();
 	const std::string& getDeviceName(int d);
-	std::list<std::string>& getDeviceList();
+	std::vector<std::string>& getDeviceList();
 	
 	void setActive(bool v);
 	void setPressureActive(bool v);
@@ -106,7 +106,7 @@ private:
 	MIDIVoice mMIDIVoices[kMaxMIDIVoices];
 
 	std::vector<MIDIDevicePtr> mDevices;
-	std::list<std::string> mDeviceList;
+	std::vector<std::string> mDeviceList;
 	juce::MidiOutput* mpCurrentDevice;
 	
 	bool mActive;

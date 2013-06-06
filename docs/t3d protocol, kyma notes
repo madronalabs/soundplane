@@ -1,41 +1,41 @@
 
-I made a very simple format named t3d (for touch-3d).  It has three message types: frame, touch, and alive. 
+I made a very simple format named t3d (for touch-3d). It has three message types: frame, touch, and alive.
 
-The three messages are always sent in an OSC bundle consisting of a frame message, 0 or more touch messages, and an alive message. 
+The three messages are always sent in an OSC bundle consisting of a frame message, 0 or more touch messages, and an alive message.
 
 --
 
-frame: 
+frame:
 /t3d/frm (int)frameID (int)time (int)deviceID
 
-The frame message describes the incoming frame.  Frames are sent at a constant data rate with the exception that when new touches are detected, a new frame message is sent as soon as possible.  The data rate is typically from 100-1000Hz. 
+The frame message describes the incoming frame. Frames are sent at a constant data rate with the exception that when new touches are detected, a new frame message is sent as soon as possible. The data rate is typically from 100-1000Hz.
 
-frameID is a counter that increments for each frame of data sent by the Soundplane.  Because an extra frame is sent when a touch is detected, it may increment at a varying rate. 
+frameID is a counter that increments for each frame of data sent by the Soundplane. Because an extra frame is sent when a touch is detected, it may increment at a varying rate.
 
-time is a 31-bit timestamp in milliseconds.  As such it will wrap around to 0 every 2147.48 seconds.  This information can optionally be used to reduce jitter in a received stream.
+time is a 31-bit timestamp in milliseconds. As such it will wrap around to 0 every 2147.48 seconds. This information can optionally be used to reduce jitter in a received stream.
 
-deviceID contains a 16-bit instrument model ID followed by a 16 bit serial number. 
+deviceID contains a 16-bit instrument model ID followed by a 16 bit serial number.
 
 --
 
 touch:
 t3d/tch (int)touchID, (float)x, (float)y, (float)z, (float)note
 
-The touch message describes a single touch currently active.  If no touches are active, there will be no touch messages sent in between the frame and alive messages. 
+The touch message describes a single touch currently active. If no touches are active, there will be no touch messages sent in between the frame and alive messages.
 
 touchID is the touch number from 1-16.
 x is the absolute x location from 0.-1.
 y is the absolute y location from 0.-1.
 z is the z (force) value from 0.-1.
-note is a floating point value.  The Soundplane software has a utility to map from areas on the surface to zones, which may play notes.  Soundplane assumes that clients will have ways for the player to select a note to frequency map, or scale.  To provide only an equal-tempered A440 scale a fixed mapping can be used where frequency =  440.0 * 2^((note - 69.0) / 12.) .
+note is a floating point value. The Soundplane software has a utility to map from areas on the surface to zones, which may play notes. Soundplane assumes that clients will have ways for the player to select a note to frequency map, or scale. To provide only an equal-tempered A440 scale a fixed mapping can be used wherefrequency = 440.0 * 2^((note - 69.0) / 12.) .
 
 --
 
 alive:
 /t3d/alv {(int)touchID1, (int)touchID2, ...}
 
-The alive message ends each bundle.  The ints touchID1, touchID2... are a list of the currently active touches.  Depending on the voice allocation mode, there may be gaps in this list, for example only touches 1, 4 and 5 may be active. 
-The alive message is needed to ensure that notes are not stuck on if packets are dropped over UDP.  Therefore clients must always ensure that voices not listed in the most recent alive message are turned off.
+The alive message ends each bundle. The ints touchID1, touchID2... are a list of the currently active touches. Depending on the voice allocation mode, there may be gaps in this list, for example only touches 1, 4 and 5 may be active.
+The alive message is needed to ensure that notes are not stuck on if packets are dropped over UDP. Therefore clients must always ensure that voices not listed in the most recent alive message are turned off.
 
 --
 

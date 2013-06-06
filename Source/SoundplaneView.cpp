@@ -194,7 +194,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	// set gradient size so that area around OpenGL views is flat color.
 	myLookAndFeel->setGradientSize(0.07f); 
 	const Colour c1 = findColour(MLLookAndFeel::backgroundColor);
-	const Colour c2 = findColour(MLLookAndFeel::defaultDialFillColor);
+	const Colour c2 = findColour(MLLookAndFeel::defaultFillColor);
 
 	// get drawing resources
 	myLookAndFeel->addPicture ("arrowleft", SoundplaneBinaryData::arrowleft_svg, SoundplaneBinaryData::arrowleft_svgSize);
@@ -454,47 +454,45 @@ void SoundplaneView::initialize()
 
 void SoundplaneView::timerCallback()
 {
-//	if (mDoAnimations)
-	{			
-		// poll soundplane status and get info.
-		// we don't have to know what the states mean -- just an index. 
-		// if the status changes, pull current info from Soundplane and redraw.
-		//
-		if (mpFooter)
+	// poll soundplane status and get info.
+	// we don't have to know what the states mean -- just an index. 
+	// if the status changes, pull current info from Soundplane and redraw.
+	//
+	if (mpFooter)
+	{
+		bool needsRepaint = false;
+		int calState = mpModel->isCalibrating();
+		int deviceState = mpModel->getDeviceState();
+		int clientState = mpModel->getClientState();
+		
+		if(calState)
 		{
-			bool needsRepaint = false;
-			int calState = mpModel->isCalibrating();
-			int deviceState = mpModel->getDeviceState();
-			int clientState = mpModel->getClientState();
-			
-			if(calState)
-			{
-				mpFooter->setCalibrateProgress(mpModel->getCalibrateProgress());
-				needsRepaint = true;
-			}
+			mpFooter->setCalibrateProgress(mpModel->getCalibrateProgress());
+			needsRepaint = true;
+		}
 
-			if(calState != mCalibrateState)
-			{
-				mpFooter->setCalibrateState(calState);
-				needsRepaint = true;
-				mCalibrateState = calState;
-			}
-			
-			if ((clientState != mSoundplaneClientState) || (deviceState != mSoundplaneDeviceState))
-			{
-				mpFooter->setHardware(mpModel->getHardwareStr());
-				mpFooter->setStatus(mpModel->getStatusStr(), mpModel->getClientStr());
-				mSoundplaneClientState = clientState;
-				mSoundplaneDeviceState = deviceState;
-				needsRepaint = true;
-			}
-			
-			if(needsRepaint)
-			{
-				mpFooter->repaint();
-			}
+		if(calState != mCalibrateState)
+		{
+			mpFooter->setCalibrateState(calState);
+			needsRepaint = true;
+			mCalibrateState = calState;
+		}
+		
+		if ((clientState != mSoundplaneClientState) || (deviceState != mSoundplaneDeviceState))
+		{
+			mpFooter->setHardware(mpModel->getHardwareStr());
+			mpFooter->setStatus(mpModel->getStatusStr(), mpModel->getClientStr());
+			mSoundplaneClientState = clientState;
+			mSoundplaneDeviceState = deviceState;
+			needsRepaint = true;
+		}
+		
+		if(needsRepaint)
+		{
+			mpFooter->repaint();
 		}
 	}
+
 	updateChangedParams();
 
 }

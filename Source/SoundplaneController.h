@@ -40,7 +40,7 @@ public:
 
 	// from MLResponder
 	void buttonClicked (MLButton*);
-	void showMenu (MLSymbol menuName, MLMenuButton* instigator);	
+	void showMenu (MLSymbol menuName, MLSymbol instigatorName);	
 	void menuItemChosen(MLSymbol menuName, int result);
 	void dialDragStarted (MLDial*) {} // don’t care about drag start.
 	void dialValueChanged (MLDial*);
@@ -53,9 +53,8 @@ public:
 	// menus
 	void setupMenus();
 	
-	MLSymbol getCurrMenuName() { return mCurrMenuName; }
-	void setCurrMenuInstigator(MLMenuButton* pI) { mCurrMenuInstigator = pI; }
-	MLMenuButton* getCurrMenuInstigator() { return mCurrMenuInstigator; } 
+//	void setCurrMenuInstigator(MLMenuButton* pI) { mCurrMenuInstigator = pI; }
+//	MLMenuButton* getCurrMenuInstigator() { return mCurrMenuInstigator; } 
 	
 	void formatServiceName(const std::string& inName, std::string& outName);
 	const std::string& getServiceName(int idx);
@@ -75,12 +74,9 @@ private:
 	SoundplaneModel* mpSoundplaneModel;	
 	SoundplaneView* mpSoundplaneView;
 		
-	MLSymbol mCurrMenuName;
-	MLMenuButton* mCurrMenuInstigator;
+//	MLMenuButton* mCurrMenuInstigator;
 
-	PopupMenu mOSCServicesMenu;
-	
-	std::map<MLSymbol, MLMenuPtr> mMenuMap; 	
+	MLMenuMapT mMenuMap; 	
 	std::vector<std::string> mServiceNames;
 	std::vector<String> mFormattedServiceNames; // for popup menu
 

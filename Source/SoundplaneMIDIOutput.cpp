@@ -165,7 +165,7 @@ const std::string& SoundplaneMIDIOutput::getDeviceName(int d)
 	return mDevices[d]->getName();
 }
 
-std::list<std::string>& SoundplaneMIDIOutput::getDeviceList()
+std::vector<std::string>& SoundplaneMIDIOutput::getDeviceList()
 {
 	return mDeviceList;
 }

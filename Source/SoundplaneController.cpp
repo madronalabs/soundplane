@@ -12,7 +12,7 @@ SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
 	MLReporter(pModel),
 	mpSoundplaneModel(pModel),
 	mpSoundplaneView(0),
-	mCurrMenuInstigator(nullptr),
+//	mCurrMenuInstigator(nullptr),
 	mNeedsLateInitialize(true)
 {
 	MLReporter::mpModel = pModel;
@@ -33,7 +33,7 @@ void SoundplaneController::initialize()
 	devices = MidiOutput::getDevices();
 	
 	// make OSC services list
-	mOSCServicesMenu.clear();
+//	mOSCServicesMenu.clear();
 	mServiceNames.clear();
 	services.clear();
 	services.push_back(kOSCDefaultStr);
@@ -150,11 +150,13 @@ void SoundplaneController::setView(SoundplaneView* v)
 	mpSoundplaneView = v; 
 }
 
+static void menuItemChosenCallback (int result, SoundplaneController* pC, MLMenuPtr menu);
+
 void SoundplaneController::setupMenus()
 {
 	if(!mpSoundplaneView) return;
 	
-	MLMenuPtr viewMenu = MLMenuPtr(new MLMenu());
+	MLMenuPtr viewMenu = MLMenuPtr(new MLMenu("viewmode"));
 	mMenuMap["viewmode"] = viewMenu;
 	viewMenu->addItem("raw data");
 	viewMenu->addItem("calibrated");
@@ -164,21 +166,106 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("norm. map");
 	
 	// collect MIDI menu each time
-	MLMenuPtr midiMenu = MLMenuPtr(new MLMenu());
+	MLMenuPtr midiMenu = MLMenuPtr(new MLMenu("midi_device"));
 	mMenuMap["midi_device"] = midiMenu;
 		
 	// presets each time
-	MLMenuPtr presetMenu = MLMenuPtr(new MLMenu());
+	MLMenuPtr presetMenu = MLMenuPtr(new MLMenu("preset"));
 	mMenuMap["preset"] = presetMenu;
-	presetMenu->addItem("continuous pitch x");
-	presetMenu->addItem("rows in fourths");
 	
-	MLMenuPtr oscMenu = MLMenuPtr(new MLMenu());
+	MLMenuPtr oscMenu = MLMenuPtr(new MLMenu("osc_services"));
 	mMenuMap["osc_services"] = oscMenu;
 	
 	// setup defaults 
 	mpModel->setModelParam("osc_services", kOSCDefaultStr);	
 }	
+
+void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
+{
+	StringArray devices;
+	if(!mpSoundplaneView) return;
+	
+	MLMenuMapT::iterator menuIter(mMenuMap.find(menuName));
+	if (menuIter != mMenuMap.end())
+	{
+		MLMenuPtr menu = menuIter->second;
+		menu->setInstigator(instigatorName);
+
+		// find instigator widget and set value to 1 - this depresses menu buttons for example
+		MLWidget* pInstigator = mpSoundplaneView->getWidget(instigatorName);
+		if(pInstigator != nullptr)
+		{
+			pInstigator->setAttribute("value", 1);
+		}
+
+		MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance(); // should get from View
+		int u = myLookAndFeel->getGridUnitSize();
+		int height = ((float)u)*0.35f;
+		height = clamp(height, 12, 128);
+		
+		// update menus that might change each time
+		if (menuName == "preset")
+		{
+			// populate preset menu
+			// TODO look at files in preset dir
+			//
+			menu->clear();
+			menu->addItem("continuous pitch x");
+			menu->addItem("rows in fourths");
+		}
+		else if (menuName == "midi_device")
+		{
+			// refresh device list
+			menu->clear();		
+			SoundplaneMIDIOutput& outs = getModel()->getMIDIOutput();
+			outs.findMIDIDevices ();
+			std::vector<std::string>& devices = outs.getDeviceList();
+			menu->addItems(devices);
+		}
+		else if (menuName == "osc_services")
+		{
+			menu->clear();		
+			mServiceNames.clear();
+			std::vector<std::string>::iterator it;
+			for(it = services.begin(); it != services.end(); it++)
+			{
+				const std::string& serviceName = *it;
+				std::string formattedName;
+				formatServiceName(serviceName, formattedName);
+				mServiceNames.push_back(serviceName);
+				menu->addItem(formattedName);
+			}
+		}	
+		
+		if(menu != MLMenuPtr())
+		{
+			if(pInstigator != nullptr)
+			{
+				Component* pInstComp = pInstigator->getComponent();
+				if(pInstComp)
+				{
+					PopupMenu& juceMenu = menu->getJuceMenu();
+					juceMenu.showMenuAsync (PopupMenu::Options().withTargetComponent(pInstComp).withStandardItemHeight(height),
+						ModalCallbackFunction::withParam(menuItemChosenCallback, this, menu));
+				}
+			}
+		}
+	}
+}
+
+static void menuItemChosenCallback (int result, SoundplaneController* pC, MLMenuPtr menu)
+{
+	MLWidgetContainer* pView = pC->getView();
+	if(pView)
+	{	
+		MLWidget* pInstigator = pView->getWidget(menu->getInstigator());
+		if(pInstigator != nullptr)
+		{
+			pInstigator->setAttribute("value", 0);
+		}
+	}
+	pC->menuItemChosen(menu->getName(), result);
+}
 
 void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
 {
@@ -210,81 +297,6 @@ void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
 				Resolve(name.c_str(), kUDPType, kLocalDotDomain);
 			}			
 		}
-	}
-}
-
-static void menuItemChosenCallback (int result, SoundplaneController* pC, MLSymbol menuName);
-static void menuItemChosenCallback (int result, SoundplaneController* pC, MLSymbol menuName)
-{
-	MLMenuButton* instigator = pC->getCurrMenuInstigator();
-	if(instigator)
-	{
-		instigator->setToggleState(false, false);
-	}
-	pC->menuItemChosen(menuName, result);
-}
-
-void SoundplaneController::showMenu (MLSymbol menuName, MLMenuButton* instigator)
-{
-	StringArray devices;
-	if(!mpSoundplaneView) return;
-	
-	// handle possible click on second menu while first is active
-	if(getCurrMenuInstigator() != nullptr)
-	{
-		getCurrMenuInstigator()->setToggleState(false, false);
-	}
-	
-	MLMenuPtr menu = mMenuMap[menuName];
-	mCurrMenuName = menuName;
-	assert(instigator);
-	setCurrMenuInstigator(instigator);
-	instigator->setToggleState(true, false);
-
-	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance(); // should get from View
-	int u = myLookAndFeel->getGridUnitSize();
-	int height = ((float)u)*0.35f;
-	height = clamp(height, 12, 128);
-	
-	// update menus that might change each time
-	if (menuName == "preset")
-	{
-		// populate preset menu
-		// TODO look at files in preset dir
-		//
-		menu->clear();
-		menu->addItem("continuous pitch x");
-		menu->addItem("rows in fourths");
-	}
-	else if (menuName == "midi_device")
-	{
-		// refresh device list
-		menu->clear();		
-		SoundplaneMIDIOutput& outs = getModel()->getMIDIOutput();
-		outs.findMIDIDevices ();
-		std::list<std::string>& devices = outs.getDeviceList();
-		menu->addItems(devices);
-	}
-	else if (menuName == "osc_services")
-	{
-		menu->clear();		
-		mServiceNames.clear();
-		std::vector<std::string>::iterator it;
-		for(it = services.begin(); it != services.end(); it++)
-		{
-			const std::string& serviceName = *it;
-			std::string formattedName;
-			formatServiceName(serviceName, formattedName);
-			mServiceNames.push_back(serviceName);
-			menu->addItem(formattedName);
-		}
-	}	
-	
-	if(menu != MLMenuPtr())
-	{
-		PopupMenu& juceMenu = menu->getJuceMenu();
-		juceMenu.showMenuAsync (PopupMenu::Options().withTargetComponent(instigator).withStandardItemHeight(height),
-			ModalCallbackFunction::withParam(menuItemChosenCallback, this, menuName));
 	}
 }
 
@@ -374,19 +386,19 @@ public:
 
 void SoundplaneController::doWelcomeTasks()
 {
-	SoundplaneSetupThread demoThread(getModel(), getCurrMenuInstigator());
+	SoundplaneSetupThread demoThread(getModel(), getView());
 	if (demoThread.runThread())
 	{
 		// thread finished normally..
 		AlertWindow::showMessageBox (AlertWindow::NoIcon,
-			String::empty, "Setup successful.", "OK", getCurrMenuInstigator());
+			String::empty, "Setup successful.", "OK");
 	}
 	else
 	{
 		// user pressed the cancel button..
 		AlertWindow::showMessageBox (AlertWindow::NoIcon,
 			String::empty, "Setup cancelled. Calibration not complete. ",
-			"OK", getCurrMenuInstigator());
+			"OK");
 	}
 }
 
@@ -396,8 +408,8 @@ bool SoundplaneController::confirmRestoreDefaults()
 			String::empty,
 			"Really restore all settings to defaults?\nCurrent settings will be lost." ,
 			"OK",
-			"Cancel",
-			getCurrMenuInstigator());
+			"Cancel"
+			);
 			
 	return doSetup;
 }
