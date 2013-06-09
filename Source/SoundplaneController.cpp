@@ -165,7 +165,7 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("test");
 	viewMenu->addItem("norm. map");
 	
-	// collect MIDI menu each time
+	// collect MIDI menu each time, not here
 	MLMenuPtr midiMenu = MLMenuPtr(new MLMenu("midi_device"));
 	mMenuMap["midi_device"] = midiMenu;
 		
@@ -221,6 +221,10 @@ void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 			outs.findMIDIDevices ();
 			std::vector<std::string>& devices = outs.getDeviceList();
 			menu->addItems(devices);
+
+//			menu->addItem("xxx pitch x");
+//			menu->addItem("xx in fourths");
+
 		}
 		else if (menuName == "osc_services")
 		{
