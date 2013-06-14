@@ -221,10 +221,6 @@ void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 			outs.findMIDIDevices ();
 			std::vector<std::string>& devices = outs.getDeviceList();
 			menu->addItems(devices);
-
-//			menu->addItem("xxx pitch x");
-//			menu->addItem("xx in fourths");
-
 		}
 		else if (menuName == "osc_services")
 		{
@@ -240,7 +236,6 @@ void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 				menu->addItem(formattedName);
 			}
 		}	
-		
 		if(menu != MLMenuPtr())
 		{
 			if(pInstigator != nullptr)

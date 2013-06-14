@@ -570,6 +570,7 @@ void SoundplaneGridView::renderOpenGL()
 	const int nt = mpModel->getModelFloatParam("max_touches");
 	const MLSignal& touches = mpModel->getTouchFrame();
 	
+	
 	for(int t=0; t<nt; ++t)
 	{
 		int age = touches(ageColumn, t);

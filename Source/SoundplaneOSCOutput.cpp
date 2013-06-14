@@ -101,6 +101,14 @@ void SoundplaneOSCOutput::doInfrequentTasks()
 		p << osc::EndBundle;
 		mpUDPSocket->Send( p.Data(), p.Size() );
 	}
+	
+	// send data rate to receiver
+	p << osc::BeginBundleImmediate;
+	p << osc::BeginMessage( "/t3d/dr" );	
+	p << (osc::int32)mDataFreq;
+	p << osc::EndMessage;
+	p << osc::EndBundle;
+	mpUDPSocket->Send( p.Data(), p.Size() );
 }
 
 void SoundplaneOSCOutput::notify(int connected)
@@ -122,7 +130,6 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 {
 	if (!mActive) return;
 	float x, y, z, note;
-
 	UInt64 now = getMicroseconds();	
 	const UInt64 dataPeriodMicrosecs = 1000*1000 / mDataFreq;
 	bool sendData = false;
@@ -135,22 +142,24 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 		pVoice->mNoteOn = false;
 		pVoice->mNoteOff = false;
 		int age = touchFrame(ageColumn, i);
-	//	if (age && !pVoice->mAge) // note-on
 		if (age == 1) // note-on
 		{
+			// always send note on 
 			sendData = true;
 			pVoice->mNoteOn = true;
 			pVoice->mStartY = touchFrame(yColumn, i);
 		}
 		else if (pVoice->mAge && !age)
 		{
-			sendData = true;
+			// always send note off
+			sendData = true;	
 			pVoice->mNoteOff = true;
 		}
 		pVoice->mAge = age;
 	}
 	
-	// if not already sending data, look at the time.
+	// if not already sending data due to note on or off, look at the time
+	// and decide to send based on that. 
 	if (!sendData)
 	{
 		if (now > mLastTimeDataWasSent + (UInt64)dataPeriodMicrosecs)
@@ -164,7 +173,6 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 	{
 		if (!mKymaMode)
 		{
-			std::list<int> liveTouches;
 			osc::OutboundPacketStream p( mpOSCBuf, kUDPOutputBufferSize );
 			
 			p << osc::BeginBundleImmediate;
@@ -179,8 +187,7 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 			// That's only 35 minutes, so clients need to handle wrapping.
 			UInt32 now31 = now & 0x7FFFFFFF;	
 			
-			p << mFrameId++ << (osc::int32)now31 << mSerialNumber;
-			
+			p << mFrameId++ << (osc::int32)now31 << mSerialNumber;			
 			p << osc::EndMessage;
 			
 			// send 1 message for each live touch.
@@ -198,14 +205,21 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 				osc::int32 touchID = i + 1; // 1-based for OSC
 				if (pVoice->mAge > 0)
 				{
-					liveTouches.push_back(touchID);
+					// start or continue touch
 					p << osc::BeginMessage( "/t3d/tch" );	
-
 					// send data. any additional quantites could follow.
 					p << touchID << x << y << z << note;
-
 					p << osc::EndMessage;
 				}
+				else if(pVoice->mNoteOff)
+				{
+					// send touch off, just a normal frame except z is guaranteed to be 0.
+					z = 0;
+					p << osc::BeginMessage( "/t3d/tch" );	
+					// send data. any additional quantites could follow.
+					p << touchID << x << y << z << note;
+					p << osc::EndMessage;
+				}				
 			}
 			
 			// TODO /t3d/raw for matrix data
@@ -221,10 +235,8 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 					p << (osc::int32)(i + 1); // 1-based for OSC
 				}
 			}
-			p << osc::EndMessage;
-					
-			p << osc::EndBundle;
-			
+			p << osc::EndMessage;					
+			p << osc::EndBundle;			
 			mpUDPSocket->Send( p.Data(), p.Size() );
 		}
 		else // kyma
@@ -238,8 +250,7 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 				x = touchFrame(xColumn, i);
 				y = touchFrame(yColumn, i);
 				z = touchFrame(zColumn, i);
-				note = touchFrame(noteColumn, i);
-				
+				note = touchFrame(noteColumn, i);				
 				osc::int32 touchID = i; // 0-based for Kyma
 				osc::int32 offOn = 1;
 				if(pVoice->mNoteOn)
@@ -254,10 +265,8 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 				if(pVoice->mAge || pVoice->mNoteOff)
 				{
 					p << osc::BeginMessage( "/key" );	
-
 					// send data. any additional quantites could follow.
 					p << touchID << offOn << note << z << y ;
-
 					p << osc::EndMessage;
 				}
 			}

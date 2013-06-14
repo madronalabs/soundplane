@@ -111,6 +111,9 @@ SoundplaneModel::SoundplaneModel() :
 		mNoteLock[i] = 0;
 		mCurrentKeyX[i] = -1;
 		mCurrentKeyY[i] = -1;
+		mAge1[i] = 0;
+		mNote1[i] = 0.f;
+		mZ1[i] = 0.f;
 	}
 	
 	mTracker.setSampleRate(mSampleRate);	
@@ -820,6 +823,7 @@ void SoundplaneModel::postProcessTouchData()
 					mNoteFilters[i].setState(noteQuant);	
 				}
 				mNoteFilters[i].process(1);	
+				note = noteQuant; 	
 								
 				// unless touch is new, filter vibrato
 				vibratoX = x;
@@ -830,10 +834,10 @@ void SoundplaneModel::postProcessTouchData()
 					mVibratoFilters[i].setState(vibratoX);
 				}
 				mVibratoFilters[i].process(1);	
-					
-				// add vibrato  
-				vibratoHP = (x - vibratoX)*vibratoAmp*kSoundplaneVibratoAmount;			
-				note = noteQuant + vibratoHP; 		
+				
+				// add vibrato to note
+				vibratoHP = (x - vibratoX)*vibratoAmp*kSoundplaneVibratoAmount;		
+				note += vibratoHP; 	
 			}
 					
 			// lock: only change pitch on note start
@@ -854,7 +858,22 @@ void SoundplaneModel::postProcessTouchData()
 			// scale x and y to unity range for clients
 			mTouchFrame(xColumn, i) = clamp(x*mSurfaceWidthInv, 0.f, 1.f);		
 			mTouchFrame(yColumn, i) = clamp(y*mSurfaceHeightInv, 0.f, 1.f);	
+			
+			// store previous z			
+			mZ1[i] = z;
 		}
+		else if ((mAge1[i] > 0) && quantize)
+		{
+			// on note off, send quantized note for release
+			float releaseNote = roundf(mNote1[i]) + transpose;
+			mTouchFrame(noteColumn, i) = releaseNote;
+			mTouchFrame(ageColumn, i) = age; 
+			mTouchFrame(zColumn, i) = mZ1[i];
+		}
+
+		mAge1[i] = age;
+		mNote1[i] = note;
+					
 	}
 }
 

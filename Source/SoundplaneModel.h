@@ -230,6 +230,9 @@ private:
 	float mNoteLock[kSoundplaneMaxTouches];
 	int mCurrentKeyX[kSoundplaneMaxTouches];
 	int mCurrentKeyY[kSoundplaneMaxTouches];
+	int mAge1[kSoundplaneMaxTouches];
+	float mNote1[kSoundplaneMaxTouches];
+	float mZ1[kSoundplaneMaxTouches];
 	char mHardwareStr[miscStrSize];
 	char mStatusStr[miscStrSize];
 	char mClientStr[miscStrSize];

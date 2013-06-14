@@ -443,12 +443,9 @@ SoundplaneView::~SoundplaneView()
 
 void SoundplaneView::initialize()
 {
-	goToPage(0);	
-		
-	startTimer(50);
-	
-	setAnimationsActive(true);
-	
+	goToPage(0);			
+	startTimer(50);	
+	setAnimationsActive(true);	
 	updateAllParams();
 }
 
