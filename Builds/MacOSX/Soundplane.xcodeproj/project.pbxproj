@@ -89,6 +89,7 @@
 		B5CA7AD113E0C559003BCFA3 /* MLMultiButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5CA7AAE13E0C559003BCFA3 /* MLMultiButton.cpp */; };
 		B5CA7AD213E0C559003BCFA3 /* MLMultiSlider.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5CA7AB013E0C559003BCFA3 /* MLMultiSlider.cpp */; };
 		B5CA7AD613E0C559003BCFA3 /* MLSeparator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5CA7ABA13E0C559003BCFA3 /* MLSeparator.cpp */; };
+		B5CC962817766C63002C46A9 /* MLDebugMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = B5CC962717766C63002C46A9 /* MLDebugMac.mm */; };
 		B5D066A7166570A800296086 /* MLDebug.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5D066A5166570A800296086 /* MLDebug.cpp */; };
 		B5D066C0166574B400296086 /* MLGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5D066B8166574B400296086 /* MLGL.cpp */; };
 		B5D066C1166574B400296086 /* MLModel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5D066BA166574B400296086 /* MLModel.cpp */; };
@@ -258,6 +259,7 @@
 		B5CA7ABA13E0C559003BCFA3 /* MLSeparator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLSeparator.cpp; sourceTree = "<group>"; };
 		B5CA7ABB13E0C559003BCFA3 /* MLSeparator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLSeparator.h; sourceTree = "<group>"; };
 		B5CA7AC713E0C559003BCFA3 /* MLUI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLUI.h; sourceTree = "<group>"; };
+		B5CC962717766C63002C46A9 /* MLDebugMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = MLDebugMac.mm; path = ../../../madronalib/MLApp/MLDebugMac.mm; sourceTree = SOURCE_ROOT; };
 		B5D066A5166570A800296086 /* MLDebug.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLDebug.cpp; path = ../../../MadronaLib/MLApp/MLDebug.cpp; sourceTree = SOURCE_ROOT; };
 		B5D066A6166570A800296086 /* MLDebug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLDebug.h; path = ../../../MadronaLib/MLApp/MLDebug.h; sourceTree = SOURCE_ROOT; };
 		B5D066B8166574B400296086 /* MLGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLGL.cpp; path = ../../../MadronaLib/MLApp/MLGL.cpp; sourceTree = SOURCE_ROOT; };
@@ -539,6 +541,7 @@
 		B5D4DE84166564BB000C34B7 /* MLApp */ = {
 			isa = PBXGroup;
 			children = (
+				B5CC962717766C63002C46A9 /* MLDebugMac.mm */,
 				B5D066A5166570A800296086 /* MLDebug.cpp */,
 				B5D066A6166570A800296086 /* MLDebug.h */,
 				B5D066B8166574B400296086 /* MLGL.cpp */,
@@ -813,6 +816,7 @@
 				B591CC63172196EA0048CA19 /* SoundplaneBinaryData.cpp in Sources */,
 				B5AE8F2C1724573F00C088C1 /* MLProgressBar.cpp in Sources */,
 				B5A338ED173326700003DB89 /* MLBoundsConstrainer.cpp in Sources */,
+				B5CC962817766C63002C46A9 /* MLDebugMac.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1087,6 +1087,12 @@ void SoundplaneModel::setCarriers(unsigned char* c)
 	if (mpDriver)
 	{
 		enableOutput(false);
+
+		for(int i=0; i < kSoundplaneSensorWidth; ++i)
+		{
+	debug() << "carrier " << i << ":" << c[i] << "\n";		
+		}
+
 		IOReturn err = mpDriver->setCarriers(c);
 		if (err != kIOReturnSuccess)
 		{

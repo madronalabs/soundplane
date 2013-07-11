@@ -420,8 +420,14 @@ void TouchTracker::setThresh(float f)
 
 // if any neighbors of the input coordinates are higher, move the coordinates there.
 //
-Vec2 TouchTracker::adjustPeak(const MLSignal& in, int x, int y)
+Vec2 TouchTracker::adjustPeak(const MLSignal& in, int xp, int yp)
 {
+	int width = in.getWidth();
+	int height = in.getHeight();
+	
+	int x = clamp(xp, 1, width - 2);
+	int y = clamp(yp, 1, height - 2);
+										
 	float t = 0.0;
 	int rx = x;
 	int ry = y;
@@ -681,7 +687,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			Vec2 minPos(0, 0);
 			Vec2 maxPos(width, height);
 			int ix = floor(pos.x() + 0.5f);
-			int iy = floor(pos.y() + 0.5f);								
+			int iy = floor(pos.y() + 0.5f);		
 			
 			// move to any higher neighboring integer value
 			Vec2 newPeak;
