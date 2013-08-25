@@ -27,12 +27,12 @@ public:
 	
     const String getApplicationName()
     {
-		return ProjectInfo::projectName;
+		return MLProjectInfo::projectName;
 	}
 
     const String getApplicationVersion()
     {
-        return ProjectInfo::versionString;
+        return MLProjectInfo::versionString;
     }
 
     bool moreThanOneInstanceAllowed();

@@ -12,7 +12,7 @@ SoundplaneTouchView::SoundplaneTouchView() :
 	MLWidget::setComponent(this);
 
 	mGLContext.setRenderer (this);
-//	mGLContext.setComponentPaintingEnabled (true);
+	mGLContext.setComponentPaintingEnabled (true);
 	mGLContext.attachTo (*this);
 }
 
@@ -50,9 +50,14 @@ void SoundplaneTouchView::renderOpenGL()
 	glEnable (GL_BLEND);
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable (GL_TEXTURE_2D);
-
-	int viewW = getWidth();
-	int viewH = getHeight();
+    
+    // get the top-level window containing this Component
+    ComponentPeer* peer = getPeer();
+    Rectangle<int> peerBounds = peer->getBounds();
+    const Desktop::Displays::Display& d = Desktop::getInstance().getDisplays().getDisplayContaining(peerBounds.getCentre());
+    int displayScale = (int)d.scale;
+    int viewW = getWidth()*displayScale;
+	int viewH = getHeight()*displayScale;
 	
 	const MLSignal& currentTouch = mpModel->getTouchFrame();
 	const MLSignal& touchHistory = mpModel->getTouchHistory();

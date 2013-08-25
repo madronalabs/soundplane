@@ -111,7 +111,7 @@ void SoundplaneFooterView::setHardware(const char* c)
 	{
 		std::string temp(c);
 		temp += ", client v.";
-		temp += ProjectInfo::versionString;
+		temp += MLProjectInfo::versionString;
 		mpDevice->setText(temp.c_str());
 		mpDevice->repaint();
 	}
@@ -236,7 +236,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	mpGridView = new SoundplaneGridView();
 	mpGridView->setModel(pModel);
 	page0->addWidgetToView (mpGridView, GLRect1, "grid_view");		
-
+    
 	MLRect GLRect2(0, 3.5, pageWidth, 3.);
 	mpTouchView = new SoundplaneTouchView();
 	mpTouchView->setModel(pModel);
@@ -415,7 +415,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 
 	// debug pane
 	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 1., 7., 5.));
-	debug().setListener(pDebug);
+	debug().sendOutputToListener(pDebug);
 	
 	//page2->addToggleButton("pause", toggleRect.withCenter(13.5, 5.5), "debug_pause", c2);
 	

@@ -25,7 +25,7 @@ void SoundplaneApp::initialise (const String& commandLine)
 
 #ifdef DEBUG	
 	// DEBUG send output back to stdout
-	debug().setListener(0);
+	debug().sendOutputToListener(0);
 #endif
 
 	mpView->initialize();		
@@ -35,7 +35,7 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mWindow.setGridUnits(kViewGridUnitsX, kViewGridUnitsY);
 	mWindow.centreWithSize(800, 800*kViewGridUnitsY/kViewGridUnitsX);
 	
-	mpState = new MLAppState(mpModel, mpView, ProjectInfo::makerName, ProjectInfo::projectName, ProjectInfo::versionNumber);
+	mpState = new MLAppState(mpModel, mpView, MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber);
 	bool foundState = mpState->loadSavedState();
 	
 	mpController->setView(mpView);
