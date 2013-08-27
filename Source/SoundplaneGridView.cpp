@@ -13,22 +13,24 @@ SoundplaneGridView::SoundplaneGridView() :
 	setInterceptsMouseClicks (false, false);
 	MLWidget::setComponent(this);
 
-	mpGLContext = new OpenGLContext();
-	mpGLContext->setRenderer (this);
-	mpGLContext->setComponentPaintingEnabled (false);
-	mpGLContext->attachTo (*getComponent());
+	mGLContext.setRenderer (this);
+	mGLContext.setComponentPaintingEnabled (false);
+	mGLContext.attachTo (*getComponent());
 }
 
 SoundplaneGridView::~SoundplaneGridView()
 {
-	mpGLContext->detach();
-	delete mpGLContext;
+	mGLContext.detach();
+
 }
 
 // when the component creates a new internal context, this is called, and
 // we'll use the opportunity to create the textures needed.
 void SoundplaneGridView::newOpenGLContextCreated()
 {
+    
+    debug() << "SoundplaneGridView::newOpenGLContextCreated()\n";
+    
 #if ! JUCE_IOS
 	// (no need to call makeCurrentContextActive(), as that will have
 	// been done for us before the method call).
@@ -389,36 +391,19 @@ void SoundplaneGridView::renderXYGrid()
 	}
 }
 
-void SoundplaneGridView::renderOpenGL()
+void SoundplaneGridView::renderZGrid()
 {
 	if (!mpModel) return;
 	int width = mpModel->getWidth();
 	int height = mpModel->getHeight();
 	int viewW = getWidth();
 	int viewH = getHeight();
-	
-	// erase
-	const Colour c = findColour(MLLookAndFeel::backgroundColor);
-	float p = c.getBrightness();
-	glClearColor (p, p, p, 1.0f);
-	glDisable (GL_DEPTH_TEST);
-	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable (GL_TEXTURE_2D);
-	glEnable(GL_BLEND);
-	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	char strBuf[64] = {0};
-	
-	if (mViewMode == kXY)
-	{
-		renderXYGrid();
-		return;
-	}
-
-	// draw grid
+    
+    // draw grid
 	float myAspect = (float)viewW / (float)viewH;
 	float soundplaneAspect = 4.f; // TEMP
 	int state = mpModel->getDeviceState();
-
+    
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(8.0, myAspect, 0.5, 50.0);
@@ -427,15 +412,15 @@ void SoundplaneGridView::renderOpenGL()
 	gluLookAt(0.0, -16.0, 3., // eyepoint x y z
 			  0.0, 0.0, -0.5, // center x y z
 			  0.0, 1.0, 0.0); // up vector
-
+    
 	glColor4f(1, 1, 1, 0.5);
 	MLRange xRange(0, width-1);
 	float r = 0.95;
 	xRange.convertTo(MLRange(-myAspect*r, myAspect*r));
 	MLRange yRange(0, height-1);
-	float sh = myAspect*r/soundplaneAspect;	
-	yRange.convertTo(MLRange(-sh, sh));	
-		
+	float sh = myAspect*r/soundplaneAspect;
+	yRange.convertTo(MLRange(-sh, sh));
+    
 	const MLSignal& viewSignal = mpModel->getSignalForViewMode(mViewMode);
 	
 	float displayScale = mpModel->getModelFloatParam("display_scale");
@@ -465,9 +450,10 @@ void SoundplaneGridView::renderOpenGL()
 			break;
 	}
 	
-	// draw stuff in immediate mode. TODO vertex buffers and modern GL code in general. 
+	// draw stuff in immediate mode. TODO vertex buffers and modern GL code in general.
 	//
 	Vec4 lineColor;
+	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	Vec4 darkBlue(0.f, 0.f, 0.4f, 1.f);
 	Vec4 green(0.f, 0.5f, 0.1f, 1.f);
 	Vec4 blue(0.1f, 0.1f, 0.9f, 1.f);
@@ -477,13 +463,13 @@ void SoundplaneGridView::renderOpenGL()
 	int rightEdge = width;
 	if(mViewMode == kNrmMap)
 	{
-		 leftEdge += 1;
-		 rightEdge -= 1;
+        leftEdge += 1;
+        rightEdge -= 1;
 	}
 	
 	if (separateSurfaces)
 	{
-		// draw lines 
+		// draw lines
 		for(int i=0; i<width; ++i)
 		{
 			// alternate colors every flex circuit
@@ -504,7 +490,7 @@ void SoundplaneGridView::renderOpenGL()
 				glVertex3f(x, y, -zMean);
 			}
 			glEnd();
-
+            
 			// horiz
 			if (i%16 != 15)
 			{
@@ -544,7 +530,7 @@ void SoundplaneGridView::renderOpenGL()
 				glVertex3f(x, y, -z);
 			}
 			glEnd();
-		}	
+		}
 		// vert lines
 		for(int i=leftEdge; i<rightEdge; ++i)
 		{
@@ -559,17 +545,18 @@ void SoundplaneGridView::renderOpenGL()
 			glEnd();
 		}
 	}
-		
+    
 	if(state != kDeviceHasIsochSync)
 	{	// TODO draw question mark
-
+        
 	}
-
+    
 	// render current touches on top of surface
 	//
 	const int nt = mpModel->getModelFloatParam("max_touches");
 	const MLSignal& touches = mpModel->getTouchFrame();
-		
+    
+    char strBuf[64] = {0};
 	for(int t=0; t<nt; ++t)
 	{
 		int age = touches(ageColumn, t);
@@ -583,10 +570,11 @@ void SoundplaneGridView::renderOpenGL()
 			float ty = yRange.convert(y);
 			float tz = (z);
 			
+
 #if DEBUG
 			float dt = touches(dtColumn, t);
 			sprintf(strBuf, "%5.3f, %i", dt, age);
-#else			
+#else
 			sprintf(strBuf, "%5.3f", z);
 #endif
 			float stackOffset = 0.25f;
@@ -594,10 +582,44 @@ void SoundplaneGridView::renderOpenGL()
 			tz += (float)t*stackOffset;
 			drawInfoBox(Vec3(tx, ty, -tz), strBuf, t);
 			
-//debug() << "x: " << x << ", y: " << y << ", z: " << z << ", d: " << d << ", age:" << age << "\n";
-
+            //debug() << "x: " << x << ", y: " << y << ", z: " << z << ", d: " << d << ", age:" << age << "\n";
+            
 		}
 	}
 }
+
+void SoundplaneGridView::renderOpenGL()
+{
+	if (!mpModel) return;
+    int backW = getBackingLayerWidth();
+    int backH = getBackingLayerHeight();
+    
+    // Create an OpenGLGraphicsContext that will draw into this GL window..
+    {
+        ScopedPointer<LowLevelGraphicsContext> glRenderer(createOpenGLGraphicsContext (mGLContext, backW, backH));
+        if (glRenderer != nullptr)
+        {
+            Graphics g (glRenderer);
+            const Colour c = findColour(MLLookAndFeel::backgroundColor);
+            OpenGLHelpers::clear (c);
+
+            if (mViewMode == kXY)
+            {
+                renderXYGrid();
+            }
+            else
+            {
+                renderZGrid();
+            }
+        }
+    }
+}
+
+void SoundplaneGridView::resizeWidget(const MLRect& b, const int u)
+{
+    MLWidget::resizeWidget(b, u);
+    debug() << "RESIZING SoundplaneGridView\n";
+}
+
 
 	

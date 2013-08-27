@@ -38,7 +38,7 @@ void SoundplaneTouchView::mouseDrag (const MouseEvent& e)
 {
 }
 
-void SoundplaneTouchView::renderOpenGL()
+void SoundplaneTouchView::renderTouches()
 {
 	if (!mpModel) return;
 	if (!isShowing()) return;
@@ -51,13 +51,8 @@ void SoundplaneTouchView::renderOpenGL()
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable (GL_TEXTURE_2D);
     
-    // get the top-level window containing this Component
-    ComponentPeer* peer = getPeer();
-    Rectangle<int> peerBounds = peer->getBounds();
-    const Desktop::Displays::Display& d = Desktop::getInstance().getDisplays().getDisplayContaining(peerBounds.getCentre());
-    int displayScale = (int)d.scale;
-    int viewW = getWidth()*displayScale;
-	int viewH = getHeight()*displayScale;
+    int viewW = getBackingLayerWidth();
+    int viewH = getBackingLayerHeight();
 	
 	const MLSignal& currentTouch = mpModel->getTouchFrame();
 	const MLSignal& touchHistory = mpModel->getTouchHistory();
@@ -133,4 +128,25 @@ void SoundplaneTouchView::renderOpenGL()
 		glEnd();
 	}
 }
+
+void SoundplaneTouchView::renderOpenGL()
+{
+	if (!mpModel) return;
+    int backW = getBackingLayerWidth();
+    int backH = getBackingLayerHeight();
+    
+    // Create an OpenGLGraphicsContext that will draw into this GL window..
+    {
+        ScopedPointer<LowLevelGraphicsContext> glRenderer(createOpenGLGraphicsContext (mGLContext, backW, backH));
+        if (glRenderer != nullptr)
+        {
+            Graphics g (glRenderer);
+            // g.addTransform (AffineTransform::scale ((float) getScale()));
+            const Colour c = findColour(MLLookAndFeel::backgroundColor);
+            OpenGLHelpers::clear (c);
+            renderTouches();
+        }
+    }
+}
+
 	

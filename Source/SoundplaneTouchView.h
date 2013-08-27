@@ -33,6 +33,7 @@ public:
     // we'll use the opportunity to create the textures needed.
     void newOpenGLContextCreated();
     void mouseDrag (const MouseEvent& e);
+    void renderTouches();
     void renderOpenGL();
     void openGLContextClosing();
  	void setModel(SoundplaneModel* m);
