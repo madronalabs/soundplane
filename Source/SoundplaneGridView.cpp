@@ -57,8 +57,9 @@ void SoundplaneGridView::newOpenGLContextCreated()
 
 void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
 {
-	int viewW = getWidth();
-	int viewH = getHeight();
+    int bScale = getBackingLayerScale();
+	int viewW = getBackingLayerWidth();
+	int viewH = getBackingLayerHeight();
 
 	int len = strlen(text);
 	clamp(len, 0, 32);
