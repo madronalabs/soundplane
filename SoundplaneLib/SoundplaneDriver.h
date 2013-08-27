@@ -134,6 +134,11 @@ public:
 	virtual void handleDeviceDataDump(float* pData, int size) = 0;
 };
 
+void * soundplaneProcessThread(void *arg);
+void deviceAdded(void *refCon, io_iterator_t iterator);
+void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
+void isochComplete(void *refCon, IOReturn result, void *arg0);
+
 class SoundplaneDriver;
 
 typedef struct

@@ -1246,7 +1246,6 @@ UInt32 getThreadPolicy(pthread_t inThread)
 void displayThreadInfo(pthread_t inThread)
 {
 	printf("--------\n");
-	printf("thread @ %x: ", (unsigned int)inThread);
 	
 	printf("policy: ");
 	UInt32 policy = getThreadPolicy(inThread);

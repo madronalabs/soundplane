@@ -11,7 +11,7 @@ SoundplaneApp::SoundplaneApp() :
 	mpController(0),	
 	mpState(nullptr)
 {
-	debug() << "Starting Soundplane...\n";
+	MLConsole() << "Starting Soundplane...\n";
 }
 
 void SoundplaneApp::initialise (const String& commandLine)
@@ -22,11 +22,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpController = new SoundplaneController(mpModel);
 	mpController->initialize();
 	mpView = new SoundplaneView(mpModel, mpController, mpController);
-
-#ifdef DEBUG	
-	// DEBUG send output back to stdout
-	debug().sendOutputToListener(0);
-#endif
 
 	mpView->initialize();		
 	

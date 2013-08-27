@@ -720,14 +720,14 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		bool inhibitTest = (newZ > inhibit);
 		t.tDist = mCalibrator.differenceFromTemplateTouchWithMask(mTemp, pos, mTemplateMask);
 		bool templateTest = (t.tDist < mTemplateThresh);
-		bool override = (newZ > mOverrideThresh);
+		bool overrideTest = (newZ > mOverrideThresh);
 						
 		t.age++;
 
 		// handle release		
 		// TODO get releaseDetect: evidence that touch has been released.
 		// from matching release curve over ~ 50 samples. 
-		if (!thresholdTest || (!templateTest && !override) || (!inhibitTest))
+		if (!thresholdTest || (!templateTest && !overrideTest) || (!inhibitTest))
 		{			
 			/* debug
 			if(!thresholdTest && (t.releaseCtr == 0))
@@ -920,7 +920,7 @@ void TouchTracker::findTouches()
 			float inhibit = getInhibitThreshold(pos);			
 			bool inhibitTest = (z > inhibit);
 			bool templateTest = (kdt < mTemplateThresh);
-			bool override = (z > mOverrideThresh);
+			bool overrideTest = (z > mOverrideThresh);
 			bool kCoeffTest = (kCoeff > 0.001f);
 
 			bool ageTest = mKeyStates[i].age > 10;
@@ -931,7 +931,7 @@ void TouchTracker::findTouches()
 			
 				// if difference of peak neighborhood from template at subpixel position 
 				// is under threshold, we may have a new touch.		
-				if (templateTest || override) 
+				if (templateTest || overrideTest) 
 				{
 					if(!keyIsOccupied(i))
 					{
@@ -948,7 +948,7 @@ void TouchTracker::findTouches()
 /*
 												
 debug() << newIdx << " ON z:" << z << " kdt:" << kdt << " at " << pos << "\n";	
-debug() << "          template: " << templateTest << " override: " << override << "\n";
+debug() << "          template: " << templateTest << " overrideTest: " << overrideTest << "\n";
 			debug() << "********\n";
 			debug() << "KC " << kCoeff << "\n";
 			debug() << "KDZ " << kdz << "\n";
@@ -1219,9 +1219,9 @@ TouchTracker::Calibrator::~Calibrator()
 
 void TouchTracker::Calibrator::begin()
 {
-	debug() << "\n****************************************************************\n\n";
-	debug() << "Hello and welcome to tracker calibration. \n";
-	debug() << "Collecting silence, please don't touch.";
+	MLConsole() << "\n****************************************************************\n\n";
+	MLConsole() << "Hello and welcome to tracker calibration. \n";
+	MLConsole() << "Collecting silence, please don't touch.";
 	
 	mFilteredInput.clear();
 	mSampleCount.clear();
@@ -1252,7 +1252,7 @@ void TouchTracker::Calibrator::cancel()
 	if(isCalibrating())
 	{
 		mActive = false;
-		debug() << "\nCalibration cancelled.\n";
+		MLConsole() << "\nCalibration cancelled.\n";
 	}
 }
 
@@ -1475,7 +1475,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 		mStartupSum += peakZ;
 		if(mTotalSamples % 100 == 0)
 		{
-			debug() << ".";
+			MLConsole() << ".";
 		}
 	}
 	else if (mTotalSamples == startupSamples)
@@ -1483,11 +1483,11 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 		age = 0;
 		//mAutoThresh = kNormalizeThresh;
 		mAutoThresh = mStartupSum / (float)startupSamples * 10.f;	
-		debug() << "\n****************************************************************\n\n";
-		debug() << "OK, done collecting silence (auto threshold: " << mAutoThresh << "). \n";
-		debug() << "Now please slide a palm or other flat object across the surface,  \n";
-		debug() << "applying a firm and even pressure, until all the rectangles \n";
-		debug() << "at left turn blue.  \n\n";
+		MLConsole() << "\n****************************************************************\n\n";
+		MLConsole() << "OK, done collecting silence (auto threshold: " << mAutoThresh << "). \n";
+		MLConsole() << "Now please slide a palm or other flat object across the surface,  \n";
+		MLConsole() << "applying a firm and even pressure, until all the rectangles \n";
+		MLConsole() << "at left turn blue.  \n\n";
 		
 		mNormalizeMap.clear();
 		mNormalizeCount.clear();
@@ -1537,9 +1537,9 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 		{				
 			float mapMaximum = makeNormalizeMap();	
 						
-			debug() << "\n****************************************************************\n\n";
-			debug() << "\n\nOK, done collecting normalize map. (max = " << mapMaximum << ").\n";
-			debug() << "Please lift your hands.";
+			MLConsole() << "\n****************************************************************\n\n";
+			MLConsole() << "\n\nOK, done collecting normalize map. (max = " << mapMaximum << ").\n";
+			MLConsole() << "Please lift your hands.";
 			mCollectingNormalizeMap = false;
 			mWaitSamplesAfterNormalize = 0;
 			mVisSignal.clear();
@@ -1554,22 +1554,22 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 			mWaitSamplesAfterNormalize++;
 			if(mTotalSamples % 100 == 0)
 			{
-				debug() << ".";
+				MLConsole() << ".";
 			}
 		}
 		else if(mWaitSamplesAfterNormalize == waitAfterNormalize)
 		{
 			mWaitSamplesAfterNormalize++;
 			mAutoThresh *= 1.5f;
-			debug() << "\nOK, done collecting silence again (auto threshold: " << mAutoThresh << "). \n";
+			MLConsole() << "\nOK, done collecting silence again (auto threshold: " << mAutoThresh << "). \n";
 
-			debug() << "\n****************************************************************\n\n";
-			debug() << "Now please slide a single finger over the  \n";
-			debug() << "Soundplane surface, visiting each area twice \n";
-			debug() << "until all the areas are colored green at left.  \n";
-			debug() << "Sliding over a key the first time will turn it gray.  \n";
-			debug() << "Sliding over a key the second time will turn it green.\n";
-			debug() << "\n";
+			MLConsole() << "\n****************************************************************\n\n";
+			MLConsole() << "Now please slide a single finger over the  \n";
+			MLConsole() << "Soundplane surface, visiting each area twice \n";
+			MLConsole() << "until all the areas are colored green at left.  \n";
+			MLConsole() << "Sliding over a key the first time will turn it gray.  \n";
+			MLConsole() << "Sliding over a key the second time will turn it green.\n";
+			MLConsole() << "\n";
 		
 		}
 		else if(peakZ > mAutoThresh)
@@ -1643,10 +1643,10 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 				mActive = false;	
 				r = 1;	
 							
-				debug() << "\n****************************************************************\n\n";
-				debug() << "Calibration is now complete and will be auto-saved in the file \n";
-				debug() << "SoundplaneAppState.txt. \n";
-				debug() << "\n****************************************************************\n\n";
+				MLConsole() << "\n****************************************************************\n\n";
+				MLConsole() << "Calibration is now complete and will be auto-saved in the file \n";
+				MLConsole() << "SoundplaneAppState.txt. \n";
+				MLConsole() << "\n****************************************************************\n\n";
 			}	
 		}
 		else
@@ -1724,7 +1724,7 @@ void TouchTracker::Calibrator::setCalibration(const MLSignal& v)
 	}
 	else
 	{
-		debug() << "TouchTracker::Calibrator::setCalibration: restoring default.\n";
+		MLConsole() << "TouchTracker::Calibrator::setCalibration: restoring default.\n";
 		mCalibrateSignal = v;
 		mHasCalibration = false;
 	}
@@ -1739,7 +1739,7 @@ void TouchTracker::Calibrator::setNormalizeMap(const MLSignal& v)
 	}
 	else
 	{
-		debug() << "TouchTracker::Calibrator::setNormalizeMap: restoring default.\n";
+		MLConsole() << "TouchTracker::Calibrator::setNormalizeMap: restoring default.\n";
 		mNormalizeMap.fill(1.f);
 		mHasNormalizeMap = false;
 	}

@@ -50,6 +50,7 @@ void SoundplaneController::timerCallback()
 	updateChangedParams();
 	PollNetServices();
 	debug().display();
+	MLConsole().display();
 }
 	
 void SoundplaneController::buttonClicked (MLButton* pButton)

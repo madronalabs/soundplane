@@ -223,7 +223,7 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 	}
 	catch( osc::Exception& e )
 	{
-		debug() << "oscpack error while parsing message: "
+		MLError() << "oscpack error while parsing message: "
 			<< m.AddressPattern() << ": " << e.what() << "\n";
 	}
 }
@@ -430,7 +430,7 @@ void SoundplaneModel::initialize()
 	// TODO mem err handling	
 	if (!mCalibrateData.setDims(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneCalibrateSize))
 	{
-		debug() << "SoundplaneModel: out of memory!\n";
+		MLError() << "SoundplaneModel: out of memory!\n";
 	}
 	
 	mTouchFrame.setDims(kTouchWidth, kSoundplaneMaxTouches);
@@ -506,16 +506,16 @@ void SoundplaneModel::handleDeviceError(int errorType, int data1, int data2, flo
 		case kDevDataDiffTooLarge:
 			if(!mSelectingCarriers)
 			{
-				debug() << "SoundplaneModel::handleDeviceError: diff too large (" << fd1 << ")\n";
-				debug() << "startup count = " << data1 << "\n";
+				MLError() << "SoundplaneModel::handleDeviceError: diff too large (" << fd1 << ")\n";
+				MLError() << "startup count = " << data1 << "\n";
 			}
 			break;
 		case kDevGapInSequence:
-			debug() << "SoundplaneModel::handleDeviceError: gap in sequence (" << data1 << " -> " << data2 << ")\n";
+			MLError() << "SoundplaneModel::handleDeviceError: gap in sequence (" << data1 << " -> " << data2 << ")\n";
 			break;
 		case kDevNoErr:
 		default:
-			debug() << "SoundplaneModel::handleDeviceError: unknown error!\n";
+			MLError() << "SoundplaneModel::handleDeviceError: unknown error!\n";
 			break;
 	}
 }
@@ -557,7 +557,7 @@ void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& nor
 		setModelParam("tracker_calibration", cal);	
 		setModelParam("tracker_normalize", norm);	
 		float thresh = avgDistance;
-		debug() << "SoundplaneModel::hasNewCalibration: calculated template threshold: " << thresh << "\n";	
+		MLConsole() << "SoundplaneModel::hasNewCalibration: calculated template threshold: " << thresh << "\n";
 		setModelParam("t_thresh", thresh);	
 	}
 	else
@@ -566,7 +566,7 @@ void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& nor
 		setModelParam("tracker_calibration", cal);	
 		setModelParam("tracker_normalize", norm);	
 		float thresh = 0.2f;
-		debug() << "SoundplaneModel::hasNewCalibration: default template threshold: " << thresh << "\n";	
+		MLConsole() << "SoundplaneModel::hasNewCalibration: default template threshold: " << thresh << "\n";
 		setModelParam("t_thresh", thresh);	
 	}
 }
@@ -718,8 +718,7 @@ void SoundplaneModel::clearTouchData()
 	}
 }
 
-// scale and filter touch data before sending out to data listeners.
-// here is where key-to-key hysteresis happens.
+// scale and filter touch data in place in mTouchFrame before sending out to data listeners.
 //
 void SoundplaneModel::postProcessTouchData()
 {
@@ -735,7 +734,20 @@ void SoundplaneModel::postProcessTouchData()
 	const float vibratoAmp = getModelFloatParam("vibrato");
 	const int transpose = getModelFloatParam("transpose");
 	const float hysteresis = getModelFloatParam("hysteresis");
-	
+    
+    // data per zone:
+    // start 
+    
+    // we choose to only allow note runs in the horizontal direction. 2D zones can be 2 controllers though. 
+	// - get raw grid position
+    // - apply hysteresis to position.
+    //      if quantizing notes within zone, stick to current note.
+    //      else stick to current zone. 
+
+    // - apply portamento to position.
+    //      if left and right grid areas are covered by the same zone, do portamento.
+    // - otherwise 
+    
 	MLRange yRange(0.05, 0.8);
 	yRange.convertTo(MLRange(0., 1.));
 
@@ -747,15 +759,18 @@ void SoundplaneModel::postProcessTouchData()
 			x = mTouchFrame(xColumn, i);
 			y = mTouchFrame(yColumn, i);
 			z = mTouchFrame(zColumn, i);
+            
+            
 				
 			// apply adjustable force curve for z over [z_thresh, z_max] 
 			z /= zmax;
 			z = (1.f - zcurve)*z + zcurve*z*z*z;		
 			mTouchFrame(zColumn, i) = clamp(z, 0.f, 1.f);
 						
-			// get note from x, y position (Soundplane A)
-			Vec2 keyXY = xyToKeyGrid(Vec2(x, y));	
-			if (!quantize)
+			// get key grid position from x, y position (Soundplane A)
+			Vec2 keyXY = xyToKeyGrid(Vec2(x, y));
+            
+  			if (!quantize)
 			{
 				// get fractional note using interpolated x and integer y.
 				// don't add vibrato
@@ -801,7 +816,6 @@ void SoundplaneModel::postProcessTouchData()
 					float cy = mCurrentKeyY[i] ;
 					float dx = keyXY.x() - cx;
 					float dy = keyXY.y() - cy;
-					
 					float hystThresh = 0.5f + hysteresis*0.25f;
 					changedY = (fabs(dy) > hystThresh);
 					bool changedX = (fabs(dx) > hystThresh);
@@ -873,7 +887,6 @@ void SoundplaneModel::postProcessTouchData()
 
 		mAge1[i] = age;
 		mNote1[i] = note;
-					
 	}
 }
 
@@ -1229,7 +1242,7 @@ void SoundplaneModel::beginSelectCarriers()
 		mMaxNoiseFreqByCarrierSet.clear();
 		
 		// setup first set of carrier frequencies 
-		debug() << "testing carriers set " << mSelectCarriersStep << "...\n";
+		MLConsole() << "testing carriers set " << mSelectCarriersStep << "...\n";
 		makeStandardCarrierSet(mCarriers, mSelectCarriersStep);
 		setCarriers(mCarriers);
 	}
@@ -1321,14 +1334,14 @@ void SoundplaneModel::nextSelectCarriersStep()
 	mMaxNoiseByCarrierSet[mSelectCarriersStep] = maxNoise;
 	mMaxNoiseFreqByCarrierSet[mSelectCarriersStep] = maxNoiseFreq;
 	
-	debug() << "max noise for set " << mSelectCarriersStep << ": " << maxNoise << "(" << maxNoiseFreq << " Hz) \n";
+	MLConsole() << "max noise for set " << mSelectCarriersStep << ": " << maxNoise << "(" << maxNoiseFreq << " Hz) \n";
 	
 	// set up next step.
 	mSelectCarriersStep++;		
 	if (mSelectCarriersStep < kStandardCarrierSets)
 	{		
 		// set next carrier frequencies to calibrate.
-		debug() << "testing carriers set " << mSelectCarriersStep << "...\n";
+		MLConsole() << "testing carriers set " << mSelectCarriersStep << "...\n";
 		makeStandardCarrierSet(mCarriers, mSelectCarriersStep);
 		setCarriers(mCarriers);
 	}
@@ -1345,13 +1358,13 @@ void SoundplaneModel::endSelectCarriers()
 	// get minimum of collected noise sums
 	float minNoise = 99999.f;
 	int minIdx = -1;
-	debug() << "------------------------------------------------\n";
-	debug() << "carrier select noise results:\n";
+	MLConsole() << "------------------------------------------------\n";
+	MLConsole() << "carrier select noise results:\n";
 	for(int i=0; i<kStandardCarrierSets; ++i)
 	{
 		float n = mMaxNoiseByCarrierSet[i];
 		float h = mMaxNoiseFreqByCarrierSet[i];
-		debug() << "set " << i << ": max noise " << n << "(" << h << " Hz)\n";
+		MLConsole() << "set " << i << ": max noise " << n << "(" << h << " Hz)\n";
 		if(n < minNoise)
 		{
 			minNoise = n;
@@ -1360,7 +1373,7 @@ void SoundplaneModel::endSelectCarriers()
 	}
 
 	// set that carrier group
-	debug() << "setting carriers set " << minIdx << "...\n";
+	MLConsole() << "setting carriers set " << minIdx << "...\n";
 	makeStandardCarrierSet(mCarriers, minIdx);
 
 	// set chosen carriers as model parameter so they will be saved
@@ -1374,7 +1387,7 @@ void SoundplaneModel::endSelectCarriers()
 		}		
 		setModelParam("carriers", cSig);
 	}
-	debug() << "carrier select done.\n";
+	MLConsole() << "carrier select done.\n";
 
 	mSelectingCarriers = false;
 }

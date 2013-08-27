@@ -52,7 +52,7 @@ void SoundplaneOSCOutput::connect(const char* name, int port)
 		}
 		catch(std::runtime_error err)
 		{
-			debug() << "SoundplaneOSCOutput: error connecting to " << name << ", port " << port << "\n";
+			MLError() << "SoundplaneOSCOutput: error connecting to " << name << ", port " << port << "\n";
 			return;
 		}
 		debug() << "SoundplaneOSCOutput:connected to " << name << ", port " << port << "\n";
