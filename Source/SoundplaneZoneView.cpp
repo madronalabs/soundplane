@@ -63,31 +63,126 @@ void SoundplaneZoneView::mouseDrag (const MouseEvent& e)
 {
 }
 
+// temporary, ugly
+void SoundplaneZoneView::drawDot(Vec2 pos, float r)
+{
+	Vec4 dotColor(0.8f, 0.8f, 0.8f, 1.f);
+	glColor4fv(&dotColor[0]);
+	int steps = 16;
+    
+	float x = pos.x();
+	float y = pos.y();
+    
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex2f(x, y);
+	for(int i=0; i<=steps; ++i)
+	{
+		float theta = kMLTwoPi * (float)i / (float)steps;
+		float rx = r*cosf(theta);
+		float ry = r*sinf(theta);
+		glVertex3f(x + rx, y + ry, 0.f);
+	}
+	glEnd();
+}	
+
+void SoundplaneZoneView::renderZones()
+{
+	if (!mpModel) return;
+    int viewW = getBackingLayerWidth();
+    int viewH = getBackingLayerHeight();
+	// float viewAspect = (float)viewW / (float)viewH;
+
+	int keyWidth = 30; // Soundplane A TODO get from tracker
+	// float soundplaneAspect = 4.f;
+	int keyHeight = 5;
+    
+	//int modelWidth = mpModel->getWidth();
+	//int modelHeight = mpModel->getHeight();
+	int state = mpModel->getDeviceState();
+
+    orthoView(viewW, viewH);
+    int margin = viewW / 50;
+	MLRange xRange(0, keyWidth, margin, viewW - margin);
+	MLRange yRange(0, keyHeight, margin, viewH - margin);
+ 	
+	Vec4 lineColor;
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
+	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
+	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
+    	
+	// draw thin lines at key grid
+	lineColor = darkBlue;
+	if(state != kDeviceHasIsochSync)
+	{
+		lineColor[3] = 0.1f;
+	}
+	// horiz lines
+	glColor4fv(&lineColor[0]);
+	for(int j=0; j<=keyHeight; ++j)
+	{
+		glBegin(GL_LINE_STRIP);
+		for(int i=0; i<=keyWidth; ++i)
+		{
+			float x = xRange.convert(i);
+			float y = yRange.convert(j);
+			float z = 0.;
+			glVertex3f(x, y, z);
+		}
+		glEnd();
+	}
+	// vert lines
+	for(int i=0; i<=keyWidth; ++i)
+	{
+		glBegin(GL_LINE_STRIP);
+		for(int j=0; j<=keyHeight; ++j)
+		{
+			float x = xRange.convert(i);
+			float y = yRange.convert(j);
+			float z = 0.;
+			glVertex3f(x, y, z);
+		}
+		glEnd();
+	}
+	
+	// draw dots
+    float r = viewH / 100.;
+	for(int i=0; i<=keyWidth; ++i)
+	{
+		float x = xRange.convert(i + 0.5);
+		float y = yRange.convert(2.5);
+		int k = i%12;
+		if(k == 0)
+		{
+			float d = viewH / 40;
+			drawDot(Vec2(x, y - d), r);
+			drawDot(Vec2(x, y + d), r);
+		}
+		if((k == 3)||(k == 5)||(k == 7)||(k == 9))
+		{
+			drawDot(Vec2(x, y), r);
+		}
+	}
+}
+
 void SoundplaneZoneView::renderOpenGL()
 {
 	if (!mpModel) return;
-	int viewW = getWidth();
-	int viewH = getHeight();
-//	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
+    int backW = getBackingLayerWidth();
+    int backH = getBackingLayerHeight();
 
-//	const MLSignal& currentTouch = mpModel->getTouchFrame();
-		
-	// erase
-	const Colour c = findColour(MLLookAndFeel::backgroundColor);
-	float p = c.getBrightness();
-	glClearColor (p, p, p, 1.0f);
-	glClearColor (0, 1.0, 0, 1.0f);
-	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	
-	
-//	int margin = myLookAndFeel->getSmallMargin();
-//	int left = margin*2 + numSize;
-	
-//	int right = viewW - margin;
-//	int top = margin;
-//	int bottom = viewH - margin;
-	
-
-	orthoView(viewW, viewH);	
-
+     // Create an OpenGLGraphicsContext that will draw into this GL window..
+    {
+        ScopedPointer<LowLevelGraphicsContext> glRenderer(createOpenGLGraphicsContext (mGLContext, backW, backH));
+        if (glRenderer != nullptr)
+        {
+            Graphics g (glRenderer);
+            const Colour c = findColour(MLLookAndFeel::backgroundColor);
+            OpenGLHelpers::clear (c);
+            renderZones();
+        }
+    }
 }
+
+
 	
