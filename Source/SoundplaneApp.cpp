@@ -57,6 +57,7 @@ void SoundplaneApp::shutdown()
 	if(mpModel) delete mpModel;
 	
 	delete mpState;
+    debug().display();
 }
 
 bool SoundplaneApp::moreThanOneInstanceAllowed()

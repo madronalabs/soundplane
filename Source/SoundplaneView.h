@@ -120,8 +120,8 @@ private:
 	MLDrawableButton* mpNextButton;
 	
 	// page 0
-	SoundplaneGridView* mpGridView;
-	SoundplaneTouchView* mpTouchView;
+	SoundplaneGridView mGridView;
+	SoundplaneTouchView mTouchView;
 	MLTextButton* mpCalibrateButton;
 	MLTextButton* mpClearButton;
 	MLMenuButton* mpViewModeButton;
@@ -129,12 +129,12 @@ private:
 	MLGraph* mpCurveGraph;
 	
 	// page 1
-	SoundplaneZoneView* mpGLView3;
+	SoundplaneZoneView mGLView3;
 	MLMenuButton* mpMIDIDeviceButton;
 	MLMenuButton* mpOSCServicesButton;
 
 	// page 2
-	TrackerCalibrateView* mpTrkCalView;
+	TrackerCalibrateView mTrkCalView;
 	
 	// misc
 	std::vector<MLWidget*> mpCarrierToggles; // TEMP TODO use getWidget()

@@ -150,9 +150,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	mpFooter(0),
 	mpPages(0),
 	mpModel(pModel),
-	mpGridView(0),
-	mpTouchView(0),
-	mpGLView3(0),
 	mCalibrateState(-1),
 	mSoundplaneClientState(-1),
 	mSoundplaneDeviceState(-1),
@@ -228,19 +225,18 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	// title
 	MLRect pageTitleRect(0., 0., 3.0, 1.);
 	MLLabel* pL = page0->addLabel("Touches", pageTitleRect, 1.5f, eMLTitle);
+    pL->setResizeToText(false);
 	pL->setJustification(Justification::centredLeft); 
 
 	// GL views
 	//
 	MLRect GLRect1(0, 1.f, pageWidth, 2.5);
-	mpGridView = new SoundplaneGridView();
-	mpGridView->setModel(pModel);
-	page0->addWidgetToView (mpGridView, GLRect1, "grid_view");		
+	mGridView.setModel(pModel);
+	page0->addWidgetToView (&mGridView, GLRect1, "grid_view");
     
 	MLRect GLRect2(0, 3.5, pageWidth, 3.);
-	mpTouchView = new SoundplaneTouchView();
-	mpTouchView->setModel(pModel);
-	page0->addWidgetToView (mpTouchView, GLRect2, "touch_view");	
+	mTouchView.setModel(pModel);
+	page0->addWidgetToView (&mTouchView, GLRect2, "touch_view");
 	
 	// temp toggles
 	//
@@ -318,12 +314,13 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	
 	// title
 	pL = page1->addLabel("Zones", pageTitleRect, 1.5f, eMLTitle);
-	pL->setJustification(Justification::centredLeft); 
+    pL->setResizeToText(false);
+	pL->setJustification(Justification::centredLeft);
 	
-	mpGLView3 = new SoundplaneZoneView();
-	mpGLView3->setModel(pModel);
+
+	mGLView3.setModel(pModel);
 	MLRect zoneViewRect(0, 1.f, pageWidth, 3.75);
-	page1->addWidgetToView (mpGLView3, zoneViewRect, "zone_view");		
+	page1->addWidgetToView (&mGLView3, zoneViewRect, "zone_view");
 	
 	MLRect zoneLabelRect(0, 0, 3., 0.25);
 	float sectionLabelsY = 5.125;
@@ -397,7 +394,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 
 	// title
 	pL = page2->addLabel("Expert", pageTitleRect, 1.5f, eMLTitle);
-	pL->setJustification(Justification::centredLeft); 
+    pL->setResizeToText(false);
+	pL->setJustification(Justification::centredLeft);
 	
 	// utility buttons
 	page2->addTextButton("select carriers", MLRect(0, 1, 3, 0.4), "select_carriers");	
@@ -409,13 +407,13 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	
 	// tracker calibration view
 	MLRect TCVRect(0, 3.f, 6.5, 3.); 
-	mpTrkCalView = new TrackerCalibrateView();
-	mpTrkCalView->setModel(pModel);
-	page2->addWidgetToView (mpTrkCalView, TCVRect, "trk_cal_view");		
+	mTrkCalView.setModel(pModel);
+	page2->addWidgetToView (&mTrkCalView, TCVRect, "trk_cal_view");
 
 	// debug pane
 	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 1., 7., 5.));
-	debug().sendOutputToListener(pDebug);
+	//debug().sendOutputToListener(pDebug);
+	debug().sendOutputToListener(0);
 	MLConsole().sendOutputToListener(pDebug);
 	
 	//page2->addToggleButton("pause", toggleRect.withCenter(13.5, 5.5), "debug_pause", c2);
@@ -563,26 +561,17 @@ void SoundplaneView::setViewMode(SoundplaneViewMode v)
 {
 	mViewMode = v;
 	
-	if (mpGridView)
-	{
-		mpGridView->setViewMode(v);
-	}
+    mGridView.setViewMode(v);
 		
 	switch(v)
 	{
 		case kRaw:
 			makeCarrierTogglesVisible(1);
-			if(mpTouchView)
-			{
-				mpTouchView->setWidgetVisible(0);
-			}
+            mTouchView.setWidgetVisible(0);
 		break;
 		default:
 			makeCarrierTogglesVisible(0);
-			if(mpTouchView)
-			{
-				mpTouchView->setWidgetVisible(1);
-			}
+            mTouchView.setWidgetVisible(1);
 		break;
 	}
 }
