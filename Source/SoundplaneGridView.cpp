@@ -57,13 +57,12 @@ void SoundplaneGridView::newOpenGLContextCreated()
 
 void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
 {
-    int bScale = getBackingLayerScale();
+    //int bScale = getBackingLayerScale();
 	int viewW = getBackingLayerWidth();
 	int viewH = getBackingLayerHeight();
 
 	int len = strlen(text);
 	clamp(len, 0, 32);
-	int c = colorIndex % kGLViewNColors;
 	
 	float margin = 2;
 	float charWidth = 5; 
@@ -76,8 +75,8 @@ void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
 	rectPos[2] = 0.2f;
 	Vec3 surfacePos = pos;	
 	surfacePos[2] = 0.f;
-	Vec2 screen = worldToScreen(rectPos);
-	Vec2 surface = worldToScreen(surfacePos);
+	Vec2 screen = MLGL::worldToScreen(rectPos);
+	Vec2 surface = MLGL::worldToScreen(surfacePos);
 //	screen[0] -= margin;
 //	screen[1] -= margin;
 
@@ -102,7 +101,7 @@ void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
 	glEnd();
 	
 	// outline
-	glColor4fv(kGLViewIndicatorColors + 4*c);
+	glColor4fv(MLGL::getIndicatorColor(colorIndex));
 	glBegin(GL_LINE_LOOP);
 	glVertex2f(screen[0], screen[1]);
 	glVertex2f(screen[0] + w, screen[1]);
@@ -111,15 +110,15 @@ void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
 	glEnd();
 	
 	// line down to surface
-	glColor4fv(kGLViewIndicatorColors + 4*c);
+	glColor4fv(MLGL::getIndicatorColor(colorIndex));
 	glBegin(GL_LINES);
 	glVertex2f(screen[0], screen[1]);
 	glVertex2f(surface[0], surface[1]);
 	glEnd();
 	
 	// text
-	glColor4fv(kGLViewIndicatorColors + 4*c);
-	drawTextAt(screen[0] + margin, screen[1] + margin, 0.f, text);
+	glColor4fv(MLGL::getIndicatorColor(colorIndex));
+    MLGL::drawTextAt(screen[0] + margin, screen[1] + margin, 0.f, text);
 	
 	// outline
 
@@ -134,66 +133,6 @@ void SoundplaneGridView::setModel(SoundplaneModel* m)
 {
 	mpModel = m;
 }
-
-void SoundplaneGridView::drawTextAt(float x, float y, float z, const char* ps)
-{
-	int len, i;
-
-	glRasterPos3f(x, y, z);
-	len = (int) strlen(ps);
-	for (i = 0; i < len; i++) 
-	{
-		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, ps[i]);
-	}
-}
-
-Vec2 SoundplaneGridView::worldToScreen(const Vec3& world) 
-{
-	GLint viewport[4];
-	GLdouble mvmatrix[16], projmatrix[16];
-	GLdouble wx, wy, wz;
-		
-	glGetIntegerv(GL_VIEWPORT, viewport);
-	glGetDoublev(GL_MODELVIEW_MATRIX, mvmatrix);
-	glGetDoublev(GL_PROJECTION_MATRIX, projmatrix);
-	
-	GLint result = gluProject(world[0], world[1], world[2],
-		mvmatrix, projmatrix, viewport,
-		&wx, &wy, &wz);
-	
-	if (result == GL_TRUE)
-	{
-		return Vec2(wx, wy);
-	}
-	else
-	{
-		return Vec2(0, 0);
-	}
-}
-
-// temporary, ugly
-void SoundplaneGridView::drawDot(Vec2 pos)
-{
-
-	Vec4 dotColor(0.8f, 0.8f, 0.8f, 1.f);
-	glColor4fv(&dotColor[0]);
-	int steps = 16;
-	float r = 0.04f;
-
-	float x = pos.x();
-	float y = pos.y();
-
-	glBegin(GL_TRIANGLE_FAN);
-	glVertex2f(x, y);
-	for(int i=0; i<=steps; ++i)
-	{
-		float theta = kMLTwoPi * (float)i / (float)steps;
-		float rx = r*cosf(theta);
-		float ry = r*sinf(theta);		
-		glVertex3f(x + rx, y + ry, 0.f);
-	}
-	glEnd();
-}	
 
 void SoundplaneGridView::renderXYGrid()
 {
@@ -311,12 +250,12 @@ void SoundplaneGridView::renderXYGrid()
 		if(k == 0)
 		{
 			float d = 0.1f;
-			drawDot(Vec2(x, y - d));
-			drawDot(Vec2(x, y + d));
+			MLGL::drawDot(Vec2(x, y - d));
+			MLGL::drawDot(Vec2(x, y + d));
 		}
 		if((k == 3)||(k == 5)||(k == 7)||(k == 9))
 		{
-			drawDot(Vec2(x, y));
+			MLGL::drawDot(Vec2(x, y));
 		}
 	}
 	
@@ -330,8 +269,7 @@ void SoundplaneGridView::renderXYGrid()
 		int age = touches(ageColumn, t);
 		if (age > 0)
 		{
-			int c = t % kGLViewNColors;
-			glColor4fv(kGLViewIndicatorColors + 4*c);
+			glColor4fv(MLGL::getIndicatorColor(t));
 
 			float x = touches(xColumn, t) * modelWidth;
 			float y = touches(yColumn, t) * modelHeight;
@@ -354,7 +292,6 @@ void SoundplaneGridView::renderXYGrid()
 			glVertex3f(x1, y2, tz);
 			glEnd();
 			
-			
 //debug() << "x: " << x << ", y: " << y << ", z: " << z << ", d: " << d << ", age:" << age << "\n";
 
 		}
@@ -368,8 +305,7 @@ void SoundplaneGridView::renderXYGrid()
 		int age = touches(ageColumn, touch);
 		if (age > 0)
 		{
-			int c = touch % kGLViewNColors;
-			glColor4fv(kGLViewIndicatorColors + 4*c);
+			glColor4fv(MLGL::getIndicatorColor(touch));
 			glBegin(GL_LINE_STRIP);
 			int cc = ctr;
 			int a = 0;

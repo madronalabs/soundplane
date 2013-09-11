@@ -380,6 +380,11 @@ void SoundplaneModel::setModelParam(MLSymbol p, const std::string& v)
 	}
 	else if (p == "preset")
 	{
+        //
+        
+        // loadPresetByName(v);
+        
+        
 		// TODO load preset by name.
 		if(v == "continuous pitch x")
 		{
@@ -435,7 +440,6 @@ void SoundplaneModel::initialize()
 	
 	mTouchFrame.setDims(kTouchWidth, kSoundplaneMaxTouches);
 	mTouchHistory.setDims(kTouchWidth, kSoundplaneMaxTouches, kSoundplaneHistorySize);
-	mCarrierStats.resize(kSoundplanePossibleCarriers);
 	
 	// create process thread
 	OSErr err;
@@ -648,6 +652,65 @@ const char* SoundplaneModel::getClientStr()
 	return mClientStr;
 }
 
+/*
+ 
+bool MLAppState::loadSavedState()
+{
+	bool r = true;
+	File stateFile = getStateFile();
+	if(stateFile.exists())
+	{
+		String stateStr(stateFile.loadFileAsString());
+		cJSON* root = cJSON_Parse(stateStr.toUTF8());
+		if(root)
+		{
+			loadStateFromJSON(root);		
+			cJSON_Delete(root);
+		}
+		else
+		{
+			debug() << "MLAppState::loadSavedState: couldn't create JSON object!\n";
+#ifdef ML_DEBUG
+			debug() << "STATE:\n" << 	stateStr << "\n";
+#endif				
+		}
+	}
+	else
+	{
+		r = false;
+	}
+	updateAllParams();
+	return r;
+}
+ }
+
+ */
+
+SoundplaneModel::Zone::Zone() :
+    mType(kNoteRow),
+    mRect(),
+    mStartNote(60),
+    mControllerNumber(1),
+    mChannel(1),
+    mName("unnamed zone")
+{
+}
+
+SoundplaneModel::Zone::Zone(ZoneType type, MLRect rect, int startNote, int ctrl, int chan, const char* name) :
+    mType(type),
+    mRect(rect),
+    mStartNote(startNote),
+    mControllerNumber(ctrl),
+    mChannel(chan),
+    mName(name)
+{
+}
+
+SoundplaneModel::Zone::~Zone()
+{
+
+}
+
 // TODO read attributes for each zone from JSON setup
 // zone map signal stores note# attribute for easy interpolation.
 //
@@ -655,7 +718,20 @@ void SoundplaneModel::setupZones()
 {
 	int zoneIdx, zone;
 	int mode = mZoneModeTemp;
-	
+    
+    // TEST
+    debug() << "setting up test zones\n";
+    mZoneList.clear();
+    mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(0, 0, 15, 1), 60, 1, 1, "test1")));
+    mZoneList.push_back(ZonePtr(new Zone(kControllerHorizontal, MLRect(0, 1, 10, 1), 60, 1, 1, "test2")));
+    mZoneList.push_back(ZonePtr(new Zone(kControllerVertical, MLRect(10, 2, 20, 1), 60, 1, 1, "test3")));
+    mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(15, 3, 2, 2), 60, 1, 1, "test4")));
+    mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(15, 3, 1, 1), 60, 1, 1, "test5")));
+    
+    // TODO zone to JSON, JSON to string param
+    // load preset: file to JSON, JSON to zone list param.
+    // zone list param saved with app state.    
+    
 	switch(mode)
 	{
 	case 0:
@@ -893,7 +969,9 @@ void SoundplaneModel::postProcessTouchData()
 // send frame of touch data to any listeners.
 //
 void SoundplaneModel::sendTouchDataToClients()
-{	
+{
+    // TODO not if shutting down!
+    
 	// send to clients
 	//
 	int size = mDataListeners.size();

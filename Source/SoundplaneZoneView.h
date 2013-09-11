@@ -34,15 +34,16 @@ public:
     // we'll use the opportunity to create the textures needed.
     void newOpenGLContextCreated();
     void mouseDrag (const MouseEvent& e);
-    void drawDot(Vec2 pos, float r);
-    void renderZones();
     void renderOpenGL();
     void openGLContextClosing();
  	void setModel(SoundplaneModel* m);
 	
 private:
-    OpenGLContext mGLContext;
+    void drawDot(Vec2 pos, float r);
+    void renderGrid();
+    void renderZones();
 
+    OpenGLContext mGLContext;
 	SoundplaneModel* mpModel;
 
 };

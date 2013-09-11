@@ -17,6 +17,8 @@ SoundplaneHeaderView::SoundplaneHeaderView(SoundplaneModel* pModel, MLResponder*
 	MLAppView(pResp, pRep),
 	mpModel(pModel)
 {
+    setWidgetName("soundplane_header_view");
+
 	float w = kViewGridUnitsX;
 	float margin = 0.20f;
 	float pw = 4.;
@@ -63,7 +65,8 @@ SoundplaneFooterView::SoundplaneFooterView(SoundplaneModel* pModel, MLResponder*
 	mCalibrateState(0),
 	mCalibrateProgress(0.)
 {
-	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();	
+    setWidgetName("soundplane_footer_view");
+	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
 	
 	float labelWidth = 6.;
 	float w = kViewGridUnitsX;
@@ -157,7 +160,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	mpViewModeButton(0),
 	mpMIDIDeviceButton(0),
 	MLModelListener(pModel)
-{		
+{
+    setWidgetName("soundplane_view");
+    
 	// setup application's look and feel 
 	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
 	LookAndFeel::setDefaultLookAndFeel (myLookAndFeel);	
@@ -520,28 +525,28 @@ void SoundplaneView::doParamChangeAction(MLSymbol param, const MLModelParam & ol
 	// debug() << "SoundplaneView::doParamChangeAction: " << param << " from " << oldVal << " to " << newVal << "\n";	
 	if(param == "viewmode")
 	{
-		const std::string& v = newVal.getStringValue();		
-		if(v == "raw data")
+		const std::string* v = newVal.getStringValue();
+		if(*v == "raw data")
 		{
 			setViewMode(kRaw);
 		}
-		else if(v == "calibrated")
+		else if(*v == "calibrated")
 		{
 			setViewMode(kCalibrated);
 		}
-		else if(v == "cooked")
+		else if(*v == "cooked")
 		{
 			setViewMode(kCooked);
 		}
-		else if(v == "xy")
+		else if(*v == "xy")
 		{
 			setViewMode(kXY);
 		}
-		else if(v == "test")
+		else if(*v == "test")
 		{
 			setViewMode(kTest);
 		}
-		else if(v == "norm. map")
+		else if(*v == "norm. map")
 		{
 			setViewMode(kNrmMap);
 		}

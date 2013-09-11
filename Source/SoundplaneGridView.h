@@ -6,11 +6,11 @@
 #ifndef __SOUNDPLANE_GRID_VIEW__
 #define __SOUNDPLANE_GRID_VIEW__
 
+#include "MLGL.h"
 #include "SoundplaneModel.h"
 #include "MLUI.h"
 #include "MLWidget.h"
 #include "MLLookAndFeel.h"
-#include "MLGL.h"
 
 /*
 #ifdef _WIN32

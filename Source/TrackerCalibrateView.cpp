@@ -93,7 +93,7 @@ void TrackerCalibrateView::drawCalibrate()
 	float pr = pRange(p);
 
 	glColor4f(0, 0, 0, 1);
-	orthoView(viewW, viewH);
+    MLGL::orthoView(viewW, viewH);
 	
 	// draw frame
 	glBegin(GL_LINE_LOOP);	

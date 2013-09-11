@@ -29,7 +29,7 @@ const int kSoundplaneKeyWidth = 30;
 const int kSoundplaneKeyHeight = 5;
 const float kSoundplaneVibratoAmount = 4.;
 
-typedef enum SoundplaneViewMode
+enum SoundplaneViewMode
 {
 	kRaw = 0,
 	kCalibrated = 1,
@@ -37,16 +37,6 @@ typedef enum SoundplaneViewMode
 	kXY = 3,
 	kTest = 4,
 	kNrmMap = 5
-};
-
-class ColumnStats
-{
-public:
-	int column;
-	float freq;
-	float sum;
-	float mean;
-	float stdDev;
 };
 
 class SoundplaneModel :
@@ -57,6 +47,31 @@ class SoundplaneModel :
 {
 
 public:
+    enum ZoneType
+    {
+        kNoteRow = 0,
+        kControllerHorizontal = 1,
+        kControllerVertical = 2,
+        kControllerXY = 3,
+        kToggleRow = 4
+    };
+
+    class Zone
+    {
+    public:
+        Zone();
+        Zone(ZoneType type, MLRect rect, int startNote, int ctrl, int chan, const char* name);
+        ~Zone();
+        
+        ZoneType mType;
+        MLRect mRect;
+        int mStartNote;
+        int mControllerNumber;
+        int mChannel;
+        std::string mName;
+    };
+    typedef std::tr1::shared_ptr<Zone> ZonePtr;
+    
 	SoundplaneModel();
 	~SoundplaneModel();	
 	
@@ -142,7 +157,10 @@ public:
 
 	// TEMP
 	void setZoneMode(int m) { mZoneModeTemp = m; setupZones(); }
-	
+    
+    // setParam(string) will try to read the ... what
+    const std::list<ZonePtr>& getZoneList() { return mZoneList; }
+    	
 	int getDeviceState(void);
 	int getClientState(void);
 
@@ -163,12 +181,12 @@ private:
 	void addDataListener(SoundplaneDataListener* pL) { mDataListeners.push_back(pL); }
 	std::vector<SoundplaneDataListener*> mDataListeners;
 	
+	std::list<ZonePtr> mZoneList;
+	
 	MLSoundplaneState mDeviceState;
 	bool mOutputEnabled;
 	
 	static const int miscStrSize = 256;
-	
-	std::vector<ColumnStats> mCarrierStats;
 
 	void setupZones();
 	

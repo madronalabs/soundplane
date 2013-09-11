@@ -29,8 +29,7 @@ static const std::string kOSCDefaultStr("localhost:3123 (default)");
 void SoundplaneController::initialize()
 {
 	// prime MIDI device pump
-	StringArray devices;
-	devices = MidiOutput::getDevices();
+	StringArray devices = MidiOutput::getDevices();
 	
 	// make OSC services list
 //	mOSCServicesMenu.clear();
