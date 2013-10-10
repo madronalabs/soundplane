@@ -16,7 +16,6 @@ SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
 	mNeedsLateInitialize(true)
 {
 	MLReporter::mpModel = pModel;
-	initialize();
 	startTimer(250);
 }
 
@@ -37,6 +36,11 @@ void SoundplaneController::initialize()
 	services.clear();
 	services.push_back(kOSCDefaultStr);
 	Browse(kUDPType, kLocalDotDomain);
+    
+    /*
+    MLFileCollection c(getDefaultFileLocation(kScaleFiles), "scl");// .getChildFile())
+    c.findFilesImmediate();
+     */
 }
 	
 void SoundplaneController::shutdown()
@@ -169,9 +173,13 @@ void SoundplaneController::setupMenus()
 	MLMenuPtr midiMenu = MLMenuPtr(new MLMenu("midi_device"));
 	mMenuMap["midi_device"] = midiMenu;
 		
-	// presets each time
+	// rebuild zone presets menu each time
 	MLMenuPtr presetMenu = MLMenuPtr(new MLMenu("preset"));
 	mMenuMap["preset"] = presetMenu;
+	
+	// rebuild touch presets menu each time
+	MLMenuPtr touchMenu = MLMenuPtr(new MLMenu("touch_preset"));
+	mMenuMap["touch_preset"] = touchMenu;
 	
 	MLMenuPtr oscMenu = MLMenuPtr(new MLMenu("osc_services"));
 	mMenuMap["osc_services"] = oscMenu;
@@ -212,6 +220,15 @@ void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 			menu->clear();
 			menu->addItem("continuous pitch x");
 			menu->addItem("rows in fourths");
+		}
+		else if (menuName == "touch_preset")
+		{
+			// populate touch preset menu
+			// TODO look at files in preset dir
+			//
+			menu->clear();
+			menu->addItem("touch 1");
+			menu->addItem("touch preset 2");
 		}
 		else if (menuName == "midi_device")
 		{
