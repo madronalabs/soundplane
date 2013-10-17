@@ -10,8 +10,10 @@ const float kMenuRectWidth = 0.25f;
 const float kControlsRectWidth = 0.15f;
 const float kVoicesRectWidth = 0.25f;
 
+
 // --------------------------------------------------------------------------------
 #pragma mark header view
+
 
 SoundplaneHeaderView::SoundplaneHeaderView(SoundplaneModel* pModel, MLResponder* pResp, MLReporter* pRep) :
 	MLAppView(pResp, pRep),
@@ -25,7 +27,7 @@ SoundplaneHeaderView::SoundplaneHeaderView(SoundplaneModel* pModel, MLResponder*
 	float h = 1.f;
 	float ph = h - margin*2.;
 	MLRect t(0, 0, pw, ph);
-	addMenuButton("", t.withCenter(w/2., h - margin - ph/2.), "preset"); 
+	//addMenuButton("", t.withCenter(w/2., h - margin - ph/2.), "preset");
 	
 	/*
 	// registration
@@ -149,7 +151,6 @@ void SoundplaneFooterView::paint (Graphics& g)
 // --------------------------------------------------------------------------------
 SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLReporter* pRep) :
 	MLAppView(pResp, pRep),
-	mpHeader(0),
 	mpFooter(0),
 	mpPages(0),
 	mpModel(pModel),
@@ -172,23 +173,14 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 
 	MLDial* pD;
 	MLButton* pB;
-	
-	// resize and add subviews.
-//	int u = myLookAndFeel->getGridUnitSize(); 
-
+    MLLabel* pL;
+    
 	float width = kViewGridUnitsX;
 	float height = kViewGridUnitsY;
-	float headerHeight = 1.0f;
 	float footerHeight = 0.5f;
-	
-	mpHeader = new SoundplaneHeaderView(pModel, pResp, pRep);
-//	mpHeader->setGridUnitSize(u);
-	mpHeader->setGridBounds(MLRect(0, 0, width, headerHeight));
-	addAndMakeVisible(mpHeader);
-	mWidgets["header"] = mpHeader;
-
+    
 	mpFooter = new SoundplaneFooterView(pModel, pResp, pRep);
-//	mpFooter->setGridUnitSize(u);
+
 	mpFooter->setGridBounds(MLRect(0, height - footerHeight, width, footerHeight));
 	addAndMakeVisible(mpFooter);
 	mWidgets["footer"] = mpFooter;
@@ -218,30 +210,139 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	// setup pages
 	float mx = 0.5;
 	float pageWidth = width - mx*2.;
-	MLRect pageRect(mx, headerHeight, pageWidth, height - headerHeight - footerHeight);
+	MLRect pageRect(mx, 0, pageWidth, height - footerHeight);
 	mpPages = new MLPageView(pResp, pRep);
 	mpPages->setParent(this);
 	addWidgetToView(mpPages, pageRect, "pages");
-		
-	// page 0 - raw touches
+    
+	MLRect pageTitleRect(0., 0., 3.0, 1.);
+    // get rect for top preset menus
+	float pmw = pageWidth;
+	float pmh = 1.;
+	float presetMenuWidth = 6;
+	float presetMenuHeight = 0.5f;
+	MLRect presetMenuRect(0, 0, presetMenuWidth, presetMenuHeight);
+    
+ 	float dialY = 8.25;	// center line for dials
+	MLRect dialRect (0, 0, 1.25, 1.0);
+	MLRect dialRectSmall (0, 0, 1., 0.75);
+	MLRect buttonRect(0, 0, 1, 0.5);
+	MLRect toggleRect(0, 0, 1, 0.5);
+	MLRect textButtonRect(0, 0, 5.5, 0.4);
+	MLRect textButtonRect2(0, 0, 2., 0.4);
+    
+    // --------------------------------------------------------------------------------
+	// page 0 - zones, OSC, MIDI
 	//
 	MLAppView* page0 = mpPages->addPage();
+    
+    // zone preset menu
+    page0->addMenuButton("", presetMenuRect.withCenter(pmw/2., pmh/2.), "zone_preset");
+    
+	MLDrawing* pDraw = page0->addDrawing(MLRect(0, 1, 14, 9));
+	page0->renameWidget(pDraw, "page0_lines");
+	int p[20]; // point indices
+	p[0] = pDraw->addPoint(Vec2(7., 5.0));
+	p[1] = pDraw->addPoint(Vec2(7., 8.5));
+	p[2] = pDraw->addPoint(Vec2(10.5, 5.0));
+	p[3] = pDraw->addPoint(Vec2(10.5, 8.5));
+	pDraw->addOperation(MLDrawing::drawLine, p[0], p[1]);
+	pDraw->addOperation(MLDrawing::drawLine, p[2], p[3]);
+	
+	// title
+	pL = page0->addLabel("Zones", pageTitleRect, 1.5f, eMLTitle);
+    pL->setResizeToText(false);
+	pL->setJustification(Justification::centredLeft);
+	
+	mGLView3.setModel(pModel);
+	MLRect zoneViewRect(0, 2.f, pageWidth, 3.75);
+	page0->addWidgetToView (&mGLView3, zoneViewRect, "zone_view");
+	
+	MLRect zoneLabelRect(0, 0, 3., 0.25);
+	float sectionLabelsY = 6.125; 
+	page0->addLabel("ZONE", zoneLabelRect.withCenter(3.5, sectionLabelsY), 1.00f, eMLTitle);
+	page0->addLabel("MIDI", zoneLabelRect.withCenter(8.75, sectionLabelsY), 1.00f, eMLTitle);
+	page0->addLabel("OSC", zoneLabelRect.withCenter(12.25, sectionLabelsY), 1.00f, eMLTitle);
+    
+	// all-zone controls up top
+	float topDialsY = 1.66f;
+    
+	pB = page0->addToggleButton("quantize", toggleRect.withCenter(4.25, topDialsY), "quantize", c2);
+	pB = page0->addToggleButton("note lock", toggleRect.withCenter(5.25, topDialsY), "lock", c2);
+	pB = page0->addToggleButton("glissando", toggleRect.withCenter(6.25, topDialsY), "retrig", c2);
+    
+	pD = page0->addDial("portamento", dialRectSmall.withCenter(7.75, topDialsY), "snap", c2);
+	pD->setRange(0., 1000., 10);
+	pD->setDefault(250.);
+	pD = page0->addDial("vibrato", dialRectSmall.withCenter(8.75, topDialsY), "vibrato", c2);
+	pD->setRange(0., 1., 0.01);
+	pD->setDefault(0.5);
+	pD = page0->addDial("transpose", dialRectSmall.withCenter(9.75, topDialsY), "transpose", c2);
+	pD->setRange(-24, 24., 1.);
+	pD->setDefault(0);
+	
+	// ZONE
+	float bottomDialsY = 7.25f;
+	float bottomDialsY2 = 8.25f;
+	// for all zone types: start channel # (dial)
+	// zone type: {note, note row, control}
+	// if note: note #, single / multi
+	// if note grid: start note, y skip, single / multi
+	// if control: ctrl x, ctrl y, ctrl dx, ctrl dy
+    
+	// MIDI
+	pB = page0->addToggleButton("active", toggleRect.withCenter(7.75, bottomDialsY), "midi_active", c2);
+	pB = page0->addToggleButton("pressure", toggleRect.withCenter(7.75, bottomDialsY2), "midi_pressure_active", c2);
+	pD = page0->addDial("rate", dialRect.withCenter(8.75, bottomDialsY), "data_freq_midi", c2);
+	pD->setRange(10., 500., 10.);
+	pD->setDefault(250.);
+	pD = page0->addDial("bend range", dialRect.withCenter(9.75, bottomDialsY), "bend_range", c2);
+	pD->setRange(0., 48., 1.);
+	
+	pB = page0->addToggleButton("multi", toggleRect.withCenter(8.75, bottomDialsY2), "midi_multi_chan", c2);
+	pD = page0->addDial("start chan", dialRect.withCenter(9.75, bottomDialsY2), "midi_start_chan", c2);
+	pD->setRange(1., 16., 1.);
+	
+    //	pB = page0->addToggleButton("one / multi", toggleRect.withCenter(6.5, 5.25), "single_multi", c2);
+    //	pB->setSplitMode(true);
+    //	pB->setEnabled(false);
+    
+    //	pD = page0->addDial("channel", dialRectSmall.withCenter(4.5, 7.75), "channel", c2);
+    //	pD->setRange(1., 16., 1.);
+    
+	pD->setDefault(48);
+	
+	MLRect textButtonRect3(0, 0, 3., 0.4);
+	mpMIDIDeviceButton = page0->addMenuButton("device", textButtonRect3.withCenter(8.75, 9.), "midi_device");
+	
+	// OSC
+	
+	pB = page0->addToggleButton("active", toggleRect.withCenter(11.25, bottomDialsY), "osc_active", c2);
+	pD = page0->addDial("rate", dialRect.withCenter(12.25, bottomDialsY), "data_freq_osc", c2);
+	pD->setRange(13.5, 500., 10.);
+	pD->setDefault(250.);
+	
+	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(12.25, 9.), "osc_services");
+    
+    // --------------------------------------------------------------------------------
+	// page 1 - raw touches
+	//
+	MLAppView* page1 = mpPages->addPage();
 
 	// title
-	MLRect pageTitleRect(0., 0., 3.0, 1.);
-	MLLabel* pL = page0->addLabel("Touches", pageTitleRect, 1.5f, eMLTitle);
+	pL = page1->addLabel("Touches", pageTitleRect, 1.5f, eMLTitle);
     pL->setResizeToText(false);
 	pL->setJustification(Justification::centredLeft); 
 
 	// GL views
 	//
-	MLRect GLRect1(0, 1.f, pageWidth, 2.5);
+	MLRect GLRect1(0, 1.f, pageWidth, 3.5);
 	mGridView.setModel(pModel);
-	page0->addWidgetToView (&mGridView, GLRect1, "grid_view");
+	page1->addWidgetToView (&mGridView, GLRect1, "grid_view");
     
-	MLRect GLRect2(0, 3.5, pageWidth, 3.);
+	MLRect GLRect2(0, 4.5, pageWidth, 3.);
 	mTouchView.setModel(pModel);
-	page0->addWidgetToView (&mTouchView, GLRect2, "touch_view");
+	page1->addWidgetToView (&mTouchView, GLRect2, "touch_view");
 	
 	// temp toggles
 	//
@@ -253,147 +354,52 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	for(int i=0; i<c; ++i)
 	{
 		MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
-		mpCarrierToggles[i] = page0->addToggleButton("", toggleRectTiny.withCenter(i*0.3 + 1., 5), tSym, c2);
+		mpCarrierToggles[i] = page1->addToggleButton("", toggleRectTiny.withCenter(i*0.3 + 1., 5), tSym, c2);
 		sprintf(numBuf, "%d", i);	
-		mpCarrierLabels[i] = page0->addLabel(numBuf, toggleRectTiny.withCenter(i*0.3 + 1., 4.75));
+		mpCarrierLabels[i] = page1->addLabel(numBuf, toggleRectTiny.withCenter(i*0.3 + 1., 4.75));
 	}
-//	page0->addToggleButton("all", toggleRectTiny.withCenter(0*0.3 + 1., 6.), "all_toggle", c2);
+//	page1->addToggleButton("all", toggleRectTiny.withCenter(0*0.3 + 1., 6.), "all_toggle", c2);
 
 	// controls
 	//
-	float dialY = 7.25;	// center line for dials		
-	MLRect dialRect (0, 0, 1.25, 1.0);	
-	MLRect dialRectSmall (0, 0, 1., 0.75);	
-	MLRect buttonRect(0, 0, 1, 0.5);	
-	MLRect toggleRect(0, 0, 1, 0.5);	
-	MLRect textButtonRect(0, 0, 5.5, 0.4);
-	MLRect textButtonRect2(0, 0, 2., 0.4);
-	page0->addTextButton("recalibrate", textButtonRect.withCenter(2.75, 8.), "calibrate");
 
-	// page0->addTextButton("test", textButtonRect2.withCenter(7., 8.), "test");
+	page1->addTextButton("recalibrate", textButtonRect.withCenter(2.75, 9.), "calibrate");
 
-	pD = page0->addDial("view scale", dialRectSmall.withCenter(13.5, 0.75), "display_scale", c2);
+	// page1->addTextButton("test", textButtonRect2.withCenter(7., 8.), "test");
+
+	pD = page1->addDial("view scale", dialRectSmall.withCenter(13.5, 0.75), "display_scale", c2);
 	pD->setRange(0.01, 5., 0.01);	
 	pD->setDefault(1.);	
 	
-	pD = page0->addDial("touches", dialRect.withCenter(0.5, dialY), "max_touches", c2);
+	pD = page1->addDial("touches", dialRect.withCenter(0.5, dialY), "max_touches", c2);
 	pD->setRange(0., 16., 1.);	
 	pD->setDefault(4);	
 
-	pD = page0->addDial("thresh", dialRect.withCenter(2.0, dialY), "z_thresh", c2);
+	pD = page1->addDial("thresh", dialRect.withCenter(2.0, dialY), "z_thresh", c2);
 	pD->setRange(0., 0.025, 0.001);	
 	pD->setDefault(0.01);	
 	
-	pD = page0->addDial("max force", dialRect.withCenter(3.5, dialY), "z_max", c2);
+	pD = page1->addDial("max force", dialRect.withCenter(3.5, dialY), "z_max", c2);
 	pD->setRange(0.01, 0.1, 0.001);	
 	pD->setDefault(0.05);	
 	
-	pD = page0->addDial("z curve", dialRect.withCenter(5.0, dialY), "z_curve", c2);
+	pD = page1->addDial("z curve", dialRect.withCenter(5.0, dialY), "z_curve", c2);
 	pD->setRange(0., 1., 0.01);	
 	pD->setDefault(0.25);	
 
-	pD = page0->addDial("lopass", dialRect.withCenter(7, dialY), "lopass", c2);
+	pD = page1->addDial("lopass", dialRect.withCenter(7, dialY), "lopass", c2);
 	pD->setRange(1., 250., 1);	
 	pD->setDefault(100.);	
 	
-	pB = page0->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
+	pB = page1->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
 	
-//	page0->addToggleButton("show frets", toggleRect.withCenter(10, dialY - 0.25), "frets", c2);
-	mpViewModeButton = page0->addMenuButton("view mode", textButtonRect2.withCenter(13, 8.), "viewmode");
+//	page1->addToggleButton("show frets", toggleRect.withCenter(10, dialY - 0.25), "frets", c2);
+	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 
-//	mpCurveGraph = page0->addGraph("zgraph", Colours::black);
-	
-	// page 1 - zones, OSC, MIDI
-	//
-	MLAppView* page1 = mpPages->addPage();
-	
-	MLDrawing* pDraw = page1->addDrawing(MLRect(0, 0, 11, 9));
-	page1->renameWidget(pDraw, "page1_lines");
-	int p[20]; // point indices
-	p[0] = pDraw->addPoint(Vec2(7.25, 5.0));
-	p[1] = pDraw->addPoint(Vec2(7.25, 8.5));
-	p[2] = pDraw->addPoint(Vec2(10.75, 5.0));
-	p[3] = pDraw->addPoint(Vec2(10.75, 8.5));
-	pDraw->addOperation(MLDrawing::drawLine, p[0], p[1]);
-	pDraw->addOperation(MLDrawing::drawLine, p[2], p[3]);
-	
-	// title
-	pL = page1->addLabel("Zones", pageTitleRect, 1.5f, eMLTitle);
-    pL->setResizeToText(false);
-	pL->setJustification(Justification::centredLeft);
-	
-
-	mGLView3.setModel(pModel);
-	MLRect zoneViewRect(0, 1.f, pageWidth, 3.75);
-	page1->addWidgetToView (&mGLView3, zoneViewRect, "zone_view");
-	
-	MLRect zoneLabelRect(0, 0, 3., 0.25);
-	float sectionLabelsY = 5.125;
-	page1->addLabel("ZONE", zoneLabelRect.withCenter(3.75, sectionLabelsY), 1.00f, eMLTitle);
-	page1->addLabel("MIDI", zoneLabelRect.withCenter(9., sectionLabelsY), 1.00f, eMLTitle);
-	page1->addLabel("OSC", zoneLabelRect.withCenter(12.5, sectionLabelsY), 1.00f, eMLTitle);
-
-	// all-zone controls up top
-	float topDialsY = 0.66f;
-
-	pB = page1->addToggleButton("quantize", toggleRect.withCenter(4.5, topDialsY), "quantize", c2);
-	pB = page1->addToggleButton("note lock", toggleRect.withCenter(5.5, topDialsY), "lock", c2);
-	pB = page1->addToggleButton("glissando", toggleRect.withCenter(6.5, topDialsY), "retrig", c2);
-
-	pD = page1->addDial("portamento", dialRectSmall.withCenter(8., topDialsY), "snap", c2);
-	pD->setRange(0., 1000., 10);	
-	pD->setDefault(250.);	
-	pD = page1->addDial("vibrato", dialRectSmall.withCenter(9., topDialsY), "vibrato", c2);
-	pD->setRange(0., 1., 0.01);	
-	pD->setDefault(0.5);	
-	pD = page1->addDial("transpose", dialRectSmall.withCenter(10., topDialsY), "transpose", c2);
-	pD->setRange(-24, 24., 1.);	
-	pD->setDefault(0);	
-	
-	// ZONE	
-	float bottomDialsY = 6.25f;
-	float bottomDialsY2 = 7.25f;
-	// for all zone types: start channel # (dial)
-	// zone type: {note, note row, control}
-	// if note: note #, single / multi
-	// if note grid: start note, y skip, single / multi
-	// if control: ctrl x, ctrl y, ctrl dx, ctrl dy
-
-	// MIDI
-	pB = page1->addToggleButton("active", toggleRect.withCenter(8, bottomDialsY), "midi_active", c2);
-	pB = page1->addToggleButton("pressure", toggleRect.withCenter(8, bottomDialsY2), "midi_pressure_active", c2);
-	pD = page1->addDial("rate", dialRect.withCenter(9, bottomDialsY), "data_freq_midi", c2);
-	pD->setRange(10., 500., 10.);	
-	pD->setDefault(250.);	
-	pD = page1->addDial("bend range", dialRect.withCenter(10, bottomDialsY), "bend_range", c2);
-	pD->setRange(0., 48., 1.);	
-	
-	pB = page1->addToggleButton("multi", toggleRect.withCenter(9, bottomDialsY2), "midi_multi_chan", c2);
-	pD = page1->addDial("start chan", dialRect.withCenter(10, bottomDialsY2), "midi_start_chan", c2);
-	pD->setRange(1., 16., 1.);		
-	
-//	pB = page1->addToggleButton("one / multi", toggleRect.withCenter(6.5, 5.25), "single_multi", c2);
-//	pB->setSplitMode(true);
-//	pB->setEnabled(false);
-
-//	pD = page1->addDial("channel", dialRectSmall.withCenter(4.5, 7.75), "channel", c2);
-//	pD->setRange(1., 16., 1.);	
-
-	pD->setDefault(48);	
-	
-	MLRect textButtonRect3(0, 0, 3., 0.4);
-	mpMIDIDeviceButton = page1->addMenuButton("device", textButtonRect3.withCenter(9., 8.), "midi_device");
-	
-	// OSC
-	
-	pB = page1->addToggleButton("active", toggleRect.withCenter(11.5, bottomDialsY), "osc_active", c2);
-	pD = page1->addDial("rate", dialRect.withCenter(12.5, bottomDialsY), "data_freq_osc", c2);
-	pD->setRange(13.5, 500., 10.);	
-	pD->setDefault(250.);	
-	
-	mpOSCServicesButton = page1->addMenuButton("destination", textButtonRect3.withCenter(12.5, 8.), "osc_services");
-
-	// page 2 - expert stuff
+//	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
+    
+    // --------------------------------------------------------------------------------
+    // page 2 - expert stuff
 	//
 	MLAppView* page2 = mpPages->addPage();
 
@@ -403,20 +409,20 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pL->setJustification(Justification::centredLeft);
 	
 	// utility buttons
-	page2->addTextButton("select carriers", MLRect(0, 1, 3, 0.4), "select_carriers");	
-	page2->addTextButton("restore defaults", MLRect(0, 2., 3, 0.4), "restore_defaults");	
+	page2->addTextButton("select carriers", MLRect(0, 2, 3, 0.4), "select_carriers");
+	page2->addTextButton("restore defaults", MLRect(0, 3., 3, 0.4), "restore_defaults");
 	
-	page2->addTextButton("normalize", MLRect(3.5, 1, 3, 0.4), "normalize");	
-	page2->addTextButton("cancel normalize", MLRect(3.5, 1.5, 3, 0.4), "normalize_cancel");	
-	page2->addTextButton("use defaults", MLRect(3.5, 2., 3, 0.4), "normalize_default");	
+	page2->addTextButton("normalize", MLRect(3.5, 2, 3, 0.4), "normalize");
+	page2->addTextButton("cancel normalize", MLRect(3.5, 2.5, 3, 0.4), "normalize_cancel");
+	page2->addTextButton("use defaults", MLRect(3.5, 3., 3, 0.4), "normalize_default");
 	
 	// tracker calibration view
-	MLRect TCVRect(0, 3.f, 6.5, 3.); 
+	MLRect TCVRect(0, 4.f, 6.5, 3.);
 	mTrkCalView.setModel(pModel);
 	page2->addWidgetToView (&mTrkCalView, TCVRect, "trk_cal_view");
 
 	// debug pane
-	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 1., 7., 5.));
+	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));
 	//debug().sendOutputToListener(pDebug);
 	debug().sendOutputToListener(0);
 	MLConsole().sendOutputToListener(pDebug);
@@ -447,7 +453,6 @@ SoundplaneView::~SoundplaneView()
 
 void SoundplaneView::initialize()
 {
-	goToPage(0);			
 	startTimer(50);	
 	setAnimationsActive(true);	
 	updateAllParams();
@@ -633,7 +638,7 @@ void SoundplaneView::goToPage (int page)
 		mpPages->goToPage(page, true, mpPrevButton, mpNextButton); 
 		int newPage = mpPages->getCurrentPage();
 		mpPrevButton->setVisible(newPage > 0);
-		mpNextButton->setVisible(newPage < mpPages->getNumPages() - 1);	
+		mpNextButton->setVisible(newPage < mpPages->getNumPages() - 1);
 	}
 }
 

@@ -17,8 +17,10 @@
 #include "SoundplaneOSCOutput.h"
 #include "MLSymbol.h"
 #include "MLParameter.h"
+#include "MLFileCollection.h"
 #include <list>
 #include <map>
+#include "cJSON.h"
 
 const int kSoundplaneMaxTouches = 16;
 const int kSoundplaneCalibrateSize = 1024;
@@ -47,23 +49,16 @@ class SoundplaneModel :
 {
 
 public:
-    enum ZoneType
-    {
-        kNoteRow = 0,
-        kControllerHorizontal = 1,
-        kControllerVertical = 2,
-        kControllerXY = 3,
-        kToggleRow = 4
-    };
-
     class Zone
     {
     public:
         Zone();
-        Zone(ZoneType type, MLRect rect, int startNote, int ctrl, int chan, const char* name);
+        Zone(MLSymbol type, MLRect rect, int startNote, int ctrl, int chan, const char* name);
         ~Zone();
         
-        ZoneType mType;
+        int getTypeAsInt() const;
+        
+        MLSymbol mType;
         MLRect mRect;
         int mStartNote;
         int mControllerNumber;
@@ -155,12 +150,12 @@ public:
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 
-	// TEMP
-	void setZoneMode(int m) { mZoneModeTemp = m; setupZones(); }
-    
     // setParam(string) will try to read the ... what
     const std::list<ZonePtr>& getZoneList() { return mZoneList; }
-    	
+
+    void loadStateFromJSON(cJSON* pNode, int depth);
+    bool loadZonePresetByName(const std::string& name);
+
 	int getDeviceState(void);
 	int getClientState(void);
 
@@ -187,8 +182,7 @@ private:
 	bool mOutputEnabled;
 	
 	static const int miscStrSize = 256;
-
-	void setupZones();
+    void loadZonesFromString(const std::string& zoneStr);
 	
 	void doInfrequentTasks();
 	UInt64 mLastInfrequentTaskTime;
@@ -272,6 +266,9 @@ private:
 	std::vector<float> mMaxNoiseFreqByCarrierSet;
 	
 	int mKymaIsConnected; // TODO more custom clients
+    
+    MLFileCollectionPtr mTouchPresets;
+    MLFileCollectionPtr mZonePresets;
 
 };
 

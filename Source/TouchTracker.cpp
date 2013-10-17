@@ -778,8 +778,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		// filter z based on user lowpass setting and touch age
 		float lp = mLopass;
 		lp -= t.age*(mLopass*0.75f/kAttackFrames);
-		lp = clamp(lp, mLopass, mLopass*0.25f);	// WTF???
-		
+		lp = clamp(lp, mLopass, mLopass*0.25f);	// WTF???		
 				
 		float xz = powf(e, -kMLTwoPi * lp / (float)mSampleRate);
 		float a0z = 1.f - xz;

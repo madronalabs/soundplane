@@ -15,13 +15,11 @@ SoundplaneGridView::SoundplaneGridView() :
 
 	mGLContext.setRenderer (this);
 	mGLContext.setComponentPaintingEnabled (false);
-	mGLContext.attachTo (*getComponent());
 }
 
 SoundplaneGridView::~SoundplaneGridView()
 {
 	mGLContext.detach();
-
 }
 
 // when the component creates a new internal context, this is called, and
@@ -505,8 +503,7 @@ void SoundplaneGridView::renderZGrid()
 			
 			float tx = xRange.convert(x);
 			float ty = yRange.convert(y);
-			float tz = (z);
-			
+			float tz = (z);			
 
 #if DEBUG
 			float dt = touches(dtColumn, t);
@@ -519,15 +516,14 @@ void SoundplaneGridView::renderZGrid()
 			tz += (float)t*stackOffset;
 			drawInfoBox(Vec3(tx, ty, -tz), strBuf, t);
 			
-            //debug() << "x: " << x << ", y: " << y << ", z: " << z << ", d: " << d << ", age:" << age << "\n";
-            
+            //debug() << "x: " << x << ", y: " << y << ", z: " << z << ", d: " << d << ", age:" << age << "\n";            
 		}
 	}
 }
 
 void SoundplaneGridView::renderOpenGL()
 {
-	if (!mpModel) return;
+    if (!mpModel) return;
     int backW = getBackingLayerWidth();
     int backH = getBackingLayerHeight();
     
@@ -552,11 +548,11 @@ void SoundplaneGridView::renderOpenGL()
     }
 }
 
+// GL views need to attach to their components here, because on creation
+// the component might not be visible and can't be attached to.
 void SoundplaneGridView::resizeWidget(const MLRect& b, const int u)
 {
     MLWidget::resizeWidget(b, u);
-    debug() << "RESIZING SoundplaneGridView\n";
+    mGLContext.attachTo (*MLWidget::getComponent());
 }
 
-
-	

@@ -179,9 +179,12 @@ void SoundplaneModel::setAllParamsToDefaults()
 	setModelParam("hysteresis", 0.5);
 	
 	// menu param defaults
-	setModelParam("preset", "continuous pitch x");
 	setModelParam("viewmode", "calibrated");
-	
+    
+    // preset menu defaults (TODO use first choices?)
+	setModelParam("zone_preset", "continuous pitch x");
+	setModelParam("touch_preset", "touch default");
+    	
 	for(int i=0; i<32; ++i)
 	{
 		setModelParam(MLSymbol("carrier_toggle").withFinalNumber(i), 1);		
@@ -378,23 +381,10 @@ void SoundplaneModel::setModelParam(MLSymbol p, const std::string& v)
 	{
 		mMIDIOutput.setDevice(v);
 	}
-	else if (p == "preset")
+	else if (p == "zone_JSON")
 	{
-        //
-        
-        // loadPresetByName(v);
-        
-        
-		// TODO load preset by name.
-		if(v == "continuous pitch x")
-		{
-			setZoneMode(0);
-		}
-		else if(v == "rows in fourths")
-		{
-			setZoneMode(1);
-		}
-	}
+        loadZonesFromString(v);
+    }
 }
 
 void SoundplaneModel::setModelParam(MLSymbol p, const MLSignal& v) 
@@ -686,8 +676,11 @@ bool MLAppState::loadSavedState()
 
  */
 
+
+static const MLSymbol zoneTypes[5] = {"note_row", "controller_x", "controller_y", "controller_xy", "toggle_row"};
+
 SoundplaneModel::Zone::Zone() :
-    mType(kNoteRow),
+    mType("note_row"),
     mRect(),
     mStartNote(60),
     mControllerNumber(1),
@@ -696,7 +689,7 @@ SoundplaneModel::Zone::Zone() :
 {
 }
 
-SoundplaneModel::Zone::Zone(ZoneType type, MLRect rect, int startNote, int ctrl, int chan, const char* name) :
+SoundplaneModel::Zone::Zone(MLSymbol type, MLRect rect, int startNote, int ctrl, int chan, const char* name) :
     mType(type),
     mRect(rect),
     mStartNote(startNote),
@@ -711,55 +704,222 @@ SoundplaneModel::Zone::~Zone()
 
 }
 
-// TODO read attributes for each zone from JSON setup
-// zone map signal stores note# attribute for easy interpolation.
-//
-void SoundplaneModel::setupZones() 
+int SoundplaneModel::Zone::getTypeAsInt() const
 {
-	int zoneIdx, zone;
-	int mode = mZoneModeTemp;
-    
-    // TEST
-    debug() << "setting up test zones\n";
+    int r = 0;
+    for(int i = 0; i<sizeof(zoneTypes); ++i)
+    {
+        if(mType == zoneTypes[i])
+        {
+            r = i;
+            break;
+        }
+    }
+    return r;
+}
+
+// --------------------------------------------------------------------------------
+// JSON parser (to move)
+//
+
+void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
+{
+    debug() << "loadZonesFromString: " << zoneStr << "\n";
     mZoneList.clear();
-    mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(0, 0, 15, 1), 60, 1, 1, "test1")));
-    mZoneList.push_back(ZonePtr(new Zone(kControllerHorizontal, MLRect(0, 1, 10, 1), 60, 1, 1, "test2")));
-    mZoneList.push_back(ZonePtr(new Zone(kControllerVertical, MLRect(10, 2, 20, 1), 60, 1, 1, "test3")));
-    mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(15, 3, 2, 2), 60, 1, 1, "test4")));
-    mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(15, 3, 1, 1), 60, 1, 1, "test5")));
-    
-    // TODO zone to JSON, JSON to string param
-    // load preset: file to JSON, JSON to zone list param.
-    // zone list param saved with app state.    
-    
-	switch(mode)
+    cJSON* root = cJSON_Parse(zoneStr.c_str());
+    if(!root)
+    {
+        MLError() << "zone file parse failed!\n";
+        return;
+    }
+    cJSON* pNode = root->child;
+    while(pNode)
+    {        
+        debug() << "node  " << pNode->string << "\n";
+        if(!strcmp(pNode->string, "zone"))
+        {
+            Zone* pz = new Zone();            
+            cJSON* pZoneType = cJSON_GetObjectItem(pNode, "type");
+            if(pZoneType)
+            {
+                // get zone type and type specific attributes
+                pz->mType = MLSymbol(pZoneType->valuestring);
+                if(pz->mType == "note_row")
+                {
+                
+                }
+                else if(pz->mType == "controller_x")
+                {
+                    
+                }
+                else if(pz->mType == "controller_y")
+                {
+                    
+                }
+                else if(pz->mType == "controller_xy")
+                {
+                    
+                }
+            }
+            else
+            {
+                MLError() << "No type for zone\n";
+            }
+            
+            // get zone rect
+            cJSON* pZoneRect = cJSON_GetObjectItem(pNode, "rect");
+            if(pZoneRect)
+            {
+                int size = cJSON_GetArraySize(pZoneRect);
+                if( size == 4)
+                {
+                    int x = cJSON_GetArrayItem(pZoneRect, 0)->valueint;
+                    int y = cJSON_GetArrayItem(pZoneRect, 1)->valueint;
+                    int w = cJSON_GetArrayItem(pZoneRect, 2)->valueint;
+                    int h = cJSON_GetArrayItem(pZoneRect, 3)->valueint;
+                    pz->mRect = MLRect(x, y, w, h);
+                }
+                else
+                {
+                    MLError() << "Bad rect for zone\n";
+                }
+            }
+            else
+            {
+                MLError() << "No rect for zone\n";
+            }
+            
+            // get zone name
+            cJSON* pZoneName = cJSON_GetObjectItem(pNode, "name");
+            if(pZoneName)
+            {
+                pz->mName = std::string(pZoneName->valuestring);
+            }
+            mZoneList.push_back(ZonePtr(pz));
+        }
+		pNode = pNode->next;
+    }
+        
+    /*
+     
+     // TEST
+     debug() << "setting up test zones\n";
+     mZoneList.clear();
+     mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(0, 0, 15, 1), 60, 1, 1, "test1")));
+     mZoneList.push_back(ZonePtr(new Zone(kControllerHorizontal, MLRect(0, 1, 10, 1), 60, 1, 1, "test2")));
+     mZoneList.push_back(ZonePtr(new Zone(kControllerVertical, MLRect(10, 2, 20, 1), 60, 1, 1, "test3")));
+     mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(15, 3, 2, 2), 60, 1, 1, "test4")));
+     mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(15, 3, 1, 1), 60, 1, 1, "test5")));
+     
+     switch(mode)
+     {
+     case 0:
+     
+     for(int j=0; j<kSoundplaneKeyHeight; ++j)
+     {
+     for(int i=0; i<kSoundplaneKeyWidth; ++i)
+     {
+     zoneIdx = j*kSoundplaneKeyWidth + i + 1;
+     // offset puts A220 at center
+     zone = 45 + i; // TODO read map
+     mZoneMap(i, j) = zone;
+     }
+     }
+     break;
+     case 1:
+     default:
+     for(int j=0; j<kSoundplaneKeyHeight; ++j)
+     {
+     for(int i=0; i<kSoundplaneKeyWidth; ++i)
+     {
+     zoneIdx = j*kSoundplaneKeyWidth + i + 1;
+     zone = 35 + i + 5*j; // TODO read map
+     mZoneMap(i, j) = zone;
+     }
+     }
+     break;
+     }
+     
+     
+     */
+    /*
+	while(pNode)
 	{
-	case 0:
-		
-		for(int j=0; j<kSoundplaneKeyHeight; ++j)
+		if(pNode->string)
 		{
-			for(int i=0; i<kSoundplaneKeyWidth; ++i)
+			switch(pNode->type)
 			{
-				zoneIdx = j*kSoundplaneKeyWidth + i + 1;
-				// offset puts A220 at center
-				zone = 45 + i; // TODO read map
-				mZoneMap(i, j) = zone;
+                case cJSON_Number:
+                    //debug() << " depth " << depth << " loading float param " << pNode->string << " : " << pNode->valuedouble << "\n";
+                   // mpModel->setModelParam(MLSymbol(pNode->string), (float)pNode->valuedouble);
+                    break;
+                case cJSON_String:
+                    //debug() << " depth " << depth << " loading string param " << pNode->string << " : " << pNode->valuestring << "\n";
+                    //mpModel->setModelParam(MLSymbol(pNode->string), pNode->valuestring);
+                    break;
+                case cJSON_Array:
+                    if(!strcmp(pNode->string, "window_bounds"))
+                    {
+                        assert(cJSON_GetArraySize(pNode) == 4);
+                        int x = cJSON_GetArrayItem(pNode, 0)->valueint;
+                        int y = cJSON_GetArrayItem(pNode, 1)->valueint;
+                        int w = cJSON_GetArrayItem(pNode, 2)->valueint;
+                        int h = cJSON_GetArrayItem(pNode, 3)->valueint;
+                   //     mpAppView->setPeerBounds(x, y, w, h);
+                    }
+                    break;
+                case cJSON_Object:
+                    // 	debug() << "looking at object: \n";
+                    // see if object is a stored signal
+                    cJSON* pObjType = cJSON_GetObjectItem(pNode, "type");
+                    if(pObjType && !strcmp(pObjType->valuestring, "signal") )
+                    {
+                        //debug() << " depth " << depth << " loading signal param " << pNode->string << "\n";
+                        MLSignal* pSig;
+                        int width = cJSON_GetObjectItem(pNode, "width")->valueint;
+                        int height = cJSON_GetObjectItem(pNode, "height")->valueint;
+                        int sigDepth = cJSON_GetObjectItem(pNode, "depth")->valueint;
+                        pSig = new MLSignal(width, height, sigDepth);
+                        if(pSig)
+                        {
+                            // read data into signal and set model param
+                            float* pSigData = pSig->getBuffer();
+                            int widthBits = bitsToContain(width);
+                            int heightBits = bitsToContain(height);
+                            int depthBits = bitsToContain(sigDepth);
+                            int size = 1 << widthBits << heightBits << depthBits;
+                            cJSON* pData = cJSON_GetObjectItem(pNode, "data");
+                            int dataSize = cJSON_GetArraySize(pData);
+                            if(dataSize == size)
+                            {
+                                // read array
+                                cJSON *c=pData->child;
+                                int i = 0;
+                                while (c)
+                                {
+                                    pSigData[i++] = c->valuedouble;
+                                    c=c->next; 
+                                }
+                            }
+                            else
+                            {
+                                MLError() << "MLAppState::loadStateFromJSON: wrong array size!\n";
+                            }				
+                       //     mpModel->setModelParam(MLSymbol(pNode->string), *pSig);
+                        }
+                    }
+                    
+                    break;
 			}
 		}
-		break;
-	case 1:
-	default:	
-		for(int j=0; j<kSoundplaneKeyHeight; ++j)
+        
+		if(pNode->child && depth < 1)
 		{
-			for(int i=0; i<kSoundplaneKeyWidth; ++i)
-			{
-				zoneIdx = j*kSoundplaneKeyWidth + i + 1;
-				zone = 35 + i + 5*j; // TODO read map
-				mZoneMap(i, j) = zone;
-			}
+			loadStateFromJSON(pNode->child, depth + 1);
 		}
-		break;
+		pNode = pNode->next;
 	}
+     */
 }
 
 // turn (x, y) position into a continuous 2D key position. Integer values of the

@@ -37,6 +37,7 @@ public:
     void renderOpenGL();
     void openGLContextClosing();
  	void setModel(SoundplaneModel* m);
+    void resizeWidget(const MLRect& b, const int u);
 	
 private:
     void drawDot(Vec2 pos, float r);

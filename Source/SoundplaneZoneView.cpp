@@ -16,8 +16,9 @@ SoundplaneZoneView::SoundplaneZoneView() :
 	MLWidget::setComponent(this);
 
 	mGLContext.setRenderer (this);
-//	mGLContext.setComponentPaintingEnabled (true);
-	mGLContext.attachTo (*this);}
+	mGLContext.setComponentPaintingEnabled (false);
+//	mGLContext.attachTo (*this);
+}
 
 SoundplaneZoneView::~SoundplaneZoneView()
 {
@@ -183,8 +184,7 @@ void SoundplaneZoneView::renderZones()
     const std::list<SoundplaneModel::ZonePtr>& zoneList = mpModel->getZoneList();
     std::list<SoundplaneModel::ZonePtr>::const_iterator it;
     int i = 0;
-    
-   
+       
     for(it = zoneList.begin(); it != zoneList.end(); ++it)
     {
         const SoundplaneModel::Zone& z = **it;
@@ -193,7 +193,7 @@ void SoundplaneZoneView::renderZones()
         // affine transforms TODO    MLRect zrd = zr.xform(gridToView);
         MLRect zrd(xRange.convert(zr.x()), yRange.convert(zr.y()), xRange.convert(zr.width()), yRange.convert(zr.height()));
         zrd.shrink(lineWidth);
-        Vec4 zoneStroke(MLGL::getIndicatorColor(z.mType));
+        Vec4 zoneStroke(MLGL::getIndicatorColor(z.getTypeAsInt()));
         Vec4 zoneFill(zoneStroke);
         zoneFill[3] = 0.1f;
         
@@ -207,13 +207,14 @@ void SoundplaneZoneView::renderZones()
         // draw name
         MLGL::drawTextAt(zrd.left() + lineWidth, zrd.top() + zrd.height() - lineWidth, 0.f, z.mName.c_str());
         
-        switch(z.mType)
+        // draw zone-specific things
+        if(z.mType == MLSymbol("note_row"))
         {
-            case SoundplaneModel::kNoteRow:
-
-                break;
-            default:
-                break;
+            
+        }
+        else if(z.mType == MLSymbol("controller_x"))
+        {
+            
         }
         i++;
     }
@@ -253,6 +254,17 @@ void SoundplaneZoneView::renderOpenGL()
         renderZones();
     }
 }
+
+// GL views need to attach to their components here, because on creation
+// the component might not be visible and can't be attached to.
+void SoundplaneZoneView::resizeWidget(const MLRect& b, const int u)
+{
+    MLWidget::resizeWidget(b, u);
+    mGLContext.attachTo (*MLWidget::getComponent());
+}
+
+
+
 
 
 	

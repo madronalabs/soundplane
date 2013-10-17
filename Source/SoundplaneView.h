@@ -105,10 +105,10 @@ public:
 	void prevPage();
 	void nextPage();
 
-	SoundplaneHeaderView* mpHeader;	// TEMP
+	//SoundplaneHeaderView* mpHeader;	// TEMP
+	void goToPage (int page);
 
 private:
-	void goToPage (int page);
 
 	SoundplaneFooterView* mpFooter;	
 

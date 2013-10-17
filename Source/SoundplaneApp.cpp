@@ -15,35 +15,37 @@ SoundplaneApp::SoundplaneApp() :
 }
 
 void SoundplaneApp::initialise (const String& commandLine)
-{
-	mWindow.setVisible(false);
-	
-	mpModel = new SoundplaneModel();	
+{	
+	mWindow.centreWithSize(800, 800*kViewGridUnitsY/kViewGridUnitsX);
+	mWindow.setGridUnits(kViewGridUnitsX, kViewGridUnitsY);
+
+	mpModel = new SoundplaneModel();
 	mpController = new SoundplaneController(mpModel);
 	mpController->initialize();
 	mpView = new SoundplaneView(mpModel, mpController, mpController);
-
 	mpView->initialize();		
-	
-	// add view to window but retain ownership here	
+    
+	// add view to window but retain ownership here
 	mWindow.setContent(mpView);
-	mWindow.setGridUnits(kViewGridUnitsX, kViewGridUnitsY);
-	mWindow.centreWithSize(800, 800*kViewGridUnitsY/kViewGridUnitsX);
 	
 	mpState = new MLAppState(mpModel, mpView, MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber);
 	bool foundState = mpState->loadSavedState();
-	
+    
 	mpController->setView(mpView);
-	mpController->setupMenus(); 
+    mpView->goToPage(0);
 	mpController->updateAllParams();
 			
-	mWindow.setVisible(true);
 	mpModel->initialize();
+    
+#if GLX
+    mWindow.setUsingOpenGL(true);
+#endif
+    mWindow.setVisible(true);
 	
 	// do setup first time or after trashed prefs, or if control is held down
 	if (!foundState) 
 	{
-		mpController->doWelcomeTasks();
+		mpController->doWelcomeTasks(); 
 	}
 }
 

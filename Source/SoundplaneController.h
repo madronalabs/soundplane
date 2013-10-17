@@ -20,6 +20,7 @@
 #include "MLDial.h"
 
 #include "MLNetServiceHub.h"
+#include "MLFileCollection.h"
 
 extern const char *kUDPType;
 extern const char *kLocalDotDomain;
@@ -28,6 +29,7 @@ class SoundplaneController  :
 	public MLResponder,
 	public MLReporter,
 	public MLNetServiceHub,
+    public MLFileCollection::Listener,
 	public Timer
 {
 public:
@@ -50,11 +52,11 @@ public:
 	void multiSliderValueChanged (MLMultiSlider* , int ) {} // no multiSliders
 	void multiSliderDragEnded (MLMultiSlider* pSlider, int idx) {} // no multiSliders
 	
+    // from MLFileCollection::Listener
+    void processFile (const MLSymbol collection, const File& f, int idx);
+    
 	// menus
 	void setupMenus();
-	
-//	void setCurrMenuInstigator(MLMenuButton* pI) { mCurrMenuInstigator = pI; }
-//	MLMenuButton* getCurrMenuInstigator() { return mCurrMenuInstigator; } 
 	
 	void formatServiceName(const std::string& inName, std::string& outName);
 	const std::string& getServiceName(int idx);
@@ -68,17 +70,20 @@ public:
 	// show nice message, run calibration, etc. if prefs are not found. 
 	void doWelcomeTasks();
 	bool confirmRestoreDefaults();
+    
 	
 private:
 	bool mNeedsLateInitialize;
 	SoundplaneModel* mpSoundplaneModel;	
 	SoundplaneView* mpSoundplaneView;
-		
-//	MLMenuButton* mCurrMenuInstigator;
 
 	MLMenuMapT mMenuMap; 	
 	std::vector<std::string> mServiceNames;
 	std::vector<String> mFormattedServiceNames; // for popup menu
+    
+    MLFileCollectionPtr mTouchPresets;
+    MLFileCollectionPtr mZonePresets;
+    int mZoneMenuStartItems;
 
 };
 
