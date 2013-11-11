@@ -319,8 +319,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	
 	pB = page0->addToggleButton("active", toggleRect.withCenter(11.25, bottomDialsY), "osc_active", c2);
 	pD = page0->addDial("rate", dialRect.withCenter(12.25, bottomDialsY), "data_freq_osc", c2);
-	pD->setRange(13.5, 500., 10.);
+	pD->setRange(1., 500., 1.);
 	pD->setDefault(250.);
+	pB = page0->addToggleButton("matrix", toggleRect.withCenter(13.25, bottomDialsY), "osc_send_matrix", c2);
 	
 	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(12.25, 9.), "osc_services");
     
@@ -367,8 +368,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 
 	// page1->addTextButton("test", textButtonRect2.withCenter(7., 8.), "test");
 
-	pD = page1->addDial("view scale", dialRectSmall.withCenter(13.5, 0.75), "display_scale", c2);
-	pD->setRange(0.01, 5., 0.01);	
+	pD = page1->addDial("view scale", dialRectSmall.withCenter(13, dialY - 0.125), "display_scale", c2);
+	pD->setRange(0.5, 10., 0.1);
 	pD->setDefault(1.);	
 	
 	pD = page1->addDial("touches", dialRect.withCenter(0.5, dialY), "max_touches", c2);
@@ -440,7 +441,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pD = page2->addDial("template", dialRect.withCenter(6, dialY), "t_thresh", c2);
 	pD->setRange(0., 1., 0.001);	
 	pD->setDefault(0.2);
-
+    
 	pB = page2->addToggleButton("poll kyma", toggleRect.withCenter(12, dialY), "kyma_poll", c2);
 		
 	pModel->addParamListener(this); 

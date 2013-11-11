@@ -57,7 +57,9 @@ public:
     
 	// menus
 	void setupMenus();
-	
+    void doZonePresetMenu(int result);
+	void doOSCServicesMenu(int result);
+    
 	void formatServiceName(const std::string& inName, std::string& outName);
 	const std::string& getServiceName(int idx);
 	void didResolveAddress(NetService *pNetService);
@@ -80,8 +82,7 @@ private:
 	MLMenuMapT mMenuMap; 	
 	std::vector<std::string> mServiceNames;
 	std::vector<String> mFormattedServiceNames; // for popup menu
-    
-    MLFileCollectionPtr mTouchPresets;
+
     MLFileCollectionPtr mZonePresets;
     int mZoneMenuStartItems;
 

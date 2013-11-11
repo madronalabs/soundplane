@@ -74,8 +74,10 @@ public:
 	~SoundplaneMIDIOutput();
 	void initialize();
 	
-	void modelStateChanged();
-	void processFrame(const MLSignal& touchFrame);
+    // SoundplaneDataListener
+    void processMessage(const SoundplaneDataMessage* msg);
+
+    void modelStateChanged();
 	void setDataFreq(float f) { mDataFreq = f; }
 	
 	void findMIDIDevices ();
@@ -109,7 +111,6 @@ private:
 	std::vector<std::string> mDeviceList;
 	juce::MidiOutput* mpCurrentDevice;
 	
-	bool mActive;
 	float mDataFreq;
 	bool mPressureActive;
 	UInt64 mLastTimeDataWasSent;

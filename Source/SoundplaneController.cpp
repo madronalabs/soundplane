@@ -38,17 +38,14 @@ void SoundplaneController::initialize()
 	services.push_back(kOSCDefaultStr);
 	Browse(kUDPType, kLocalDotDomain);
     
-    // get touch presets
-    mTouchPresets = MLFileCollectionPtr(new MLFileCollection("touch_preset", getDefaultFileLocation(kAppPresetFiles).getChildFile("TouchPresets"), "txt"));
-    mTouchPresets->setListener(this);
-    mTouchPresets->findFilesImmediate();
-    
     // get zone presets
-    mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", getDefaultFileLocation(kAppPresetFiles).getChildFile("ZonePresets"), "txt"));
+    mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", getDefaultFileLocation(kAppPresetFiles).getChildFile("ZonePresets"), "json"));
     mZonePresets->setListener(this);
     mZonePresets->findFilesImmediate();
-                          
-    setupMenus();
+    
+    mZonePresets->dump();
+    
+    setupMenus(); 
 }
 	
 void SoundplaneController::shutdown()
@@ -205,13 +202,12 @@ void SoundplaneController::setupMenus()
     
 	MLMenuPtr zoneMenu(new MLMenu("zone_preset"));
 	mMenuMap["zone_preset"] = zoneMenu;
-    zoneMenu->addItem("rows in unison");
+    zoneMenu->addItem("chromatic");
 	zoneMenu->addItem("rows in fourths");
 	zoneMenu->addItem("rows in octaves");
 	zoneMenu->addSeparator();
-    mZoneMenuStartItems = zoneMenu->getNumItems();
-    bool flat = true; // TEMP
-    MLMenuPtr p = mZonePresets->buildMenu(flat);
+    mZoneMenuStartItems = zoneMenu->getSize();
+    MLMenuPtr p = mZonePresets->buildMenu();
     zoneMenu->appendMenu(p);
     
  	mMenuMap["touch_preset"] = MLMenuPtr(new MLMenu("touch_preset"));
@@ -226,7 +222,7 @@ void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
 	StringArray devices;
 	if(!mpSoundplaneView) return;
  	
-     // dump menu map
+    // dump menu map
     if(0)
     {
         debug() << "LOOKING for MENU " << menuName << "\n";
@@ -251,11 +247,6 @@ void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
 		{
 			pInstigator->setAttribute("value", 1);
 		}
-
-		MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance(); // should get from View
-		int u = myLookAndFeel->getGridUnitSize();
-		int height = ((float)u)*0.35f;
-		height = clamp(height, 12, 128);
 		
 		// update menus that are rebuilt each time
 		if (menuName == "midi_device")
@@ -293,8 +284,11 @@ void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
 				Component* pInstComp = pInstigator->getComponent();
 				if(pInstComp)
 				{
-					PopupMenu& juceMenu = menu->getJuceMenu();
-					juceMenu.showMenuAsync (PopupMenu::Options().withTargetComponent(pInstComp).withStandardItemHeight(height),
+                    const int u = pInstigator->getWidgetGridUnitSize();
+                    int height = ((float)u)*0.35f;
+                    height = clamp(height, 12, 128);
+					JuceMenuPtr juceMenu = menu->getJuceMenu();
+					juceMenu->showMenuAsync (PopupMenu::Options().withTargetComponent(pInstComp).withStandardItemHeight(height),
 						ModalCallbackFunction::withParam(menuItemChosenCallback, this, menu));
 				}
 			}
@@ -304,77 +298,87 @@ void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
 
 void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
 {
-	SoundplaneModel* pModel = getModel();
-	assert(pModel);
-
 	if (result > 0)
 	{
-		int menuIdx = result - 1;
-		MLMenuPtr menu = mMenuMap[menuName];
-        
+		MLMenuPtr menu = mMenuMap[menuName];        
 		if (menu != MLMenuPtr())
 		{
-			pModel->setModelParam(menuName, menu->getItemString(menuIdx));
+            SoundplaneModel* pModel = getModel();
+            assert(pModel);
+            const std::string& fullName = menu->getItemFullName(result);
+			pModel->setModelParam(menuName, fullName);
 		}
-        
-        // the Model's zone_preset parameter contains only the name of the menu choice.
-        // the Model's zone_JSON parameter contains all the zone data in JSON format.
-        // the preset parameter will not trigger loading of the zone JSON when the
-        // app is re-opened, rather, the JSON is stored in the app state as a string parameter.
-        //
-        // TODO mark the zone_preset parameter as changed from saved version, when some
-        // zone info changes. Display so the user can see that it's changed, and also
-        // ask to verify overwrite when loading a new preset.
         
 		if (menuName == "zone_preset")
         {
-            if(menuIdx < mZoneMenuStartItems)
-            {
-                // get built-in JSON string for first menu items
-                const char* zoneStr;
-                switch(menuIdx)
-                {
-                    case 0:
-                    default:
-                        zoneStr = SoundplaneBinaryData::chromaticoctaves_json;
-                        break;
-                    case 1:
-                        zoneStr = SoundplaneBinaryData::chromaticoctaves_json;
-                        break;
-                    case 2:
-                        zoneStr = SoundplaneBinaryData::chromaticoctaves_json;
-                        break;
-                }
-                pModel->setModelParam("zone_JSON", std::string(zoneStr));
-            }
-            else
-            {
-                // get JSON from file
-                File zoneFile = mZonePresets->getFileByIndex(menuIdx - mZoneMenuStartItems);
-                String stateStr(zoneFile.loadFileAsString());
-                std::string stateStdStr (stateStr.toUTF8());
-                pModel->setModelParam("zone_JSON", stateStdStr);
-            }
+            doZonePresetMenu(result);
         }
-        
-        // TODO should this not be in Model::setModelParam?
 		else if (menuName == "osc_services")
 		{
-			std::string name;
-			if(result == 1) // set default
-			{
-				name = "default";
-				SoundplaneOSCOutput& output = pModel->getOSCOutput();
-				output.connect(kDefaultHostnameString, kDefaultUDPPort);
-				pModel->setKymaMode(0);
-			}
-			else // resolve a service from list
-			{
-				name = getServiceName(menuIdx);
-				Resolve(name.c_str(), kUDPType, kLocalDotDomain);
-			}			
-		}
+            doOSCServicesMenu(result);
+        }
  	}
+}
+
+void SoundplaneController::doZonePresetMenu(int result)
+{
+    // the Model's zone_preset parameter contains only the name of the menu choice.
+    // the Model's zone_JSON parameter contains all the zone data in JSON format.
+    // the preset parameter will not trigger loading of the zone JSON file when the
+    // app is re-opened, rather, the JSON is stored in the app state as a string parameter.
+    //
+    // TODO mark the zone_preset parameter as changed from saved version, when some
+    // zone info changes. Display so the user can see that it's changed, and also
+    // ask to verify overwrite when loading a new preset.
+	SoundplaneModel* pModel = getModel();
+	assert(pModel);    
+    std::string zoneStr;
+    switch(result)
+    {
+        // get built-in JSON string for first menu items
+        case 1:
+            zoneStr = std::string(SoundplaneBinaryData::continuous_json);
+            break;
+        case 2:
+            zoneStr = std::string(SoundplaneBinaryData::chromaticfourths_json);
+            break;
+        case 3:
+            zoneStr = std::string(SoundplaneBinaryData::chromaticoctaves_json);
+            break;
+        // get JSON from file
+        default:          
+            MLMenuPtr menu = mMenuMap["zone_preset"];
+            const std::string& fullName = menu->getItemFullName(result);
+            MLFilePtr f = mZonePresets->getFileByName(fullName);
+            File zoneFile = f->mFile;
+            String stateStr(zoneFile.loadFileAsString());
+            zoneStr = (stateStr.toUTF8());
+            break;
+    }
+
+    pModel->setModelParam("zone_JSON", zoneStr);
+}
+
+void SoundplaneController::doOSCServicesMenu(int result)
+{    
+ 	SoundplaneModel* pModel = getModel();
+	assert(pModel);
+
+    // TODO should this not be in Model::setModelParam?
+    std::string name;
+    if(result == 1) // set default
+    {
+        name = "default";
+        SoundplaneOSCOutput& output = pModel->getOSCOutput();
+        output.connect(kDefaultHostnameString, kDefaultUDPPort);
+        pModel->setKymaMode(0);
+    }
+    else // resolve a service from list
+    {
+        name = getServiceName(result - 1);
+        Resolve(name.c_str(), kUDPType, kLocalDotDomain);
+    }			
+
 }
 
 void SoundplaneController::formatServiceName(const std::string& inName, std::string& outName)

@@ -8,7 +8,9 @@
 
 #include "MLTime.h"
 #include "MLModel.h"
+#include "SoundplaneModelA.h"
 #include "SoundplaneDriver.h"
+#include "SoundplaneDataListener.h"
 #include "MLOSCListener.h"
 #include "NetService.h"
 #include "NetServiceBrowser.h"
@@ -21,15 +23,7 @@
 #include <list>
 #include <map>
 #include "cJSON.h"
-
-const int kSoundplaneMaxTouches = 16;
-const int kSoundplaneCalibrateSize = 1024;
-const int kSoundplaneHistorySize = 2048;
-const float kSoundplaneSampleRate = 1000.f;
-const float kZeroFilterFrequency = 10.f;
-const int kSoundplaneKeyWidth = 30;
-const int kSoundplaneKeyHeight = 5;
-const float kSoundplaneVibratoAmount = 4.;
+#include "Zone.h"
 
 enum SoundplaneViewMode
 {
@@ -49,24 +43,7 @@ class SoundplaneModel :
 {
 
 public:
-    class Zone
-    {
-    public:
-        Zone();
-        Zone(MLSymbol type, MLRect rect, int startNote, int ctrl, int chan, const char* name);
-        ~Zone();
-        
-        int getTypeAsInt() const;
-        
-        MLSymbol mType;
-        MLRect mRect;
-        int mStartNote;
-        int mControllerNumber;
-        int mChannel;
-        std::string mName;
-    };
-    typedef std::tr1::shared_ptr<Zone> ZonePtr;
-    
+      
 	SoundplaneModel();
 	~SoundplaneModel();	
 	
@@ -90,9 +67,9 @@ public:
 	
 	void initialize();
 	void clearTouchData();
-	void postProcessTouchData();
-	void sendTouchDataToClients();
-	void notifyClients(int c);
+	void sendTouchDataToZones();
+	void notifyListeners(int c);
+    void sendMessageToListeners();
 	
 	void processCallback();
 	float getSampleHistory(int x, int y);
@@ -150,8 +127,8 @@ public:
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 
-    // setParam(string) will try to read the ... what
-    const std::list<ZonePtr>& getZoneList() { return mZoneList; }
+    const std::vector<ZonePtr>& getZones(){ return mZones; }
+    const CriticalSection* getZoneLock() {return &mZoneLock;}
 
     void loadStateFromJSON(cJSON* pNode, int depth);
     bool loadZonePresetByName(const std::string& name);
@@ -173,10 +150,19 @@ public:
 		
 private:	
 
-	void addDataListener(SoundplaneDataListener* pL) { mDataListeners.push_back(pL); }
-	std::vector<SoundplaneDataListener*> mDataListeners;
+    void dumpZoneMap();
+
+	void addListener(SoundplaneDataListener* pL) { mListeners.push_back(pL); }
+	SoundplaneListenerList mListeners;
 	
-	std::list<ZonePtr> mZoneList;
+    void clearZones();
+    void sendParametersToZones();
+    void addZone(ZonePtr pz);
+
+    CriticalSection mZoneLock;
+    std::vector<ZonePtr> mZones;
+    MLSignal mZoneMap;
+    //std::vector<int> mKeyToZoneMap;
 	
 	MLSoundplaneState mDeviceState;
 	bool mOutputEnabled;
@@ -192,6 +178,7 @@ private:
 	
 	SoundplaneMIDIOutput mMIDIOutput;
 	SoundplaneOSCOutput mOSCOutput;
+    SoundplaneDataMessage mMessage;
 		
 	UInt64 mLastTimeDataWasSent;
 	
@@ -205,6 +192,7 @@ private:
 	bool mCalibrating;
 	bool mSelectingCarriers;
 	bool mRaw;
+    bool mSendMatrixData;
 	
 	// when on, calibration tries to collect the lowest noise carriers to use.  otherwise a default set is used. 
 	//
@@ -222,29 +210,24 @@ private:
 	MLSignal mCookedSignal;
 	MLSignal mTestSignal;
 	MLSignal mTempSignal;
-	MLSignal mZoneMap;
 	
 	int mCalibrateCount; // samples in one calibrate step
 	int mCalibrateStep; // calibrate step from 0 - end
 	int mTotalCalibrateSteps;
 	int mSelectCarriersStep;
 	
-	float mSampleRate;
-	float mSnapFreq;
-	
 	float mSurfaceWidthInv;
 	float mSurfaceHeightInv;
 	
 	Biquad2D mNotchFilter;
 	Biquad2D mLopassFilter;
-	std::vector<Biquad> mNoteFilters;
-	std::vector<Biquad> mVibratoFilters;
-	float mNoteLock[kSoundplaneMaxTouches];
+    
+    // store current key for each touch to implement hysteresis. 
 	int mCurrentKeyX[kSoundplaneMaxTouches];
 	int mCurrentKeyY[kSoundplaneMaxTouches];
-	int mAge1[kSoundplaneMaxTouches];
-	float mNote1[kSoundplaneMaxTouches];
+    
 	float mZ1[kSoundplaneMaxTouches];
+    
 	char mHardwareStr[miscStrSize];
 	char mStatusStr[miscStrSize];
 	char mClientStr[miscStrSize];

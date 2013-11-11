@@ -17,6 +17,15 @@ namespace SoundplaneBinaryData
     extern const char*  arrowrightdown_svg;
     const int           arrowrightdown_svgSize = 684;
 
+    extern const char*  chromaticfourths_json;
+    const int           chromaticfourths_jsonSize = 488;
+
+    extern const char*  chromaticoctaves_json;
+    const int           chromaticoctaves_jsonSize = 483;
+
+    extern const char*  continuous_json;
+    const int           continuous_jsonSize = 100;
+
     extern const char*  dot64_png;
     const int           dot64_pngSize = 10106;
 

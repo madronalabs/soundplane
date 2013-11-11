@@ -42,7 +42,7 @@ void SoundplaneTouchView::renderTouches()
 {
 	if (!mpModel) return;
 	if (!isShowing()) return;
-
+    
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
 	
@@ -79,7 +79,7 @@ void SoundplaneTouchView::renderTouches()
 		glColor4f(p, p, p, 1.0f);
         MLGL::strokeRect(fr);
 		
-		// draw indicators at left
+		// draw touch activity indicators at left
 		glColor4fv(MLGL::getIndicatorColor(j));
 		MLRect r(0, 0, numSize, numSize);		
 		MLRect tr = r.translated(Vec2(margin, margin + j*frameOffset + (frameHeight - numSize)/2));				

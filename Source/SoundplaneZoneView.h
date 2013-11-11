@@ -24,12 +24,15 @@
 class SoundplaneZoneView  : 
 	public Component,
 	public OpenGLRenderer,
-	public MLWidget
+	public MLWidget,
+    public Timer
 {
 public:
     SoundplaneZoneView();
     ~SoundplaneZoneView();
- 
+
+    void timerCallback();
+    
     // when the component creates a new internal context, this is called, and
     // we'll use the opportunity to create the textures needed.
     void newOpenGLContextCreated();

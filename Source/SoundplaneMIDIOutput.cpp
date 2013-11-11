@@ -73,7 +73,6 @@ juce::MidiOutput* MIDIDevice::getDevice()
 
 SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mpCurrentDevice(0),
-	mActive(false),
 	mPressureActive(false),
 	mDataFreq(250.),
 	mLastTimeDataWasSent(0),
@@ -217,6 +216,12 @@ void SoundplaneMIDIOutput::modelStateChanged()
 
 }
 
+void SoundplaneMIDIOutput::processMessage(const SoundplaneDataMessage* msg)
+{
+   // debug() << "SoundplaneMIDIOutput msg:" << msg->mType << "\n";
+}
+
+/*
 void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 {
 	if (!mActive) return;
@@ -295,7 +300,6 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 			int prevNote = pVoice->mMIDINote;
 			
 			int chan = mMultiChannel ? (((mStartChannel + i - 1)%15) + 1) : mStartChannel;
-
 						
 			if(pVoice->mNoteOff)
 			{
@@ -438,4 +442,5 @@ void SoundplaneMIDIOutput::processFrame(const MLSignal& touchFrame)
 		}
 	}
 }
+*/
 

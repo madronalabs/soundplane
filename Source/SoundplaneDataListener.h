@@ -8,17 +8,32 @@
 
 #include "MLSignal.h"
 #include "MLModel.h"
+#include "SoundplaneDriver.h"
 
+const int kSoundplaneMaxControllerNumber = 127;
+
+struct SoundplaneDataMessage
+{
+    MLSymbol mType;
+    MLSymbol mSubtype;
+    std::string* mZoneName;
+    float mData[8];
+    float mMatrix[kSoundplaneWidth*kSoundplaneHeight];
+};
 
 class SoundplaneDataListener 
 {
 public:
-	SoundplaneDataListener() {}
+	SoundplaneDataListener() : mActive(false) {}
 	virtual ~SoundplaneDataListener() {}
-	virtual void processFrame(const MLSignal& touchFrame) {}
-	virtual void notify(int) {}
+    virtual void processMessage(const SoundplaneDataMessage* message) = 0;
+    bool isActive() { return mActive; }
+
+protected:
+	bool mActive;
 };
 
+typedef std::list<SoundplaneDataListener*> SoundplaneListenerList;
 
 #endif // __SOUNDPLANE_DATA_LISTENER__
 

@@ -1,0 +1,32 @@
+{
+	"zone":	{
+		"name":	"B2",
+		"type":	"note_row",
+		"rect":	[0, 0, 30, 1],
+		"note": 50
+	},
+	"zone":	{
+		"name":	"E2",
+		"type":	"note_row",
+		"rect":	[0, 1, 30, 1],
+		"note": 55
+	},
+	"zone":	{
+		"name":	"A2",
+		"type":	"note_row",
+		"rect":	[0, 2, 30, 1],
+		"note": 60
+	},
+	"zone":	{
+		"name":	"D3",
+		"type":	"note_row",
+		"rect":	[0, 3, 30, 1],
+		"note": 65
+	},
+	"zone":	{
+		"name":	"G3",
+		"type":	"note_row",
+		"rect":	[0, 4, 30, 1],
+		"note": 70
+	}
+}

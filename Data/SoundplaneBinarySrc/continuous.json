@@ -1,0 +1,8 @@
+{
+	"zone":	{
+		"name":	"A2",
+		"type":	"note_row",
+		"rect":	[0, 0, 30, 5],
+		"note": 60
+	}
+}

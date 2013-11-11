@@ -7,8 +7,7 @@
 
 const char* kDefaultHostnameString = "localhost";
 
-OSCVoice::OSCVoice() :
-	mStartX(0), mStartY(0), mAge(0)
+OSCVoice::OSCVoice() : startX(0), startY(0), mState(kInactive)
 {
 }
 
@@ -21,14 +20,14 @@ OSCVoice::~OSCVoice()
 
 SoundplaneOSCOutput::SoundplaneOSCOutput() :
 	mDataFreq(250.),
-	mLastTimeDataWasSent(0),
+	mLastFrameStartTime(0),
 	mpUDPSocket(0),
 	mFrameId(0),
 	mSerialNumber(0),
 	lastInfrequentTaskTime(0),
-	mKymaMode(false)
+	mKymaMode(false),
+    mGotNoteChangesThisFrame(false)
 {
-	
 }
 
 SoundplaneOSCOutput::~SoundplaneOSCOutput()
@@ -70,9 +69,9 @@ void SoundplaneOSCOutput::setKymaMode(bool m)
 	mKymaMode = m;
 }
 
-void SoundplaneOSCOutput::setActive(bool v) 
-{ 
-	mActive = v; 
+void SoundplaneOSCOutput::setActive(bool v)
+{
+	mActive = v;
 	
 	// reset frame ID
 	mFrameId = 0;
@@ -126,48 +125,216 @@ void SoundplaneOSCOutput::notify(int connected)
 	//debug() << "SoundplaneOSCOutput::notify\n";
 }
 
-void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
+void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
 {
+    static const MLSymbol startFrameSym("start_frame");
+    static const MLSymbol touchSym("touch");
+    static const MLSymbol onSym("on");
+    static const MLSymbol continueSym("continue");
+    static const MLSymbol offSym("off");
+    static const MLSymbol controllerSym("controller");
+    static const MLSymbol xSym("x");
+    static const MLSymbol ySym("y");
+    static const MLSymbol xySym("xy");
+    static const MLSymbol endFrameSym("end_frame");
+    static const MLSymbol matrixSym("matrix");
+    static const MLSymbol nullSym;
+    
+	if (!mActive) return;
+    MLSymbol type = msg->mType;
+    MLSymbol subtype = msg->mSubtype;
+    
+    int i;
+	float x, y, z, note;
+    
+    if(type == startFrameSym)
+    {
+        const UInt64 dataPeriodMicrosecs = 1000*1000 / mDataFreq;
+        mCurrFrameStartTime = getMicroseconds();
+        if (mCurrFrameStartTime > mLastFrameStartTime + (UInt64)dataPeriodMicrosecs)
+        {
+            mLastFrameStartTime = mCurrFrameStartTime;
+            mTimeToSendNewFrame = true;
+        }
+        else
+        {
+            mTimeToSendNewFrame = false;
+        }        
+        mGotNoteChangesThisFrame = false;
+    }
+    else if(type == touchSym)
+    {
+        // get touch data
+        i = msg->mData[0];
+        x = msg->mData[1];
+        y = msg->mData[2];
+        z = msg->mData[3];
+        note = msg->mData[4];
+        OSCVoice* pVoice = &mOSCVoices[i];        
+        pVoice->x = x;
+        pVoice->y = y;
+        pVoice->z = z;
+        pVoice->note = note;
+        
+//debug() << "SoundplaneOSCOutput touch: " ;
+        
+        if(subtype == onSym)
+        {
+//debug() << " ON  ";
+            pVoice->startX = x;
+            pVoice->startY = y;
+            pVoice->mState = kOn;
+            mGotNoteChangesThisFrame = true;
+        }
+        if(subtype == continueSym)
+        {
+//debug() << " ... ";
+            pVoice->mState = kActive;
+        }
+        if(subtype == offSym)
+        {
+//debug() << " OFF ";
+            pVoice->mState = kOff;
+            pVoice->z = 0;
+            mGotNoteChangesThisFrame = true;
+        }
+//debug() << i << " " << note << "\n";
+    }
+    else if(type == controllerSym)
+    {
+        // when a controller message comes in, make a local copy of the message and store by zone ID.
+        int zoneID = msg->mData[0];
+        mMessagesByZone[zoneID] = *msg;
+    }
+    else if(type == matrixSym)
+    {
+        // format and send matrix in OSC blob
+        if(mTimeToSendNewFrame)
+        {
+            osc::OutboundPacketStream p( mpOSCBuf, kUDPOutputBufferSize );            
+            p << osc::BeginMessage( "/t3d/matrix" );
+            p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
+            p << osc::EndMessage;
+            mpUDPSocket->Send( p.Data(), p.Size() );
+        }
+    }
+    else if(type == endFrameSym)
+    {
+        if(mGotNoteChangesThisFrame || mTimeToSendNewFrame)
+        {
+            // begin OSC bundle for this frame
+            osc::OutboundPacketStream p( mpOSCBuf, kUDPOutputBufferSize );
+            
+            // timestamp is now stored in the bundle, synchronizing all info for this frame.
+            p << osc::BeginBundle(mCurrFrameStartTime);
+            
+			// send frame message
+			// /k1/frm frameID serialNumber
+			//
+			p << osc::BeginMessage( "/t3d/frm" );
+			p << mFrameId++ << mSerialNumber;
+			p << osc::EndMessage;
+            
+            // for each zone, send and clear any controller messages received since last frame
+            for(int i=0; i<kSoundplaneAMaxZones; ++i)
+            {
+                SoundplaneDataMessage* pMsg = &(mMessagesByZone[i]);
+                if(pMsg->mType == controllerSym)
+                {
+                    // send controller message: /t3d/[zoneName] val1 (val2)
+                    // TODO allow zones to split touches and controls across different ports
+                    // using the channel attribute. (channel = port number offset for OSC)
+                    int channel = pMsg->mData[1];
+                    x = pMsg->mData[4];
+                    y = pMsg->mData[5];
+                    std::string ctrlStr("/");
+                    ctrlStr += *(pMsg->mZoneName);
+                    
+                    p << osc::BeginMessage( ctrlStr.c_str() );
+                    
+                    // get control data by type and add to message
+                    if(pMsg->mSubtype == xSym)
+                    {
+                        p << x;
+                    }
+                    else if(pMsg->mSubtype == ySym)
+                    {
+                        p << y;
+                    }
+                    else if (pMsg->mSubtype == xySym)
+                    {
+                        p << x << y;
+                    }
+                    p << osc::EndMessage;
+                    
+                    // clear
+                    mMessagesByZone[i].mType = nullSym;
+                }
+            }
+            // send notes, either in Kyma mode, or not
+            if (!mKymaMode)
+            {
+                // send 1 message for each live touch: /t3d/tch[touchID] x y z note
+                // age is not sent over OSC-- to be reconstructed on the receiving end if needed.
+                //
+                for(int i=0; i<mMaxTouches; ++i)
+                {
+                    OSCVoice* pVoice = &mOSCVoices[i];
+                    if(pVoice->mState != kInactive)
+                    {
+                        osc::int32 touchID = i + 1; // 1-based for OSC
+                        std::string address("/t3d/tch");
+                        int maxSize = 4;
+                        char idBuf[maxSize];
+                        snprintf(idBuf, maxSize, "%d", touchID);                                 
+                        address += std::string(idBuf);
+                        p << osc::BeginMessage( address.c_str() );
+                        p << pVoice->x << pVoice->y << pVoice->z << pVoice->note;
+                        p << osc::EndMessage;
+                    }
+                }               
+            }
+            else // kyma
+            {
+                for(int i=0; i<mMaxTouches; ++i)
+                {
+                    OSCVoice* pVoice = &mOSCVoices[i];			
+                    osc::int32 touchID = i; // 0-based for Kyma
+                    osc::int32 offOn = 1;
+                    if(pVoice->mState == kOn)
+                    {
+                        offOn = -1;
+                    }
+                    else if (pVoice->mState == kOff)
+                    {
+                        offOn = 0; // TODO periodically turn off silent voices 
+                    }
+                
+                    if(pVoice->mState != kInactive)
+                    {
+                        p << osc::BeginMessage( "/key" );	
+                        p << touchID << offOn << pVoice->note << pVoice->z << pVoice->y ;
+                        p << osc::EndMessage;
+                    }
+                }
+            }
+            
+            // end OSC bundle and send
+            p << osc::EndBundle;
+            mpUDPSocket->Send( p.Data(), p.Size() );
+        }
+    }
+}
+
+
+//
+/*
+ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
+    {
 	if (!mActive) return;
 	float x, y, z, note;
 	UInt64 now = getMicroseconds();	
 	const UInt64 dataPeriodMicrosecs = 1000*1000 / mDataFreq;
-	bool sendData = false;
-	
-	// store touch ages and find note-ons, note-offs. 
-	// if there are any note ons or offs, send this frame of data.
-	for(int i=0; i<mVoices; ++i)
-	{
-		OSCVoice* pVoice = &mOSCVoices[i];
-		pVoice->mNoteOn = false;
-		pVoice->mNoteOff = false;
-		int age = touchFrame(ageColumn, i);
-		if (age == 1) // note-on
-		{
-			// always send note on 
-			sendData = true;
-			pVoice->mNoteOn = true;
-			pVoice->mStartY = touchFrame(yColumn, i);
-		}
-		else if (pVoice->mAge && !age)
-		{
-			// always send note off
-			sendData = true;	
-			pVoice->mNoteOff = true;
-		}
-		pVoice->mAge = age;
-	}
-	
-	// if not already sending data due to note on or off, look at the time
-	// and decide to send based on that. 
-	if (!sendData)
-	{
-		if (now > mLastTimeDataWasSent + (UInt64)dataPeriodMicrosecs)
-		{
-			mLastTimeDataWasSent = now;
-			sendData = true;
-		}
-	}
 	
 	if (sendData) 
 	{
@@ -194,7 +361,7 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 			// k1/touch touchID x y z zone [...]
 			// age is not sent-- to be reconstructed on the receiving end if needed. 
 			//
-			for(int i=0; i<mVoices; ++i)
+			for(int i=0; i<mMaxTouches; ++i)
 			{
 				OSCVoice* pVoice = &mOSCVoices[i];
 				x = touchFrame(xColumn, i);
@@ -227,7 +394,7 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 			// send list of live touch IDs
 			//
 			p << osc::BeginMessage( "/t3d/alv" );	
-			for(int i=0; i<mVoices; ++i)
+			for(int i=0; i<mMaxTouches; ++i)
 			{
 				OSCVoice* pVoice = &mOSCVoices[i];
 				if (pVoice->mAge > 0)
@@ -244,7 +411,7 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 			osc::OutboundPacketStream p( mpOSCBuf, kUDPOutputBufferSize );
 			p << osc::BeginBundleImmediate;
 		
-			for(int i=0; i<mVoices; ++i)
+			for(int i=0; i<mMaxTouches; ++i)
 			{
 				OSCVoice* pVoice = &mOSCVoices[i];
 				x = touchFrame(xColumn, i);
@@ -281,3 +448,4 @@ void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
 		lastInfrequentTaskTime = now;
 	}
 }
+*/

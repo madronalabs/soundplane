@@ -13,6 +13,7 @@
 #include "MLDebug.h"
 #include "MLTime.h"
 #include "SoundplaneDataListener.h"
+#include "SoundplaneModelA.h"
 #include "TouchTracker.h"
 #include "JuceHeader.h"
 
@@ -22,9 +23,15 @@
 extern const char* kDefaultHostnameString;
 const int kDefaultUDPPort = 3123;
 const int kDefaultUDPReceivePort = 3124;
-const int kUDPOutputBufferSize = 1500;
+const int kUDPOutputBufferSize = 4096;
 
-const int kMaxVoices = 16;
+enum OSCVoiceState
+{
+    kInactive = 0,
+    kOn,
+    kActive,
+    kOff
+};
 
 class OSCVoice
 {
@@ -32,11 +39,13 @@ public:
 	OSCVoice();
 	~OSCVoice();
 
-	float mStartX;
-	float mStartY;
-	int mAge;
-	int mNoteOn;
-	int mNoteOff;
+	float startX;
+	float startY;
+    float x;
+    float y;
+    float z;
+    float note;
+	OSCVoiceState mState;
 };
 
 class SoundplaneOSCOutput :
@@ -51,12 +60,14 @@ public:
 	int getKymaMode();
 	void setKymaMode(bool m);
 	
+    // SoundplaneDataListener
+    void processMessage(const SoundplaneDataMessage* msg);
+    
 	void modelStateChanged();
-	void processFrame(const MLSignal& touchFrame);
 	void setDataFreq(float f) { mDataFreq = f; }
 	
 	void setActive(bool v);
-	void setMaxTouches(int t) { mVoices = clamp(t, 0, kMaxVoices); }
+	void setMaxTouches(int t) { mMaxTouches = clamp(t, 0, kSoundplaneMaxTouches); }
 	
 	void setSerialNumber(int s) { mSerialNumber = s; }
 	void notify(int connected);
@@ -65,13 +76,14 @@ private:
 	
 	void doInfrequentTasks();
 
-	bool mActive;
-	int mVoices;
-	
-	OSCVoice mOSCVoices[kMaxVoices];
+	int mMaxTouches;	
+	OSCVoice mOSCVoices[kSoundplaneMaxTouches];
+    SoundplaneDataMessage mMessagesByZone[kSoundplaneAMaxZones];
 	
 	float mDataFreq;
-	UInt64 mLastTimeDataWasSent;
+	UInt64 mCurrFrameStartTime;
+	UInt64 mLastFrameStartTime;
+    bool mTimeToSendNewFrame;
 
 	UdpTransmitSocket* mpUDPSocket;		
     char* mpOSCBuf;
@@ -80,7 +92,7 @@ private:
 	
 	UInt64 lastInfrequentTaskTime;
 	bool mKymaMode;
-	
+    bool mGotNoteChangesThisFrame;
 };
 
 

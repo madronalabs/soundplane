@@ -134,41 +134,34 @@ void SoundplaneGridView::setModel(SoundplaneModel* m)
 
 void SoundplaneGridView::renderXYGrid()
 {
-	int width = 30; // Soundplane A TODO get from tracker
-	int height = 5;
-	int modelWidth = mpModel->getWidth();
-	int modelHeight = mpModel->getHeight();
-	int viewW = getWidth();
-	int viewH = getHeight();
-	// draw grid
-	float myAspect = (float)viewW / (float)viewH;
-	float soundplaneAspect = 4.f; // TEMP
+	int sensorWidth = mpModel->getWidth();
+	int sensorHeight = mpModel->getHeight();
+
 	int state = mpModel->getDeviceState();
 	float fMax = mpModel->getModelFloatParam("z_max");
-	
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(8.0, myAspect, 0.125, 50.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	gluLookAt(0.0, 0.0, 20., // eyepoint x y z
-			  0.0, 0.0, 0.5, // center x y z
-			  0.0, 1.0, 0.0); // up vector
-
-	glColor4f(1, 1, 1, 0.5);
-	float r = 0.95;
-	MLRange xRange(0, width);
-	xRange.convertTo(MLRange(-myAspect*r, myAspect*r));
-	MLRange yRange(0, height);
-	float sh = myAspect*r/soundplaneAspect;	
-	yRange.convertTo(MLRange(-sh, sh));	
-		
+    
+    int viewW = getBackingLayerWidth();
+    int viewH = getBackingLayerHeight();
+	int margin = viewH / 30;
+    
+	int keyWidth = 30; // Soundplane A TODO get from tracker
+	int keyHeight = 5;
+    int lineWidth = viewW / 200;
+    int thinLineWidth = viewW / 400;
+    
+    // put origin in lower left.
+    MLGL::orthoView2(viewW, viewH);
+    MLRange xRange(0, keyWidth, margin, viewW - margin);
+	MLRange yRange(0, keyHeight, margin, viewH - margin);
+    
 	// Soundplane A	
-	MLRange xmRange(2, modelWidth-2);
-	xmRange.convertTo(MLRange(-myAspect*r, myAspect*r));
-	MLRange ymRange(0, modelHeight);
-	ymRange.convertTo(MLRange(-sh, sh));	
-		
+	MLRange xmRange(2, sensorWidth-2);
+	xmRange.convertTo(MLRange(margin, viewW - margin));
+	MLRange ymRange(0, sensorHeight);
+	ymRange.convertTo(MLRange(margin, viewH - margin));
+
+	float dotSize = fabs(yRange(0.08f) - yRange(0.f));
+   
 	const MLSignal& calSignal = mpModel->getSignalForViewMode(kCalibrated);
 	float displayScale = mpModel->getModelFloatParam("display_scale");
 	
@@ -182,10 +175,10 @@ void SoundplaneGridView::renderXYGrid()
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
 
 	// fill calibrated data areas
-	for(int j=0; j<modelHeight; ++j)
+	for(int j=0; j<sensorHeight; ++j)
 	{
 		// Soundplane A-specific
-		for(int i=2; i<modelWidth - 2; ++i)
+		for(int i=2; i<sensorWidth - 2; ++i)
 		{
 			float mix = calSignal(i, j) / fMax;
 			mix *= displayScale;
@@ -213,10 +206,10 @@ void SoundplaneGridView::renderXYGrid()
 	}
 	// horiz lines
 	glColor4fv(&lineColor[0]);
-	for(int j=0; j<=height; ++j)
+	for(int j=0; j<=keyHeight; ++j)
 	{
 		glBegin(GL_LINE_STRIP);
-		for(int i=0; i<=width; ++i)
+		for(int i=0; i<=keyWidth; ++i)
 		{
 			float x = xRange.convert(i);
 			float y = yRange.convert(j);
@@ -226,10 +219,10 @@ void SoundplaneGridView::renderXYGrid()
 		glEnd();
 	}	
 	// vert lines
-	for(int i=0; i<=width; ++i)
+	for(int i=0; i<=keyWidth; ++i)
 	{
 		glBegin(GL_LINE_STRIP);
-		for(int j=0; j<=height; ++j)
+		for(int j=0; j<=keyHeight; ++j)
 		{
 			float x = xRange.convert(i);
 			float y = yRange.convert(j);
@@ -240,20 +233,19 @@ void SoundplaneGridView::renderXYGrid()
 	}
 	
 	// draw dots
-	for(int i=0; i<=width; ++i)
+	for(int i=0; i<=keyWidth; ++i)
 	{
 		float x = xRange.convert(i + 0.5);
 		float y = yRange.convert(2.5);
 		int k = i%12;
 		if(k == 0)
 		{
-			float d = 0.1f;
-			MLGL::drawDot(Vec2(x, y - d));
-			MLGL::drawDot(Vec2(x, y + d));
+			MLGL::drawDot(Vec2(x, y - dotSize*1.5), dotSize);
+			MLGL::drawDot(Vec2(x, y + dotSize*1.5), dotSize);
 		}
 		if((k == 3)||(k == 5)||(k == 7)||(k == 9))
 		{
-			MLGL::drawDot(Vec2(x, y));
+			MLGL::drawDot(Vec2(x, y), dotSize);
 		}
 	}
 	
@@ -269,8 +261,8 @@ void SoundplaneGridView::renderXYGrid()
 		{
 			glColor4fv(MLGL::getIndicatorColor(t));
 
-			float x = touches(xColumn, t) * modelWidth;
-			float y = touches(yColumn, t) * modelHeight;
+			float x = touches(xColumn, t) * sensorWidth;
+			float y = touches(yColumn, t) * sensorHeight;
 			Vec2 xyPos(x, y);
 			Vec2 gridPos = mpModel->xyToKeyGrid(xyPos);
 			
@@ -313,7 +305,7 @@ void SoundplaneGridView::renderXYGrid()
 				float y = touchHistory(yColumn, touch, cc);
 				if((x > 0.) && (y > 0.))
 				{
-					Vec2 gridPos = mpModel->xyToKeyGrid(Vec2(x*modelWidth, y*modelHeight));
+					Vec2 gridPos = mpModel->xyToKeyGrid(Vec2(x*sensorWidth, y*sensorHeight));
 					float px = xRange.convert(gridPos.x() + 0.5f);
 					float py = yRange.convert(gridPos.y() + 0.5f);
 					glVertex3f(px, py, 0.);	
@@ -365,8 +357,8 @@ void SoundplaneGridView::renderZGrid()
 	switch(mViewMode)
 	{
 		case kRaw:
-			offset = -0.75;
-			scale *= 4.;
+			offset = -1.;
+			scale *= 8.;
 			separateSurfaces = true;
 			break;
 		case kCalibrated:

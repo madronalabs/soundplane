@@ -14,20 +14,25 @@ SoundplaneZoneView::SoundplaneZoneView() :
 #endif
 	setInterceptsMouseClicks (false, false);	
 	MLWidget::setComponent(this);
-
 	mGLContext.setRenderer (this);
 	mGLContext.setComponentPaintingEnabled (false);
-//	mGLContext.attachTo (*this);
 }
 
 SoundplaneZoneView::~SoundplaneZoneView()
 {
+    stopTimer();
 	mGLContext.detach();
 }
 
 void SoundplaneZoneView::setModel(SoundplaneModel* m)
 {
 	mpModel = m;
+    startTimer(10);
+}
+
+void SoundplaneZoneView::timerCallback()
+{
+    mGLContext.triggerRepaint();
 }
 
 void SoundplaneZoneView::newOpenGLContextCreated()
@@ -65,11 +70,9 @@ void SoundplaneZoneView::mouseDrag (const MouseEvent& e)
 }
 
 // temporary, ugly
-// TODO 2d OpenGL drawing helpers
+// TODO more 2d OpenGL drawing helpers
 void SoundplaneZoneView::drawDot(Vec2 pos, float r)
 {
-	Vec4 dotColor(0.6f, 0.6f, 0.6f, 1.f);
-	glColor4fv(&dotColor[0]);
 	int steps = 16;
     
 	float x = pos.x();
@@ -91,13 +94,13 @@ void SoundplaneZoneView::renderGrid()
 {
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
-    MLGL::orthoView(viewW, viewH);
+    MLGL::orthoView2(viewW, viewH);
 
 	int gridWidth = 30; // Soundplane A TODO get from tracker
 	int gridHeight = 5;
    // int margin = viewW / 50;
 	MLRange xRange(0, gridWidth, 1, viewW);
-	MLRange yRange(0, gridHeight, 0, viewH - 1);
+	MLRange yRange(0, gridHeight, 1, viewH);
     
 	// draw thin lines at key grid
 	Vec4 lineColor;
@@ -132,7 +135,7 @@ void SoundplaneZoneView::renderGrid()
 	}
 	
 	// draw dots
-    float r = viewH / 100.;
+    float r = viewH / 80.;
 	for(int i=0; i<=gridWidth; ++i)
 	{
 		float x = xRange.convert(i + 0.5);
@@ -140,13 +143,17 @@ void SoundplaneZoneView::renderGrid()
 		int k = i%12;
 		if(k == 0)
 		{
-			float d = viewH / 40;
-			drawDot(Vec2(x, y - d), r);
+			float d = viewH / 50;
+            Vec4 dotColor(0.6f, 0.6f, 0.6f, 1.f);
+            glColor4fv(&dotColor[0]);
+            drawDot(Vec2(x, y - d), r);
 			drawDot(Vec2(x, y + d), r);
 		}
 		if((k == 3)||(k == 5)||(k == 7)||(k == 9))
 		{
-			drawDot(Vec2(x, y), r);
+            Vec4 dotColor(0.6f, 0.6f, 0.6f, 1.f);
+            glColor4fv(&dotColor[0]);
+            drawDot(Vec2(x, y), r);
 		}
 	}
 }
@@ -154,69 +161,117 @@ void SoundplaneZoneView::renderGrid()
 void SoundplaneZoneView::renderZones()
 {
 	if (!mpModel) return;
+    const ScopedLock lock(*(mpModel->getZoneLock()));
+    const std::vector<ZonePtr>& zoneList = mpModel->getZones();
+
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
 	// float viewAspect = (float)viewW / (float)viewH;
-
+    
 	int gridWidth = 30; // Soundplane A TODO get from tracker
 	int gridHeight = 5;
-	// float soundplaneAspect = 4.f;
-    
-	//int modelWidth = mpModel->getWidth();
-	//int modelHeight = mpModel->getHeight();
-
-    int lineWidth = viewW / 150;
+    int lineWidth = viewW / 200;
+    int thinLineWidth = viewW / 400;
     // int margin = lineWidth*2;
     
+    // put origin in lower left. 
+    MLGL::orthoView2(viewW, viewH);
     MLRange xRange(0, gridWidth, 1, viewW);
-	MLRange yRange(0, gridHeight, 0, viewH - 1);
-//    MLRange2D xyRange(xRange, yRange);
-    
-    MLGL::orthoView(viewW, viewH);
+	MLRange yRange(0, gridHeight, 1, viewH);
 
 	Vec4 lineColor;
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
 	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
 	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
+    float smallDotSize = 4.f;
     
    // float strokeWidth = viewW / 100;
-    const std::list<SoundplaneModel::ZonePtr>& zoneList = mpModel->getZoneList();
-    std::list<SoundplaneModel::ZonePtr>::const_iterator it;
-    int i = 0;
-       
+    
+    
+    std::vector<ZonePtr>::const_iterator it;
+
     for(it = zoneList.begin(); it != zoneList.end(); ++it)
     {
-        const SoundplaneModel::Zone& z = **it;
-        MLRect zr = z.mRect;
+        const Zone& zone = **it;
         
-        // affine transforms TODO    MLRect zrd = zr.xform(gridToView);
-        MLRect zrd(xRange.convert(zr.x()), yRange.convert(zr.y()), xRange.convert(zr.width()), yRange.convert(zr.height()));
-        zrd.shrink(lineWidth);
-        Vec4 zoneStroke(MLGL::getIndicatorColor(z.getTypeAsInt()));
+        int t = zone.getType();
+        MLRect zr = zone.getBounds();
+        const char * name = zone.getName().c_str();
+        
+        // affine transforms TODO for better syntax: MLRect zrd = zr.xform(gridToView);
+        
+        MLRect zoneRectInView(xRange.convert(zr.x()), yRange.convert(zr.y()), xRange.convert(zr.width()), yRange.convert(zr.height()));
+        zoneRectInView.shrink(lineWidth);
+        Vec4 zoneStroke(MLGL::getIndicatorColor(t));
         Vec4 zoneFill(zoneStroke);
         zoneFill[3] = 0.1f;
+        Vec4 activeFill(zoneStroke);
+        activeFill[3] = 0.25f;
+        Vec4 dotFill(zoneStroke);
+        dotFill[3] = 0.5f;
         
         // draw box common to all kinds of zones
         glColor4fv(&zoneFill[0]);
-        MLGL::fillRect(zrd);
+        MLGL::fillRect(zoneRectInView);
         glColor4fv(&zoneStroke[0]);
         glLineWidth(lineWidth);
-        MLGL::strokeRect(zrd);
+        MLGL::strokeRect(zoneRectInView);
         glLineWidth(1);
         // draw name
-        MLGL::drawTextAt(zrd.left() + lineWidth, zrd.top() + zrd.height() - lineWidth, 0.f, z.mName.c_str());
+        // all these rect calculations read upside-down here because view origin is at bottom
+        MLGL::drawTextAt(zoneRectInView.left() + lineWidth, zoneRectInView.top() + lineWidth, 0.f, name);
         
-        // draw zone-specific things
-        if(z.mType == MLSymbol("note_row"))
+        // draw any zone-specific things
+        float x, y, z;
+        switch(t)
         {
-            
+            case kNoteRow:
+                for(int i = 0; i < kSoundplaneMaxTouches; ++i)
+                {
+                    const ZoneTouch& uTouch = zone.getTouch(i);
+                    const ZoneTouch& touch = zone.touchToKeyPos(uTouch);
+                    if(touch.isActive())
+                    {
+                        glColor4fv(&dotFill[0]);
+                        float dx = xRange(touch.pos.x());
+                        float dy = yRange(touch.pos.y());
+                        float dz = touch.pos.z();
+                        drawDot(Vec2(dx, dy), smallDotSize + dz*smallDotSize);
+                    }
+                }
+                break;
+                
+            case kControllerX:
+                x = xRange(zone.getXKeyPos());
+                glColor4fv(&zoneStroke[0]);
+                glLineWidth(thinLineWidth);
+                MLGL::strokeRect(MLRect(x, zoneRectInView.top(), 0., zoneRectInView.height()));
+                glColor4fv(&activeFill[0]);
+                MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), x - zoneRectInView.left(), zoneRectInView.height()));
+                break;
+                
+            case kControllerY:
+                y = yRange(zone.getYKeyPos());
+                glColor4fv(&zoneStroke[0]);
+                glLineWidth(thinLineWidth);                
+                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.));
+                glColor4fv(&activeFill[0]);
+                MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), zoneRectInView.width(), y - zoneRectInView.top()));
+                break;
+                
+            case kControllerXY:
+                x = xRange(zone.getXKeyPos());
+                y = yRange(zone.getYKeyPos());
+                glColor4fv(&zoneStroke[0]);
+                glLineWidth(thinLineWidth);
+                // cross-hairs centered on dot
+                MLGL::strokeRect(MLRect(x, zoneRectInView.top(), 0., zoneRectInView.height()));
+                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.));                
+                glColor4fv(&dotFill[0]);
+                drawDot(Vec2(x, y), smallDotSize);
+                break;            
         }
-        else if(z.mType == MLSymbol("controller_x"))
-        {
-            
-        }
-        i++;
     }
       
     /*
@@ -242,6 +297,7 @@ void SoundplaneZoneView::renderOpenGL()
 	if (!mpModel) return;
     int backW = getBackingLayerWidth();
     int backH = getBackingLayerHeight();
+    if(!mGLContext.isAttached()) return;
     ScopedPointer<LowLevelGraphicsContext> glRenderer(createOpenGLGraphicsContext (mGLContext, backW, backH));
     if (glRenderer != nullptr)
     {

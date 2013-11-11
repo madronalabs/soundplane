@@ -8,6 +8,7 @@
 // Madrona Labs specific flags:
 
 #define	ML_BUILD_STANDALONE	1
+#define GLX 1   // OpenGL blitting
 
 //==============================================================================
 #define JUCE_MODULE_AVAILABLE_juce_audio_basics          1

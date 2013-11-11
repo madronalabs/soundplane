@@ -921,7 +921,6 @@ void TouchTracker::findTouches()
 			bool templateTest = (kdt < mTemplateThresh);
 			bool overrideTest = (z > mOverrideThresh);
 			bool kCoeffTest = (kCoeff > 0.001f);
-
 			bool ageTest = mKeyStates[i].age > 10;
 			
 			if (ageTest && inhibitTest && kCoeffTest)

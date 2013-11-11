@@ -43,6 +43,10 @@ static void makeStandardCarrierSet(unsigned char pC[kSoundplaneSensorWidth], int
 	}
 }
 
+// --------------------------------------------------------------------------------
+//
+#pragma mark SoundplaneModel
+
 SoundplaneModel::SoundplaneModel() :
 	mDeviceState(kNoDevice),
 	mOutputEnabled(false),
@@ -67,10 +71,9 @@ SoundplaneModel::SoundplaneModel() :
 	mNotchFilter(kSoundplaneWidth, kSoundplaneHeight),
 	mLopassFilter(kSoundplaneWidth, kSoundplaneHeight),
 	//
-	mSampleRate(kSoundplaneSampleRate),
 	mHasCalibration(false),
 	//
-	mZoneMap(kSoundplaneKeyWidth, kSoundplaneKeyHeight),
+	mZoneMap(kSoundplaneAKeyWidth, kSoundplaneAKeyHeight),
 
 	mHistoryCtr(0),
 
@@ -94,29 +97,20 @@ SoundplaneModel::SoundplaneModel() :
 	mSurfaceHeightInv = 1.f / (float)mSurface.getHeight();
 
 	// setup fixed notch
-	mNotchFilter.setSampleRate(mSampleRate);
+	mNotchFilter.setSampleRate(kSoundplaneSampleRate);
 	mNotchFilter.setNotch(300., 0.1);
 	
 	// setup fixed lopass.
-	mLopassFilter.setSampleRate(mSampleRate);
+	mLopassFilter.setSampleRate(kSoundplaneSampleRate);
 	mLopassFilter.setLopass(50, 0.707);
 	
-	mNoteFilters.resize(kSoundplaneMaxTouches);
-	mVibratoFilters.resize(kSoundplaneMaxTouches);
 	for(int i=0; i<kSoundplaneMaxTouches; ++i)
 	{
-		mNoteFilters[i].setSampleRate(mSampleRate);
-		mVibratoFilters[i].setSampleRate(mSampleRate);
-		mVibratoFilters[i].setOnePole(12.0f);
-		mNoteLock[i] = 0;
 		mCurrentKeyX[i] = -1;
 		mCurrentKeyY[i] = -1;
-		mAge1[i] = 0;
-		mNote1[i] = 0.f;
-		mZ1[i] = 0.f;
 	}
 	
-	mTracker.setSampleRate(mSampleRate);	
+	mTracker.setSampleRate(kSoundplaneSampleRate);	
 	
 	// setup default carriers in case there are no saved carriers
 	for (int car=0; car<kSoundplaneSensorWidth; ++car)
@@ -124,6 +118,8 @@ SoundplaneModel::SoundplaneModel() :
 		mCarriers[car] = kModelDefaultCarriers[car];
 	}			
 	
+    clearZones();
+
 	setAllParamsToDefaults();
 
 	mTracker.setListener(this);
@@ -131,7 +127,7 @@ SoundplaneModel::SoundplaneModel() :
 
 SoundplaneModel::~SoundplaneModel()
 {
-	notifyClients(0);
+	notifyListeners(0);
 		
 	// delete driver -- this will cause process thread to terminate.
 	//  
@@ -148,7 +144,6 @@ void SoundplaneModel::setAllParamsToDefaults()
 	setModelParam("max_touches", 4);
 	setModelParam("lopass", 100.);
 	
-	setModelParam("snap", 1.);
 	setModelParam("z_thresh", 0.01);
 	setModelParam("z_max", 0.05);
 	setModelParam("z_curve", 0.25);
@@ -169,7 +164,8 @@ void SoundplaneModel::setAllParamsToDefaults()
 	
 	setModelParam("kyma_poll", 1);
 	
-	setModelParam("osc_active", 1);	
+	setModelParam("osc_active", 1);
+	setModelParam("osc_raw", 0);
 	setModelParam("data_freq_osc", 250.);
 	
 	setModelParam("bend_range", 48);
@@ -285,20 +281,21 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 	}
 	else if (p == "snap")
 	{
-		float snapFreq = 1000.f / (v + 1.);
-		mSnapFreq = clamp(snapFreq, 1.f, 1000.f);
-		for(int i=0; i<kSoundplaneMaxTouches; ++i)
-		{
-			mNoteFilters[i].setOnePole(mSnapFreq);
-		}
+        sendParametersToZones();
+	}
+	else if (p == "vibrato")
+	{
+        sendParametersToZones();
 	}
 	
 	else if (p == "data_freq_midi")
 	{
+        // TODO attribute
 		mMIDIOutput.setDataFreq(v);
 	}
 	else if (p == "data_freq_osc")
 	{
+        // TODO attribute
 		mOSCOutput.setDataFreq(v);
 	}
 	else if (p == "midi_active")
@@ -323,6 +320,11 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 		mOSCOutput.setActive(b);
 		listenToOSC(b ? kDefaultUDPReceivePort : 0);
 	}
+	else if (p == "osc_send_matrix")
+	{
+		bool b = v; 
+		mSendMatrixData = b;
+	}
 	else if (p == "t_thresh")
 	{
 		mTracker.setTemplateThresh(v);
@@ -335,6 +337,7 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 	{
 		bool b = v;
 		mTracker.setQuantize(b);
+        sendParametersToZones();
 	}
 	else if (p == "rotate")
 	{
@@ -349,14 +352,21 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 	else if (p == "retrig")
 	{
 		mMIDIOutput.setRetrig(bool(v));
+        sendParametersToZones();
 	}
 	else if (p == "hysteresis")
 	{
 		mMIDIOutput.setHysteresis(v);
+        sendParametersToZones();
+	}
+	else if (p == "transpose")
+	{
+        sendParametersToZones();
 	}
 	else if (p == "bend_range")
 	{
 		mMIDIOutput.setBendRange(v);
+        sendParametersToZones();
 	}
 	else if (p == "debug_pause")
 	{
@@ -413,10 +423,10 @@ void SoundplaneModel::setModelParam(MLSymbol p, const MLSignal& v)
 void SoundplaneModel::initialize()
 {
 	mMIDIOutput.initialize();
-	addDataListener(&mMIDIOutput);
+	addListener(&mMIDIOutput);
 	
 	mOSCOutput.initialize();
-	addDataListener(&mOSCOutput);
+	addListener(&mOSCOutput);
 	
 	mpDriver = new SoundplaneDriver();
 	mpDriver->addListener(this);
@@ -642,90 +652,48 @@ const char* SoundplaneModel::getClientStr()
 	return mClientStr;
 }
 
-/*
- 
-bool MLAppState::loadSavedState()
+// remove all zones from the zone list.
+void SoundplaneModel::clearZones()
 {
-	bool r = true;
-	File stateFile = getStateFile();
-	if(stateFile.exists())
-	{
-		String stateStr(stateFile.loadFileAsString());
-		cJSON* root = cJSON_Parse(stateStr.toUTF8());
-		if(root)
-		{
-			loadStateFromJSON(root);		
-			cJSON_Delete(root);
-		}
-		else
-		{
-			debug() << "MLAppState::loadSavedState: couldn't create JSON object!\n";
-#ifdef ML_DEBUG
-			debug() << "STATE:\n" << 	stateStr << "\n";
-#endif				
-		}
-	}
-	else
-	{
-		r = false;
-	}
-	updateAllParams();
-	return r;
-}
- }
-
- */
-
-
-static const MLSymbol zoneTypes[5] = {"note_row", "controller_x", "controller_y", "controller_xy", "toggle_row"};
-
-SoundplaneModel::Zone::Zone() :
-    mType("note_row"),
-    mRect(),
-    mStartNote(60),
-    mControllerNumber(1),
-    mChannel(1),
-    mName("unnamed zone")
-{
+    const ScopedLock lock (mZoneLock);
+    mZones.clear();
+    mZoneMap.fill(-1);
 }
 
-SoundplaneModel::Zone::Zone(MLSymbol type, MLRect rect, int startNote, int ctrl, int chan, const char* name) :
-    mType(type),
-    mRect(rect),
-    mStartNote(startNote),
-    mControllerNumber(ctrl),
-    mChannel(chan),
-    mName(name)
+// add a zone to the zone list and color in its boundary on the map.
+void SoundplaneModel::addZone(ZonePtr pz)
 {
-}
-
-SoundplaneModel::Zone::~Zone()
-{
-
-}
-
-int SoundplaneModel::Zone::getTypeAsInt() const
-{
-    int r = 0;
-    for(int i = 0; i<sizeof(zoneTypes); ++i)
+    const ScopedLock lock (mZoneLock);
+    // TODO prevent overlapping zones
+    int zoneIdx = mZones.size();
+    if(zoneIdx < kSoundplaneAMaxZones)
     {
-        if(mType == zoneTypes[i])
+        pz->setZoneID(zoneIdx);
+        mZones.push_back(pz);
+        MLRect b(pz->getBounds());
+        int x = b.x();
+        int y = b.y();
+        int w = b.width();
+        int h = b.height();
+        int hh = mZoneMap.getHeight();
+        
+        for(int j=y; j < y + h; ++j)
         {
-            r = i;
-            break;
+            for(int i=x; i < x + w; ++i)
+            {
+                mZoneMap(i, j) = zoneIdx;
+            }
         }
     }
-    return r;
+    else
+    {
+        MLError() << "SoundplaneModel::addZone: out of zones!\n";
+    }
 }
-
-// --------------------------------------------------------------------------------
-// JSON parser (to move)
-//
 
 void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
 {
-    debug() << "loadZonesFromString: " << zoneStr << "\n";
-    mZoneList.clear();
+    clearZones();
     cJSON* root = cJSON_Parse(zoneStr.c_str());
     if(!root)
     {
@@ -735,35 +703,27 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
     cJSON* pNode = root->child;
     while(pNode)
     {        
-        debug() << "node  " << pNode->string << "\n";
         if(!strcmp(pNode->string, "zone"))
         {
-            Zone* pz = new Zone();            
+            Zone* pz = new Zone(mListeners);
             cJSON* pZoneType = cJSON_GetObjectItem(pNode, "type");
             if(pZoneType)
             {
                 // get zone type and type specific attributes
-                pz->mType = MLSymbol(pZoneType->valuestring);
-                if(pz->mType == "note_row")
+                MLSymbol typeSym(pZoneType->valuestring);
+                int zoneTypeNum = Zone::symbolToZoneType(typeSym);
+                if(zoneTypeNum >= 0)
                 {
-                
+                    pz->mType = zoneTypeNum;
                 }
-                else if(pz->mType == "controller_x")
+                else
                 {
-                    
-                }
-                else if(pz->mType == "controller_y")
-                {
-                    
-                }
-                else if(pz->mType == "controller_xy")
-                {
-                    
+                    MLError() << "Unknown type " << typeSym << " for zone!\n";
                 }
             }
             else
             {
-                MLError() << "No type for zone\n";
+                MLError() << "No type for zone!\n";
             }
             
             // get zone rect
@@ -771,17 +731,17 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
             if(pZoneRect)
             {
                 int size = cJSON_GetArraySize(pZoneRect);
-                if( size == 4)
+                if(size == 4)
                 {
                     int x = cJSON_GetArrayItem(pZoneRect, 0)->valueint;
                     int y = cJSON_GetArrayItem(pZoneRect, 1)->valueint;
                     int w = cJSON_GetArrayItem(pZoneRect, 2)->valueint;
                     int h = cJSON_GetArrayItem(pZoneRect, 3)->valueint;
-                    pz->mRect = MLRect(x, y, w, h);
+                    pz->setBounds(MLRect(x, y, w, h));
                 }
                 else
                 {
-                    MLError() << "Bad rect for zone\n";
+                    MLError() << "Bad rect for zone!\n";
                 }
             }
             else
@@ -795,146 +755,34 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
             {
                 pz->mName = std::string(pZoneName->valuestring);
             }
-            mZoneList.push_back(ZonePtr(pz));
+            
+            // get note
+            cJSON* pZoneNote = cJSON_GetObjectItem(pNode, "note");
+            if(pZoneNote)
+            {
+                pz->mStartNote = pZoneNote->valueint;
+            }
+
+            addZone(ZonePtr(pz));
+           //  mZoneMap.dump(mZoneMap.getBoundsRect());
         }
 		pNode = pNode->next;
     }
-        
-    /*
-     
-     // TEST
-     debug() << "setting up test zones\n";
-     mZoneList.clear();
-     mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(0, 0, 15, 1), 60, 1, 1, "test1")));
-     mZoneList.push_back(ZonePtr(new Zone(kControllerHorizontal, MLRect(0, 1, 10, 1), 60, 1, 1, "test2")));
-     mZoneList.push_back(ZonePtr(new Zone(kControllerVertical, MLRect(10, 2, 20, 1), 60, 1, 1, "test3")));
-     mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(15, 3, 2, 2), 60, 1, 1, "test4")));
-     mZoneList.push_back(ZonePtr(new Zone(kNoteRow, MLRect(15, 3, 1, 1), 60, 1, 1, "test5")));
-     
-     switch(mode)
-     {
-     case 0:
-     
-     for(int j=0; j<kSoundplaneKeyHeight; ++j)
-     {
-     for(int i=0; i<kSoundplaneKeyWidth; ++i)
-     {
-     zoneIdx = j*kSoundplaneKeyWidth + i + 1;
-     // offset puts A220 at center
-     zone = 45 + i; // TODO read map
-     mZoneMap(i, j) = zone;
-     }
-     }
-     break;
-     case 1:
-     default:
-     for(int j=0; j<kSoundplaneKeyHeight; ++j)
-     {
-     for(int i=0; i<kSoundplaneKeyWidth; ++i)
-     {
-     zoneIdx = j*kSoundplaneKeyWidth + i + 1;
-     zone = 35 + i + 5*j; // TODO read map
-     mZoneMap(i, j) = zone;
-     }
-     }
-     break;
-     }
-     
-     
-     */
-    /*
-	while(pNode)
-	{
-		if(pNode->string)
-		{
-			switch(pNode->type)
-			{
-                case cJSON_Number:
-                    //debug() << " depth " << depth << " loading float param " << pNode->string << " : " << pNode->valuedouble << "\n";
-                   // mpModel->setModelParam(MLSymbol(pNode->string), (float)pNode->valuedouble);
-                    break;
-                case cJSON_String:
-                    //debug() << " depth " << depth << " loading string param " << pNode->string << " : " << pNode->valuestring << "\n";
-                    //mpModel->setModelParam(MLSymbol(pNode->string), pNode->valuestring);
-                    break;
-                case cJSON_Array:
-                    if(!strcmp(pNode->string, "window_bounds"))
-                    {
-                        assert(cJSON_GetArraySize(pNode) == 4);
-                        int x = cJSON_GetArrayItem(pNode, 0)->valueint;
-                        int y = cJSON_GetArrayItem(pNode, 1)->valueint;
-                        int w = cJSON_GetArrayItem(pNode, 2)->valueint;
-                        int h = cJSON_GetArrayItem(pNode, 3)->valueint;
-                   //     mpAppView->setPeerBounds(x, y, w, h);
-                    }
-                    break;
-                case cJSON_Object:
-                    // 	debug() << "looking at object: \n";
-                    // see if object is a stored signal
-                    cJSON* pObjType = cJSON_GetObjectItem(pNode, "type");
-                    if(pObjType && !strcmp(pObjType->valuestring, "signal") )
-                    {
-                        //debug() << " depth " << depth << " loading signal param " << pNode->string << "\n";
-                        MLSignal* pSig;
-                        int width = cJSON_GetObjectItem(pNode, "width")->valueint;
-                        int height = cJSON_GetObjectItem(pNode, "height")->valueint;
-                        int sigDepth = cJSON_GetObjectItem(pNode, "depth")->valueint;
-                        pSig = new MLSignal(width, height, sigDepth);
-                        if(pSig)
-                        {
-                            // read data into signal and set model param
-                            float* pSigData = pSig->getBuffer();
-                            int widthBits = bitsToContain(width);
-                            int heightBits = bitsToContain(height);
-                            int depthBits = bitsToContain(sigDepth);
-                            int size = 1 << widthBits << heightBits << depthBits;
-                            cJSON* pData = cJSON_GetObjectItem(pNode, "data");
-                            int dataSize = cJSON_GetArraySize(pData);
-                            if(dataSize == size)
-                            {
-                                // read array
-                                cJSON *c=pData->child;
-                                int i = 0;
-                                while (c)
-                                {
-                                    pSigData[i++] = c->valuedouble;
-                                    c=c->next; 
-                                }
-                            }
-                            else
-                            {
-                                MLError() << "MLAppState::loadStateFromJSON: wrong array size!\n";
-                            }				
-                       //     mpModel->setModelParam(MLSymbol(pNode->string), *pSig);
-                        }
-                    }
-                    
-                    break;
-			}
-		}
-        
-		if(pNode->child && depth < 1)
-		{
-			loadStateFromJSON(pNode->child, depth + 1);
-		}
-		pNode = pNode->next;
-	}
-     */
+    sendParametersToZones();
 }
 
-// turn (x, y) position into a continuous 2D key position. Integer values of the
-// x and y axes will be centered on the Soundplane surface keys. 
-//
-Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy) 
+// turn (x, y) position into a continuous 2D key position.
+// Soundplane A only.
+Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy)
 {
 	MLRange xRange(4.5f, 60.5f);
-	xRange.convertTo(MLRange(1.f, 29.f));
-	float kx = clamp(xRange(xy.x()), -0.5f, 29.5f);
-
-	MLRange yRange(1.35, 5.65);  // Soundplane A as measured		
-	yRange.convertTo(MLRange(0.5f, 3.5f));
-	float ky = clamp(yRange(xy.y()), -0.5f, 4.5f);
-
+	xRange.convertTo(MLRange(1.5f, 29.5f));
+	float kx = clamp(xRange(xy.x()), 0.f, (float)kSoundplaneAKeyWidth);
+    
+	MLRange yRange(1.35, 5.65);  // Soundplane A as measured
+	yRange.convertTo(MLRange(1.f, 4.f)); // flip y
+	float ky = clamp(yRange(xy.y()), 0.f, (float)kSoundplaneAKeyHeight);
+    
 	return Vec2(kx, ky);
 }
 
@@ -954,12 +802,34 @@ void SoundplaneModel::clearTouchData()
 	}
 }
 
-// scale and filter touch data in place in mTouchFrame before sending out to data listeners.
-//
-void SoundplaneModel::postProcessTouchData()
+// copy relevant parameters from Model to zones
+void SoundplaneModel::sendParametersToZones()
+{
+    // TODO zones should have parameters (really attributes) too, so they can be inspected.
+    int zones = mZones.size();
+	const float v = getModelFloatParam("vibrato");
+    const float h = getModelFloatParam("hysteresis");
+    bool q = getModelFloatParam("quantize");
+    int t = getModelFloatParam("transpose");
+    float sf = getModelFloatParam("snap");
+    
+ debug() << "vibrato: " << v << "\n";
+    for(int i=0; i<zones; ++i)
+	{
+        mZones[i]->mVibrato = v;
+        mZones[i]->mHysteresis = h;
+        mZones[i]->mQuantize = q;
+        mZones[i]->mTranspose = t;
+        mZones[i]->setSnapFreq(sf);
+    }
+}
+
+// send raw touches to zones in order to generate note and controller events.
+void SoundplaneModel::sendTouchDataToZones()
 {
 	float x, y, z;
-	int age; 
+	int age;
+    
 	float note, noteQuant, vibratoX, vibratoHP;
 	//const float thresh = getModelFloatParam("z_thresh");
 	const float zmax = getModelFloatParam("z_max");
@@ -967,193 +837,110 @@ void SoundplaneModel::postProcessTouchData()
 	const int maxTouches = getModelFloatParam("max_touches");
 	const int quantize = getModelFloatParam("quantize");
 	const int lock = getModelFloatParam("lock");
-	const float vibratoAmp = getModelFloatParam("vibrato");
 	const int transpose = getModelFloatParam("transpose");
 	const float hysteresis = getModelFloatParam("hysteresis");
-    
-    // data per zone:
-    // start 
-    
-    // we choose to only allow note runs in the horizontal direction. 2D zones can be 2 controllers though. 
-	// - get raw grid position
-    // - apply hysteresis to position.
-    //      if quantizing notes within zone, stick to current note.
-    //      else stick to current zone. 
-
-    // - apply portamento to position.
-    //      if left and right grid areas are covered by the same zone, do portamento.
-    // - otherwise 
     
 	MLRange yRange(0.05, 0.8);
 	yRange.convertTo(MLRange(0., 1.));
 
-	for(int i=0; i<maxTouches; ++i)
+    for(int i=0; i<maxTouches; ++i)
 	{
 		age = mTouchFrame(ageColumn, i);
+        x = mTouchFrame(xColumn, i);
+        y = mTouchFrame(yColumn, i);
+        z = mTouchFrame(zColumn, i);
 		if(age > 0)
-		{
-			x = mTouchFrame(xColumn, i);
-			y = mTouchFrame(yColumn, i);
-			z = mTouchFrame(zColumn, i);
-            
-            
-				
-			// apply adjustable force curve for z over [z_thresh, z_max] 
+		{            
+ 			// apply adjustable force curve for z over [z_thresh, z_max] 
 			z /= zmax;
 			z = (1.f - zcurve)*z + zcurve*z*z*z;		
 			mTouchFrame(zColumn, i) = clamp(z, 0.f, 1.f);
 						
-			// get key grid position from x, y position (Soundplane A)
+			// get fractional key grid position (Soundplane A)
 			Vec2 keyXY = xyToKeyGrid(Vec2(x, y));
+            float kgx = keyXY.x();
+            float kgy = keyXY.y();
+ 
+            // get integer key
+            int ix = (int)(keyXY.x());
+            int iy = (int)(keyXY.y());
             
-  			if (!quantize)
-			{
-				// get fractional note using interpolated x and integer y.
-				// don't add vibrato
-				float fx = clamp(keyXY.x(), 0.f, 29.f);
-				int iy = (float)lround(keyXY.y());			
-				
-				// do hysteresis between rows
-				if(age == 1)
-				{
-					mCurrentKeyY[i] = iy;
-				}
-				else
-				{
-					float cy = mCurrentKeyY[i] ;
-					float dy = keyXY.y() - cy;
-					
-					float hystThresh = 0.5f + hysteresis*0.25f;
-					if(fabs(dy) > hystThresh)
-					{
-						mCurrentKeyY[i] = iy;
-					}					
-				}
-				
-				note = mZoneMap(Vec2(fx, (float)mCurrentKeyY[i])); 
-			}
-			else
-			{
-				bool changedY = false;
-				
-				// get quantized note 
-				int ix = lround(keyXY.x());
-				int iy = lround(keyXY.y()); 			
-				
-				// hysteresis: make it harder to move out of current key
-				if(age == 1)
-				{
-					mCurrentKeyX[i] = ix;
-					mCurrentKeyY[i] = iy;
-				}
-				else
-				{
-					float cx = mCurrentKeyX[i] ;
-					float cy = mCurrentKeyY[i] ;
-					float dx = keyXY.x() - cx;
-					float dy = keyXY.y() - cy;
-					float hystThresh = 0.5f + hysteresis*0.25f;
-					changedY = (fabs(dy) > hystThresh);
-					bool changedX = (fabs(dx) > hystThresh);
-					if(changedX || changedY)
-					{
-						mCurrentKeyX[i] = ix;
-						mCurrentKeyY[i] = iy;
-					}		
-				}
-				
-				noteQuant = mZoneMap(mCurrentKeyX[i], mCurrentKeyY[i]);		
-				
-				// unless touch is new, LPF zone number
-				mNoteFilters[i].setInput(&noteQuant);
-				mNoteFilters[i].setOutput(&noteQuant);
-				// changedY test prevents MIDI slide from row to row
-				if ((age == 1) || changedY)
-				{
-					mNoteFilters[i].setState(noteQuant);	
-				}
-				mNoteFilters[i].process(1);	
-				note = noteQuant; 	
-								
-				// unless touch is new, filter vibrato
-				vibratoX = x;
-				mVibratoFilters[i].setInput(&vibratoX);
-				mVibratoFilters[i].setOutput(&vibratoX);
-				if (age == 1)
-				{
-					mVibratoFilters[i].setState(vibratoX);
-				}
-				mVibratoFilters[i].process(1);	
-				
-				// add vibrato to note
-				vibratoHP = (x - vibratoX)*vibratoAmp*kSoundplaneVibratoAmount;		
-				note += vibratoHP; 	
-			}
-					
-			// lock: only change pitch on note start
-			if (lock)  
-			{
-				if (age == 1)
-				{
-					mNoteLock[i] = note;
-				}
-				else
-				{
-					note = mNoteLock[i] + vibratoHP;
-				}
-			}
-					
-			mTouchFrame(noteColumn, i) = note + transpose; 		
-			
-			// scale x and y to unity range for clients
-			mTouchFrame(xColumn, i) = clamp(x*mSurfaceWidthInv, 0.f, 1.f);		
-			mTouchFrame(yColumn, i) = clamp(y*mSurfaceHeightInv, 0.f, 1.f);	
-			
-			// store previous z			
-			mZ1[i] = z;
-		}
-		else if ((mAge1[i] > 0) && quantize)
-		{
-			// on note off, send quantized note for release
-			float releaseNote = roundf(mNote1[i]) + transpose;
-			mTouchFrame(noteColumn, i) = releaseNote;
-			mTouchFrame(ageColumn, i) = age; 
-			mTouchFrame(zColumn, i) = mZ1[i];
-		}
-
-		mAge1[i] = age;
-		mNote1[i] = note;
+            // apply hysteresis to raw position to get current key
+            // hysteresis: make it harder to move out of current key
+            if(age == 1)
+            {
+                mCurrentKeyX[i] = ix;
+                mCurrentKeyY[i] = iy;
+            }
+            else
+            {
+                float hystWidth = hysteresis*0.25f;
+                MLRect currentKeyRect(mCurrentKeyX[i], mCurrentKeyY[i], 1, 1);
+                currentKeyRect.expand(hystWidth);
+                if(!currentKeyRect.contains(keyXY))
+                {
+                    mCurrentKeyX[i] = ix;
+                    mCurrentKeyY[i] = iy;
+                }		
+            }
+            
+            // send index, xyz to zone
+            int zoneIdx = mZoneMap(mCurrentKeyX[i], mCurrentKeyY[i]);
+            if(zoneIdx >= 0)
+            {
+                ZonePtr zone = mZones[zoneIdx];
+                zone->addTouch(i, kgx, kgy, mCurrentKeyX[i], mCurrentKeyY[i], z);
+            }           
+        } // (age > 0)
 	}
-}
-
-// send frame of touch data to any listeners.
-//
-void SoundplaneModel::sendTouchDataToClients()
-{
-    // TODO not if shutting down!
     
-	// send to clients
-	//
-	int size = mDataListeners.size();
-	for(int i=0; i<size; ++i)
+    // tell listeners we are starting this frame.
+    mMessage.mType = MLSymbol("start_frame");
+	sendMessageToListeners();
+    
+    // process touches for each zone
+    int zones = mZones.size();    
+    for(int i=0; i<zones; ++i)
 	{
-		SoundplaneDataListener* pL = mDataListeners[i];
-		pL->processFrame(mTouchFrame);
-	}
+        mZones[i]->processTouches();
+    }
+    
+    // send optional calibrated matrix
+    if(mSendMatrixData)
+    {
+        mMessage.mType = MLSymbol("matrix");
+        for(int j = 0; j < kSoundplaneHeight; ++j)
+        {
+            for(int i = 0; i < kSoundplaneWidth; ++i)
+            {
+                mMessage.mMatrix[j*kSoundplaneWidth + i] = mCalibratedSignal(i, j);
+            }
+        }        
+        sendMessageToListeners();
+    }
+        
+    // tell listeners we are done with this frame. 
+    mMessage.mType = MLSymbol("end_frame");
+	sendMessageToListeners();
 }
 
-// notify clients of soundplane connect state
+// notify listeners of soundplane connect state
 //
-void SoundplaneModel::notifyClients(int c)
-{	
-	// send to clients
-	//
-	int size = mDataListeners.size();
-	for(int i=0; i<size; ++i)
-	{
-		SoundplaneDataListener* pL = mDataListeners[i];
-		pL->notify(c);
-	}
+void SoundplaneModel::notifyListeners(int c)
+{
+    // setup message
+    mMessage.mType = MLSymbol("notify");
+    mMessage.mData[0] = c;
+    sendMessageToListeners();
+}
+
+void SoundplaneModel::sendMessageToListeners()
+{
+ 	for(SoundplaneListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+    if((*it)->isActive())
+    {
+        (*it)->processMessage(&mMessage);
+    }
 }
 
 void *soundplaneModelProcessThreadStart(void *arg)
@@ -1178,10 +965,6 @@ void *soundplaneModelProcessThreadStart(void *arg)
 	debug() << "soundplaneModelProcessThread terminating\n";
 	return 0;
 }
-
-// --------------------------------------------------------------------------------
-//
-#pragma mark -
 
 void SoundplaneModel::setKymaMode(bool m)
 {
@@ -1285,14 +1068,13 @@ void SoundplaneModel::processCallback()
 		mTracker.setOutputSignal(&mTouchFrame);
 		mTracker.process(1);
 		
-		postProcessTouchData();
-		sendTouchDataToClients();	
-		
 		// get calibrated and cooked signals for viewing
 		mCalibratedSignal = mTracker.getCalibratedSignal();								
 		mCookedSignal = mTracker.getCookedSignal();
 		mTestSignal = mTracker.getTestSignal();
 
+ 		sendTouchDataToZones();
+   		
 		mHistoryCtr++;
 		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
 		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);			
@@ -1317,7 +1099,7 @@ void SoundplaneModel::doInfrequentTasks()
 		mNeedsCalibrate = false;
 		beginCalibrate();
 	}
-	notifyClients(mpDriver->getDeviceState() == kDeviceHasIsochSync);
+	notifyListeners(mpDriver->getDeviceState() == kDeviceHasIsochSync);
 }
 
 void SoundplaneModel::setDefaultCarriers()
@@ -1398,7 +1180,7 @@ void SoundplaneModel::beginCalibrate()
 		clear();
 		
 		clearTouchData();
-		sendTouchDataToClients();	
+		sendTouchDataToZones();
 
 		mCalibrateCount = 0;
 		mCalibrating = true;
@@ -1717,3 +1499,4 @@ void SoundplaneModel::setDefaultNormalize()
 		mTracker.setDefaultNormalizeMap();
 	}
 }
+
