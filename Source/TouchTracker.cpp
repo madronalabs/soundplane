@@ -1096,6 +1096,10 @@ void TouchTracker::process(int)
 		// separate set of key states that do not get cleared by current
 		// touches.  These can be used to get the dz values and using the exact
 		// same math, velocities will match other note-ons.
+        //
+        // we can also look for a nearby release just beforehand when
+        // retriggering. this will increase confidence in a retrigger as
+        // opposed to simply moving the touch.
 
 		// after update Touches, subtract sum of touches to get residual R
 		// R = input - T.
@@ -1150,7 +1154,6 @@ void TouchTracker::process(int)
 			out(dzColumn, i) = t.dz;
 			out(ageColumn, i) = t.age;
 			out(dtColumn, i) = t.tDist;
-			// NOTE: the note column is filled in later by the Model.
 		}
 	}
 	

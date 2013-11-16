@@ -11,17 +11,16 @@ const std::string kSoundplaneMIDIDeviceName("Soundplane IAC out");
 #pragma mark MIDIVoice
 
 MIDIVoice::MIDIVoice() :
-	mAge(0), mX(0), mY(0), mZ(0), mDz(0), mNote(0),
-	mMIDINote(0), mMIDIVel(0), 
-	mMIDIBend(0), mMIDIPressure(0), mMIDIYCtrl(0),
-	mStartNote(0), mStartX(0), mStartY(0)
+	age(0), x(0), y(0), z(0), note(0),
+	startX(0), startY(0), startNote(0),
+    mMIDINote(0), mMIDIVel(0), mMIDIBend(0), mMIDIPressure(0), mMIDIYCtrl(0),
+    mState(kVoiceStateInactive)
 {
 }
 
 MIDIVoice::~MIDIVoice()
 {
 }
-
 
 // --------------------------------------------------------------------------------
 #pragma mark MIDIDevice
@@ -33,7 +32,6 @@ MIDIDevice::MIDIDevice(const std::string& name, int index = -1) :
 	// if we don't give the device an index, it uses the interapp driver
 	mIsInternal = (index < 0);
 }
-
 
 MIDIDevice::~MIDIDevice()
 {
@@ -77,6 +75,7 @@ SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mDataFreq(250.),
 	mLastTimeDataWasSent(0),
 	mLastTimeNRPNWasSent(0),
+    mGotNoteChangesThisFrame(false),
 	mBendRange(1.),
 	mTranspose(0),
 	mHysteresis(0.5f),
@@ -96,11 +95,9 @@ SoundplaneMIDIOutput::~SoundplaneMIDIOutput()
 	}
 }
 
-
 void SoundplaneMIDIOutput::initialize()
 {
 }
-
 
 void SoundplaneMIDIOutput::findMIDIDevices ()
 {
@@ -218,7 +215,308 @@ void SoundplaneMIDIOutput::modelStateChanged()
 
 void SoundplaneMIDIOutput::processMessage(const SoundplaneDataMessage* msg)
 {
-   // debug() << "SoundplaneMIDIOutput msg:" << msg->mType << "\n";
+    static const MLSymbol startFrameSym("start_frame");
+    static const MLSymbol touchSym("touch");
+    static const MLSymbol onSym("on");
+    static const MLSymbol continueSym("continue");
+    static const MLSymbol offSym("off");
+    static const MLSymbol controllerSym("controller");
+    static const MLSymbol xSym("x");
+    static const MLSymbol ySym("y");
+    static const MLSymbol xySym("xy");
+    static const MLSymbol endFrameSym("end_frame");
+    static const MLSymbol matrixSym("matrix");
+    static const MLSymbol nullSym;
+    
+	if (!mActive) return;
+    MLSymbol type = msg->mType;
+    MLSymbol subtype = msg->mSubtype;
+    
+    int i;
+	float x, y, z, dz, note;
+    
+    if(type == startFrameSym)
+    {
+        const UInt64 dataPeriodMicrosecs = 1000*1000 / mDataFreq;
+        mCurrFrameStartTime = getMicroseconds();
+        if (mCurrFrameStartTime > mLastFrameStartTime + (UInt64)dataPeriodMicrosecs)
+        {
+            mLastFrameStartTime = mCurrFrameStartTime;
+            mTimeToSendNewFrame = true;
+        }
+        else
+        {
+            mTimeToSendNewFrame = false;
+        }
+        mGotNoteChangesThisFrame = false;
+    }
+    else if(type == touchSym)
+    {
+        // get touch data
+        i = msg->mData[0];
+        x = msg->mData[1];
+        y = msg->mData[2];
+        z = msg->mData[3];
+        dz = msg->mData[4];
+        note = msg->mData[5];
+        
+        MIDIVoice* pVoice = &mMIDIVoices[i];
+        pVoice->x = x;
+        pVoice->y = y;
+        pVoice->z = z;
+        pVoice->dz = dz;
+        pVoice->note = note;
+               
+        if(subtype == onSym)
+        {
+debug() << " ON  note = " << i << "\n";
+            pVoice->startX = x;
+            pVoice->startY = y;
+            pVoice->startNote = note;
+            pVoice->mState = kVoiceStateOn;
+            pVoice->age = 1;
+            mGotNoteChangesThisFrame = true;
+        }
+        else if(subtype == continueSym)
+        {
+//debug() << " ... ";
+            pVoice->mState = kVoiceStateActive;
+            pVoice->age++;
+        }
+        else if(subtype == offSym)
+        {
+debug() << " OFF note = " << i << "\n";
+            pVoice->mState = kVoiceStateOff;
+            pVoice->age = 0;
+            pVoice->z = 0;
+            mGotNoteChangesThisFrame = true;
+        }
+        //debug() << i << " " << note << "\n";
+    }
+    else if(type == controllerSym)
+    {
+        // when a controller message comes in, make a local copy of the message and store by zone ID.
+        int zoneID = msg->mData[0];
+        mMessagesByZone[zoneID] = *msg;
+    }
+    else if(type == matrixSym)
+    {
+        // nothing to do
+    }
+    else if(type == endFrameSym)
+    {
+        // get most recent active voice played
+        unsigned int minAge = (unsigned int)-1;
+        int newestVoiceIdx = -1;
+        for(int i=0; i<mVoices; ++i)
+        {
+            MIDIVoice* pVoice = &mMIDIVoices[i];
+            int a = pVoice->age;
+            if(a > 0)
+            {
+                if(a < minAge)
+                {
+                    minAge = a;
+                    newestVoiceIdx = i;
+                }
+            }
+        }
+        
+        if(mGotNoteChangesThisFrame || mTimeToSendNewFrame)
+        {            
+            // for each zone, send and clear any controller messages received since last frame
+            for(int i=0; i<kSoundplaneAMaxZones; ++i)
+            {
+                SoundplaneDataMessage* pMsg = &(mMessagesByZone[i]);
+                if(pMsg->mType == controllerSym)
+                {
+                    // message data:
+                    // mZoneID, mChannel, mControllerNumber, mControllerNumber2, mControllerNumber3, x, y, z
+                    //
+                    int zoneChan = pMsg->mData[1];
+                    int ctrlNum1 = pMsg->mData[2];
+                    int ctrlNum2 = pMsg->mData[3];
+                    int ctrlNum3 = pMsg->mData[4];
+                    x = pMsg->mData[5];
+                    y = pMsg->mData[6];
+                    z = pMsg->mData[7];
+                    
+                    int ix = clamp((int)(x*128.f), 0, 127);
+                    int iy = clamp((int)(y*128.f), 0, 127);
+                    
+                    // use channel from zone, or default to start channel setting.
+                    int channel = (zoneChan > 0) ? (zoneChan) : (mStartChannel);
+                    
+                    // get control data by type and send controller message
+                    if(pMsg->mSubtype == xSym)
+                    {
+                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
+                    }
+                    else if(pMsg->mSubtype == ySym)
+                    {
+                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, iy));
+                    }
+                    else if (pMsg->mSubtype == xySym)
+                    {
+                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
+                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum2, iy));
+                    }
+                    
+                    // clear controller message
+                    mMessagesByZone[i].mType = nullSym;
+                }
+            }
+
+            // send MIDI notes and controllers for each live touch.
+            // attempt to translate the notes into MIDI notes + pitch bend.
+            for(int i=0; i < mVoices; ++i)
+            {
+                MIDIVoice* pVoice = &mMIDIVoices[i];
+                
+                int chan = mMultiChannel ? (((mStartChannel + i - 1)%15) + 1) : mStartChannel;                
+                if (pVoice->mState == kVoiceStateOn)
+                {
+                    
+                    debug()  << " (on) ";
+                    
+                    // before note on, first send note off if needed
+                    if(pVoice->mMIDINote)
+                    {
+                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
+                    }
+                    
+                    // get nearest integer note
+                    pVoice->mMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
+                    
+                    float fVel = pVoice->dz*100.f*128.f;
+                    pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
+                    
+       debug() << " DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
+                    
+                    // reset pitch at note on!
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, 8192));
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
+                    
+                    pVoice->mState = kVoiceStateActive;
+                }
+                else if(pVoice->mState == kVoiceStateOff)
+                {
+                    // send note off
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
+                    pVoice->mMIDIVel = 0;
+                    pVoice->mMIDINote = 0;
+                    pVoice->mState = kVoiceStateInactive;
+                }
+                
+                // if note is on, send pitch bend / controllers.
+                if (pVoice->mMIDIVel > 0)
+                {
+                    int iy;
+                    int newMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
+                    
+                    /*
+                    // hysteresis: make it harder to move out of current key.
+                    // needed for retrig mode when model is not quantizing x
+                    // and applying its own hysteresis.
+                    if(!pVoice->mMIDINote)
+                    {
+                        newNote = clamp((int)lround(note) + mTranspose, 1, 127);
+                    }
+                    else
+                    {
+                        float newNoteF = clamp(note + (float)mTranspose, 1.f, 127.f);
+                        float dNote = newNoteF - pVoice->mMIDINote;
+                        float hystThresh = 0.5f + mHysteresis*0.5f;
+                        if(fabs(dNote) > hystThresh)
+                        {
+                            newNote = lround(newNoteF);
+                        }
+                    }
+					*/
+                    
+                    // retrigger notes when sliding from key to key
+                    if ((newMIDINote != pVoice->mMIDINote) && mRetrig)
+                    {
+                        // get retrigger velocity from current z
+                        float fVel = pVoice->z*128.f;
+                        pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
+                        
+                        // retrigger
+                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
+                        pVoice->mMIDINote = newMIDINote;
+                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
+                    }
+                    
+                    // send controllers etc. if in multichannel mode, or if this is the youngest voice.
+                    if((newestVoiceIdx == i) || mMultiChannel)
+                    {
+                        // get pitch bend for note difference
+                        //
+                        float fp = pVoice->note - pVoice->startNote;
+                        if (mBendRange > 0)
+                        {
+                            fp *= 8192.f;
+                            fp /= (float)mBendRange;
+                        }
+                        else
+                        {
+                            fp = 0.;
+                        }
+                        fp += 8192.f;
+                        
+                        int ip = fp;
+                        ip = clamp(ip, 0, 16383);
+                        if(ip != pVoice->mMIDIBend)
+                        {
+                            mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, ip));
+                            pVoice->mMIDIBend = ip;
+                        }
+                        
+                        // send y controller absolute
+                        iy = pVoice->y*128.f;
+                        iy = clamp(iy, 0, 127);
+                        if(iy != pVoice->mMIDIYCtrl)
+                        {
+                            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, kSoundplaneMIDIControllerY, iy));
+                            pVoice->mMIDIYCtrl = iy;
+                        }
+                        
+                        if(mPressureActive)
+                        {				
+                            // send pressure
+                            int press = 127. * pVoice->z;
+                            press = clamp(press, 0, 127);
+                            if(press != pVoice->mMIDIPressure)
+                            {
+                                mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, press));
+                                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, press));
+                                pVoice->mMIDIPressure = press;
+                            }
+                        }
+                    }
+                }		
+            }
+        }
+        if(mKymaPoll)
+        {
+            // send NRPN with Soundplane identifier every few secs. for Kyma.
+            const UInt64 nrpnPeriodMicrosecs = 1000*1000*4;
+            if (mCurrFrameStartTime > mLastTimeNRPNWasSent + nrpnPeriodMicrosecs)
+            {
+                mLastTimeNRPNWasSent = mCurrFrameStartTime;
+                // set NRPN
+                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0x53));
+                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0x50));
+                
+                // data entry -- send # of voices for Kyma
+                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 6, mVoices));
+                
+                // null NRPN
+                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0xFF));
+                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0xFF));                
+            }
+        }
+    }
 }
 
 /*

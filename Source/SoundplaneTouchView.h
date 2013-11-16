@@ -29,18 +29,16 @@ public:
     SoundplaneTouchView();
     ~SoundplaneTouchView();
  
-    // when the component creates a new internal context, this is called, and
-    // we'll use the opportunity to create the textures needed.
     void newOpenGLContextCreated();
+    void openGLContextClosing();
     void mouseDrag (const MouseEvent& e);
     void renderTouches();
     void renderOpenGL();
-    void openGLContextClosing();
+    void resizeWidget(const MLRect& b, const int u);
  	void setModel(SoundplaneModel* m);
 	
 private:
     OpenGLContext mGLContext;
-
 	SoundplaneModel* mpModel;
 };
 

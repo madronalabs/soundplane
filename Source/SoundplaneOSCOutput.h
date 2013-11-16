@@ -25,14 +25,6 @@ const int kDefaultUDPPort = 3123;
 const int kDefaultUDPReceivePort = 3124;
 const int kUDPOutputBufferSize = 4096;
 
-enum OSCVoiceState
-{
-    kInactive = 0,
-    kOn,
-    kActive,
-    kOff
-};
-
 class OSCVoice
 {
 public:
@@ -45,7 +37,7 @@ public:
     float y;
     float z;
     float note;
-	OSCVoiceState mState;
+	VoiceState mState;
 };
 
 class SoundplaneOSCOutput :

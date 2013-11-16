@@ -252,8 +252,14 @@ private:
     
     MLFileCollectionPtr mTouchPresets;
     MLFileCollectionPtr mZonePresets;
-
 };
+
+
+// JSON utilities (to go where?)
+std::string getJSONString(cJSON* pNode, const char* name);
+double getJSONDouble(cJSON* pNode, const char* name);
+int getJSONInt(cJSON* pNode, const char* name);
+
 
 
 #endif // __SOUNDPLANE_MODEL__

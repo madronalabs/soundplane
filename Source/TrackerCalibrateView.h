@@ -31,11 +31,9 @@ public:
     TrackerCalibrateView();
     ~TrackerCalibrateView();
  
-    // when the component creates a new internal context, this is called, and
-    // we'll use the opportunity to create the textures needed.
     void newOpenGLContextCreated();
+    void openGLContextClosing();
 	void renderOpenGL();
-    void openGLContextClosing(){}
 
 	void timerCallback();
 
@@ -47,10 +45,8 @@ private:
 
 	void drawTextAt(float x, float y, float z, const char* ps);
 	void drawInfoBox(Vec3 pos, char* text, int colorIndex);
-	void drawTestVec();
-    void drawCalibrate();
 
-    OpenGLContext* mpGLContext;
+    OpenGLContext mGLContext;
 	SoundplaneModel* mpModel;
 	SoundplaneViewMode mViewMode;
 	

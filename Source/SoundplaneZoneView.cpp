@@ -8,57 +8,25 @@
 SoundplaneZoneView::SoundplaneZoneView() :
 	mpModel(nullptr)
 {
-#if JUCE_IOS
-	// (On the iPhone, choose a format without a depth buffer)
-	setPixelFormat (OpenGLPixelFormat (8, 8, 0, 0));
-#endif
 	setInterceptsMouseClicks (false, false);	
 	MLWidget::setComponent(this);
 	mGLContext.setRenderer (this);
 	mGLContext.setComponentPaintingEnabled (false);
+    mGLContext.setContinuousRepainting(true);
 }
 
 SoundplaneZoneView::~SoundplaneZoneView()
 {
-    stopTimer();
 	mGLContext.detach();
 }
 
 void SoundplaneZoneView::setModel(SoundplaneModel* m)
 {
 	mpModel = m;
-    startTimer(10);
-}
-
-void SoundplaneZoneView::timerCallback()
-{
-    mGLContext.triggerRepaint();
 }
 
 void SoundplaneZoneView::newOpenGLContextCreated()
 {
-#if ! JUCE_IOS
-	// (no need to call makeCurrentContextActive(), as that will have
-	// been done for us before the method call).
-	glClearColor (0.0f, 0.0f, 0.0f, 0.0f);
-	glClearDepth (1.0);
-
-	glDisable (GL_DEPTH_TEST);
-	glEnable (GL_TEXTURE_2D);
-	glEnable (GL_BLEND);
-	glShadeModel (GL_SMOOTH);
-
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-	glPixelStorei (GL_UNPACK_ALIGNMENT, 4);
-
-	glHint (GL_LINE_SMOOTH_HINT, GL_NICEST);
-	glHint (GL_POINT_SMOOTH_HINT, GL_NICEST);
-	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-#endif
 }
 
 void SoundplaneZoneView::openGLContextClosing()
@@ -184,10 +152,9 @@ void SoundplaneZoneView::renderZones()
 	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
 	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
-    float smallDotSize = 4.f;
+    float smallDotSize = xRange(0.1f);
     
-   // float strokeWidth = viewW / 100;
-    
+   // float strokeWidth = viewW / 100;    
     
     std::vector<ZonePtr>::const_iterator it;
 
@@ -273,35 +240,13 @@ void SoundplaneZoneView::renderZones()
                 break;            
         }
     }
-      
-    /*
-     types
-     kNoteRow = 0,
-     kControllerHorizontal = 1,
-     kControllerVertical = 2,
-     kControllerXY = 3,
-     kToggleRow = 4
-     
-    ZoneType mType;
-    MLRect mRect;
-    int mStartNote;
-    int mControllerNumber;
-    int mChannel;
-    std::string mName;
-    */
-    
 }
 
 void SoundplaneZoneView::renderOpenGL()
 {
 	if (!mpModel) return;
-    int backW = getBackingLayerWidth();
-    int backH = getBackingLayerHeight();
     if(!mGLContext.isAttached()) return;
-    ScopedPointer<LowLevelGraphicsContext> glRenderer(createOpenGLGraphicsContext (mGLContext, backW, backH));
-    if (glRenderer != nullptr)
     {
-        Graphics g (glRenderer);
         const Colour c = findColour(MLLookAndFeel::backgroundColor);
         OpenGLHelpers::clear (c);
         glEnable(GL_BLEND);

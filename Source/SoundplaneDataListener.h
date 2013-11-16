@@ -12,6 +12,14 @@
 
 const int kSoundplaneMaxControllerNumber = 127;
 
+enum VoiceState
+{
+    kVoiceStateInactive = 0,
+    kVoiceStateOn,
+    kVoiceStateActive,
+    kVoiceStateOff
+};
+
 struct SoundplaneDataMessage
 {
     MLSymbol mType;

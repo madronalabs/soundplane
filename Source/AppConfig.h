@@ -24,7 +24,6 @@
 #define JUCE_MODULE_AVAILABLE_juce_gui_extra             1
 #define JUCE_MODULE_AVAILABLE_juce_opengl                1
 
-
 //==============================================================================
 // juce_audio_devices flags:
 

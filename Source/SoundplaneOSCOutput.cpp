@@ -7,7 +7,7 @@
 
 const char* kDefaultHostnameString = "localhost";
 
-OSCVoice::OSCVoice() : startX(0), startY(0), mState(kInactive)
+OSCVoice::OSCVoice() : startX(0), startY(0), mState(kVoiceStateInactive)
 {
 }
 
@@ -145,7 +145,7 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
     MLSymbol subtype = msg->mSubtype;
     
     int i;
-	float x, y, z, note;
+	float x, y, z, dz, note;
     
     if(type == startFrameSym)
     {
@@ -169,7 +169,8 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
         x = msg->mData[1];
         y = msg->mData[2];
         z = msg->mData[3];
-        note = msg->mData[4];
+        dz = msg->mData[4];
+        note = msg->mData[5];
         OSCVoice* pVoice = &mOSCVoices[i];        
         pVoice->x = x;
         pVoice->y = y;
@@ -180,21 +181,21 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
         
         if(subtype == onSym)
         {
-//debug() << " ON  ";
+//debug() << " OSC ON  ";
             pVoice->startX = x;
             pVoice->startY = y;
-            pVoice->mState = kOn;
+            pVoice->mState = kVoiceStateOn;
             mGotNoteChangesThisFrame = true;
         }
         if(subtype == continueSym)
         {
-//debug() << " ... ";
-            pVoice->mState = kActive;
+//debug() << "  OSC ... ";
+            pVoice->mState = kVoiceStateActive;
         }
         if(subtype == offSym)
         {
-//debug() << " OFF ";
-            pVoice->mState = kOff;
+//debug() << " OSC OFF ";
+            pVoice->mState = kVoiceStateOff;
             pVoice->z = 0;
             mGotNoteChangesThisFrame = true;
         }
@@ -244,9 +245,13 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
                     // send controller message: /t3d/[zoneName] val1 (val2)
                     // TODO allow zones to split touches and controls across different ports
                     // using the channel attribute. (channel = port number offset for OSC)
-                    int channel = pMsg->mData[1];
-                    x = pMsg->mData[4];
-                    y = pMsg->mData[5];
+                    // int channel = pMsg->mData[1];
+                    // int ctrlNum1 = pMsg->mData[2];
+                    // int ctrlNum2 = pMsg->mData[3];
+                    // int ctrlNum3 = pMsg->mData[4];
+                    x = pMsg->mData[5];
+                    y = pMsg->mData[6];
+                    z = pMsg->mData[7];
                     std::string ctrlStr("/");
                     ctrlStr += *(pMsg->mZoneName);
                     
@@ -280,7 +285,7 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
                 for(int i=0; i<mMaxTouches; ++i)
                 {
                     OSCVoice* pVoice = &mOSCVoices[i];
-                    if(pVoice->mState != kInactive)
+                    if(pVoice->mState != kVoiceStateInactive)
                     {
                         osc::int32 touchID = i + 1; // 1-based for OSC
                         std::string address("/t3d/tch");
@@ -301,19 +306,19 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
                     OSCVoice* pVoice = &mOSCVoices[i];			
                     osc::int32 touchID = i; // 0-based for Kyma
                     osc::int32 offOn = 1;
-                    if(pVoice->mState == kOn)
+                    if(pVoice->mState == kVoiceStateOn)
                     {
                         offOn = -1;
                     }
-                    else if (pVoice->mState == kOff)
+                    else if (pVoice->mState == kVoiceStateOff)
                     {
                         offOn = 0; // TODO periodically turn off silent voices 
                     }
                 
-                    if(pVoice->mState != kInactive)
+                    if(pVoice->mState != kVoiceStateInactive)
                     {
                         p << osc::BeginMessage( "/key" );	
-                        p << touchID << offOn << pVoice->note << pVoice->z << pVoice->y ;
+                        p << touchID << offOn << pVoice->note << pVoice->z << pVoice->y;
                         p << osc::EndMessage;
                     }
                 }
@@ -326,126 +331,3 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
     }
 }
 
-
-//
-/*
- void SoundplaneOSCOutput::processFrame(const MLSignal& touchFrame)
-    {
-	if (!mActive) return;
-	float x, y, z, note;
-	UInt64 now = getMicroseconds();	
-	const UInt64 dataPeriodMicrosecs = 1000*1000 / mDataFreq;
-	
-	if (sendData) 
-	{
-		if (!mKymaMode)
-		{
-			osc::OutboundPacketStream p( mpOSCBuf, kUDPOutputBufferSize );
-			
-			p << osc::BeginBundleImmediate;
-		
-			// send frame message
-			// /k1/frm frameID timestamp serialNumber
-			//
-			p << osc::BeginMessage( "/t3d/frm" );	
-			
-			// time val for sending in osc signed int32. 
-			// Will wrap every 2<<31 / 1000000 seconds. 
-			// That's only 35 minutes, so clients need to handle wrapping.
-			UInt32 now31 = now & 0x7FFFFFFF;	
-			
-			p << mFrameId++ << (osc::int32)now31 << mSerialNumber;			
-			p << osc::EndMessage;
-			
-			// send 1 message for each live touch.
-			// k1/touch touchID x y z zone [...]
-			// age is not sent-- to be reconstructed on the receiving end if needed. 
-			//
-			for(int i=0; i<mMaxTouches; ++i)
-			{
-				OSCVoice* pVoice = &mOSCVoices[i];
-				x = touchFrame(xColumn, i);
-				y = touchFrame(yColumn, i);
-				z = touchFrame(zColumn, i);
-				note = touchFrame(noteColumn, i);
-				
-				osc::int32 touchID = i + 1; // 1-based for OSC
-				if (pVoice->mAge > 0)
-				{
-					// start or continue touch
-					p << osc::BeginMessage( "/t3d/tch" );	
-					// send data. any additional quantites could follow.
-					p << touchID << x << y << z << note;
-					p << osc::EndMessage;
-				}
-				else if(pVoice->mNoteOff)
-				{
-					// send touch off, just a normal frame except z is guaranteed to be 0.
-					z = 0;
-					p << osc::BeginMessage( "/t3d/tch" );	
-					// send data. any additional quantites could follow.
-					p << touchID << x << y << z << note;
-					p << osc::EndMessage;
-				}				
-			}
-			
-			// TODO /t3d/raw for matrix data
-
-			// send list of live touch IDs
-			//
-			p << osc::BeginMessage( "/t3d/alv" );	
-			for(int i=0; i<mMaxTouches; ++i)
-			{
-				OSCVoice* pVoice = &mOSCVoices[i];
-				if (pVoice->mAge > 0)
-				{
-					p << (osc::int32)(i + 1); // 1-based for OSC
-				}
-			}
-			p << osc::EndMessage;					
-			p << osc::EndBundle;			
-			mpUDPSocket->Send( p.Data(), p.Size() );
-		}
-		else // kyma
-		{
-			osc::OutboundPacketStream p( mpOSCBuf, kUDPOutputBufferSize );
-			p << osc::BeginBundleImmediate;
-		
-			for(int i=0; i<mMaxTouches; ++i)
-			{
-				OSCVoice* pVoice = &mOSCVoices[i];
-				x = touchFrame(xColumn, i);
-				y = touchFrame(yColumn, i);
-				z = touchFrame(zColumn, i);
-				note = touchFrame(noteColumn, i);				
-				osc::int32 touchID = i; // 0-based for Kyma
-				osc::int32 offOn = 1;
-				if(pVoice->mNoteOn)
-				{
-					offOn = -1;
-				}
-				else if (pVoice->mNoteOff)
-				{
-					offOn = 0; // TODO periodically turn off silent voices 
-				}
-				
-				if(pVoice->mAge || pVoice->mNoteOff)
-				{
-					p << osc::BeginMessage( "/key" );	
-					// send data. any additional quantites could follow.
-					p << touchID << offOn << note << z << y ;
-					p << osc::EndMessage;
-				}
-			}
-			p << osc::EndBundle;
-			mpUDPSocket->Send( p.Data(), p.Size() );
-		}
-	}
-		
-	if(now - lastInfrequentTaskTime > 4*1000*1000)
-	{
-		doInfrequentTasks();
-		lastInfrequentTaskTime = now;
-	}
-}
-*/

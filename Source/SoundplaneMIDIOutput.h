@@ -13,12 +13,12 @@
 
 #include "MLDebug.h"
 #include "TouchTracker.h"
+#include "SoundplaneModelA.h"
 #include "SoundplaneDataListener.h"
 #include "MLTime.h"
 
 const int kMaxMIDIVoices = 16;
 const int kSoundplaneMIDIControllerY = 74;
-
 
 class MIDIVoice
 {
@@ -26,26 +26,23 @@ public:
 	MIDIVoice();
 	~MIDIVoice();
 
-	unsigned int mAge;
-	float mX;
-	float mY;
-	float mZ;
-	float mDz;
-	float mNote;
-	
-	int mNoteOn;
-	int mNoteOff;
+    int age;
+	float x;
+	float y;
+	float z;
+	float dz;
+	float note;
+	float startX;
+	float startY;
+	float startNote;
+
 	int mMIDINote;
-	int mMIDIVel;
-	
+	int mMIDIVel;	
 	int mMIDIBend;
 	int mMIDIPressure;
 	int mMIDIYCtrl;
 	
-	float mStartNote;
-	float mStartX;
-	float mStartY;
-
+    VoiceState mState;
 };
 
 class MIDIDevice
@@ -106,12 +103,18 @@ private:
 	int mVoices;
 	
 	MIDIVoice mMIDIVoices[kMaxMIDIVoices];
+    SoundplaneDataMessage mMessagesByZone[kSoundplaneAMaxZones];
 
 	std::vector<MIDIDevicePtr> mDevices;
 	std::vector<std::string> mDeviceList;
 	juce::MidiOutput* mpCurrentDevice;
 	
 	float mDataFreq;
+    UInt64 mCurrFrameStartTime;
+	UInt64 mLastFrameStartTime;
+    bool mTimeToSendNewFrame;
+    bool mGotNoteChangesThisFrame;
+    
 	bool mPressureActive;
 	UInt64 mLastTimeDataWasSent;
 	UInt64 mLastTimeNRPNWasSent;

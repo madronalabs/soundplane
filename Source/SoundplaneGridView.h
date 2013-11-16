@@ -31,13 +31,11 @@ public:
     SoundplaneGridView();
     ~SoundplaneGridView();
  
-    // when the component creates a new internal context, this is called, and
-    // we'll use the opportunity to create the textures needed.
     void newOpenGLContextCreated();
+    void openGLContextClosing();
 	void renderOpenGL();
 	void renderXYGrid();
 	void renderZGrid();
-    void openGLContextClosing(){}
 
 	void timerCallback();
 

@@ -33,8 +33,9 @@ mStartNote(60),
 mTranspose(0),
 mVibrato(0),
 mScaleNoteOffset(0),
-mControllerNumber(1),
-mControllerNumber2(1),
+mControllerNum1(1),
+mControllerNum2(2),
+mControllerNum3(3),
 mChannel(1),
 mName("unnamed zone"),
 mListeners(l)
@@ -100,15 +101,15 @@ void Zone::clearTouches()
     }
 }
 
-void Zone::addTouch(int i, float x, float y, int kx, int ky, float z)
+void Zone::addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz)
 {
    // debug() << "zone " << mName << " adding touch at " << x << ", " << y << "\n";
     
     // convert to unity range over x and y bounds
-    mTouches0[i] = ZoneTouch(mXRangeInv(x), mYRangeInv(y), kx, ky, z, 1.f);
+    mTouches0[i] = ZoneTouch(mXRangeInv(x), mYRangeInv(y), kx, ky, z, dz);
 }
 
-// after all touches or a frame have been sent using addTouch, generate
+// after all touches or a frame have been sent using addTouchToFrame, generate
 // any needed messages about the frame and prepare for the next frame. 
 void Zone::processTouches()
 {
@@ -136,21 +137,6 @@ void Zone::processTouches()
     }
 }
 
-void Zone::sendMessage(MLSymbol type, MLSymbol type2, float a, float b, float c, float d, float e, float f, float g)
-{
-    mMessage.mType = type;
-    mMessage.mSubtype = type2;
-    mMessage.mData[0] = a;
-    mMessage.mData[1] = b;
-    mMessage.mData[2] = c;
-    mMessage.mData[3] = d;
-    mMessage.mData[4] = e;
-    mMessage.mData[5] = f;
-    mMessage.mData[6] = g;
-    mMessage.mZoneName = &mName;
-    sendMessageToListeners();
-}
-
 void Zone::processTouchesNoteRow()
 {
     // for each possible touch, send any active touch or touch off messages to listeners
@@ -164,7 +150,7 @@ void Zone::processTouchesNoteRow()
         float t1x = t1.pos.x();
         float t1y = t1.pos.y();
         float t1z = t1.pos.z();
-        
+        float t1dz = t1.pos.w();
         
         float xPos = mXRange(t1x) - mBounds.left();
         float vibratoX = xPos;
@@ -188,7 +174,7 @@ void Zone::processTouchesNoteRow()
             mNoteFilters[i].process(1);
             mVibratoFilters[i].setState(vibratoX);
             mVibratoFilters[i].process(1);            
-            sendMessage("touch", "on", i, t1x, t1y, t1z, mStartNote + mTranspose + scaleNote);
+            sendMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
         else if(isActive)
         {
@@ -199,12 +185,12 @@ void Zone::processTouchesNoteRow()
             // add vibrato to note
             float vibratoHP = (xPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;
             scaleNote += vibratoHP;
-            sendMessage("touch", "continue", i, t1x, t1y, t1z, mStartNote + mTranspose + scaleNote);
+            sendMessage("touch", "continue", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
         else if(wasActive)
         {
             // on note off, send quantized note for release
-            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), mStartNote + mTranspose + scaleNoteQ);
+            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + scaleNoteQ);
         }
     }
 }
@@ -250,7 +236,7 @@ void Zone::processTouchesControllerX()
         Vec3 avgPos = getAveragePositionOfActiveTouches();
         mValue[0] = clamp(avgPos.x(), 0.f, 1.f);
         // TODO add zone attribute to scale value to full range
-        sendMessage("controller", "x", mZoneID, mChannel, mControllerNumber, 0, mValue[0], 0);
+        sendMessage("controller", "x", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], 0, 0);
     }
 }
 
@@ -260,7 +246,7 @@ void Zone::processTouchesControllerY()
     {
         Vec3 avgPos = getAveragePositionOfActiveTouches();
         mValue[1] = clamp(avgPos.y(), 0.f, 1.f);
-        sendMessage("controller", "y", mZoneID, mChannel, mControllerNumber, 0, 0, mValue[1]);
+        sendMessage("controller", "y", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, 0, mValue[1], 0);
     }    
 }
 
@@ -271,8 +257,24 @@ void Zone::processTouchesControllerXY()
         Vec3 avgPos = getAveragePositionOfActiveTouches();
         mValue[0] = clamp(avgPos.x(), 0.f, 1.f);
         mValue[1] = clamp(avgPos.y(), 0.f, 1.f);
-        sendMessage("controller", "xy", mZoneID, mChannel, mControllerNumber, mControllerNumber2, mValue[0], mValue[1]);
+        sendMessage("controller", "xy", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], mValue[1], 0);
     }
+}
+
+void Zone::sendMessage(MLSymbol type, MLSymbol type2, float a, float b, float c, float d, float e, float f, float g, float h)
+{
+    mMessage.mType = type;
+    mMessage.mSubtype = type2;
+    mMessage.mData[0] = a;
+    mMessage.mData[1] = b;
+    mMessage.mData[2] = c;
+    mMessage.mData[3] = d;
+    mMessage.mData[4] = e;
+    mMessage.mData[5] = f;
+    mMessage.mData[6] = g;
+    mMessage.mData[7] = h;
+    mMessage.mZoneName = &mName;
+    sendMessageToListeners();
 }
 
 void Zone::sendMessageToListeners()

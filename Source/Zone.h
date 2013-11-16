@@ -42,7 +42,7 @@ class ZoneTouch
 {
 public:
 	ZoneTouch() { clear(); }
-	ZoneTouch(float px, float py, int ix, int iy, float pz, float pw) : pos(px, py, pz, pw), kx(ix), ky(iy) {}
+	ZoneTouch(float px, float py, int ix, int iy, float pz, float pdz) : pos(px, py, pz, pdz), kx(ix), ky(iy) {}
     void clear(){ pos.set(0.); }
     bool isActive() const { return pos.z() > 0.f; }
     
@@ -64,7 +64,7 @@ public:
     static int symbolToZoneType(MLSymbol s);
 
     void clearTouches();
-    void addTouch(int i, float x, float y, int kx, int ky, float z);
+    void addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz);
     void processTouches();
     
     const ZoneTouch touchToKeyPos(const ZoneTouch& t) const
@@ -108,8 +108,9 @@ protected:
     int mScaleNoteOffset;
     
     MLSignal mScaleMap;
-    int mControllerNumber;
-    int mControllerNumber2; 
+    int mControllerNum1;
+    int mControllerNum2;
+    int mControllerNum3;
     int mChannel;
     std::string mName;
     const SoundplaneListenerList& mListeners;
@@ -122,7 +123,7 @@ private:
     void processTouchesControllerX();
     void processTouchesControllerY();
     void processTouchesControllerXY();
-    void sendMessage(MLSymbol type, MLSymbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0);
+    void sendMessage(MLSymbol type, MLSymbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);
     void sendMessageToListeners();
     
     MLRect mBounds;

@@ -12,8 +12,9 @@ SoundplaneTouchView::SoundplaneTouchView() :
 	MLWidget::setComponent(this);
 
 	mGLContext.setRenderer (this);
-	mGLContext.setComponentPaintingEnabled (true);
 	mGLContext.attachTo (*this);
+	mGLContext.setComponentPaintingEnabled (true);
+    mGLContext.setContinuousRepainting(true);
 }
 
 SoundplaneTouchView::~SoundplaneTouchView()
@@ -124,10 +125,10 @@ void SoundplaneTouchView::renderOpenGL()
     
     // Create an OpenGLGraphicsContext that will draw into this GL window..
     {
-        ScopedPointer<LowLevelGraphicsContext> glRenderer(createOpenGLGraphicsContext (mGLContext, backW, backH));
-        if (glRenderer != nullptr)
+ //       ScopedPointer<LowLevelGraphicsContext> glRenderer(createOpenGLGraphicsContext (mGLContext, backW, backH));
+   //     if (glRenderer != nullptr)
         {
-            Graphics g (glRenderer);
+//            Graphics g (glRenderer);
             // g.addTransform (AffineTransform::scale ((float) getScale()));
             const Colour c = findColour(MLLookAndFeel::backgroundColor);
             OpenGLHelpers::clear (c);
@@ -135,5 +136,14 @@ void SoundplaneTouchView::renderOpenGL()
         }
     }
 }
+
+// GL views need to attach to their components here, because on creation
+// the component might not be visible and can't be attached to.
+void SoundplaneTouchView::resizeWidget(const MLRect& b, const int u)
+{
+    MLWidget::resizeWidget(b, u);
+    mGLContext.attachTo (*MLWidget::getComponent());
+}
+
 
 	

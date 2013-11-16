@@ -284,6 +284,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	// ZONE
 	float bottomDialsY = 7.25f;
 	float bottomDialsY2 = 8.25f;
+    
 	// for all zone types: start channel # (dial)
 	// zone type: {note, note row, control}
 	// if note: note #, single / multi
@@ -299,7 +300,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pD = page0->addDial("bend range", dialRect.withCenter(9.75, bottomDialsY), "bend_range", c2);
 	pD->setRange(0., 48., 1.);
 	
-	pB = page0->addToggleButton("multi", toggleRect.withCenter(8.75, bottomDialsY2), "midi_multi_chan", c2);
+	pB = page0->addToggleButton("multi chan", toggleRect.withCenter(8.75, bottomDialsY2), "midi_multi_chan", c2);
 	pD = page0->addDial("start chan", dialRect.withCenter(9.75, bottomDialsY2), "midi_start_chan", c2);
 	pD->setRange(1., 16., 1.);
 	

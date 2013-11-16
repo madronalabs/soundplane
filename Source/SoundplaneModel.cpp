@@ -749,19 +749,12 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
                 MLError() << "No rect for zone\n";
             }
             
-            // get zone name
-            cJSON* pZoneName = cJSON_GetObjectItem(pNode, "name");
-            if(pZoneName)
-            {
-                pz->mName = std::string(pZoneName->valuestring);
-            }
-            
-            // get note
-            cJSON* pZoneNote = cJSON_GetObjectItem(pNode, "note");
-            if(pZoneNote)
-            {
-                pz->mStartNote = pZoneNote->valueint;
-            }
+            pz->mName = getJSONString(pNode, "name");
+            pz->mStartNote = getJSONInt(pNode, "note");
+            pz->mChannel = getJSONInt(pNode, "channel");
+            pz->mControllerNum1 = getJSONInt(pNode, "ctrl1");
+            pz->mControllerNum2 = getJSONInt(pNode, "ctrl2");
+            pz->mControllerNum3 = getJSONInt(pNode, "ctrl3");
 
             addZone(ZonePtr(pz));
            //  mZoneMap.dump(mZoneMap.getBoundsRect());
@@ -827,7 +820,7 @@ void SoundplaneModel::sendParametersToZones()
 // send raw touches to zones in order to generate note and controller events.
 void SoundplaneModel::sendTouchDataToZones()
 {
-	float x, y, z;
+	float x, y, z, dz;
 	int age;
     
 	float note, noteQuant, vibratoX, vibratoHP;
@@ -849,6 +842,7 @@ void SoundplaneModel::sendTouchDataToZones()
         x = mTouchFrame(xColumn, i);
         y = mTouchFrame(yColumn, i);
         z = mTouchFrame(zColumn, i);
+        dz = mTouchFrame(dzColumn, i);
 		if(age > 0)
 		{            
  			// apply adjustable force curve for z over [z_thresh, z_max] 
@@ -889,9 +883,9 @@ void SoundplaneModel::sendTouchDataToZones()
             if(zoneIdx >= 0)
             {
                 ZonePtr zone = mZones[zoneIdx];
-                zone->addTouch(i, kgx, kgy, mCurrentKeyX[i], mCurrentKeyY[i], z);
+                zone->addTouchToFrame(i, kgx, kgy, mCurrentKeyX[i], mCurrentKeyY[i], z, dz);
             }           
-        } // (age > 0)
+        }
 	}
     
     // tell listeners we are starting this frame.
@@ -1499,4 +1493,47 @@ void SoundplaneModel::setDefaultNormalize()
 		mTracker.setDefaultNormalizeMap();
 	}
 }
+
+// JSON utilities
+
+std::string getJSONString(cJSON* pNode, const char* name)
+{
+    cJSON* pItem = cJSON_GetObjectItem(pNode, name);
+    if(pItem)
+    {
+        if(pItem->type == cJSON_String)
+        {
+            return std::string(pItem->valuestring);
+        }
+    }
+    return std::string("");
+}
+
+double getJSONDouble(cJSON* pNode, const char* name)
+{
+    cJSON* pItem = cJSON_GetObjectItem(pNode, name);
+    if(pItem)
+    {
+        if(pItem->type == cJSON_Number)
+        {
+            return pItem->valuedouble;
+        }
+    }
+    return 0.;
+}
+
+int getJSONInt(cJSON* pNode, const char* name)
+{
+    cJSON* pItem = cJSON_GetObjectItem(pNode, name);
+    if(pItem)
+    {
+        if(pItem->type == cJSON_Number)
+        {
+            return pItem->valueint;
+        }
+    }
+    return 0;
+}
+
+
 
