@@ -34,7 +34,8 @@ SoundplaneOSCOutput::SoundplaneOSCOutput() :
 	mSerialNumber(0),
 	lastInfrequentTaskTime(0),
 	mKymaMode(false),
-    mGotNoteChangesThisFrame(false)
+    mGotNoteChangesThisFrame(false),
+    mGotMatrixThisFrame(false)
 {
 }
 
@@ -169,6 +170,7 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
             mTimeToSendNewFrame = false;
         }        
         mGotNoteChangesThisFrame = false;
+        mGotMatrixThisFrame = false;
     }
     else if(type == touchSym)
     {
@@ -215,15 +217,9 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
     }
     else if(type == matrixSym)
     {
-        // format and send matrix in OSC blob
-        if(mTimeToSendNewFrame)
-        {
-            osc::OutboundPacketStream p( mpOSCBuf, kUDPOutputBufferSize );            
-            p << osc::BeginMessage( "/t3d/matrix" );
-            p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
-            p << osc::EndMessage;
-            mpUDPSocket->Send( p.Data(), p.Size() );
-        }
+        // store matrix to send with bundle
+        mGotMatrixThisFrame = true;
+        mMatrixMessage = *msg;
     }
     else if(type == endFrameSym)
     {
@@ -334,6 +330,15 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
                         p << osc::EndMessage;
                     }
                 }
+            }
+            
+            // format and send matrix in OSC blob if we got one
+            if(mGotMatrixThisFrame)
+            {
+                p << osc::BeginMessage( "/t3d/matrix" );
+                p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
+                p << osc::EndMessage;
+                mGotMatrixThisFrame = false;
             }
             
             // end OSC bundle and send

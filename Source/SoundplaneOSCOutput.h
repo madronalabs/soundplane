@@ -72,7 +72,7 @@ private:
 	int mMaxTouches;	
 	OSCVoice mOSCVoices[kSoundplaneMaxTouches];
     SoundplaneDataMessage mMessagesByZone[kSoundplaneAMaxZones];
-	
+    
 	float mDataFreq;
 	UInt64 mCurrFrameStartTime;
 	UInt64 mLastFrameStartTime;
@@ -86,6 +86,8 @@ private:
 	UInt64 lastInfrequentTaskTime;
 	bool mKymaMode;
     bool mGotNoteChangesThisFrame;
+    bool mGotMatrixThisFrame;
+    SoundplaneDataMessage mMatrixMessage;
 };
 
 
