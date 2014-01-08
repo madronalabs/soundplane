@@ -118,6 +118,7 @@ protected:
     
 private:
     void processTouchesNoteRow();
+    void processTouchesNoteOffs();
     int getNumberOfActiveTouches() const;
     Vec3 getAveragePositionOfActiveTouches() const;
     void processTouchesControllerX();

@@ -7,7 +7,15 @@
 
 const char* kDefaultHostnameString = "localhost";
 
-OSCVoice::OSCVoice() : startX(0), startY(0), mState(kVoiceStateInactive)
+OSCVoice::OSCVoice() :
+    startX(0),
+    startY(0),
+    x(0),
+    y(0),
+    z(0),
+    z1(0),
+    note(0),
+    mState(kVoiceStateInactive)
 {
 }
 
@@ -174,14 +182,12 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
         OSCVoice* pVoice = &mOSCVoices[i];        
         pVoice->x = x;
         pVoice->y = y;
+        pVoice->z1 = pVoice->z;
         pVoice->z = z;
         pVoice->note = note;
         
-//debug() << "SoundplaneOSCOutput touch: " ;
-        
         if(subtype == onSym)
         {
-//debug() << " OSC ON  ";
             pVoice->startX = x;
             pVoice->startY = y;
             pVoice->mState = kVoiceStateOn;
@@ -189,17 +195,17 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
         }
         if(subtype == continueSym)
         {
-//debug() << "  OSC ... ";
             pVoice->mState = kVoiceStateActive;
         }
         if(subtype == offSym)
         {
-//debug() << " OSC OFF ";
-            pVoice->mState = kVoiceStateOff;
-            pVoice->z = 0;
-            mGotNoteChangesThisFrame = true;
+            if((pVoice->mState == kVoiceStateActive) || (pVoice->mState == kVoiceStateOn))
+            {
+                pVoice->mState = kVoiceStateOff;
+                pVoice->z = 0;
+                mGotNoteChangesThisFrame = true;
+            }
         }
-//debug() << i << " " << note << "\n";
     }
     else if(type == controllerSym)
     {
@@ -297,7 +303,13 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
                         p << pVoice->x << pVoice->y << pVoice->z << pVoice->note;
                         p << osc::EndMessage;
                     }
-                }               
+                    
+                    if (pVoice->mState == kVoiceStateOff)
+                    {
+                        pVoice->mState = kVoiceStateInactive;
+                    }
+                }
+               
             }
             else // kyma
             {

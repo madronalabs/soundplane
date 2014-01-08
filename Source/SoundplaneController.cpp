@@ -167,7 +167,6 @@ void SoundplaneController::processFile (const MLSymbol collection, const File& f
     }
 }
 
-
 void SoundplaneController::setView(SoundplaneView* v)
 { 
 	mpSoundplaneView = v; 

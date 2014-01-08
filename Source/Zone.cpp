@@ -195,6 +195,30 @@ void Zone::processTouchesNoteRow()
     }
 }
 
+// process any note offs. called by the model for all zones before processTouches() so that any new
+// touches with the same index as an expiring one will have a chance to get started.
+void Zone::processTouchesNoteOffs()
+{
+    // for each possible touch, send any active touch or touch off messages to listeners
+    for(int i=0; i<kSoundplaneMaxTouches; ++i)
+    {
+        ZoneTouch t1 = mTouches1[i];
+        ZoneTouch t2 = mTouches2[i];
+        bool isActive = t1.isActive();
+        bool wasActive = t2.isActive();
+        
+        float t1x = t1.pos.x();
+        float xPos = mXRange(t1x) - mBounds.left();
+        float scaleNoteQ = mScaleMap[(int)xPos];
+        
+        if(!isActive && wasActive)
+        {
+            // on note off, send quantized note for release
+            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + scaleNoteQ);
+        }
+    }
+}
+
 int Zone::getNumberOfActiveTouches() const
 {
     int activeTouches = 0;
