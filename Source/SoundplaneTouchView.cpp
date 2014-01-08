@@ -99,14 +99,12 @@ void SoundplaneTouchView::renderTouches()
 		glBegin(GL_LINES);
 		for(int i=fr.left() + 1; i<fr.right()-1; ++i)
 		{
-			int time = frameXRange(i);
-			
+			int time = frameXRange(i);			
 			float force = touchHistory(2, j, time);
 	//		float d = touchHistory(3, j, time);
 	//		int age = touchHistory(4, j, time);
 			float y = frameYRange.convert(force);
-	//		float drawY = (age > 0) ? y : 0.;
-	
+	//		float drawY = (age > 0) ? y : 0.;	
 	//		y = frameYRange.convert(d);
 			
 			// draw line
@@ -120,21 +118,9 @@ void SoundplaneTouchView::renderTouches()
 void SoundplaneTouchView::renderOpenGL()
 {
 	if (!mpModel) return;
-    int backW = getBackingLayerWidth();
-    int backH = getBackingLayerHeight();
-    
-    // Create an OpenGLGraphicsContext that will draw into this GL window..
-    {
- //       ScopedPointer<LowLevelGraphicsContext> glRenderer(createOpenGLGraphicsContext (mGLContext, backW, backH));
-   //     if (glRenderer != nullptr)
-        {
-//            Graphics g (glRenderer);
-            // g.addTransform (AffineTransform::scale ((float) getScale()));
-            const Colour c = findColour(MLLookAndFeel::backgroundColor);
-            OpenGLHelpers::clear (c);
-            renderTouches();
-        }
-    }
+    const Colour c = findColour(MLLookAndFeel::backgroundColor);
+    OpenGLHelpers::clear (c);
+    renderTouches();
 }
 
 // GL views need to attach to their components here, because on creation

@@ -78,15 +78,11 @@ void TrackerCalibrateView::renderOpenGL()
 	Vec2 dim = mpModel->getTrackerCalibrateDims();
 	int width = dim.x();
 	int height = dim.y();
-//	int viewW = getWidth();
-//	int viewH = getHeight();
-
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
-    const float scale = (float) mGLContext.getRenderingScale();
-    
+    const float scale = (float) mGLContext.getRenderingScale();    
     ScopedPointer<LowLevelGraphicsContext> glRenderer
-    (createOpenGLGraphicsContext (mGLContext, viewW, viewH));
+        (createOpenGLGraphicsContext (mGLContext, viewW, viewH));
     
     if (glRenderer != nullptr)
     {
