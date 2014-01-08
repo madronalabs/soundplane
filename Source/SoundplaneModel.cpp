@@ -892,8 +892,14 @@ void SoundplaneModel::sendTouchDataToZones()
     mMessage.mType = MLSymbol("start_frame");
 	sendMessageToListeners();
     
+    // process note offs for each zone
+    int zones = mZones.size();
+    for(int i=0; i<zones; ++i)
+	{
+        mZones[i]->processTouchesNoteOffs();
+    }
+    
     // process touches for each zone
-    int zones = mZones.size();    
     for(int i=0; i<zones; ++i)
 	{
         mZones[i]->processTouches();
