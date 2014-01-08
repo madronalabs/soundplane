@@ -18,7 +18,7 @@ public:
 	Biquad();	
 	~Biquad();
 	
-	BiquadCoeffs mCoeffs;
+	MLBiquad mCoeffs;
 	
 	MLSample mIn, mX1, mX2, mY1, mY2;	
 
@@ -64,7 +64,7 @@ public:
 	
 	void setDims(int w, int h);
 	
-	BiquadCoeffs mCoeffs;
+	MLBiquad mCoeffs;
 	MLSignal mIn;
 	MLSignal mX1;
 	MLSignal mX2;
@@ -114,7 +114,7 @@ public:
 	~Biquad2DMatrix();
 	void setDims(int w, int h);
 	
-	BiquadCoeffs mCoeffs;
+	MLBiquad mCoeffs;
 	MLSignal mCoeffsMatrix;
 	MLSignal mIn;
 	MLSignal mX1;
