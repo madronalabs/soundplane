@@ -1718,22 +1718,21 @@ done:
 	
 void TouchTracker::Calibrator::setCalibration(const MLSignal& v)
 {
-	if((v.getHeight() == mSrcHeight) && v.getWidth() == mSrcWidth)
+	if((v.getHeight() == kTemplateSize) && (v.getWidth() == kTemplateSize))
 	{
-		mCalibrateSignal = v;
-		mHasCalibration = true;
-	}
-	else
-	{
-		MLConsole() << "TouchTracker::Calibrator::setCalibration: restoring default.\n";
-		mCalibrateSignal = v;
-		mHasCalibration = false;
-	}
+        mCalibrateSignal = v;
+        mHasCalibration = true;
+    }
+    else
+    {
+		MLConsole() << "TouchTracker::Calibrator::setCalibration: bad size, restoring default.\n";
+        mHasCalibration = false;
+    }
 }
 
 void TouchTracker::Calibrator::setNormalizeMap(const MLSignal& v)
 {
-	if((v.getHeight() == mSrcHeight) && v.getWidth() == mSrcWidth)
+	if((v.getHeight() == mSrcHeight) && (v.getWidth() == mSrcWidth))
 	{
 		mNormalizeMap = v;
 		mHasNormalizeMap = true;
