@@ -33,6 +33,7 @@ enum ZoneType
     kControllerX,
     kControllerY,
     kControllerXY,
+    kToggle,
     kZoneTypes
 };
 
@@ -83,7 +84,9 @@ public:
     // return values on [0..1]
     float getXValue() const { return getValue(0); }
     float getYValue() const { return getValue(1); }
-    // return values scaled to key grid 
+    //
+    bool getToggleValue() const { return (getValue(0) > 0.5f); }
+    // return values scaled to key grid
     float getXKeyPos() const { return mXRange(getValue(0)); }
     float getYKeyPos() const { return mYRange(getValue(1)); }
 
@@ -92,7 +95,6 @@ public:
     void setSnapFreq(float f);
     void setBounds(MLRect b);
     void setNeedsRedraw(bool b) { mNeedsRedraw = b; }
-    
     
 protected:
     int mZoneID;
@@ -120,10 +122,12 @@ private:
     void processTouchesNoteRow();
     void processTouchesNoteOffs();
     int getNumberOfActiveTouches() const;
+    int getNumberOfNewTouches() const;
     Vec3 getAveragePositionOfActiveTouches() const;
     void processTouchesControllerX();
     void processTouchesControllerY();
     void processTouchesControllerXY();
+    void processTouchesControllerToggle();
     void sendMessage(MLSymbol type, MLSymbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);
     void sendMessageToListeners();
     

@@ -224,6 +224,7 @@ void SoundplaneMIDIOutput::processMessage(const SoundplaneDataMessage* msg)
     static const MLSymbol xSym("x");
     static const MLSymbol ySym("y");
     static const MLSymbol xySym("xy");
+    static const MLSymbol toggleSym("toggle");
     static const MLSymbol endFrameSym("end_frame");
     static const MLSymbol matrixSym("matrix");
     static const MLSymbol nullSym;
@@ -360,6 +361,10 @@ void SoundplaneMIDIOutput::processMessage(const SoundplaneDataMessage* msg)
                     {
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum2, iy));
+                    }
+                    else if (pMsg->mSubtype == toggleSym)
+                    {
+                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
                     }
                     
                     // clear controller message

@@ -8,9 +8,10 @@
 
 #include "Zone.h"
 
-static const MLSymbol zoneTypes[kZoneTypes] = {"note_row", "controller_x", "controller_y", "controller_xy"};
+static const MLSymbol zoneTypes[kZoneTypes] = {"note_row", "controller_x", "controller_y", "controller_xy", "toggle"};
 static const float kVibratoFreq = 12.0f;
 
+// turn zone type name into enum type. names above must match ZoneType enum.
 int Zone::symbolToZoneType(MLSymbol s)
 {
     int zoneTypeNum = -1;
@@ -134,6 +135,9 @@ void Zone::processTouches()
         case kControllerXY:
             processTouchesControllerXY();
             break;
+        case kToggle:
+            processTouchesControllerToggle();
+            break;
     }
 }
 
@@ -233,6 +237,21 @@ int Zone::getNumberOfActiveTouches() const
     return activeTouches;
 }
 
+int Zone::getNumberOfNewTouches() const
+{
+    int newTouches = 0;
+    for(int i=0; i<kSoundplaneMaxTouches; ++i)
+    {
+        ZoneTouch t1 = mTouches1[i];
+        ZoneTouch t2 = mTouches2[i];
+        if(t1.isActive() && (!t2.isActive()))
+        {
+            newTouches++;
+        }
+    }
+    return newTouches;
+}
+
 Vec3 Zone::getAveragePositionOfActiveTouches() const
 {
     Vec3 avg;
@@ -282,6 +301,16 @@ void Zone::processTouchesControllerXY()
         mValue[0] = clamp(avgPos.x(), 0.f, 1.f);
         mValue[1] = clamp(avgPos.y(), 0.f, 1.f);
         sendMessage("controller", "xy", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], mValue[1], 0);
+    }
+}
+
+void Zone::processTouchesControllerToggle()
+{
+    bool touchOn = getNumberOfNewTouches() > 0;
+    if(touchOn)
+    {
+        mValue[0] = !getToggleValue();
+        sendMessage("controller", "toggle", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], 0, 0);
     }
 }
 

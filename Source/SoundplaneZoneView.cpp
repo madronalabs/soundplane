@@ -191,6 +191,7 @@ void SoundplaneZoneView::renderZones()
         
         // draw any zone-specific things
         float x, y, z;
+        int toggle;
         switch(t)
         {
             case kNoteRow:
@@ -234,10 +235,25 @@ void SoundplaneZoneView::renderZones()
                 glLineWidth(thinLineWidth);
                 // cross-hairs centered on dot
                 MLGL::strokeRect(MLRect(x, zoneRectInView.top(), 0., zoneRectInView.height()));
-                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.));                
+                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.));
                 glColor4fv(&dotFill[0]);
                 drawDot(Vec2(x, y), smallDotSize);
-                break;            
+                break;
+                
+            case kToggle:
+                toggle = zone.getToggleValue();
+                glColor4fv(&zoneStroke[0]);
+                glLineWidth(thinLineWidth);
+                if(toggle)
+                {
+                    MLRect toggleFill = zoneRectInView;
+                    Vec2 zoneCenter = zoneRectInView.getCenter();
+                    glColor4fv(&activeFill[0]);
+                    MLGL::fillRect(zoneRectInView);
+                    glColor4fv(&dotFill[0]);
+                    drawDot(zoneCenter, smallDotSize*2);
+                }
+                break;
         }
     }
 }
