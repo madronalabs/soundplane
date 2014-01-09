@@ -11,7 +11,6 @@ SoundplaneApp::SoundplaneApp() :
 	mpController(0),	
 	mpState(nullptr)
 {
-	MLConsole() << "Starting Soundplane...\n";
 }
 
 void SoundplaneApp::initialise (const String& commandLine)
@@ -36,6 +35,7 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpController->updateAllParams();
 			
 	mpModel->initialize();
+	MLConsole() << "Starting Soundplane...\n";
     
 #if GLX
     mWindow.setUsingOpenGL(true);
