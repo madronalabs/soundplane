@@ -33,6 +33,7 @@ enum ZoneType
     kControllerX,
     kControllerY,
     kControllerXY,
+    kControllerZ,
     kToggle,
     kZoneTypes
 };
@@ -80,21 +81,30 @@ public:
     const std::string& getName() const { return mName; }
     MLRect getBounds() const { return mBounds; }
     int getType() const { return mType; }
-    float getValue(int i) const { return mValue[clamp(i, 0, kZoneValArraySize - 1)]; }
+
     // return values on [0..1]
+    float getValue(int i) const { return mValue[clamp(i, 0, kZoneValArraySize - 1)]; }
     float getXValue() const { return getValue(0); }
     float getYValue() const { return getValue(1); }
-    //
-    bool getToggleValue() const { return (getValue(0) > 0.5f); }
+
     // return values scaled to key grid
     float getXKeyPos() const { return mXRange(getValue(0)); }
     float getYKeyPos() const { return mYRange(getValue(1)); }
+
+    bool getToggleValue() const { return (getValue(0) > 0.5f); }
 
     // setters
     void setZoneID(int z) { mZoneID = z; }
     void setSnapFreq(float f);
     void setBounds(MLRect b);
     void setNeedsRedraw(bool b) { mNeedsRedraw = b; }
+    
+    // TODO look at usage wrt. x/y/z display and make these un-public again
+    MLRect mBounds;
+    MLRange mXRange;
+    MLRange mYRange;
+    MLRange mXRangeInv;
+    MLRange mYRangeInv;
     
 protected:
     int mZoneID;
@@ -124,18 +134,14 @@ private:
     int getNumberOfActiveTouches() const;
     int getNumberOfNewTouches() const;
     Vec3 getAveragePositionOfActiveTouches() const;
+    float getMaxZOfActiveTouches() const;
     void processTouchesControllerX();
     void processTouchesControllerY();
     void processTouchesControllerXY();
     void processTouchesControllerToggle();
+    void processTouchesControllerPressure();
     void sendMessage(MLSymbol type, MLSymbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);
     void sendMessageToListeners();
-    
-    MLRect mBounds;
-    MLRange mXRange;
-    MLRange mYRange;
-    MLRange mXRangeInv;
-    MLRange mYRangeInv;
     
     bool mNeedsRedraw;
     float mValue[kZoneValArraySize];
