@@ -326,7 +326,7 @@ void Zone::sendMessage(MLSymbol type, MLSymbol type2, float a, float b, float c,
     mMessage.mData[5] = f;
     mMessage.mData[6] = g;
     mMessage.mData[7] = h;
-    mMessage.mZoneName = &mName;
+    mMessage.mZoneName = mName;
     sendMessageToListeners();
 }
 

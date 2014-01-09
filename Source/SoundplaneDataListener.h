@@ -24,7 +24,7 @@ struct SoundplaneDataMessage
 {
     MLSymbol mType;
     MLSymbol mSubtype;
-    std::string* mZoneName;
+    std::string mZoneName;
     float mData[8];
     float mMatrix[kSoundplaneWidth*kSoundplaneHeight];
 };
