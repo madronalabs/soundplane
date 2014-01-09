@@ -698,6 +698,8 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
     if(!root)
     {
         MLError() << "zone file parse failed!\n";
+        const char* errStr = cJSON_GetErrorPtr();
+        MLError() << "    error at: " << errStr << "\n";
         return;
     }
     cJSON* pNode = root->child;
