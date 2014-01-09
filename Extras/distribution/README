@@ -1,0 +1,24 @@
+Soundplane 1.0a1
+
+This is a preview release of the Soundplane app with the new mapping and control features. 
+
+changes:
+-new Zone features allow mapping notes and controllers to key grid
+-changed t3d format for wider OSC compatibility
+-OpenGL accelerated graphics
+-fixed graphics for Retina display
+-fixed a bug where SoundplaneController was initialized twice
+-fixed OpenGL errors on quit
+-fixed a possible crash in adjustPeak()
+-fixed note release when quantized
+-new raw matrix output
+
+To install this version: move the "Soundplane" application to your Applications folder, then move the directory "ZonePresets" to ~/Library/Application Support/Madrona Labs/Soundplane. (To navigate to your Library folder on OS X 10.7 and above, hold down (option) and choose to Go menu in the Finder.)
+
+When you launch the Soundplane application, the menu at the top of the "Zones" page should contain three presets: chromatic, rows in fourths and rows in octaves, followed by a list of all the JSON files in the ZonePresets folder. If the JSON files do not appear, the ZonePresets directory is probably not in the right place. 
+
+The format of the zone files is human-readable and relatively self-explaining. There are two examples so far: 30sliders and zoneExample1.
+
+The Soundplane Max/MSP examples require the CNMAT Max externals to run. These can be found at http://cnmat.berkeley.edu/downloads . 
+ 
+
