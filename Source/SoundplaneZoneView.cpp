@@ -239,7 +239,16 @@ void SoundplaneZoneView::renderZones()
                 glColor4fv(&dotFill[0]);
                 drawDot(Vec2(x, y), smallDotSize);
                 break;
-                
+                                
+            case kControllerZ:
+                y = yRange(zone.mYRange(zone.getValue(0))); // look at z value over y range
+                glColor4fv(&zoneStroke[0]);
+                glLineWidth(thinLineWidth);
+                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.));
+                glColor4fv(&activeFill[0]);
+                MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), zoneRectInView.width(), y - zoneRectInView.top()));
+                break;
+
             case kToggle:
                 toggle = zone.getToggleValue();
                 glColor4fv(&zoneStroke[0]);
@@ -254,7 +263,7 @@ void SoundplaneZoneView::renderZones()
                     drawDot(zoneCenter, smallDotSize*2);
                 }
                 break;
-        }
+         }
     }
 }
 

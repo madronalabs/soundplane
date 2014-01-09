@@ -493,9 +493,10 @@ void SoundplaneGridView::renderZGrid()
                 float stackOffset = 0.25f;
                 ty += (float)t*stackOffset;
                 tz += (float)t*stackOffset;
-                drawInfoBox(Vec3(tx, ty, -tz), strBuf, t);
                 
-                //debug() << "x: " << x << ", y: " << y << ", z: " << z << ", d: " << d << ", age:" << age << "\n";            
+// TODO fix boxes in resolution-independent way
+//                drawInfoBox(Vec3(tx, ty, -tz), strBuf, t);                
+// debug() << "x: " << x << ", y: " << y << ", z: " << z << ", age:" << age << "\n";
             }
         }
     }

@@ -224,6 +224,7 @@ void SoundplaneMIDIOutput::processMessage(const SoundplaneDataMessage* msg)
     static const MLSymbol xSym("x");
     static const MLSymbol ySym("y");
     static const MLSymbol xySym("xy");
+    static const MLSymbol zSym("z");
     static const MLSymbol toggleSym("toggle");
     static const MLSymbol endFrameSym("end_frame");
     static const MLSymbol matrixSym("matrix");
@@ -344,6 +345,7 @@ void SoundplaneMIDIOutput::processMessage(const SoundplaneDataMessage* msg)
                     
                     int ix = clamp((int)(x*128.f), 0, 127);
                     int iy = clamp((int)(y*128.f), 0, 127);
+                    int iz = clamp((int)(z*128.f), 0, 127);
                     
                     // use channel from zone, or default to start channel setting.
                     int channel = (zoneChan > 0) ? (zoneChan) : (mStartChannel);
@@ -361,6 +363,10 @@ void SoundplaneMIDIOutput::processMessage(const SoundplaneDataMessage* msg)
                     {
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum2, iy));
+                    }
+                    else if (pMsg->mSubtype == zSym)
+                    {
+                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, iz));
                     }
                     else if (pMsg->mSubtype == toggleSym)
                     {

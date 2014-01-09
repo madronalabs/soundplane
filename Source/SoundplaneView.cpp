@@ -428,6 +428,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	//debug().sendOutputToListener(pDebug);
 	debug().sendOutputToListener(0);
 	MLConsole().sendOutputToListener(pDebug);
+	MLError().sendOutputToListener(pDebug);
 	
 	//page2->addToggleButton("pause", toggleRect.withCenter(13.5, 5.5), "debug_pause", c2);
 	

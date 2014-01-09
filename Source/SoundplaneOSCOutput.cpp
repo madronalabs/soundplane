@@ -145,6 +145,7 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
     static const MLSymbol xSym("x");
     static const MLSymbol ySym("y");
     static const MLSymbol xySym("xy");
+    static const MLSymbol zSym("z");
     static const MLSymbol toggleSym("toggle");
     static const MLSymbol endFrameSym("end_frame");
     static const MLSymbol matrixSym("matrix");
@@ -256,7 +257,7 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
                     y = pMsg->mData[6];
                     z = pMsg->mData[7];
                     std::string ctrlStr("/");
-                    ctrlStr += *(pMsg->mZoneName);
+                    ctrlStr += (pMsg->mZoneName);
                     
                     p << osc::BeginMessage( ctrlStr.c_str() );
                     
@@ -272,6 +273,10 @@ void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
                     else if (pMsg->mSubtype == xySym)
                     {
                         p << x << y;
+                    }
+                    else if (pMsg->mSubtype == zSym)
+                    {
+                        p << z;
                     }
                     else if (pMsg->mSubtype == toggleSym)
                     {
