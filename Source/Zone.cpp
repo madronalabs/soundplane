@@ -161,7 +161,7 @@ void Zone::processTouchesNoteRow()
         
         float xPos = mXRange(t1x) - mBounds.left();
         float vibratoX = xPos;
-        float scaleNote = mScaleMap.getInterpolated(xPos - 0.5f);
+        float scaleNote = mScaleMap.getInterpolatedLinear(xPos - 0.5f);
         float scaleNoteQ = mScaleMap[(int)xPos];
         if(mQuantize)
         {

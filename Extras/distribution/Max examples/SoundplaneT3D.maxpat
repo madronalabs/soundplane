@@ -2885,8 +2885,8 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 28.0, 37.0, 294.0, 409.0 ],
-					"text" : "Hey it's the  Max/MSP patch for Soundplane, showing how to unpack and make music with the t3d messages. \n\nT3D version 1.0, compatible with Soundplane client 1.0a1 or later.  January 9, 2014.\n\nt3d messages: madronalabs.com/forums/hardware for details\n\nframe:\n/t3d/frm frameID deviceID\n\ntouch:\n/t3d/tch[touchID], x, y, z, note\n(note that touch ID is part of address symbol, \"touch1, touch2 and so on)\n\nmatrix: \n/t3d/matrix OSCBlob [data] \nSent when matrix toggle in Soundplane app is on, with an OSC blob containing 2048 bytes of raw surface pressure\n\nEach touch is guaranteed to send a zero z value for one frame when it goes inactive. If active touches do not send any updates for a period of time, they can be assumed to be stuck. Theoretically this could happen in the case of network dropouts.  Over UDP on one machine this has not been an issue."
+					"patching_rect" : [ 28.0, 37.0, 312.0, 422.0 ],
+					"text" : "Hey it's the  Max/MSP patch for Soundplane, showing how to unpack and make music with the t3d messages. \n\nT3D version 1.0, compatible with Soundplane client 1.0a1 or later.  January 9, 2014.\n\nt3d messages: madronalabs.com/forums/hardware for details\n\nframe:\n/t3d/frm frameID deviceID\n\ntouch:\n/t3d/tch[touchID], x, y, z, note\n(note that touch ID is part of address symbol, \"tch1, tch2 and so on)\n\nEach touch is guaranteed to send a zero z value for one frame when it goes inactive. If active touches do not send any updates for a period of time, they can be assumed to be stuck. Theoretically this could happen in the case of network dropouts.  Over UDP on one machine this has not been an issue.\n\nmatrix: \n/t3d/matrix OSCBlob [data] \nSent when matrix toggle in Soundplane app is on, with an OSC blob containing 2048 bytes of raw surface pressure, in 32-bit floating point format, 32 bytes x 8 rows x 64 columns.\n"
 				}
 
 			}

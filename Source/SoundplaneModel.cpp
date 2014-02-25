@@ -993,7 +993,8 @@ void SoundplaneModel::processCallback()
 	if (!mpDriver) return;
 	
 	UInt64 now = getMicroseconds();
-	if(now - mLastInfrequentTaskTime > 250*1000)
+    // once per second
+	if(now - mLastInfrequentTaskTime > 1000*1000)
 	{
 		doInfrequentTasks();
 		mLastInfrequentTaskTime = now;
@@ -1085,6 +1086,7 @@ void SoundplaneModel::processCallback()
 
 void SoundplaneModel::doInfrequentTasks()
 {
+    mOSCOutput.doInfrequentTasks();
 	if (mCarrierMaskDirty)
 	{
 		enableCarriers(mCarriersMask);

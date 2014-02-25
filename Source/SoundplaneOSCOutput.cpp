@@ -119,6 +119,7 @@ void SoundplaneOSCOutput::doInfrequentTasks()
 	mpUDPSocket->Send( p.Data(), p.Size() );
 }
 
+// unused?
 void SoundplaneOSCOutput::notify(int connected)
 {
 	if(!mpUDPSocket) return;

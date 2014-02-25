@@ -8,6 +8,7 @@
 
 #include "MLSignal.h"
 #include "MLDebug.h"
+#include "MLDSPUtils.h"
 
 // quick and dirty filters code, for when we are not including the whole signal library.
 

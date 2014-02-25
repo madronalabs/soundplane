@@ -679,7 +679,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		Vec2 newPos = pos;
 		float newX = t.x;
 		float newY = t.y;
-		float newZ = in(pos);
+		float newZ = in.getInterpolatedLinear(pos);
 		
 		// if not preparing to remove, update position.
 		if (t.releaseCtr == 0)
@@ -714,7 +714,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		}
 		
 		// look for reasons to release
-		newZ = in(newPos);
+		newZ = in.getInterpolatedLinear(newPos);
 		bool thresholdTest = (newZ > mOffThreshold);			
 		float inhibit = getInhibitThreshold(pos);
 		bool inhibitTest = (newZ > inhibit);
@@ -1769,7 +1769,7 @@ float TouchTracker::Calibrator::differenceFromTemplateTouch(const MLSignal& in, 
 	MLRect boundsRect(0, 0, width, height);
 	
 	// use linear interpolated z value from input
-	float linearZ = in(pos)*getZAdjust(pos);
+	float linearZ = in.getInterpolatedLinear(pos)*getZAdjust(pos);
 	linearZ = clamp(linearZ, 0.00001f, 1.f);
 	float z1 = 1./linearZ;	
 	const MLSignal& a = getTemplate(pos);
@@ -1784,7 +1784,7 @@ float TouchTracker::Calibrator::differenceFromTemplateTouch(const MLSignal& in, 
 			Vec2 vInPos = pos + Vec2((float)i - tr,(float)j - tr);			
 			if (boundsRect.contains(vInPos))
 			{
-				float inVal = in(vInPos);
+				float inVal = in.getInterpolatedLinear(vInPos);
 				inVal *= z1;
 				b(i, j) = inVal;
 			}
@@ -1831,7 +1831,7 @@ float TouchTracker::Calibrator::differenceFromTemplateTouchWithMask(const MLSign
 	MLRect boundsRect(0, 0, width, height);
 	
 	// use linear interpolated z value from input
-	float linearZ = in(pos)*getZAdjust(pos);
+	float linearZ = in.getInterpolatedLinear(pos)*getZAdjust(pos);
 	linearZ = clamp(linearZ, 0.00001f, 1.f);
 	float z1 = 1./linearZ;	
 	const MLSignal& a = getTemplate(pos);
@@ -1844,9 +1844,9 @@ float TouchTracker::Calibrator::differenceFromTemplateTouchWithMask(const MLSign
 		for(int i=0; i < kTemplateSize; ++i)
 		{
 			Vec2 vInPos = pos + Vec2((float)i - tr,(float)j - tr);			
-			if (boundsRect.contains(vInPos) && (mask(vInPos) < maskThresh))
+			if (boundsRect.contains(vInPos) && (mask.getInterpolatedLinear(vInPos) < maskThresh))
 			{
-				float inVal = in(vInPos);
+				float inVal = in.getInterpolatedLinear(vInPos);
 				inVal *= z1;
 				b(i, j) = inVal;
 			}

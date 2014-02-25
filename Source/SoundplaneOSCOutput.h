@@ -65,9 +65,9 @@ public:
 	void setSerialNumber(int s) { mSerialNumber = s; }
 	void notify(int connected);
 	
-private:
-	
 	void doInfrequentTasks();
+
+private:	
 
 	int mMaxTouches;	
 	OSCVoice mOSCVoices[kSoundplaneMaxTouches];

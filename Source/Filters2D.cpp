@@ -361,4 +361,3 @@ void OnepoleMatrix::process(int)
 	mY1.add(mDx);
 	mpOut->copy(mY1);
 }
-
