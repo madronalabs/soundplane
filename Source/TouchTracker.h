@@ -49,14 +49,14 @@ const int kTouchReleaseFrames = 100;
 const int kAttackFrames = 100;
 const int kMaxPeaksPerFrame = 4;
 
-typedef enum KeyboardTypes
+typedef enum
 {
 	rectangularA = 0,
 	hexagonalA // etc. 
-};
+} KeyboardTypes;
 
 const int kTouchWidth = 8; // 8 columns in touch data: [x, y, z, dz, age, dt, note, ?] for each touch.
-typedef enum TouchSignalColumns
+typedef enum
 {
 	xColumn = 0,
 	yColumn = 1,
@@ -66,7 +66,7 @@ typedef enum TouchSignalColumns
 	dtColumn = 5,
 	noteColumn = 6,
 	reservedColumn = 7
-};
+} TouchSignalColumns;
 
 class Touch
 {
@@ -103,7 +103,7 @@ public:
 	public:
 		Listener() {}
 		virtual ~Listener() {}
-		virtual void hasNewCalibration(const MLSignal& cal, const MLSignal& cal, float avg) = 0;
+		virtual void hasNewCalibration(const MLSignal& cal, const MLSignal& norm, float avg) = 0;
 	};
 	
 	class Calibrator

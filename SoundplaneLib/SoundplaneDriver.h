@@ -88,22 +88,22 @@ extern const char* kSoundplaneAName;
 
 // USB device requests and indexes
 //
-typedef enum MLSoundplaneUSBRequest
+typedef enum
 {
 	kRequestStatus = 0,
 	kRequestMask = 1,
 	kRequestCarriers = 2
-};
+} MLSoundplaneUSBRequest;
 
-typedef enum MLSoundplaneUSBRequestIndex
+typedef enum
 {
 	kRequestCarriersIndex = 0,
 	kRequestMaskIndex = 1
-};
+} MLSoundplaneUSBRequestIndex;
 
 // device states
 //
-typedef enum MLSoundplaneState
+typedef enum
 {
 	kNoDevice = 0,
 	kDeviceConnected = 1,
@@ -111,16 +111,16 @@ typedef enum MLSoundplaneState
 	kDeviceIsTerminating = 3,
 	kDeviceSuspend = 4,
 	kDeviceResume = 5
-};
+} MLSoundplaneState;
 
 // device states
 //
-typedef enum MLSoundplaneErrorType
+typedef enum
 {
 	kDevNoErr = 0,
 	kDevDataDiffTooLarge = 1,
 	kDevGapInSequence = 2
-};
+} MLSoundplaneErrorType;
 
 void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest);
 	
