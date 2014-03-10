@@ -196,8 +196,14 @@ void Zone::processTouchesNoteRow()
         }
         else if(wasActive)
         {
-            // on note off, send quantized note for release
-            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + scaleNoteQ);
+            // on note off, retain last note for release
+            float lastX = mXRange(t2.pos.x()) - mBounds.left();
+            float lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
+            if(mQuantize) {
+                lastScaleNote = mScaleMap[(int)lastX];
+            }
+
+            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + lastScaleNote);
         }
     }
 }
@@ -214,14 +220,17 @@ void Zone::processTouchesNoteOffs()
         bool isActive = t1.isActive();
         bool wasActive = t2.isActive();
         
-        float t1x = t1.pos.x();
-        float xPos = mXRange(t1x) - mBounds.left();
-        float scaleNoteQ = mScaleMap[(int)xPos];
-        
+        float t2x = t2.pos.x();
+        float xPos = mXRange(t2x) - mBounds.left();
+        float scaleNote = mScaleMap.getInterpolatedLinear(xPos - 0.5f);
+        if(mQuantize) {
+            scaleNote = mScaleMap[(int)xPos];
+        }
+      
         if(!isActive && wasActive)
         {
-            // on note off, send quantized note for release
-            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + scaleNoteQ);
+            // on note off, retain last note for release
+            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + scaleNote);
         }
     }
 }
