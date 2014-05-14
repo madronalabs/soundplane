@@ -14,7 +14,7 @@ git clone https://github.com/madronalabs/madronalib.git madronalib
 
 getting juce:
 git clone https://github.com/julianstorer/JUCE.git juce
-git reset --hard dc8f268143b102e64fbbcb48046dfb15c31dbd1b
+(currently tested with version 3.0.5)
 
 getting oscpack:
 download from https://code.google.com/p/oscpack/downloads/list

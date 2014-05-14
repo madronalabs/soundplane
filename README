@@ -6,8 +6,7 @@ To compile this project, the following libraries will be needed:
 
 MadronaLib https://github.com/madronalabs/madronalib
 
-JUCE https://github.com/julianstorer/JUCE
-Currently synchronized with JUCE commit 9a1171a7ef8cb544df5103101e7ee558323bb80a.
+JUCE https://github.com/julianstorer/JUCE (version 3.0)
 
 oscpack https://code.google.com/p/oscpack/downloads/list
 
