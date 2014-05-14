@@ -231,6 +231,7 @@ void SoundplaneMIDIOutput::processMessage(const SoundplaneDataMessage* msg)
     static const MLSymbol nullSym;
     
 	if (!mActive) return;
+	if (!mpCurrentDevice) return;
     MLSymbol type = msg->mType;
     MLSymbol subtype = msg->mSubtype;
     
