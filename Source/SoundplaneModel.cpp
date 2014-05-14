@@ -510,12 +510,12 @@ void SoundplaneModel::handleDeviceError(int errorType, int data1, int data2, flo
 		case kDevDataDiffTooLarge:
 			if(!mSelectingCarriers)
 			{
-				MLError() << "SoundplaneModel::handleDeviceError: diff too large (" << fd1 << ")\n";
+				MLError() << "note: diff too large (" << fd1 << ")\n";
 				MLError() << "startup count = " << data1 << "\n";
 			}
 			break;
 		case kDevGapInSequence:
-			MLError() << "SoundplaneModel::handleDeviceError: gap in sequence (" << data1 << " -> " << data2 << ")\n";
+			MLError() << "note: gap in sequence (" << data1 << " -> " << data2 << ")\n";
 			break;
 		case kDevNoErr:
 		default:
