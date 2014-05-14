@@ -480,6 +480,14 @@ void SoundplaneController::doWelcomeTasks()
 			String::empty, "Setup cancelled. Calibration not complete. ",
 			"OK");
 	}
+    if(mpSoundplaneView)
+    {
+        // quick hack to refresh grid.
+        // otherwise it's blank.
+        // TODO find out why grid is blank after welcome! 
+        mpSoundplaneView->goToPage(1);
+        mpSoundplaneView->goToPage(0);
+    }
 }
 
 bool SoundplaneController::confirmRestoreDefaults()
