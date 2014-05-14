@@ -200,7 +200,7 @@ void Zone::processTouchesNoteRow()
             float lastX = mXRange(t2.pos.x()) - mBounds.left();
             float lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
             if(mQuantize) {
-                lastScaleNote = mScaleMap[(int)lastX];
+                lastScaleNote = scaleNoteQ;
             }
 
             sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + lastScaleNote);
