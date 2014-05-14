@@ -39,7 +39,7 @@ void SoundplaneController::initialize()
 	Browse(kUDPType, kLocalDotDomain);
     
     // get zone presets
-    mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", getDefaultFileLocation(kAppPresetFiles).getChildFile("ZonePresets"), "json"));
+    mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets"), "json"));
     mZonePresets->setListener(this);
     mZonePresets->findFilesImmediate();
     
