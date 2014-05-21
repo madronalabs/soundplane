@@ -9,7 +9,7 @@
 #include "Zone.h"
 
 static const MLSymbol zoneTypes[kZoneTypes] = {"note_row", "x", "y", "xy", "z", "toggle"};
-static const float kVibratoFreq = 12.0f;
+static const float kVibratoFilterFreq = 12.0f;
 
 // turn zone type name into enum type. names above must match ZoneType enum.
 int Zone::symbolToZoneType(MLSymbol s)
@@ -31,8 +31,11 @@ mZoneID(0),
 mType(-1),
 mBounds(0, 0, 1, 1),
 mStartNote(60),
-mTranspose(0),
 mVibrato(0),
+mHysteresis(0),
+mQuantize(0),
+mNoteLock(0),
+mTranspose(0),
 mScaleNoteOffset(0),
 mControllerNum1(1),
 mControllerNum2(2),
@@ -50,7 +53,7 @@ mListeners(l)
 		mNoteFilters[i].setSampleRate(kSoundplaneSampleRate);
 		mNoteFilters[i].setOnePole(250.0f);
 		mVibratoFilters[i].setSampleRate(kSoundplaneSampleRate);
-		mVibratoFilters[i].setOnePole(kVibratoFreq);
+		mVibratoFilters[i].setOnePole(kVibratoFilterFreq);
 	}
     
     for(int i=0; i<kZoneValArraySize; ++i)        
@@ -120,6 +123,12 @@ void Zone::processTouches()
         mTouches2[i] = mTouches1[i];
         mTouches1[i] = mTouches0[i];
         mTouches0[i].clear();
+        
+        // store start of touch
+        if (mTouches1[i].isActive() && !(mTouches2[i].isActive()))
+        {
+            mStartTouches[i] = mTouches1[i];
+        }
     }
     switch(mType)
     {
@@ -151,6 +160,7 @@ void Zone::processTouchesNoteRow()
     {
         ZoneTouch t1 = mTouches1[i];
         ZoneTouch t2 = mTouches2[i];
+        ZoneTouch tStart = mStartTouches[i];
         bool isActive = t1.isActive();
         bool wasActive = t2.isActive();
         
@@ -158,17 +168,33 @@ void Zone::processTouchesNoteRow()
         float t1y = t1.pos.y();
         float t1z = t1.pos.z();
         float t1dz = t1.pos.w();
+        float tStartX = tStart.pos.x();
         
-        float xPos = mXRange(t1x) - mBounds.left();
-        float vibratoX = xPos;
-        float scaleNote = mScaleMap.getInterpolatedLinear(xPos - 0.5f);
-        float scaleNoteQ = mScaleMap[(int)xPos];
+        float currentXPos = mXRange(t1x) - mBounds.left();
+        float startXPos = mXRange(tStartX) - mBounds.left();
+        float vibratoX = currentXPos;
+        float touchPos, scaleNote;
+        
+        if(mNoteLock)
+        {
+            touchPos = startXPos;
+        }
+        else
+        {
+            touchPos = currentXPos;
+        }
+        
         if(mQuantize)
         {
-            scaleNote = scaleNoteQ;
+            scaleNote = mScaleMap[(int)touchPos];
+        }
+        else 
+        {
+            scaleNote = mScaleMap.getInterpolatedLinear(touchPos - 0.5f);
         }
         
         // setup filter inputs / outputs
+        // TODO use new simpler utility filter classes
         mNoteFilters[i].setInput(&scaleNote);
         mNoteFilters[i].setOutput(&scaleNote);
         mVibratoFilters[i].setInput(&vibratoX);
@@ -190,17 +216,22 @@ void Zone::processTouchesNoteRow()
             mVibratoFilters[i].process(1);
             
             // add vibrato to note
-            float vibratoHP = (xPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;
+            float vibratoHP = (currentXPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;
             scaleNote += vibratoHP;
             sendMessage("touch", "continue", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
         else if(wasActive)
         {
             // on note off, retain last note for release
-            float lastX = mXRange(t2.pos.x()) - mBounds.left();
-            float lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
-            if(mQuantize) {
-                lastScaleNote = scaleNoteQ;
+            float lastScaleNote;
+            if(mQuantize)
+            {
+                lastScaleNote = scaleNote;
+            }
+            else
+            {
+                float lastX = mXRange(t2.pos.x()) - mBounds.left();
+                lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
             }
 
             sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + lastScaleNote);
@@ -223,10 +254,10 @@ void Zone::processTouchesNoteOffs()
         float t2x = t2.pos.x();
         float xPos = mXRange(t2x) - mBounds.left();
         float scaleNote = mScaleMap.getInterpolatedLinear(xPos - 0.5f);
-        if(mQuantize) {
+        if(mQuantize)
+        {
             scaleNote = mScaleMap[(int)xPos];
-        }
-      
+        }      
         if(!isActive && wasActive)
         {
             // on note off, retain last note for release

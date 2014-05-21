@@ -114,6 +114,7 @@ protected:
     float mVibrato;
     float mHysteresis;
     bool mQuantize;
+    bool mNoteLock;
     int mTranspose;
     
     // start note falls on this degree of scale-- for diatonic and other non-chromatic scales
@@ -153,6 +154,8 @@ private:
     ZoneTouch mTouches1[kSoundplaneMaxTouches];
     // touch positions previous frame
     ZoneTouch mTouches2[kSoundplaneMaxTouches];
+    // touch positions saved at touch onsets
+    ZoneTouch mStartTouches[kSoundplaneMaxTouches];
     
 	float mSnapFreq;
 	std::vector<Biquad> mNoteFilters;
