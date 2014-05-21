@@ -287,7 +287,10 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 	{
         sendParametersToZones();
 	}
-	
+	else if (p == "lock")
+	{
+        sendParametersToZones();
+	}
 	else if (p == "data_freq_midi")
 	{
         // TODO attribute
@@ -805,15 +808,16 @@ void SoundplaneModel::sendParametersToZones()
 	const float v = getModelFloatParam("vibrato");
     const float h = getModelFloatParam("hysteresis");
     bool q = getModelFloatParam("quantize");
+    bool nl = getModelFloatParam("lock");
     int t = getModelFloatParam("transpose");
     float sf = getModelFloatParam("snap");
     
- debug() << "vibrato: " << v << "\n";
     for(int i=0; i<zones; ++i)
 	{
         mZones[i]->mVibrato = v;
         mZones[i]->mHysteresis = h;
         mZones[i]->mQuantize = q;
+        mZones[i]->mNoteLock = nl;
         mZones[i]->mTranspose = t;
         mZones[i]->setSnapFreq(sf);
     }
@@ -825,14 +829,9 @@ void SoundplaneModel::sendTouchDataToZones()
 	float x, y, z, dz;
 	int age;
     
-	float note, noteQuant, vibratoX, vibratoHP;
-	//const float thresh = getModelFloatParam("z_thresh");
 	const float zmax = getModelFloatParam("z_max");
 	const float zcurve = getModelFloatParam("z_curve");
 	const int maxTouches = getModelFloatParam("max_touches");
-	const int quantize = getModelFloatParam("quantize");
-	const int lock = getModelFloatParam("lock");
-	const int transpose = getModelFloatParam("transpose");
 	const float hysteresis = getModelFloatParam("hysteresis");
     
 	MLRange yRange(0.05, 0.8);
