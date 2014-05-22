@@ -107,8 +107,7 @@ void Zone::clearTouches()
 
 void Zone::addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz)
 {
-   // debug() << "zone " << mName << " adding touch at " << x << ", " << y << "\n";
-    
+    // debug() << "zone " << mName << " adding touch at " << x << ", " << y << "\n";    
     // convert to unity range over x and y bounds
     mTouches0[i] = ZoneTouch(mXRangeInv(x), mYRangeInv(y), kx, ky, z, dz);
 }
@@ -164,8 +163,20 @@ void Zone::processTouchesNoteRow()
         bool isActive = t1.isActive();
         bool wasActive = t2.isActive();
         
-        float t1x = t1.pos.x();
-        float t1y = t1.pos.y();
+        bool releasing = (!isActive && wasActive);
+        
+        float t1x, t1y;
+        if(releasing)
+        {
+            // use previous position on release
+            t1x = t2.pos.x();
+            t1y = t2.pos.y();
+        }
+        else
+        {
+            t1x = t1.pos.x();
+            t1y = t1.pos.y();
+        }
         float t1z = t1.pos.z();
         float t1dz = t1.pos.w();
         float tStartX = tStart.pos.x();
@@ -233,7 +244,6 @@ void Zone::processTouchesNoteRow()
                 float lastX = mXRange(t2.pos.x()) - mBounds.left();
                 lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
             }
-
             sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + lastScaleNote);
         }
     }
