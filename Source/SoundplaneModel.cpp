@@ -563,7 +563,7 @@ void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& nor
 	{
 		setModelParam("tracker_calibration", cal);	
 		setModelParam("tracker_normalize", norm);	
-		float thresh = avgDistance;
+		float thresh = avgDistance * 1.75f;
 		MLConsole() << "SoundplaneModel::hasNewCalibration: calculated template threshold: " << thresh << "\n";
 		setModelParam("t_thresh", thresh);	
 	}
