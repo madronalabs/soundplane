@@ -1056,7 +1056,7 @@ void SoundplaneModel::processCallback()
 			mSurface(ww, j) = 0.;
 			mSurface(ww - 1, j) = mSurface(ww - 2, j);
 		}
-			
+        
 		// filter data in time
 		mNotchFilter.setInputSignal(&mSurface);
 		mNotchFilter.setOutputSignal(&mSurface);
@@ -1432,8 +1432,11 @@ const MLSignal& SoundplaneModel::getSignalForViewMode(SoundplaneViewMode m)
 		case kXY:
 			return mCalibratedSignal; 
 			break;
-		case kTest:
-			return mTestSignal; 
+		case kTest1:
+			return mTestSignal;
+			break;
+		case kTest2:
+			return mTracker.getNormalizeMap();
 			break;
 		case kNrmMap:
 			return mTracker.getNormalizeMap();

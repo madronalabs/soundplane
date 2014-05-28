@@ -32,7 +32,7 @@ public:
     void newOpenGLContextCreated();
     void openGLContextClosing();
     void mouseDrag (const MouseEvent& e);
-    void renderTouches();
+    void renderTouchBarGraphs();
     void renderOpenGL();
     void resizeWidget(const MLRect& b, const int u);
  	void setModel(SoundplaneModel* m);

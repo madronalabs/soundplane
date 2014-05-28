@@ -31,8 +31,9 @@ enum SoundplaneViewMode
 	kCalibrated = 1,
 	kCooked = 2,
 	kXY = 3,
-	kTest = 4,
-	kNrmMap = 5
+	kNrmMap = 4,
+	kTest1 = 5,
+	kTest2 = 6
 };
 
 class SoundplaneModel :

@@ -36,6 +36,7 @@ public:
 	void renderOpenGL();
 	void renderXYGrid();
 	void renderZGrid();
+	void renderBarChart();
 
 	void timerCallback();
 

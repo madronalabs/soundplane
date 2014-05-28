@@ -37,27 +37,6 @@ void SoundplaneZoneView::mouseDrag (const MouseEvent& e)
 {
 }
 
-// temporary, ugly
-// TODO more 2d OpenGL drawing helpers
-void SoundplaneZoneView::drawDot(Vec2 pos, float r)
-{
-	int steps = 16;
-    
-	float x = pos.x();
-	float y = pos.y();
-    
-	glBegin(GL_TRIANGLE_FAN);
-	glVertex2f(x, y);
-	for(int i=0; i<=steps; ++i)
-	{
-		float theta = kMLTwoPi * (float)i / (float)steps;
-		float rx = r*cosf(theta);
-		float ry = r*sinf(theta);
-		glVertex3f(x + rx, y + ry, 0.f);
-	}
-	glEnd();
-}
-
 void SoundplaneZoneView::renderGrid()
 {
     int viewW = getBackingLayerWidth();
@@ -114,14 +93,14 @@ void SoundplaneZoneView::renderGrid()
 			float d = viewH / 50;
             Vec4 dotColor(0.6f, 0.6f, 0.6f, 1.f);
             glColor4fv(&dotColor[0]);
-            drawDot(Vec2(x, y - d), r);
-			drawDot(Vec2(x, y + d), r);
+            MLGL::drawDot(Vec2(x, y - d), r);
+			MLGL::drawDot(Vec2(x, y + d), r);
 		}
 		if((k == 3)||(k == 5)||(k == 7)||(k == 9))
 		{
             Vec4 dotColor(0.6f, 0.6f, 0.6f, 1.f);
             glColor4fv(&dotColor[0]);
-            drawDot(Vec2(x, y), r);
+            MLGL::drawDot(Vec2(x, y), r);
 		}
 	}
 }
@@ -152,7 +131,7 @@ void SoundplaneZoneView::renderZones()
 	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
 	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
-    float smallDotSize = xRange(0.1f);
+    float smallDotSize = xRange(1.f);
     
    // float strokeWidth = viewW / 100;    
     
@@ -205,7 +184,7 @@ void SoundplaneZoneView::renderZones()
                         float dx = xRange(touch.pos.x());
                         float dy = yRange(touch.pos.y());
                         float dz = touch.pos.z();
-                        drawDot(Vec2(dx, dy), smallDotSize + dz*smallDotSize);
+                        MLGL::drawDot(Vec2(dx, dy), dz*smallDotSize);
                     }
                 }
                 break;
@@ -237,7 +216,7 @@ void SoundplaneZoneView::renderZones()
                 MLGL::strokeRect(MLRect(x, zoneRectInView.top(), 0., zoneRectInView.height()));
                 MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.));
                 glColor4fv(&dotFill[0]);
-                drawDot(Vec2(x, y), smallDotSize);
+                MLGL::drawDot(Vec2(x, y), smallDotSize*0.25f);
                 break;
                                 
             case kControllerZ:
@@ -260,7 +239,7 @@ void SoundplaneZoneView::renderZones()
                     glColor4fv(&activeFill[0]);
                     MLGL::fillRect(zoneRectInView);
                     glColor4fv(&dotFill[0]);
-                    drawDot(zoneCenter, smallDotSize*2);
+                    MLGL::drawDot(zoneCenter, smallDotSize*0.25f);
                 }
                 break;
          }

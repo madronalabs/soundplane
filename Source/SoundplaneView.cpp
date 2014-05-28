@@ -550,9 +550,13 @@ void SoundplaneView::doParamChangeAction(MLSymbol param, const MLModelParam & ol
 		{
 			setViewMode(kXY);
 		}
-		else if(*v == "test")
+		else if(*v == "test1")
 		{
-			setViewMode(kTest);
+			setViewMode(kTest1);
+		}
+		else if(*v == "test2")
+		{
+			setViewMode(kTest2);
 		}
 		else if(*v == "norm. map")
 		{

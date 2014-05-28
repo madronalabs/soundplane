@@ -39,7 +39,7 @@ void SoundplaneTouchView::mouseDrag (const MouseEvent& e)
 {
 }
 
-void SoundplaneTouchView::renderTouches()
+void SoundplaneTouchView::renderTouchBarGraphs()
 {
 	if (!mpModel) return;
 	if (!isShowing()) return;
@@ -120,7 +120,7 @@ void SoundplaneTouchView::renderOpenGL()
 	if (!mpModel) return;
     const Colour c = findColour(MLLookAndFeel::backgroundColor);
     OpenGLHelpers::clear (c);
-    renderTouches();
+    renderTouchBarGraphs();
 }
 
 // GL views need to attach to their components here, because on creation

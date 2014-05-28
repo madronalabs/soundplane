@@ -151,7 +151,7 @@ void SoundplaneGridView::renderXYGrid()
 	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
 	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
-
+    
 	// fill calibrated data areas
 	for(int j=0; j<sensorHeight; ++j)
 	{
@@ -210,12 +210,13 @@ void SoundplaneGridView::renderXYGrid()
 		glEnd();
 	}
 	
-	// draw dots
+	// draw guitar dots
 	for(int i=0; i<=keyWidth; ++i)
 	{
 		float x = xRange.convert(i + 0.5);
 		float y = yRange.convert(2.5);
 		int k = i%12;
+        glColor4f(1.0f, 1.0f, 1.0f, 0.75f);
 		if(k == 0)
 		{
 			MLGL::drawDot(Vec2(x, y - dotSize*1.5), dotSize);
@@ -227,46 +228,35 @@ void SoundplaneGridView::renderXYGrid()
 		}
 	}
 	
-	// render current touches on top of surface
+	// render current touch dots
 	//
 	const int nt = mpModel->getModelFloatParam("max_touches");
 	const MLSignal& touches = mpModel->getTouchFrame();
-	float k = 0.04f;
+
 	for(int t=0; t<nt; ++t)
 	{
 		int age = touches(ageColumn, t);
 		if (age > 0)
 		{
-			glColor4fv(MLGL::getIndicatorColor(t));
-
-			float x = touches(xColumn, t) * sensorWidth;
-			float y = touches(yColumn, t) * sensorHeight;
+			float x = touches(xColumn, t);
+			float y = touches(yColumn, t);
 			Vec2 xyPos(x, y);
 			Vec2 gridPos = mpModel->xyToKeyGrid(xyPos);
 			
-			float tx = xRange.convert(gridPos.x() + 0.5f);
-			float ty = yRange.convert(gridPos.y() + 0.5f);
-			float tz = 0.;
+			float tx = xmRange.convert(x + 0.5);
+			float ty = ymRange.convert(y + 0.5);
+			float tz = touches(zColumn, t);
 			
-			glBegin(GL_QUADS);
-			float x1 = tx - k;
-			float y1 = ty - k;
-			float x2 = tx + k;
-			float y2 = ty + k;
-
-			glVertex3f(x1, y1, tz);
-			glVertex3f(x2, y1, tz);
-			glVertex3f(x2, y2, tz);
-			glVertex3f(x1, y2, tz);
-			glEnd();
-			
-//debug() << "x: " << x << ", y: " << y << ", z: " << z << ", d: " << d << ", age:" << age << "\n";
-
+            Vec4 dataColor(MLGL::getIndicatorColor(t));
+            dataColor[3] = 0.75;
+			glColor4fv(&dataColor[0]);
+			MLGL::drawDot(Vec2(tx, ty), dotSize*10.0*tz);
 		}
 	}
 	
 	// render touch position history xy
 	const MLSignal& touchHistory = mpModel->getTouchHistory();
+    
 	int ctr = mpModel->getHistoryCtr();
 	for(int touch=0; touch<nt; ++touch)
 	{
@@ -283,9 +273,9 @@ void SoundplaneGridView::renderXYGrid()
 				float y = touchHistory(yColumn, touch, cc);
 				if((x > 0.) && (y > 0.))
 				{
-					Vec2 gridPos = mpModel->xyToKeyGrid(Vec2(x*sensorWidth, y*sensorHeight));
-					float px = xRange.convert(gridPos.x() + 0.5f);
-					float py = yRange.convert(gridPos.y() + 0.5f);
+					Vec2 gridPos = mpModel->xyToKeyGrid(Vec2(x, y));
+					float px = xRange.convert(gridPos.x());
+					float py = yRange.convert(gridPos.y());
 					glVertex3f(px, py, 0.);	
 				}
 				if(--cc < 0) { cc = kSoundplaneHistorySize - 1; }
@@ -358,7 +348,7 @@ void SoundplaneGridView::renderZGrid()
                 offset = -displayScale;
                 scale *= 1.;
                 break;
-            case kTest:
+            case kTest1:
             default:
                 scale *= 10.;
                 break;
@@ -502,15 +492,116 @@ void SoundplaneGridView::renderZGrid()
     }
 }
 
+
+void SoundplaneGridView::renderBarChart()
+{
+	int sensorWidth = mpModel->getWidth();
+	int sensorHeight = mpModel->getHeight();
+	int state = mpModel->getDeviceState();
+    int viewW = getBackingLayerWidth();
+    int viewH = getBackingLayerHeight();
+	int margin = viewH / 30;
+	int keyWidth = 30; // Soundplane A TODO get from tracker
+	int keyHeight = 5;
+    
+    // put origin in lower left.
+    MLGL::orthoView2(viewW, viewH);
+    MLRange xRange(0, keyWidth, margin, viewW - margin);
+	MLRange yRange(0, keyHeight, margin, viewH - margin);
+    
+	// Soundplane A
+	MLRange xmRange(2, sensorWidth-2);
+	xmRange.convertTo(MLRange(margin, viewW - margin));
+	MLRange ymRange(0, sensorHeight);
+	ymRange.convertTo(MLRange(margin, viewH - margin));
+    
+    const MLSignal& viewSignal = mpModel->getSignalForViewMode(mViewMode);
+    
+    float displayScale = mpModel->getModelFloatParam("display_scale");
+    float scale = displayScale;
+    float offset = 0.f;
+    switch(mViewMode)
+    {
+        case kTest2:
+        default:
+            offset = 0.;
+            scale *= 1.;
+            break;
+    }
+	
+	// draw stuff in immediate mode.
+	// TODO don't use fixed function pipeline.
+	//
+	Vec4 lineColor;
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
+	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
+	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
+    
+	// draw lines at key grid
+	lineColor = darkBlue;
+	if(state != kDeviceHasIsochSync)
+	{
+		lineColor[3] = 0.1f;
+	}
+	// horiz lines
+	glColor4fv(&lineColor[0]);
+	for(int j=0; j<=keyHeight; ++j)
+	{
+		glBegin(GL_LINE_STRIP);
+		for(int i=0; i<=keyWidth; ++i)
+		{
+			float x = xRange.convert(i);
+			float y = yRange.convert(j);
+			float z = 0.;
+			glVertex3f(x, y, -z);
+		}
+		glEnd();
+	}
+	// vert lines
+	for(int i=0; i<=keyWidth; ++i)
+	{
+		glBegin(GL_LINE_STRIP);
+		for(int j=0; j<=keyHeight; ++j)
+		{
+			float x = xRange.convert(i);
+			float y = yRange.convert(j);
+			float z = 0.;
+			glVertex3f(x, y, -z);
+		}
+		glEnd();
+	}
+	
+	// draw dots
+	for(int j=0; j<sensorHeight; ++j)
+	{
+        for(int i=0; i<sensorWidth; ++i)
+        {
+            float x = xmRange.convert(i + 0.5);
+            float y = ymRange.convert(j + 0.5);
+
+            float z = viewSignal(i, j)*scale + offset;
+            MLGL::drawDot(Vec2(x, y), z);
+            
+        }
+    }
+}
+
 void SoundplaneGridView::renderOpenGL()
 {
     jassert (OpenGLHelpers::isContextActive());
     if (!mpModel) return;    
+    glEnable(GL_BLEND);
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     const Colour c = findColour(MLLookAndFeel::backgroundColor);
     OpenGLHelpers::clear (c);
     if (mViewMode == kXY)
     {
         renderXYGrid();
+    }
+    else if (mViewMode == kTest2)
+    {
+        renderBarChart();
     }
     else
     {
