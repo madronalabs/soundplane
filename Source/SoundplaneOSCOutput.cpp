@@ -135,7 +135,7 @@ void SoundplaneOSCOutput::notify(int connected)
 	//debug() << "SoundplaneOSCOutput::notify\n";
 }
 
-void SoundplaneOSCOutput::processMessage(const SoundplaneDataMessage* msg)
+void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* msg)
 {
     static const MLSymbol startFrameSym("start_frame");
     static const MLSymbol touchSym("touch");

@@ -213,7 +213,7 @@ void SoundplaneMIDIOutput::modelStateChanged()
 
 }
 
-void SoundplaneMIDIOutput::processMessage(const SoundplaneDataMessage* msg)
+void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage* msg)
 {
     static const MLSymbol startFrameSym("start_frame");
     static const MLSymbol touchSym("touch");

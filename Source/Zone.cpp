@@ -419,7 +419,7 @@ void Zone::sendMessageToListeners()
     {
         if((*it)->isActive())
         {
-            (*it)->processMessage(&mMessage);
+            (*it)->processSoundplaneMessage(&mMessage);
         }
     }
 }

@@ -41,7 +41,7 @@ void SoundplaneController::initialize()
     // get zone presets
     mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets"), "json"));
     mZonePresets->setListener(this);
-    mZonePresets->findFilesImmediate();
+    mZonePresets->searchForFilesNow();
     
     mZonePresets->dump();
     
@@ -202,10 +202,14 @@ void SoundplaneController::setupMenus()
     
 	MLMenuPtr zoneMenu(new MLMenu("zone_preset"));
 	mMenuMap["zone_preset"] = zoneMenu;
+    
+    // set up built-in zone maps
     zoneMenu->addItem("chromatic");
 	zoneMenu->addItem("rows in fourths");
 	zoneMenu->addItem("rows in octaves");
 	zoneMenu->addSeparator();
+    
+    // add zone presets from disk
     mZoneMenuStartItems = zoneMenu->getSize();
     MLMenuPtr p = mZonePresets->buildMenu();
     zoneMenu->appendMenu(p);

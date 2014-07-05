@@ -72,7 +72,7 @@ public:
 	void initialize();
 	
     // SoundplaneDataListener
-    void processMessage(const SoundplaneDataMessage* msg);
+    void processSoundplaneMessage(const SoundplaneDataMessage* msg);
 
     void modelStateChanged();
 	void setDataFreq(float f) { mDataFreq = f; }

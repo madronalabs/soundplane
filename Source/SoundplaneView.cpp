@@ -21,7 +21,6 @@ SoundplaneHeaderView::SoundplaneHeaderView(SoundplaneModel* pModel, MLResponder*
 {
     setWidgetName("soundplane_header_view");
 
-	float w = kViewGridUnitsX;
 	float margin = 0.20f;
 	float pw = 4.;
 	float h = 1.f;

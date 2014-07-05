@@ -7,10 +7,10 @@
 
 void *soundplaneModelProcessThreadStart(void *arg);
 
-const unsigned char kModelDefaultCarriers[42] = 
+const int kModelDefaultCarriersSize = 40;
+const unsigned char kModelDefaultCarriers[kModelDefaultCarriersSize] =
 {	
-	0, 0,
-	// 40 default carriers.  avoiding 16, 32 (always bad)	
+	// 40 default carriers.  avoiding 16, 32 (always bad)
 	6, 7, 8, 9, 
 	10, 11, 12, 13, 14, 
 	15, 17, 18, 19, 20, 
@@ -940,7 +940,7 @@ void SoundplaneModel::sendMessageToListeners()
  	for(SoundplaneListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
     if((*it)->isActive())
     {
-        (*it)->processMessage(&mMessage);
+        (*it)->processSoundplaneMessage(&mMessage);
     }
 }
 

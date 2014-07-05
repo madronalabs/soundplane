@@ -124,8 +124,6 @@ void SoundplaneGridView::renderXYGrid()
     
 	int keyWidth = 30; // Soundplane A TODO get from tracker
 	int keyHeight = 5;
-    int lineWidth = viewW / 200;
-    int thinLineWidth = viewW / 400;
     
     // put origin in lower left.
     MLGL::orthoView2(viewW, viewH);

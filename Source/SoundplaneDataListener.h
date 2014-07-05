@@ -34,7 +34,7 @@ class SoundplaneDataListener
 public:
 	SoundplaneDataListener() : mActive(false) {}
 	virtual ~SoundplaneDataListener() {}
-    virtual void processMessage(const SoundplaneDataMessage* message) = 0;
+    virtual void processSoundplaneMessage(const SoundplaneDataMessage* message) = 0;
     bool isActive() { return mActive; }
 
 protected:
