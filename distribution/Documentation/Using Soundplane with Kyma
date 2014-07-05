@@ -1,0 +1,37 @@
+
+Notes on Soundplane / Kyma integration
+
+The Soundplane software can send data to the Symbolic Sound Paca or Pacarana over MIDI as well as OSC. 
+
+
+
+MIDI
+
+To enable Kyma integration, select "poll kyma" on the Expert page in the Soundplane app. When this is on, the Soundplane sends a NRPN (non-registered parameter number) over MIDI to tell the Kyma that a Soundplane is connected, and report the number of touches selected. The NRPN sent by the Soundplane is: channel 16, 0x53, 0x50 ('S', 'P' for Soundplane) followed by the number of voices. It is sent every 4 seconds. 
+
+The Kyma should respond by reporting the polyphony of the currently selected Kyma patch. This is used by the Soundplane app to change the number of touches to match, if possible. 
+
+In addition the Kyma sets its pitchBend range to +- 4 octaves when it detects a Soundplane. This allows the widest possible range for continuous pitch bends.  
+
+In order to avoid conflicts with the Paca(rana)'s processing of MotorMix messages, it is helpful to avoid using MIDI channel 1, and use MIDI channels 2 through 16 for note and continuous controller messages. These MIDI settings are on the Zones page. 
+
+A note zone in the Soundplane app (as used in the built-in Soundplane maps chromatic, rows in fourths, etc) sends the following information over MIDI:
+
+pitch: 				note number + pitch bend
+touch velocity: 	note velocity
+touch pressure:		channel aftertouch, duplicated on controller number 11.
+touch absolute y:	controller 74.
+
+When the Soundplane app is in multichannel mode, each note is sent on its own MIDI channel starting from the base channel set by "start chan."
+
+
+
+OSC
+
+When a Kyma is connected, the Soundplane app swiitches from t3d format to Kyma OSC format. Note messages are sent as follows:
+"/key" (int)touchID (int)off/on (float)note (float)z (float)y 
+
+All current touches for a frame are sent in one OSC bundle. 
+
+Though the configurability of both systems can make the situation complicated if one wishes, our intention is to make the Soundplane plug-and-play with MIDI and OSC. We welcome your feedback. 
+

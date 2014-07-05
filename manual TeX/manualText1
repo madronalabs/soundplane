@@ -1,0 +1,149 @@
+
+
+Aalto Manual
+
+* awesome title (TBD)
+
+
+* Foreword
+	note from me, thanks
+
+* introduction
+	what is aalto?
+		a digital signal processor designed to make music with. 
+		a digital instrument.
+		designed to make cool sounds, as in individual notes, 
+		also textures being crazy seqeunced organizations of sounds.
+		not just a "note player". a little design philosophy.
+	what can you do with it?
+	a brief tour of areas: top, modules, patcher. 
+	scope: anything outside of aalto is your host program's fault.
+	about this manual: what's in each section.
+
+
+*  Controlling Aalto.   (more awesome name?)
+	
+	Aalto is a digital instrument that manipulates SIGNALS.  a signal is a changing value over time.  If the changes are fast enough, you can hear the signal directly as audio, by sending the changes through an amplifier to a speaker.  If the changes are too slow to hear, the signal may be best considered as a modulation signal, meant for affecting other signals that you *do* hear.  Audio and modulation signals are exactly the same thing, but with different values. 
+	
+	each MODULE is a collection of algorithms that affect the signals.	
+	signals flow through modules in a network.   at many points in the network you can affect the signal flow, either by changing the value of a signal or by connecting a signal from another point.   A complete collection of all the ways you can affect aalto is called a PATCH.
+	
+	Signals are controlled by DIALS.
+	A dial lets you both view a signal and manipulate its value.
+	Each dial adjusts a signal at one point in aalto's DSP graph.
+	Dials, how to adjust them, they are also oscilloscopes.
+	the numerical readouts on the dials.  Viewers only for now. 
+	dial philosophy: controls next to visual indicators so your eye is not jumping around.  direct manipulation. code as stuff.
+	
+	the PATCHER controls all configurable signal routing.
+		
+	Signals and patching
+	How to use the patcher interface.
+		aalto was designed to make patching easy.  
+		what is the patcher?
+		the patcher lets you connect any signal output to any signal input easily, wihtout navigating thorugh menus. 
+		making a connection is two easy steps: drag to connect, then set amount.
+		making cables
+		adjusting amount with "X" dials
+		selecting cables
+		moving cables
+		deleting cables
+		multiple connections to one input are added, then scaled by the amount set on the "X" dial.
+		
+		
+*  The modules and what they do. (more awesome name?)
+	
+	Top section
+	KEY
+	SEQUENCER
+	LFO
+	ENV 1
+	ENV 2
+	OSC
+		pitch
+		fm (alias-free)
+		waveshape
+		timbre
+	GATE
+	WAVEGUIDE / DELAY
+	FILTER
+	OUTPUT
+
+
+
+*	Techniques. (more awesome name?)
+	Putting it all Together
+	
+	aalto: a few modules that combine synergistically.
+	
+	Now that we have gone through the possibly sometimes dry but hopefully very informative rundown of each module in isolation, we can begin to explore some of the fun things that can be done by putting the modules together.  We'll also go over some of the not-so-obvious results that certain connections can make. If you're an experienced synthesist, already bursting at the seams with ideas after the last section, you may want to get off the train here and just start playing.  You can always come back if you ever need more inspiration.  
+
+	simplest patch - default
+	
+	Aalto's default patch can be found installed outside of all the folders in the patch menu for easy access.  It's a starting point for just about any keyboard-controlled patch you might want to make.  Let's take a look at it.
+	
+	There are only two patch cords.  Consider the one that goes from the output of ENVELOPE 1 to the level input of the GATE.  The level dial on this input (yes, the level dial of the level input) is set to its maximum value.  This multiplies the incoming signal by 2.  Whenever ENVELOPE 1 is triggered, its signal causes the GATE to open, fading the signal from the COMPLEX OSCILLATOR in and out over time according to the envelope shape.  Note that the key / seq button on ENVELOPE 1 needs to be in key mode in order for MIDI input to trigger the envelope.  It is, and so playing a key plays a note.  So far, so good.
+	
+	The other patch cord, on the left, goes from the pitch output of the KEY module to the logarithmic pitch input of the COMPLEX OSCILLATOR.  With this patch cord in place and the right settings for the input dial and carrier frequency, the oscillator tracks keyboard input perfectly.  Let's look in detail at how the KEY module and oscillator work together. 
+	
+	The big green CARRIER frequency dial is set to 220.0 Hz / A3.  This sets the rest frequency of the oscillator: its frequency when the pitch inputs are both 0.  When an A3 (MIDI note 69) is played, the KEY module sends a value of 0 from its pitch output.  So A3 on the keyboard equals A3 on the oscillator.   
+	
+	The input dial for the logarithmic pitch input is set to 1.0.  So, the value from the KEY pitch is added to the oscillator pitch signal without scaling.  Every octave change on the keyboard produces a change of 1.0 at the pitch output, and since the logarithmic input is used (recall: logarithmic means equal intervals of input produce equal multiples of output) this changes the oscillator pitch by one octave.  
+	
+	Try playing the notes A1, A2 and so on on your keyboard with animation engaged.  You should be able to see the signal value in the pitch dial move precisely to each of the detents.  If you change the input level dial to a value other than 1.0, the input scaling will no longer match up with the detents.  Go ahead and try this.  If it's music in tune you are after, you might rightly think this setting is just plain wrong.  No problem: just double-click or command-click the level to return it to the calibrated value.  And if you have ever had to tune an actual analog synthesizer, now may be a good time to reflect on how computers can be your friends. 
+	
+	
+	more expressive patch with modulation
+	
+	
+	
+	Think in terms of shapes, time and frequency domains
+	an alternative default patch
+	think outside the keyboard!  mod controls amp for example. 
+	there are really 3-4 oscillators
+	complex shapes
+	stacking voices - voice parameter
+		(like oberheim 4-voice)
+	
+	multiple sequencer rates
+	sequencer chords
+	
+	many harmonics ?
+	
+	differential motion (speed control) with LFO freq / SEQ rate input
+	
+	advanced MIDI control
+	chaos and other sequencer tricks
+	
+	Experiment!  Happy patching!
+	
+	
+* 	Specifications
+
+*	Bibliography
+
+
+
+
+
+10 commandments:
+
+- make the interface modeless.  Everything affecting the sound you hear is visible on the screen.  period.  
+- be style agnostic.  no good instrument has ever been designed for a particular genre of music.  so don't make a trance or glitch or jazz instrument, make an instrument instrument.
+- make the interface uncluttered.  A minimum of things that don't affect the sound are visible. 
+- software is software.  how can we make computers good, expressive tools for making sound?   past tools can provide inspiration, but also limitations that should be ignored.   
+- know your history.  nearly everything you are thinking about has been done before.  learn what worked and what didn't.  steal the best ideas whenever useful, respectful and legal. 
+- make something new.  design something that is itself, not a simulation of something that people wish they had.
+- make instruments.  instrument design is different from lab equipment design.  the goal is not precision but expressivity. 
+- make open systems that enable exploration.  Everyone wants different features.  Whenever possible, engineer the flexibility for people to add their own instead of bugging us about them. 
+- do sweat the small stuff.  in instrument making, every detail is important.
+- it's the sound.  Fetishize the amazing sound that comes from a given technology, but the technology itself.  So don't make an instrument that sounds analog, make one that sounds good.  
+
+- UNHYPED
+- a professional tool does what you tell it to do.  anything else may be easier for people starting out, but can be hell on people who know what they are doing.  no built-in compression. 
+- don't assume a context that priviliges certain sound qualities.  if you turn the knobs to make a bad sound, it will make a bad sound.  i don't even know what a bad sound is.  
+- make sounds other software can't make.  otherwise, why bother?
+
+
+- the best copy protection is none.  the player should have to do a minimum of things besides play.  if the first thing i have to do when i download your instrument is type in a 20-character nonsense code, we are not starting off on a positive note.  and it should go without saying by noe that a hardware dongle is a deal-breaker.
+

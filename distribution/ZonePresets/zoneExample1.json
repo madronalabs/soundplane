@@ -1,0 +1,154 @@
+{
+	"zone":	{
+		"name":	"row_one",
+		"type":	"note_row",
+		"rect":	[8, 2, 14, 1],
+		"note": 48
+	},
+	"zone":	{
+		"name":	"row_two",
+		"type":	"note_row",
+		"rect":	[8, 3, 14, 1],
+		"note": 60
+
+	},
+	"zone":	{
+		"name":	"row_three",
+		"type":	"note_row",
+		"rect":	[8, 4, 14, 1],
+		"note": 72
+
+	},
+
+
+	"zone":	{
+		"name":	"z1",
+		"type":	"z",
+		"rect":	[8, 0, 2, 2],
+		"ctrl1": 16
+	},
+	"zone":	{
+		"name":	"z2",
+		"type":	"z",
+		"rect":	[10, 0, 2, 2],
+		"ctrl1": 16
+	},
+	"zone":	{
+		"name":	"z3",
+		"type":	"z",
+		"rect":	[12, 0, 2, 2],
+		"ctrl1": 16
+	},
+	"zone":	{
+		"name":	"z4",
+		"type":	"z",
+		"rect":	[14, 0, 2, 2],
+		"ctrl1": 16
+	},
+	"zone":	{
+		"name":	"z5",
+		"type":	"z",
+		"rect":	[16, 0, 2, 2],
+		"ctrl1": 16
+	},
+	"zone":	{
+		"name":	"z6",
+		"type":	"z",
+		"rect":	[18, 0, 2, 2],
+		"ctrl1": 16
+	},
+	"zone":	{
+		"name":	"z7",
+		"type":	"z",
+		"rect":	[20, 0, 2, 2],
+		"ctrl1": 16
+	},
+
+
+	"zone":	{
+		"name":	"ctrl_one",
+		"type":	"xy",
+		"channel": 1,
+		"ctrl1": 1,
+		"ctrl2": 2,
+		"rect":	[0, 0, 8, 5]
+	},
+
+
+	"zone":	{
+		"name":	"ctrl_y1",
+		"type":	"y",
+		"ctrl1": 3,
+		"rect":	[22, 0, 1, 5]
+	},
+	"zone":	{
+		"name":	"ctrl_y2",
+		"type":	"y",
+		"ctrl1": 4,
+		"rect":	[23, 0, 1, 5]
+	},
+	"zone":	{
+		"name":	"ctrl_y3",
+		"type":	"y",
+		"ctrl1": 5,
+		"rect":	[24, 0, 1, 5]
+	},
+	"zone":	{
+		"name":	"ctrl_y4",
+		"type":	"y",
+		"ctrl1": 6,
+		"rect":	[25, 0, 1, 5]
+	},
+
+
+	"zone":	{
+		"name":	"ctrl_x1",
+		"type":	"x",
+		"ctrl1": 7,
+		"rect":	[26, 1, 4, 1]
+	},
+	"zone":	{
+		"name":	"ctrl_x2",
+		"type":	"x",
+		"ctrl1": 8,
+		"rect":	[26, 2, 4, 1]
+	},
+	"zone":	{
+		"name":	"ctrl_x3",
+		"type":	"x",
+		"ctrl1": 9,
+		"rect":	[26, 3, 4, 1]
+	},
+	"zone":	{
+		"name":	"ctrl_x4",
+		"type":	"x",
+		"ctrl1": 10,
+		"rect":	[26, 4, 4, 1]
+	},
+
+
+	"zone":	{
+		"name":	"toggle1",
+		"type":	"toggle",
+		"ctrl1": 11,
+		"rect":	[26, 0, 1, 1]
+	},
+	"zone":	{
+		"name":	"toggle2",
+		"type":	"toggle",
+		"ctrl1": 12,
+		"rect":	[27, 0, 1, 1]
+	},
+	"zone":	{
+		"name":	"toggle3",
+		"type":	"toggle",
+		"ctrl1": 13,
+		"rect":	[28, 0, 1, 1]
+	},
+	"zone":	{
+		"name":	"toggle4",
+		"type":	"toggle",
+		"ctrl1": 14,
+		"rect":	[29, 0, 1, 1]
+	}
+}

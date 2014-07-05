@@ -1,0 +1,52 @@
+
+
+Soundplane application 1.1 release notes
+May 14, 2014
+
+
+To install this version: move the "Soundplane" application to your Applications folder, then move the directory "ZonePresets" to ~/Music/Madrona Labs/Soundplane. (To navigate to your Library folder on OS X 10.7 and above, hold down (option) and choose to Go menu in the Finder.)
+
+When you launch the Soundplane application, the menu at the top of the "Zones" page should contain three presets: chromatic, rows in fourths and rows in octaves, followed by a list of all the JSON files in the ZonePresets folder. If the JSON files do not appear, the ZonePresets directory is probably not in the right place. 
+
+The format of the zone files is human-readable and relatively self-explaining. There are two examples so far: 30sliders and zoneExample1.
+
+The Soundplane Max/MSP examples require the CNMAT Max externals to run. These can be found at http://cnmat.berkeley.edu/downloads . 
+
+
+changes:
+
+1.1:
+
+- PLEASE NOTE: moved support files to ~/Music/Madrona Labs.
+- fixed a problem where the wrong note value was sent on note-off
+- fixed a potential crash sending MIDI if a MIDI device was not set
+- made benign errors less alarming
+
+1.0a2:
+
+- two new kinds of zones: z (pressure only) and a toggle switch.
+- fixed an error where inactive touches were continuously sending their data
+- shortened some JSON zone names (just remove "controller_" to fix your presets)
+- updated Max/MSP examples 
+- moved matrix message into t3d OSC bundle with touches
+- restored some debug printing in the in-app console
+- added error info for JSON parsing
+- fixed possible bug with zone parsing
+- clarified the T3D format in docs
+- fixed an error reading calibration files
+- fix view issues for Retina display
+
+1.0a1:
+-new Zone features allow mapping notes and controllers to key grid
+-changed t3d format for wider OSC compatibility
+-OpenGL accelerated graphics
+-fixed graphics for Retina display
+-fixed a bug where SoundplaneController was initialized twice
+-fixed OpenGL errors on quit
+-fixed a possible crash in adjustPeak()
+-fixed note release when quantized
+-new raw matrix output
+
+
+ 
+
