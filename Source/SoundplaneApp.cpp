@@ -32,7 +32,7 @@ void SoundplaneApp::initialise (const String& commandLine)
     
 	mpController->setView(mpView);
     mpView->goToPage(0);
-	mpController->updateAllParams();
+	mpController->updateAllProperties();
 			
 	mpModel->initialize();
 	MLConsole() << "Starting Soundplane...\n";
@@ -51,7 +51,7 @@ void SoundplaneApp::initialise (const String& commandLine)
 
 void SoundplaneApp::shutdown()
 {
-	mpState->updateAllParams();
+	mpState->updateAllProperties();
 	mpState->saveState();
 	
 	if(mpView) delete mpView;

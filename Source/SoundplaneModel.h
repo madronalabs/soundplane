@@ -62,9 +62,9 @@ public:
 	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint);
 	
 	// MLModel
-	void setModelParam(MLSymbol p, float v);
-	void setModelParam(MLSymbol p, const std::string& v); 
-	void setModelParam(MLSymbol p, const MLSignal& v); 
+	void setModelProperty(MLSymbol p, float v);
+	void setModelProperty(MLSymbol p, const std::string& v);
+	void setModelProperty(MLSymbol p, const MLSignal& v);
 	
 	void initialize();
 	void clearTouchData();

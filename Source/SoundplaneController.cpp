@@ -55,7 +55,7 @@ void SoundplaneController::shutdown()
 
 void SoundplaneController::timerCallback()
 {
-	updateChangedParams();
+	updateChangedProperties();
 	PollNetServices();
 	debug().display();
 	MLConsole().display();
@@ -63,10 +63,10 @@ void SoundplaneController::timerCallback()
 	
 void SoundplaneController::buttonClicked (MLButton* pButton)
 {
-	MLSymbol p (pButton->getParamName());
+	MLSymbol p (pButton->getTargetPropertyName());
 	MLParamValue t = pButton->getToggleState();
 
-	mpModel->setModelParam(p, t);
+	mpModel->setModelProperty(p, t);
 
 	/*
 	if (p == "carriers")
@@ -145,12 +145,12 @@ void SoundplaneController::dialValueChanged (MLDial* pDial)
 	
 	// mpModel->setParameter(pDial->getParamName(), pDial->getValue());
 	
-	MLSymbol p (pDial->getParamName());
+	MLSymbol p (pDial->getTargetPropertyName());
 	MLParamValue v = pDial->getValue();
 
 	debug() << p << ": " << v << "\n";
 	
-	mpModel->setModelParam(p, v);
+	mpModel->setModelProperty(p, v);
 	
 }
 
@@ -218,7 +218,7 @@ void SoundplaneController::setupMenus()
 	mMenuMap["osc_services"] = MLMenuPtr(new MLMenu("osc_services"));
 	
 	// setup OSC defaults 
-	mpModel->setModelParam("osc_services", kOSCDefaultStr);	
+	mpModel->setModelProperty("osc_services", kOSCDefaultStr);	
 }	
 
 void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
@@ -310,7 +310,7 @@ void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
             SoundplaneModel* pModel = getModel();
             assert(pModel);
             const std::string& fullName = menu->getItemFullName(result);
-			pModel->setModelParam(menuName, fullName);
+			pModel->setModelProperty(menuName, fullName);
 		}
         
 		if (menuName == "zone_preset")
@@ -360,7 +360,7 @@ void SoundplaneController::doZonePresetMenu(int result)
             break;
     }
 
-    pModel->setModelParam("zone_JSON", zoneStr);
+    pModel->setModelProperty("zone_JSON", zoneStr);
 }
 
 void SoundplaneController::doOSCServicesMenu(int result)
@@ -368,7 +368,7 @@ void SoundplaneController::doOSCServicesMenu(int result)
  	SoundplaneModel* pModel = getModel();
 	assert(pModel);
 
-    // TODO should this not be in Model::setModelParam?
+    // TODO should this not be in Model::setModelProperty?
     std::string name;
     if(result == 1) // set default
     {

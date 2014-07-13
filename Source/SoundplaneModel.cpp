@@ -141,49 +141,49 @@ SoundplaneModel::~SoundplaneModel()
 void SoundplaneModel::setAllParamsToDefaults()
 {
 	// parameter defaults and creation
-	setModelParam("max_touches", 4);
-	setModelParam("lopass", 100.);
+	setModelProperty("max_touches", 4);
+	setModelProperty("lopass", 100.);
 	
-	setModelParam("z_thresh", 0.01);
-	setModelParam("z_max", 0.05);
-	setModelParam("z_curve", 0.25);
-	setModelParam("display_scale", 1.);
+	setModelProperty("z_thresh", 0.01);
+	setModelProperty("z_max", 0.05);
+	setModelProperty("z_curve", 0.25);
+	setModelProperty("display_scale", 1.);
 	
-	setModelParam("quantize", 1.);
-	setModelParam("lock", 0.);
-	setModelParam("abs_rel", 0.);
-	setModelParam("snap", 250.);
-	setModelParam("vibrato", 0.5);
+	setModelProperty("quantize", 1.);
+	setModelProperty("lock", 0.);
+	setModelProperty("abs_rel", 0.);
+	setModelProperty("snap", 250.);
+	setModelProperty("vibrato", 0.5);
 		
-	setModelParam("t_thresh", 0.2);
+	setModelProperty("t_thresh", 0.2);
 	
-	setModelParam("midi_active", 0);
-	setModelParam("midi_multi_chan", 1);
-	setModelParam("midi_start_chan", 1);
-	setModelParam("data_freq_midi", 250.);
+	setModelProperty("midi_active", 0);
+	setModelProperty("midi_multi_chan", 1);
+	setModelProperty("midi_start_chan", 1);
+	setModelProperty("data_freq_midi", 250.);
 	
-	setModelParam("kyma_poll", 1);
+	setModelProperty("kyma_poll", 1);
 	
-	setModelParam("osc_active", 1);
-	setModelParam("osc_raw", 0);
-	setModelParam("data_freq_osc", 250.);
+	setModelProperty("osc_active", 1);
+	setModelProperty("osc_raw", 0);
+	setModelProperty("data_freq_osc", 250.);
 	
-	setModelParam("bend_range", 48);
-	setModelParam("transpose", 0);
-	setModelParam("bg_filter", 0.05);
+	setModelProperty("bend_range", 48);
+	setModelProperty("transpose", 0);
+	setModelProperty("bg_filter", 0.05);
 	
-	setModelParam("hysteresis", 0.5);
+	setModelProperty("hysteresis", 0.5);
 	
 	// menu param defaults
-	setModelParam("viewmode", "calibrated");
+	setModelProperty("viewmode", "calibrated");
     
     // preset menu defaults (TODO use first choices?)
-	setModelParam("zone_preset", "continuous pitch x");
-	setModelParam("touch_preset", "touch default");
+	setModelProperty("zone_preset", "continuous pitch x");
+	setModelProperty("touch_preset", "touch default");
     	
 	for(int i=0; i<32; ++i)
 	{
-		setModelParam(MLSymbol("carrier_toggle").withFinalNumber(i), 1);		
+		setModelProperty(MLSymbol("carrier_toggle").withFinalNumber(i), 1);		
 	}
 }
 
@@ -215,7 +215,7 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 				// no reason to respond to
 				if(newTouches > 0)
 				{
-					setModelParam("max_touches", newTouches);
+					setModelProperty("max_touches", newTouches);
 				}
 			}
 		}
@@ -227,9 +227,9 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 	}
 }
 
-void SoundplaneModel::setModelParam(MLSymbol p, float v) 
+void SoundplaneModel::setModelProperty(MLSymbol p, float v) 
 {
-	MLModel::setModelParam(p, v);
+	MLModel::setModelProperty(p, v);
 	if (p.withoutFinalNumber() == MLSymbol("carrier_toggle"))
 	{
 		// toggles changed -- mute carriers 
@@ -251,7 +251,7 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 		for(int i=0; i<32; ++i)
 		{
 			MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
-			setModelParam(tSym, on);
+			setModelProperty(tSym, on);
 		}
 		mCarriersMask = on ? ~0 : 0;
 		mCarrierMaskDirty = true; // trigger carriers set in a second or so
@@ -381,10 +381,10 @@ void SoundplaneModel::setModelParam(MLSymbol p, float v)
 	}
 }
 
-void SoundplaneModel::setModelParam(MLSymbol p, const std::string& v) 
+void SoundplaneModel::setModelProperty(MLSymbol p, const std::string& v)
 {
-	MLModel::setModelParam(p, v);
-	// debug() << "SoundplaneModel::setModelParam " << p << " : " << v << "\n";
+	MLModel::setModelProperty(p, v);
+	// debug() << "SoundplaneModel::setModelProperty " << p << " : " << v << "\n";
 
 	if (p == "viewmode")
 	{
@@ -400,9 +400,9 @@ void SoundplaneModel::setModelParam(MLSymbol p, const std::string& v)
     }
 }
 
-void SoundplaneModel::setModelParam(MLSymbol p, const MLSignal& v) 
+void SoundplaneModel::setModelProperty(MLSymbol p, const MLSignal& v)
 {
-	MLModel::setModelParam(p, v);
+	MLModel::setModelProperty(p, v);
 	if(p == MLSymbol("carriers"))
 	{
 		// get carriers from signal
@@ -561,20 +561,20 @@ void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& nor
 {
 	if(avgDistance > 0.f)
 	{
-		setModelParam("tracker_calibration", cal);	
-		setModelParam("tracker_normalize", norm);	
+		setModelProperty("tracker_calibration", cal);	
+		setModelProperty("tracker_normalize", norm);	
 		float thresh = avgDistance * 1.75f;
 		MLConsole() << "SoundplaneModel::hasNewCalibration: calculated template threshold: " << thresh << "\n";
-		setModelParam("t_thresh", thresh);	
+		setModelProperty("t_thresh", thresh);	
 	}
 	else
 	{
 		// set default calibration
-		setModelParam("tracker_calibration", cal);	
-		setModelParam("tracker_normalize", norm);	
+		setModelProperty("tracker_calibration", cal);	
+		setModelProperty("tracker_normalize", norm);	
 		float thresh = 0.2f;
 		MLConsole() << "SoundplaneModel::hasNewCalibration: default template threshold: " << thresh << "\n";
-		setModelParam("t_thresh", thresh);	
+		setModelProperty("t_thresh", thresh);	
 	}
 }
 
@@ -1114,7 +1114,7 @@ void SoundplaneModel::setDefaultCarriers()
 		{
 			cSig[car] = kModelDefaultCarriers[car];
 		}		
-		setModelParam("carriers", cSig);
+		setModelProperty("carriers", cSig);
 	}
 }
 
@@ -1408,7 +1408,7 @@ void SoundplaneModel::endSelectCarriers()
 		{
 			cSig[car] = mCarriers[car];
 		}		
-		setModelParam("carriers", cSig);
+		setModelProperty("carriers", cSig);
 	}
 	MLConsole() << "carrier select done.\n";
 
