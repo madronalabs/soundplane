@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <tr1/memory>
+#include <stdlib.h>
 
 #include "MLDebug.h"
 #include "TouchTracker.h"

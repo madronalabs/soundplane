@@ -1162,7 +1162,7 @@ void TouchTracker::process(int)
 	if (mCount++ > 1000) 
 	{
 		mCount = 0;
-		dumpTouches();
+//		dumpTouches();
 	}
 #endif	
 }

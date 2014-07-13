@@ -272,7 +272,6 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                
         if(subtype == onSym)
         {
-//debug() << " ON  note = " << i << "\n";
             pVoice->startX = x;
             pVoice->startY = y;
             pVoice->startNote = note;
@@ -282,13 +281,11 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
         }
         else if(subtype == continueSym)
         {
-//debug() << " ... ";
             pVoice->mState = kVoiceStateActive;
             pVoice->age++;
         }
         else if(subtype == offSym)
         {
-//debug() << " OFF note = " << i << "\n";
             pVoice->mState = kVoiceStateOff;
             pVoice->age = 0;
             pVoice->z = 0;
@@ -339,7 +336,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     int zoneChan = pMsg->mData[1];
                     int ctrlNum1 = pMsg->mData[2];
                     int ctrlNum2 = pMsg->mData[3];
-                    int ctrlNum3 = pMsg->mData[4];
+                    // int ctrlNum3 = pMsg->mData[4];
                     x = pMsg->mData[5];
                     y = pMsg->mData[6];
                     z = pMsg->mData[7];
@@ -378,6 +375,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     mMessagesByZone[i].mType = nullSym;
                 }
             }
+            
 
             // send MIDI notes and controllers for each live touch.
             // attempt to translate the notes into MIDI notes + pitch bend.
@@ -385,7 +383,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
             {
                 MIDIVoice* pVoice = &mMIDIVoices[i];
                 
-                int chan = mMultiChannel ? (((mStartChannel + i - 1)%15) + 1) : mStartChannel;                
+                int chan = mMultiChannel ? (((mStartChannel + i - 1)&0x0F) + 1) : mStartChannel;
                 if (pVoice->mState == kVoiceStateOn)
                 {
                     // before note on, first send note off if needed
@@ -400,7 +398,9 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     float fVel = pVoice->dz*100.f*128.f;
                     pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
                     
-                    // debug() << " DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
+
+
+      debug() << "voice " << i << " ON: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                     
                     // reset pitch at note on!
                     mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, 8192));
@@ -415,7 +415,10 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     pVoice->mMIDIVel = 0;
                     pVoice->mMIDINote = 0;
                     pVoice->mState = kVoiceStateInactive;
-                }
+                    
+         debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
+                    
+               }
                 
                 // if note is on, send pitch bend / controllers.
                 if (pVoice->mMIDIVel > 0)
@@ -434,6 +437,9 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
                         pVoice->mMIDINote = newMIDINote;
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
+                        
+        debug() << "voice " << i << " RETRIG: Z = " << pVoice->z << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
+                        
                     }
                     
                     // send controllers etc. if in multichannel mode, or if this is the youngest voice.
@@ -457,9 +463,16 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                         ip = clamp(ip, 0, 16383);
                         if(ip != pVoice->mMIDIBend)
                         {
+                            
+        debug() << "voice " << i << " BEND = " << ip << "\n";
+                            
                             mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, ip));
                             pVoice->mMIDIBend = ip;
                         }
+                        
+                        
+                        
+         // TODO x+y+z: 73, 74, 75
                         
                         // send y controller absolute
                         iy = pVoice->y*128.f;
@@ -477,6 +490,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                             press = clamp(press, 0, 127);
                             if(press != pVoice->mMIDIPressure)
                             {
+       debug() << "voice " << i << " PRESSURE = " << press << "\n";
+
                                 mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, press));
                                 mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, press));
                                 pVoice->mMIDIPressure = press;
