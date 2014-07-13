@@ -914,7 +914,7 @@ void deviceAdded(void *refCon, io_iterator_t iterator)
         err = (*dev)->GetDeviceProduct(dev, &product);
         err = (*dev)->GetDeviceReleaseNumber(dev, &release);
 		printf("Vendor:%04X Product:%04X Release Number:", vendor, product);
-		printBCD(release);
+		// printBCD(release);
 		// NOTE: GetLocationID might be helpful
 #endif
 
@@ -1703,7 +1703,7 @@ void *soundplaneProcessThread(void *arg)
 					
 					printf("current seq num: %d / %d\n", curSeqNum0, curSeqNum1); 
 		//			printf("now: %u:%u\n", (int)atTime.hi, (int)atTime.lo);
-					printf("process: gaps %d, dropped %d, gotNext %d \n", gaps, droppedTransactions, waiting, gotNext);
+					printf("process: gaps %d, dropped %d, gotNext %d \n", gaps, droppedTransactions, gotNext);
 					printf("process: good frames %d, bad xfers %d \n", framesReceived, badXfers);					
 					printf("process: current sequence: [%d, %d] \n", maxSeqNum0, maxSeqNum1);	
 					printf("process: transactions in flight: %d\n", k1->mTransactionsInFlight);

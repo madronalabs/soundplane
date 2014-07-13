@@ -99,7 +99,6 @@
 		B503021C17C69FD2003A4458 /* MLDebugMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = B503015517C69FD2003A4458 /* MLDebugMac.mm */; };
 		B503021D17C69FD2003A4458 /* MLGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503015617C69FD2003A4458 /* MLGL.cpp */; };
 		B503021E17C69FD2003A4458 /* MLModel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503015917C69FD2003A4458 /* MLModel.cpp */; };
-		B503021F17C69FD2003A4458 /* MLModelParam.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503015B17C69FD2003A4458 /* MLModelParam.cpp */; };
 		B503022017C69FD2003A4458 /* MLNetServiceHub.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503015D17C69FD2003A4458 /* MLNetServiceHub.cpp */; };
 		B503022117C69FD2003A4458 /* MLOSCListener.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503015F17C69FD2003A4458 /* MLOSCListener.cpp */; };
 		B503022217C69FD2003A4458 /* MLPath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503016117C69FD2003A4458 /* MLPath.cpp */; };
@@ -114,7 +113,6 @@
 		B503022D17C69FD2003A4458 /* MLJuceFilesMac.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503017C17C69FD2003A4458 /* MLJuceFilesMac.cpp */; };
 		B503023017C69FD2003A4458 /* MLMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503018117C69FD2003A4458 /* MLMenu.cpp */; };
 		B503023117C69FD2003A4458 /* MLPageView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503018317C69FD2003A4458 /* MLPageView.cpp */; };
-		B503023217C69FD2003A4458 /* MLParamSetter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503018517C69FD2003A4458 /* MLParamSetter.cpp */; };
 		B503023917C69FD2003A4458 /* MLTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503019417C69FD2003A4458 /* MLTime.cpp */; };
 		B503023A17C69FD2003A4458 /* MLWidget.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503019617C69FD2003A4458 /* MLWidget.cpp */; };
 		B503023B17C69FD2003A4458 /* MLWidgetContainer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503019817C69FD2003A4458 /* MLWidgetContainer.cpp */; };
@@ -166,6 +164,7 @@
 		B5DD1B4913E79F87002BD9C7 /* SoundplaneApp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5DD1B4313E79F87002BD9C7 /* SoundplaneApp.cpp */; };
 		B5DD1B4A13E79F87002BD9C7 /* SoundplaneModel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5DD1B4513E79F87002BD9C7 /* SoundplaneModel.cpp */; };
 		B5DED64917E0F02100121663 /* MLTriToggleButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5DED64717E0F02100121663 /* MLTriToggleButton.cpp */; };
+		B5E3C7541971CA9B00966A56 /* MLControlEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5E3C7521971CA9B00966A56 /* MLControlEvent.cpp */; };
 		B5E9225A13E4F7620094722F /* SoundplaneGridView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5E9225913E4F7620094722F /* SoundplaneGridView.cpp */; };
 		C5E169F7107EC2306276438A /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D9D2682DE4A5B07668895C2A /* IOKit.framework */; };
 		EFF4A46CD8DC98212AF9F5A0 /* DiscRecording.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6866E587FFD01BF7EA2ADE1F /* DiscRecording.framework */; };
@@ -307,8 +306,6 @@
 		B503015817C69FD2003A4458 /* MLInputProtocols.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLInputProtocols.h; sourceTree = "<group>"; };
 		B503015917C69FD2003A4458 /* MLModel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLModel.cpp; sourceTree = "<group>"; };
 		B503015A17C69FD2003A4458 /* MLModel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLModel.h; sourceTree = "<group>"; };
-		B503015B17C69FD2003A4458 /* MLModelParam.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLModelParam.cpp; sourceTree = "<group>"; };
-		B503015C17C69FD2003A4458 /* MLModelParam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLModelParam.h; sourceTree = "<group>"; };
 		B503015D17C69FD2003A4458 /* MLNetServiceHub.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLNetServiceHub.cpp; sourceTree = "<group>"; };
 		B503015E17C69FD2003A4458 /* MLNetServiceHub.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLNetServiceHub.h; sourceTree = "<group>"; };
 		B503015F17C69FD2003A4458 /* MLOSCListener.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLOSCListener.cpp; sourceTree = "<group>"; };
@@ -343,8 +340,6 @@
 		B503018217C69FD2003A4458 /* MLMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLMenu.h; sourceTree = "<group>"; };
 		B503018317C69FD2003A4458 /* MLPageView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLPageView.cpp; sourceTree = "<group>"; };
 		B503018417C69FD2003A4458 /* MLPageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLPageView.h; sourceTree = "<group>"; };
-		B503018517C69FD2003A4458 /* MLParamSetter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLParamSetter.cpp; sourceTree = "<group>"; };
-		B503018617C69FD2003A4458 /* MLParamSetter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLParamSetter.h; sourceTree = "<group>"; };
 		B503019417C69FD2003A4458 /* MLTime.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLTime.cpp; sourceTree = "<group>"; };
 		B503019517C69FD2003A4458 /* MLTime.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLTime.h; sourceTree = "<group>"; };
 		B503019617C69FD2003A4458 /* MLWidget.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLWidget.cpp; sourceTree = "<group>"; };
@@ -443,6 +438,8 @@
 		B5DD1B4613E79F87002BD9C7 /* SoundplaneModel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneModel.h; sourceTree = "<group>"; };
 		B5DED64717E0F02100121663 /* MLTriToggleButton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLTriToggleButton.cpp; sourceTree = "<group>"; };
 		B5DED64817E0F02100121663 /* MLTriToggleButton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLTriToggleButton.h; sourceTree = "<group>"; };
+		B5E3C7521971CA9B00966A56 /* MLControlEvent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLControlEvent.cpp; sourceTree = "<group>"; };
+		B5E3C7531971CA9B00966A56 /* MLControlEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLControlEvent.h; sourceTree = "<group>"; };
 		B5E9225813E4F7620094722F /* SoundplaneGridView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SoundplaneGridView.h; path = ../../soundplane/Source/SoundplaneGridView.h; sourceTree = "<group>"; };
 		B5E9225913E4F7620094722F /* SoundplaneGridView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SoundplaneGridView.cpp; path = ../../soundplane/Source/SoundplaneGridView.cpp; sourceTree = "<group>"; };
 		B786F246076E6F5D363A6A2C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = SOURCE_ROOT; };
@@ -527,16 +524,18 @@
 		B50300D917C69FD2003A4458 /* DSP */ = {
 			isa = PBXGroup;
 			children = (
-				B52365EF18ABE93B00ACF69E /* MLDSPUtils.cpp */,
-				B52365F018ABE93B00ACF69E /* MLDSPUtils.h */,
 				B50300DA17C69FD2003A4458 /* MLChangeList.cpp */,
 				B50300DB17C69FD2003A4458 /* MLChangeList.h */,
+				B5E3C7521971CA9B00966A56 /* MLControlEvent.cpp */,
+				B5E3C7531971CA9B00966A56 /* MLControlEvent.h */,
 				B50300DC17C69FD2003A4458 /* MLDSP.cpp */,
 				B50300DD17C69FD2003A4458 /* MLDSP.h */,
 				B50300DE17C69FD2003A4458 /* MLDSPContext.cpp */,
 				B50300DF17C69FD2003A4458 /* MLDSPContext.h */,
 				B50300E017C69FD2003A4458 /* MLDSPEngine.cpp */,
 				B50300E117C69FD2003A4458 /* MLDSPEngine.h */,
+				B52365EF18ABE93B00ACF69E /* MLDSPUtils.cpp */,
+				B52365F018ABE93B00ACF69E /* MLDSPUtils.h */,
 				B50300E217C69FD2003A4458 /* MLMultProxy.cpp */,
 				B50300E317C69FD2003A4458 /* MLMultProxy.h */,
 				B50300E417C69FD2003A4458 /* MLParameter.cpp */,
@@ -674,8 +673,6 @@
 				B503015817C69FD2003A4458 /* MLInputProtocols.h */,
 				B503015917C69FD2003A4458 /* MLModel.cpp */,
 				B503015A17C69FD2003A4458 /* MLModel.h */,
-				B503015B17C69FD2003A4458 /* MLModelParam.cpp */,
-				B503015C17C69FD2003A4458 /* MLModelParam.h */,
 				B503015D17C69FD2003A4458 /* MLNetServiceHub.cpp */,
 				B503015E17C69FD2003A4458 /* MLNetServiceHub.h */,
 				B503015F17C69FD2003A4458 /* MLOSCListener.cpp */,
@@ -721,8 +718,6 @@
 				B503018217C69FD2003A4458 /* MLMenu.h */,
 				B503018317C69FD2003A4458 /* MLPageView.cpp */,
 				B503018417C69FD2003A4458 /* MLPageView.h */,
-				B503018517C69FD2003A4458 /* MLParamSetter.cpp */,
-				B503018617C69FD2003A4458 /* MLParamSetter.h */,
 				B503019417C69FD2003A4458 /* MLTime.cpp */,
 				B503019517C69FD2003A4458 /* MLTime.h */,
 				B503019617C69FD2003A4458 /* MLWidget.cpp */,
@@ -1044,6 +1039,7 @@
 				B50301F117C69FD2003A4458 /* MLProcParamToSignal.cpp in Sources */,
 				B50301F217C69FD2003A4458 /* MLProcPeak.cpp in Sources */,
 				B50301F317C69FD2003A4458 /* MLProcPhasor.cpp in Sources */,
+				B5E3C7541971CA9B00966A56 /* MLControlEvent.cpp in Sources */,
 				B50301F417C69FD2003A4458 /* MLProcPow.cpp in Sources */,
 				B50301F517C69FD2003A4458 /* MLProcQuantize.cpp in Sources */,
 				B50301F617C69FD2003A4458 /* MLProcRate.cpp in Sources */,
@@ -1087,7 +1083,6 @@
 				B503021C17C69FD2003A4458 /* MLDebugMac.mm in Sources */,
 				B503021D17C69FD2003A4458 /* MLGL.cpp in Sources */,
 				B503021E17C69FD2003A4458 /* MLModel.cpp in Sources */,
-				B503021F17C69FD2003A4458 /* MLModelParam.cpp in Sources */,
 				B503022017C69FD2003A4458 /* MLNetServiceHub.cpp in Sources */,
 				B503022117C69FD2003A4458 /* MLOSCListener.cpp in Sources */,
 				B503022217C69FD2003A4458 /* MLPath.cpp in Sources */,
@@ -1102,7 +1097,6 @@
 				B503022D17C69FD2003A4458 /* MLJuceFilesMac.cpp in Sources */,
 				B503023017C69FD2003A4458 /* MLMenu.cpp in Sources */,
 				B503023117C69FD2003A4458 /* MLPageView.cpp in Sources */,
-				B503023217C69FD2003A4458 /* MLParamSetter.cpp in Sources */,
 				B503023917C69FD2003A4458 /* MLTime.cpp in Sources */,
 				B503023A17C69FD2003A4458 /* MLWidget.cpp in Sources */,
 				B503023B17C69FD2003A4458 /* MLWidgetContainer.cpp in Sources */,
