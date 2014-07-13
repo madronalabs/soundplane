@@ -22,7 +22,6 @@
 #endif
 
 class SoundplaneZoneView  : 
-	public OpenGLRenderer,
     public Component,
 	public MLWidget
 {
@@ -30,19 +29,15 @@ public:
     SoundplaneZoneView();
     ~SoundplaneZoneView();
     
-    void newOpenGLContextCreated();
-    void openGLContextClosing();
     void mouseDrag (const MouseEvent& e);
     void renderOpenGL();
  	void setModel(SoundplaneModel* m);
-    void resizeWidget(const MLRect& b, const int u);
 	
 private:
     void drawDot(Vec2 pos, float r);
     void renderGrid();
     void renderZones();
 
-    OpenGLContext mGLContext;
 	SoundplaneModel* mpModel;
 };
 

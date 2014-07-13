@@ -6,28 +6,14 @@
 #include "TrackerCalibrateView.h"
 
 TrackerCalibrateView::TrackerCalibrateView() :
-	mpModel(nullptr),
-	rotation(0.)
+	mpModel(nullptr)
 {
 	setInterceptsMouseClicks (false, false);
 	MLWidget::setComponent(this);
-
-	mGLContext.setRenderer (this);
-	mGLContext.attachTo (*getComponent());
-	mGLContext.setComponentPaintingEnabled (false);
-    mGLContext.setContinuousRepainting(true);
+	setupGL (this);
 }
 
 TrackerCalibrateView::~TrackerCalibrateView()
-{
-	mGLContext.detach();
-}
-
-void TrackerCalibrateView::newOpenGLContextCreated()
-{
-}
-
-void TrackerCalibrateView::openGLContextClosing()
 {
 }
 
@@ -80,9 +66,8 @@ void TrackerCalibrateView::renderOpenGL()
 	int height = dim.y();
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
-    const float scale = (float) mGLContext.getRenderingScale();    
     ScopedPointer<LowLevelGraphicsContext> glRenderer
-        (createOpenGLGraphicsContext (mGLContext, viewW, viewH));
+        (createOpenGLGraphicsContext (*getGLContext(), viewW, viewH));
     
     if (glRenderer != nullptr)
     {

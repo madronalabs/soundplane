@@ -445,7 +445,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
     
 	pB = page2->addToggleButton("poll kyma", toggleRect.withCenter(12, dialY), "kyma_poll", c2);
 		
-	pModel->addParamListener(this); 
+	pModel->addPropertyListener(this);
 }
 
 SoundplaneView::~SoundplaneView()
@@ -457,7 +457,7 @@ void SoundplaneView::initialize()
 {
 	startTimer(50);	
 	setAnimationsActive(true);	
-	updateAllParams();
+	updateAllProperties();
 }
 
 void SoundplaneView::timerCallback()
@@ -501,7 +501,7 @@ void SoundplaneView::timerCallback()
 		}
 	}
 
-	updateChangedParams();
+	updateChangedProperties();
 
 }
 
@@ -527,10 +527,10 @@ void SoundplaneView::modelStateChanged()
 // MLModelListener implementation
 // an updateChangedParams() is needed to get these actions sent by the Model.
 //
-void SoundplaneView::doParamChangeAction(MLSymbol param, const MLModelParam & oldVal, const MLModelParam & newVal)
+void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLModelProperty & oldVal, const MLModelProperty & newVal)
 {
-	// debug() << "SoundplaneView::doParamChangeAction: " << param << " from " << oldVal << " to " << newVal << "\n";	
-	if(param == "viewmode")
+	// debug() << "SoundplaneView::doPropertyChangeAction: " << p << " from " << oldVal << " to " << newVal << "\n";
+	if(p == "viewmode")
 	{
 		const std::string* v = newVal.getStringValue();
 		if(*v == "raw data")
@@ -562,7 +562,7 @@ void SoundplaneView::doParamChangeAction(MLSymbol param, const MLModelParam & ol
 			setViewMode(kNrmMap);
 		}
 	}
-	else if(param == "")
+	else if(p == "")
 	{
 	
 	}

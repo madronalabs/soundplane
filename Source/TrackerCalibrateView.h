@@ -24,19 +24,13 @@
 
 class TrackerCalibrateView  : 
 	public Component,
-	public OpenGLRenderer,
 	public MLWidget
 {
 public:
     TrackerCalibrateView();
     ~TrackerCalibrateView();
  
-    void newOpenGLContextCreated();
-    void openGLContextClosing();
 	void renderOpenGL();
-
-	void timerCallback();
-
  	void setModel(SoundplaneModel* m);
 	void setViewMode(SoundplaneViewMode v){ mViewMode = v; }
  	
@@ -46,12 +40,8 @@ private:
 	void drawTextAt(float x, float y, float z, const char* ps);
 	void drawInfoBox(Vec3 pos, char* text, int colorIndex);
 
-    OpenGLContext mGLContext;
 	SoundplaneModel* mpModel;
 	SoundplaneViewMode mViewMode;
-	
-	// temp
-	float rotation;
 };
 
 #endif // __TRK_CAL_VIEW__

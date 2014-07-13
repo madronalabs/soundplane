@@ -22,23 +22,18 @@
 
 class SoundplaneTouchView  : 
 	public juce::Component,
-	public OpenGLRenderer,
 	public MLWidget
 {
 public:
     SoundplaneTouchView();
     ~SoundplaneTouchView();
  
-    void newOpenGLContextCreated();
-    void openGLContextClosing();
     void mouseDrag (const MouseEvent& e);
     void renderTouchBarGraphs();
     void renderOpenGL();
-    void resizeWidget(const MLRect& b, const int u);
  	void setModel(SoundplaneModel* m);
 	
 private:
-    OpenGLContext mGLContext;
 	SoundplaneModel* mpModel;
 };
 

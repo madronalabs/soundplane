@@ -12,22 +12,10 @@ SoundplaneGridView::SoundplaneGridView() :
 {
 	setInterceptsMouseClicks (false, false);
 	MLWidget::setComponent(this);
-	mGLContext.setRenderer (this);
-	mGLContext.attachTo (*this);
-	mGLContext.setComponentPaintingEnabled (false);
-    mGLContext.setContinuousRepainting(true);
+    MLWidget::setupGL(this);
 }
 
 SoundplaneGridView::~SoundplaneGridView()
-{
-	mGLContext.detach();
-}
-
-void SoundplaneGridView::newOpenGLContextCreated()
-{    
-}
-
-void SoundplaneGridView::openGLContextClosing()
 {
 }
 
@@ -292,10 +280,11 @@ void SoundplaneGridView::renderZGrid()
     
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
-    const float scale = (float) mGLContext.getRenderingScale();
+    
+    const float scale = getRenderingScale();
     
     ScopedPointer<LowLevelGraphicsContext> glRenderer
-        (createOpenGLGraphicsContext (mGLContext, viewW, viewH));
+        (createOpenGLGraphicsContext (*getGLContext(), viewW, viewH));
     
     if (glRenderer != nullptr)
     {
@@ -607,11 +596,4 @@ void SoundplaneGridView::renderOpenGL()
     }
 }
 
-// GL views need to attach to their components here, because on creation
-// the component might not be visible and can't be attached to.
-void SoundplaneGridView::resizeWidget(const MLRect& b, const int u)
-{
-    MLWidget::resizeWidget(b, u);
-    mGLContext.attachTo (*MLWidget::getComponent());
-}
 

@@ -10,29 +10,16 @@ SoundplaneTouchView::SoundplaneTouchView() :
 {
 	setInterceptsMouseClicks (false, false);	
 	MLWidget::setComponent(this);
-
-	mGLContext.setRenderer (this);
-	mGLContext.attachTo (*this);
-	mGLContext.setComponentPaintingEnabled (true);
-    mGLContext.setContinuousRepainting(true);
+	setupGL(this);
 }
 
 SoundplaneTouchView::~SoundplaneTouchView()
 {
-	mGLContext.detach();
 }
 
 void SoundplaneTouchView::setModel(SoundplaneModel* m)
 {
 	mpModel = m;
-}
-
-void SoundplaneTouchView::newOpenGLContextCreated()
-{
-}
-
-void SoundplaneTouchView::openGLContextClosing()
-{
 }
 
 void SoundplaneTouchView::mouseDrag (const MouseEvent& e)
@@ -122,14 +109,5 @@ void SoundplaneTouchView::renderOpenGL()
     OpenGLHelpers::clear (c);
     renderTouchBarGraphs();
 }
-
-// GL views need to attach to their components here, because on creation
-// the component might not be visible and can't be attached to.
-void SoundplaneTouchView::resizeWidget(const MLRect& b, const int u)
-{
-    MLWidget::resizeWidget(b, u);
-    mGLContext.attachTo (*MLWidget::getComponent());
-}
-
 
 	

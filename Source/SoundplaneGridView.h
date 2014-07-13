@@ -24,26 +24,19 @@
 
 class SoundplaneGridView  : 
 	public Component,
-	public OpenGLRenderer,
 	public MLWidget
 {
 public:
     SoundplaneGridView();
     ~SoundplaneGridView();
  
-    void newOpenGLContextCreated();
-    void openGLContextClosing();
 	void renderOpenGL();
 	void renderXYGrid();
 	void renderZGrid();
 	void renderBarChart();
 
-	void timerCallback();
-
  	void setModel(SoundplaneModel* m);
 	void setViewMode(SoundplaneViewMode v){ mViewMode = v; }
-    
-    void resizeWidget(const MLRect& b, const int u);
  	
 private:
 	Vec2 worldToScreen(const Vec3& world); 
@@ -53,7 +46,6 @@ private:
 	void drawInfoBox(Vec3 pos, char* text, int colorIndex);
 	void drawTestVec();
 
-    OpenGLContext mGLContext;
 	SoundplaneModel* mpModel;
 	SoundplaneViewMode mViewMode;
 	

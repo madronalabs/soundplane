@@ -10,27 +10,16 @@ SoundplaneZoneView::SoundplaneZoneView() :
 {
 	setInterceptsMouseClicks (false, false);	
 	MLWidget::setComponent(this);
-	mGLContext.setRenderer (this);
-	mGLContext.setComponentPaintingEnabled (false);
-    mGLContext.setContinuousRepainting(true);
+    setupGL(this);
 }
 
 SoundplaneZoneView::~SoundplaneZoneView()
 {
-	mGLContext.detach();
 }
 
 void SoundplaneZoneView::setModel(SoundplaneModel* m)
 {
 	mpModel = m;
-}
-
-void SoundplaneZoneView::newOpenGLContextCreated()
-{
-}
-
-void SoundplaneZoneView::openGLContextClosing()
-{
 }
 
 void SoundplaneZoneView::mouseDrag (const MouseEvent& e)
@@ -41,6 +30,7 @@ void SoundplaneZoneView::renderGrid()
 {
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
+    
     MLGL::orthoView2(viewW, viewH);
 
 	int gridWidth = 30; // Soundplane A TODO get from tracker
@@ -249,7 +239,7 @@ void SoundplaneZoneView::renderZones()
 void SoundplaneZoneView::renderOpenGL()
 {
 	if (!mpModel) return;
-    if(!mGLContext.isAttached()) return;
+    if(!getGLContext()->isAttached()) return;
     {
         const Colour c = findColour(MLLookAndFeel::backgroundColor);
         OpenGLHelpers::clear (c);
@@ -258,14 +248,6 @@ void SoundplaneZoneView::renderOpenGL()
         renderGrid();
         renderZones();
     }
-}
-
-// GL views need to attach to their components here, because on creation
-// the component might not be visible and can't be attached to.
-void SoundplaneZoneView::resizeWidget(const MLRect& b, const int u)
-{
-    MLWidget::resizeWidget(b, u);
-    mGLContext.attachTo (*MLWidget::getComponent());
 }
 
 

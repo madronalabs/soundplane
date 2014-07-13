@@ -91,7 +91,7 @@ public:
 	void timerCallback();
 
 	// MLModelListener implementation
-	void doParamChangeAction(MLSymbol param, const MLModelParam & oldVal, const MLModelParam & newVal);
+	void doPropertyChangeAction(MLSymbol p, const MLModelProperty & oldVal, const MLModelProperty & newVal);
 
 	void makeCarrierTogglesVisible(int v);
 	
