@@ -271,9 +271,7 @@ public:
 	void setNormalizeMap(const MLSignal& v) { mCalibrator.setNormalizeMap(v); }
 	void setListener(Listener* pL) { mpListener = pL; }
 	void setDefaultNormalizeMap();
-	
 	void setRotate(bool b);
-	void setNormalize(bool b);
 
 private:	
 

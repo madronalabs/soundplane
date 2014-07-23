@@ -300,13 +300,7 @@ void TouchTracker::setRotate(bool b)
 		mRotateOffset = 0;
 	}
 }
-	
-void TouchTracker::setNormalize(bool b)
-{ 
-	mDoNormalize = b;
-}
-	 
-	 
+
 // add new touch at first free slot.  TODO touch allocation modes including rotate.
 // return index of new touch.
 //
@@ -1396,8 +1390,8 @@ float TouchTracker::Calibrator::makeNormalizeMap()
 				mNormalizeMap(i, j) = 0.f;
 			}
 		}
-	}	
-
+	}
+    
 	float mean = sum/(float)samples;
 	mNormalizeMap.scale(mean);	
 
@@ -1486,7 +1480,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 		mAutoThresh = mStartupSum / (float)startupSamples * 10.f;	
 		MLConsole() << "\n****************************************************************\n\n";
 		MLConsole() << "OK, done collecting silence (auto threshold: " << mAutoThresh << "). \n";
-		MLConsole() << "Now please slide a palm or other flat object across the surface,  \n";
+		MLConsole() << "Now please slide your palm across the surface,  \n";
 		MLConsole() << "applying a firm and even pressure, until all the rectangles \n";
 		MLConsole() << "at left turn blue.  \n\n";
 		
@@ -1499,8 +1493,8 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 		// smooth temp signal, duplicating values at border
 		normTemp.copy(input);		
 		normTemp.convolve3x3rb(kc, ke, kk);		
-		normTemp.convolve3x3rb(kc, ke, kk);		
-		normTemp.convolve3x3rb(kc, ke, kk);		
+//		normTemp.convolve3x3rb(kc, ke, kk);
+//		normTemp.convolve3x3rb(kc, ke, kk);
 	
 		if(peakZ > mAutoThresh)
 		{

@@ -107,7 +107,7 @@ void Zone::clearTouches()
 
 void Zone::addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz)
 {
-    // debug() << "zone " << mName << " adding touch at " << x << ", " << y << "\n";    
+    // debug() << "zone " << mName << " adding touch at " << x << ", " << y << "\n";
     // convert to unity range over x and y bounds
     mTouches0[i] = ZoneTouch(mXRangeInv(x), mYRangeInv(y), kx, ky, z, dz);
 }

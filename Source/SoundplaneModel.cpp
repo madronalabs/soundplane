@@ -347,11 +347,6 @@ void SoundplaneModel::setModelProperty(MLSymbol p, float v)
 		bool b = v;
 		mTracker.setRotate(b);
 	}
-	else if (p == "normalize")
-	{
-		bool b = v;
-		mTracker.setNormalize(b);
-	}
 	else if (p == "retrig")
 	{
 		mMIDIOutput.setRetrig(bool(v));
