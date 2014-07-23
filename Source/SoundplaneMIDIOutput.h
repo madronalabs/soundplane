@@ -19,7 +19,6 @@
 #include "MLTime.h"
 
 const int kMaxMIDIVoices = 16;
-const int kSoundplaneMIDIControllerY = 74;
 
 class MIDIVoice
 {
@@ -40,8 +39,9 @@ public:
 	int mMIDINote;
 	int mMIDIVel;	
 	int mMIDIBend;
-	int mMIDIPressure;
+	int mMIDIXCtrl;
 	int mMIDIYCtrl;
+	int mMIDIPressure;
 	
     VoiceState mState;
 };
@@ -100,6 +100,8 @@ public:
 	void setKymaPoll(bool v) { mKymaPoll = v; }
 	
 private:
+
+    void sendPressure(int chan, float p);
 
 	int mVoices;
 	

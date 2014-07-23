@@ -13,7 +13,7 @@ const std::string kSoundplaneMIDIDeviceName("Soundplane IAC out");
 MIDIVoice::MIDIVoice() :
 	age(0), x(0), y(0), z(0), note(0),
 	startX(0), startY(0), startNote(0),
-    mMIDINote(0), mMIDIVel(0), mMIDIBend(0), mMIDIPressure(0), mMIDIYCtrl(0),
+    mMIDINote(0), mMIDIVel(0), mMIDIBend(0), mMIDIXCtrl(0), mMIDIYCtrl(0), mMIDIPressure(0),
     mState(kVoiceStateInactive)
 {
 }
@@ -397,10 +397,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     
                     float fVel = pVoice->dz*100.f*128.f;
                     pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
-                    
 
-
-      debug() << "voice " << i << " ON: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
+      //debug() << "voice " << i << " ON: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                     
                     // reset pitch at note on!
                     mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, 8192));
@@ -416,14 +414,21 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     pVoice->mMIDINote = 0;
                     pVoice->mState = kVoiceStateInactive;
                     
-         debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
+                    // send pressure off
+                    sendPressure(chan, 0);
+                    pVoice->mMIDIPressure = 0;
+                    
+                    // send z off
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 75, 0));
+                    
+                    
+    //debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                     
                }
                 
                 // if note is on, send pitch bend / controllers.
                 if (pVoice->mMIDIVel > 0)
                 {
-                    int iy;
                     int newMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
                     
                     // retrigger notes when sliding from key to key
@@ -438,7 +443,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                         pVoice->mMIDINote = newMIDINote;
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
                         
-        debug() << "voice " << i << " RETRIG: Z = " << pVoice->z << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
+        //debug() << "voice " << i << " RETRIG: Z = " << pVoice->z << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                         
                     }
                     
@@ -464,38 +469,39 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                         if(ip != pVoice->mMIDIBend)
                         {
                             
-        debug() << "voice " << i << " BEND = " << ip << "\n";
+      //  debug() << "voice " << i << " BEND = " << ip << "\n";
                             
                             mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, ip));
                             pVoice->mMIDIBend = ip;
                         }
                         
+                        // send voice absolute x, y, z values to controllers 73, 74, 75
+                        int ix = clamp((int)(pVoice->x*127.f), 0, 127);
+                        if(ix != pVoice->mMIDIXCtrl)
+                        {
+                            
+                            //debug() << "channel " << chan << ", x = " << ix << "\n";
+                            
+                            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 73, ix));
+                            pVoice->mMIDIXCtrl = ix;
+                        }
                         
-                        
-         // TODO x+y+z: 73, 74, 75
-                        
-                        // send y controller absolute
-                        iy = pVoice->y*128.f;
-                        iy = clamp(iy, 0, 127);
+                        int iy = clamp((int)(pVoice->y*127.f), 0, 127);
                         if(iy != pVoice->mMIDIYCtrl)
                         {
-                            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, kSoundplaneMIDIControllerY, iy));
+                            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 74, iy));
                             pVoice->mMIDIYCtrl = iy;
                         }
                         
-                        if(mPressureActive)
-                        {				
-                            // send pressure
-                            int press = 127. * pVoice->z;
-                            press = clamp(press, 0, 127);
-                            if(press != pVoice->mMIDIPressure)
+                        int iz = clamp((int)(pVoice->z*127.f), 0, 127);
+                        if(iz != pVoice->mMIDIPressure)
+                        {
+                            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 75, iz));
+                            if(mPressureActive)
                             {
-       debug() << "voice " << i << " PRESSURE = " << press << "\n";
-
-                                mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, press));
-                                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, press));
-                                pVoice->mMIDIPressure = press;
+                                sendPressure(chan, iz);
                             }
+                            pVoice->mMIDIPressure = iz;
                         }
                     }
                 }		
@@ -521,4 +527,10 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
             }
         }
     }
+}
+
+void SoundplaneMIDIOutput::sendPressure(int chan, float p)
+{
+    mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, p));
+    mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, p));
 }
