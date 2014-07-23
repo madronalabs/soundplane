@@ -1324,27 +1324,12 @@ const MLSignal& TouchTracker::Calibrator::getTemplate(Vec2 p) const
 Vec2 TouchTracker::Calibrator::getBinPosition(Vec2 pIn) const
 {
 	// Soundplane A
-	
-	/*
-	Vec2 pOut = pIn;
-	pOut -= Vec2(2.5, 0.5);
-	pOut = vclamp(pOut, Vec2(0., 0.), Vec2(57.99, 5.99));
-	*/
 	static MLRange binRangeX(2.0, 61.0, 0., mWidth);
 	static MLRange binRangeY(0.5, 6.5, 0., mHeight);
-	
 	Vec2 minPos(2.5, 0.5);
 	Vec2 maxPos(mWidth - 2.5f, mHeight - 0.5f);
 	Vec2 pos(binRangeX(pIn.x()), binRangeY(pIn.y()));
-
-//	Vec2 pos = pIn;
-//	return vclamp(pos + Vec2(0.5f, 0.5f), minPos, maxPos);
 	return vclamp(pos, minPos, maxPos);
-
-	
-//debug() << "bin: " << pOutI << "\n";
-	
-//	return pOut; // TEST
 }
 
 void TouchTracker::Calibrator::normalizeInput(MLSignal& in)
@@ -1396,7 +1381,7 @@ float TouchTracker::Calibrator::makeNormalizeMap()
 	mNormalizeMap.scale(mean);	
 
 	// constrain output values to salvage situation in case of weird outliers
-	mNormalizeMap.sigMin(8.f);	
+	mNormalizeMap.sigMin(4.f);
 	mNormalizeMap.sigMax(0.125f);	
 	
 	// return maximum
@@ -1446,6 +1431,10 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	static MLSignal input(mSrcWidth, mSrcHeight);
 	static MLSignal tare(mSrcWidth, mSrcHeight);
 	static MLSignal normTemp(mSrcWidth, mSrcHeight);
+    
+    // decreasing this will collect a wider area during normalization,
+    // smoothing the results.
+    const float kNormalizeThreshold = 0.125f;
 	
 	float kc, ke, kk;
 	kc = 4./16.; ke = 2./16.; kk=1./16.;
@@ -1493,8 +1482,6 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 		// smooth temp signal, duplicating values at border
 		normTemp.copy(input);		
 		normTemp.convolve3x3rb(kc, ke, kk);		
-//		normTemp.convolve3x3rb(kc, ke, kk);
-//		normTemp.convolve3x3rb(kc, ke, kk);
 	
 		if(peakZ > mAutoThresh)
 		{
@@ -1511,7 +1498,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 					float zSmooth = normTemp(i, j);
 					// but add actual samples from unsmoothed input
 					float z = input(i, j);
-					if(zSmooth > peakZ * 0.25f)
+					if(zSmooth > peakZ * kNormalizeThreshold)
 					{
 						// map must = count * z/peakZ
 						mTemp(i, j) = z / peakZ;
@@ -1522,8 +1509,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 			
 			// add temp signals to data						
 			mNormalizeMap.add(mTemp);
-			mNormalizeCount.add(mTemp2);		
-			
+			mNormalizeCount.add(mTemp2);
 			mVisSignal.copy(mNormalizeCount);
 			mVisSignal.scale(1.f / (float)kNormMapSamples);
 		}
@@ -1565,7 +1551,6 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 			MLConsole() << "Sliding over a key the first time will turn it gray.  \n";
 			MLConsole() << "Sliding over a key the second time will turn it green.\n";
 			MLConsole() << "\n";
-		
 		}
 		else if(peakZ > mAutoThresh)
 		{
@@ -1605,7 +1590,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 			mDataSum[dataIdx].add(mIncomingSample); 
 			mData[dataIdx].sigMin(mIncomingSample); 
 			mSampleCount[dataIdx]++;
-																																																			
+            
 			if(bIntPeak != intPeak1)
 			{
 				// entering new bin.

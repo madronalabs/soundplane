@@ -772,9 +772,10 @@ Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy)
 	xRange.convertTo(MLRange(1.5f, 29.5f));
 	float kx = clamp(xRange(xy.x()), 0.f, (float)kSoundplaneAKeyWidth);
     
-	MLRange yRange(1.35, 5.65);  // Soundplane A as measured
-	yRange.convertTo(MLRange(1.f, 4.f)); // flip y
-	float ky = clamp(yRange(xy.y()), 0.f, (float)kSoundplaneAKeyHeight);
+	MLRange yRange(1., 6.);  // Soundplane A as measured with kNormalizeThresh = .125
+	yRange.convertTo(MLRange(1.f, 4.f));
+    float scaledY = yRange(xy.y());
+	float ky = clamp(scaledY, 0.f, (float)kSoundplaneAKeyHeight);
     
 	return Vec2(kx, ky);
 }
