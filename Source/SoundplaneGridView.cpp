@@ -118,14 +118,13 @@ void SoundplaneGridView::renderXYGrid()
     MLRange xRange(0, keyWidth, margin, viewW - margin);
 	MLRange yRange(0, keyHeight, margin, viewH - margin);
     
-	// Soundplane A	
+	// Soundplane A
 	MLRange xmRange(2, sensorWidth-2);
 	xmRange.convertTo(MLRange(margin, viewW - margin));
 	MLRange ymRange(0, sensorHeight);
 	ymRange.convertTo(MLRange(margin, viewH - margin));
 
 	float dotSize = fabs(yRange(0.08f) - yRange(0.f));
-   
 	const MLSignal& calSignal = mpModel->getSignalForViewMode(kCalibrated);
 	float displayScale = mpModel->getModelFloatParam("display_scale");
 	
@@ -226,11 +225,11 @@ void SoundplaneGridView::renderXYGrid()
 		{
 			float x = touches(xColumn, t);
 			float y = touches(yColumn, t);
+                        
 			Vec2 xyPos(x, y);
 			Vec2 gridPos = mpModel->xyToKeyGrid(xyPos);
-			
-			float tx = xmRange.convert(x + 0.5);
-			float ty = ymRange.convert(y + 0.5);
+			float tx = xRange.convert(gridPos.x());
+			float ty = yRange.convert(gridPos.y());
 			float tz = touches(zColumn, t);
 			
             Vec4 dataColor(MLGL::getIndicatorColor(t));
