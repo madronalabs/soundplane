@@ -3,9 +3,9 @@
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
-#include "SoundplaneTouchView.h"
+#include "SoundplaneTouchGraphView.h"
 
-SoundplaneTouchView::SoundplaneTouchView() :
+SoundplaneTouchGraphView::SoundplaneTouchGraphView() :
 	mpModel(nullptr)
 {
 	setInterceptsMouseClicks (false, false);	
@@ -13,20 +13,20 @@ SoundplaneTouchView::SoundplaneTouchView() :
 	setupGL(this);
 }
 
-SoundplaneTouchView::~SoundplaneTouchView()
+SoundplaneTouchGraphView::~SoundplaneTouchGraphView()
 {
 }
 
-void SoundplaneTouchView::setModel(SoundplaneModel* m)
+void SoundplaneTouchGraphView::setModel(SoundplaneModel* m)
 {
 	mpModel = m;
 }
 
-void SoundplaneTouchView::mouseDrag (const MouseEvent& e)
+void SoundplaneTouchGraphView::mouseDrag (const MouseEvent& e)
 {
 }
 
-void SoundplaneTouchView::renderTouchBarGraphs()
+void SoundplaneTouchGraphView::renderTouchBarGraphs()
 {
 	if (!mpModel) return;
 	if (!isShowing()) return;
@@ -102,7 +102,7 @@ void SoundplaneTouchView::renderTouchBarGraphs()
 	}
 }
 
-void SoundplaneTouchView::renderOpenGL()
+void SoundplaneTouchGraphView::renderOpenGL()
 {
 	if (!mpModel) return;
     const Colour c = findColour(MLLookAndFeel::backgroundColor);

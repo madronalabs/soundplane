@@ -144,7 +144,7 @@
 		B56DCFC213E9B0DA007E9206 /* SoundplaneDriver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B56DCFC113E9B0DA007E9206 /* SoundplaneDriver.cpp */; };
 		B57A14EF16261A7000CF0716 /* soundplane.icns in Resources */ = {isa = PBXBuildFile; fileRef = B57A14EE16261A7000CF0716 /* soundplane.icns */; };
 		B589968914DDC08400F8EE68 /* SoundplaneZoneView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B589968814DDC08400F8EE68 /* SoundplaneZoneView.cpp */; };
-		B58FA98F14D4966D004F730D /* SoundplaneTouchView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B58FA98E14D4966D004F730D /* SoundplaneTouchView.cpp */; };
+		B58FA98F14D4966D004F730D /* SoundplaneTouchGraphView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B58FA98E14D4966D004F730D /* SoundplaneTouchGraphView.cpp */; };
 		B592C68816F36A5E001B578F /* juce_audio_devices.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C67C16F36A5E001B578F /* juce_audio_devices.mm */; };
 		B592C68916F36A5E001B578F /* juce_audio_basics.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C67D16F36A5E001B578F /* juce_audio_basics.mm */; };
 		B592C68A16F36A5E001B578F /* juce_audio_formats.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C67E16F36A5E001B578F /* juce_audio_formats.mm */; };
@@ -407,8 +407,8 @@
 		B57A14EE16261A7000CF0716 /* soundplane.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; name = soundplane.icns; path = ../../Data/soundplane.icns; sourceTree = SOURCE_ROOT; };
 		B589968714DDC08400F8EE68 /* SoundplaneZoneView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneZoneView.h; sourceTree = "<group>"; };
 		B589968814DDC08400F8EE68 /* SoundplaneZoneView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneZoneView.cpp; sourceTree = "<group>"; };
-		B58FA98D14D4966D004F730D /* SoundplaneTouchView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneTouchView.h; sourceTree = "<group>"; };
-		B58FA98E14D4966D004F730D /* SoundplaneTouchView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneTouchView.cpp; sourceTree = "<group>"; };
+		B58FA98D14D4966D004F730D /* SoundplaneTouchGraphView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneTouchGraphView.h; sourceTree = "<group>"; };
+		B58FA98E14D4966D004F730D /* SoundplaneTouchGraphView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneTouchGraphView.cpp; sourceTree = "<group>"; };
 		B592C67C16F36A5E001B578F /* juce_audio_devices.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_devices.mm; path = ../../../juce/modules/juce_audio_devices/juce_audio_devices.mm; sourceTree = SOURCE_ROOT; };
 		B592C67D16F36A5E001B578F /* juce_audio_basics.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_basics.mm; path = ../../../juce/modules/juce_audio_basics/juce_audio_basics.mm; sourceTree = SOURCE_ROOT; };
 		B592C67E16F36A5E001B578F /* juce_audio_formats.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_audio_formats.mm; path = ../../../juce/modules/juce_audio_formats/juce_audio_formats.mm; sourceTree = SOURCE_ROOT; };
@@ -860,8 +860,8 @@
 				B524E6401811CF5200A94518 /* SoundplaneModelA.h */,
 				B55ADF6B158BD39500FE9D51 /* SoundplaneOSCOutput.cpp */,
 				B55ADF6A158BD39500FE9D51 /* SoundplaneOSCOutput.h */,
-				B58FA98E14D4966D004F730D /* SoundplaneTouchView.cpp */,
-				B58FA98D14D4966D004F730D /* SoundplaneTouchView.h */,
+				B58FA98E14D4966D004F730D /* SoundplaneTouchGraphView.cpp */,
+				B58FA98D14D4966D004F730D /* SoundplaneTouchGraphView.h */,
 				B5DD1B4113E79F87002BD9C7 /* SoundplaneView.cpp */,
 				B5DD1B4213E79F87002BD9C7 /* SoundplaneView.h */,
 				B589968814DDC08400F8EE68 /* SoundplaneZoneView.cpp */,
@@ -981,7 +981,7 @@
 				B52E304213FDFE7F005650CB /* SoundplaneController.cpp in Sources */,
 				B508804D14635BB20039D144 /* Filters2D.cpp in Sources */,
 				B59D217514B5425300F061EA /* TouchTracker.cpp in Sources */,
-				B58FA98F14D4966D004F730D /* SoundplaneTouchView.cpp in Sources */,
+				B58FA98F14D4966D004F730D /* SoundplaneTouchGraphView.cpp in Sources */,
 				B589968914DDC08400F8EE68 /* SoundplaneZoneView.cpp in Sources */,
 				B55ADF69158BD38100FE9D51 /* SoundplaneMIDIOutput.cpp in Sources */,
 				B55ADF6C158BD39500FE9D51 /* SoundplaneOSCOutput.cpp in Sources */,
@@ -1156,6 +1156,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CODE_SIGN_IDENTITY = "Mac Developer: Randy Jones (X494RZB5UA)";
 				COPY_PHASE_STRIP = NO;
 				EXCLUDED_SOURCE_FILE_NAMES = "";
@@ -1174,6 +1175,7 @@
 				INSTALL_PATH = "$(HOME)/Applications";
 				JUCE_PATH = "$(HOME)/dev/juce";
 				KERNEL_PATH = /System/Library/Frameworks/Kernel.framework/Headers;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				ML_PATH = "$(HOME)/dev/madronalib";
 				OSCPACK_PATH = "$(HOME)/dev/oscpack";
 				OSCTOOLS_PATH = "$(HOME)/dev/osctools";
@@ -1213,6 +1215,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CODE_SIGN_IDENTITY = "Mac Developer: Randy Jones (X494RZB5UA)";
 				COPY_PHASE_STRIP = NO;
 				EXCLUDED_SOURCE_FILE_NAMES = "";
@@ -1231,6 +1234,7 @@
 				INSTALL_PATH = "$(HOME)/Applications";
 				JUCE_PATH = "$(HOME)/dev/juce";
 				KERNEL_PATH = /System/Library/Frameworks/Kernel.framework/Headers;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				ML_PATH = "$(HOME)/dev/madronalib";
 				OSCPACK_PATH = "$(HOME)/dev/oscpack";
 				OSCTOOLS_PATH = "$(HOME)/dev/osctools";
@@ -1270,6 +1274,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CODE_SIGN_IDENTITY = "Mac Developer: Randy Jones (X494RZB5UA)";
 				COPY_PHASE_STRIP = NO;
 				EXCLUDED_SOURCE_FILE_NAMES = "";
@@ -1288,6 +1293,7 @@
 				INSTALL_PATH = "$(HOME)/Applications";
 				JUCE_PATH = "$(HOME)/dev/juce";
 				KERNEL_PATH = /System/Library/Frameworks/Kernel.framework/Headers;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				ML_PATH = "$(HOME)/dev/madronalib";
 				OSCPACK_PATH = "$(HOME)/dev/oscpack";
 				OSCTOOLS_PATH = "$(HOME)/dev/osctools";

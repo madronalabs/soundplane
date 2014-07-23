@@ -8,7 +8,7 @@
 
 #include "JuceHeader.h"
 #include "SoundplaneGridView.h"
-#include "SoundplaneTouchView.h"
+#include "SoundplaneTouchGraphView.h"
 #include "SoundplaneZoneView.h"
 #include "TrackerCalibrateView.h"
 #include "SoundplaneModel.h"
@@ -121,7 +121,7 @@ private:
 	
 	// page 0
 	SoundplaneGridView mGridView;
-	SoundplaneTouchView mTouchView;
+	SoundplaneTouchGraphView mTouchView;
 	MLTextButton* mpCalibrateButton;
 	MLTextButton* mpClearButton;
 	MLMenuButton* mpViewModeButton;
