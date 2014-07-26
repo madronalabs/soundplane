@@ -527,7 +527,7 @@ void SoundplaneView::modelStateChanged()
 // MLModelListener implementation
 // an updateChangedParams() is needed to get these actions sent by the Model.
 //
-void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLModelProperty & oldVal, const MLModelProperty & newVal)
+void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & oldVal, const MLProperty & newVal)
 {
 	// debug() << "SoundplaneView::doPropertyChangeAction: " << p << " from " << oldVal << " to " << newVal << "\n";
 	if(p == "viewmode")

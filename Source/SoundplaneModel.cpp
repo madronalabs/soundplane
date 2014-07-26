@@ -141,49 +141,49 @@ SoundplaneModel::~SoundplaneModel()
 void SoundplaneModel::setAllParamsToDefaults()
 {
 	// parameter defaults and creation
-	setModelProperty("max_touches", 4);
-	setModelProperty("lopass", 100.);
+	setProperty("max_touches", 4);
+	setProperty("lopass", 100.);
 	
-	setModelProperty("z_thresh", 0.01);
-	setModelProperty("z_max", 0.05);
-	setModelProperty("z_curve", 0.25);
-	setModelProperty("display_scale", 1.);
+	setProperty("z_thresh", 0.01);
+	setProperty("z_max", 0.05);
+	setProperty("z_curve", 0.25);
+	setProperty("display_scale", 1.);
 	
-	setModelProperty("quantize", 1.);
-	setModelProperty("lock", 0.);
-	setModelProperty("abs_rel", 0.);
-	setModelProperty("snap", 250.);
-	setModelProperty("vibrato", 0.5);
+	setProperty("quantize", 1.);
+	setProperty("lock", 0.);
+	setProperty("abs_rel", 0.);
+	setProperty("snap", 250.);
+	setProperty("vibrato", 0.5);
 		
-	setModelProperty("t_thresh", 0.2);
+	setProperty("t_thresh", 0.2);
 	
-	setModelProperty("midi_active", 0);
-	setModelProperty("midi_multi_chan", 1);
-	setModelProperty("midi_start_chan", 1);
-	setModelProperty("data_freq_midi", 250.);
+	setProperty("midi_active", 0);
+	setProperty("midi_multi_chan", 1);
+	setProperty("midi_start_chan", 1);
+	setProperty("data_freq_midi", 250.);
 	
-	setModelProperty("kyma_poll", 1);
+	setProperty("kyma_poll", 1);
 	
-	setModelProperty("osc_active", 1);
-	setModelProperty("osc_raw", 0);
-	setModelProperty("data_freq_osc", 250.);
+	setProperty("osc_active", 1);
+	setProperty("osc_raw", 0);
+	setProperty("data_freq_osc", 250.);
 	
-	setModelProperty("bend_range", 48);
-	setModelProperty("transpose", 0);
-	setModelProperty("bg_filter", 0.05);
+	setProperty("bend_range", 48);
+	setProperty("transpose", 0);
+	setProperty("bg_filter", 0.05);
 	
-	setModelProperty("hysteresis", 0.5);
+	setProperty("hysteresis", 0.5);
 	
 	// menu param defaults
-	setModelProperty("viewmode", "calibrated");
+	setProperty("viewmode", "calibrated");
     
     // preset menu defaults (TODO use first choices?)
-	setModelProperty("zone_preset", "continuous pitch x");
-	setModelProperty("touch_preset", "touch default");
+	setProperty("zone_preset", "continuous pitch x");
+	setProperty("touch_preset", "touch default");
     	
 	for(int i=0; i<32; ++i)
 	{
-		setModelProperty(MLSymbol("carrier_toggle").withFinalNumber(i), 1);		
+		setProperty(MLSymbol("carrier_toggle").withFinalNumber(i), 1);		
 	}
 }
 
@@ -215,7 +215,7 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 				// no reason to respond to
 				if(newTouches > 0)
 				{
-					setModelProperty("max_touches", newTouches);
+					setProperty("max_touches", newTouches);
 				}
 			}
 		}
@@ -227,9 +227,9 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 	}
 }
 
-void SoundplaneModel::setModelProperty(MLSymbol p, float v) 
+void SoundplaneModel::setProperty(MLSymbol p, float v) 
 {
-	MLModel::setModelProperty(p, v);
+	MLModel::setProperty(p, v);
 	if (p.withoutFinalNumber() == MLSymbol("carrier_toggle"))
 	{
 		// toggles changed -- mute carriers 
@@ -237,7 +237,7 @@ void SoundplaneModel::setModelProperty(MLSymbol p, float v)
 		for(int i=0; i<32; ++i)
 		{
 			MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
-			bool on = (int)(getModelFloatParam(tSym));
+			bool on = (int)(getFloatProperty(tSym));
 			mask = mask | (on << i);
 		}
 		
@@ -251,7 +251,7 @@ void SoundplaneModel::setModelProperty(MLSymbol p, float v)
 		for(int i=0; i<32; ++i)
 		{
 			MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
-			setModelProperty(tSym, on);
+			setProperty(tSym, on);
 		}
 		mCarriersMask = on ? ~0 : 0;
 		mCarrierMaskDirty = true; // trigger carriers set in a second or so
@@ -376,10 +376,10 @@ void SoundplaneModel::setModelProperty(MLSymbol p, float v)
 	}
 }
 
-void SoundplaneModel::setModelProperty(MLSymbol p, const std::string& v)
+void SoundplaneModel::setProperty(MLSymbol p, const std::string& v)
 {
-	MLModel::setModelProperty(p, v);
-	// debug() << "SoundplaneModel::setModelProperty " << p << " : " << v << "\n";
+	MLModel::setProperty(p, v);
+	// debug() << "SoundplaneModel::setProperty " << p << " : " << v << "\n";
 
 	if (p == "viewmode")
 	{
@@ -395,9 +395,9 @@ void SoundplaneModel::setModelProperty(MLSymbol p, const std::string& v)
     }
 }
 
-void SoundplaneModel::setModelProperty(MLSymbol p, const MLSignal& v)
+void SoundplaneModel::setProperty(MLSymbol p, const MLSignal& v)
 {
-	MLModel::setModelProperty(p, v);
+	MLModel::setProperty(p, v);
 	if(p == MLSymbol("carriers"))
 	{
 		// get carriers from signal
@@ -556,20 +556,20 @@ void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& nor
 {
 	if(avgDistance > 0.f)
 	{
-		setModelProperty("tracker_calibration", cal);	
-		setModelProperty("tracker_normalize", norm);	
+		setProperty("tracker_calibration", cal);	
+		setProperty("tracker_normalize", norm);	
 		float thresh = avgDistance * 1.75f;
 		MLConsole() << "SoundplaneModel::hasNewCalibration: calculated template threshold: " << thresh << "\n";
-		setModelProperty("t_thresh", thresh);	
+		setProperty("t_thresh", thresh);	
 	}
 	else
 	{
 		// set default calibration
-		setModelProperty("tracker_calibration", cal);	
-		setModelProperty("tracker_normalize", norm);	
+		setProperty("tracker_calibration", cal);	
+		setProperty("tracker_normalize", norm);	
 		float thresh = 0.2f;
 		MLConsole() << "SoundplaneModel::hasNewCalibration: default template threshold: " << thresh << "\n";
-		setModelProperty("t_thresh", thresh);	
+		setProperty("t_thresh", thresh);	
 	}
 }
 
@@ -782,7 +782,7 @@ Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy)
 
 void SoundplaneModel::clearTouchData()
 {
-	const int maxTouches = getModelFloatParam("max_touches");
+	const int maxTouches = getFloatProperty("max_touches");
 	for(int i=0; i<maxTouches; ++i)
 	{
 		mTouchFrame(xColumn, i) = 0;		
@@ -801,12 +801,12 @@ void SoundplaneModel::sendParametersToZones()
 {
     // TODO zones should have parameters (really attributes) too, so they can be inspected.
     int zones = mZones.size();
-	const float v = getModelFloatParam("vibrato");
-    const float h = getModelFloatParam("hysteresis");
-    bool q = getModelFloatParam("quantize");
-    bool nl = getModelFloatParam("lock");
-    int t = getModelFloatParam("transpose");
-    float sf = getModelFloatParam("snap");
+	const float v = getFloatProperty("vibrato");
+    const float h = getFloatProperty("hysteresis");
+    bool q = getFloatProperty("quantize");
+    bool nl = getFloatProperty("lock");
+    int t = getFloatProperty("transpose");
+    float sf = getFloatProperty("snap");
     
     for(int i=0; i<zones; ++i)
 	{
@@ -825,10 +825,10 @@ void SoundplaneModel::sendTouchDataToZones()
 	float x, y, z, dz;
 	int age;
     
-	const float zmax = getModelFloatParam("z_max");
-	const float zcurve = getModelFloatParam("z_curve");
-	const int maxTouches = getModelFloatParam("max_touches");
-	const float hysteresis = getModelFloatParam("hysteresis");
+	const float zmax = getFloatProperty("z_max");
+	const float zcurve = getFloatProperty("z_curve");
+	const int maxTouches = getFloatProperty("max_touches");
+	const float hysteresis = getFloatProperty("hysteresis");
     
 	MLRange yRange(0.05, 0.8);
 	yRange.convertTo(MLRange(0., 1.));
@@ -1110,7 +1110,7 @@ void SoundplaneModel::setDefaultCarriers()
 		{
 			cSig[car] = kModelDefaultCarriers[car];
 		}		
-		setModelProperty("carriers", cSig);
+		setProperty("carriers", cSig);
 	}
 }
 
@@ -1404,7 +1404,7 @@ void SoundplaneModel::endSelectCarriers()
 		{
 			cSig[car] = mCarriers[car];
 		}		
-		setModelProperty("carriers", cSig);
+		setProperty("carriers", cSig);
 	}
 	MLConsole() << "carrier select done.\n";
 

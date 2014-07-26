@@ -104,7 +104,7 @@ void SoundplaneGridView::renderXYGrid()
 	int sensorHeight = mpModel->getHeight();
 
 	int state = mpModel->getDeviceState();
-	float fMax = mpModel->getModelFloatParam("z_max");
+	float fMax = mpModel->getFloatProperty("z_max");
     
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
@@ -126,7 +126,7 @@ void SoundplaneGridView::renderXYGrid()
 
 	float dotSize = fabs(yRange(0.08f) - yRange(0.f));
 	const MLSignal& calSignal = mpModel->getSignalForViewMode(kCalibrated);
-	float displayScale = mpModel->getModelFloatParam("display_scale");
+	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	// draw stuff in immediate mode. 
 	// TODO don't use fixed function pipeline.
@@ -215,7 +215,7 @@ void SoundplaneGridView::renderXYGrid()
 	
 	// render current touch dots
 	//
-	const int nt = mpModel->getModelFloatParam("max_touches");
+	const int nt = mpModel->getFloatProperty("max_touches");
 	const MLSignal& touches = mpModel->getTouchFrame();
 
 	for(int t=0; t<nt; ++t)
@@ -313,7 +313,7 @@ void SoundplaneGridView::renderZGrid()
         
         const MLSignal& viewSignal = mpModel->getSignalForViewMode(mViewMode);
         
-        float displayScale = mpModel->getModelFloatParam("display_scale");
+        float displayScale = mpModel->getFloatProperty("display_scale");
         float scale = displayScale;
         float offset = 0.f;
         bool separateSurfaces = false;
@@ -443,7 +443,7 @@ void SoundplaneGridView::renderZGrid()
         
         // render current touches on top of surface
         //
-        const int nt = mpModel->getModelFloatParam("max_touches");
+        const int nt = mpModel->getFloatProperty("max_touches");
         const MLSignal& touches = mpModel->getTouchFrame();
         
         char strBuf[64] = {0};
@@ -503,7 +503,7 @@ void SoundplaneGridView::renderBarChart()
     
     const MLSignal& viewSignal = mpModel->getSignalForViewMode(mViewMode);
     
-    float displayScale = mpModel->getModelFloatParam("display_scale");
+    float displayScale = mpModel->getFloatProperty("display_scale");
     float scale = displayScale;
     float offset = 0.f;
     switch(mViewMode)

@@ -66,7 +66,7 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 	MLSymbol p (pButton->getTargetPropertyName());
 	MLParamValue t = pButton->getToggleState();
 
-	mpModel->setModelProperty(p, t);
+	mpModel->setProperty(p, t);
 
 	/*
 	if (p == "carriers")
@@ -150,7 +150,7 @@ void SoundplaneController::dialValueChanged (MLDial* pDial)
 
 	debug() << p << ": " << v << "\n";
 	
-	mpModel->setModelProperty(p, v);
+	mpModel->setProperty(p, v);
 	
 }
 
@@ -218,7 +218,7 @@ void SoundplaneController::setupMenus()
 	mMenuMap["osc_services"] = MLMenuPtr(new MLMenu("osc_services"));
 	
 	// setup OSC defaults 
-	mpModel->setModelProperty("osc_services", kOSCDefaultStr);	
+	mpModel->setProperty("osc_services", kOSCDefaultStr);	
 }	
 
 void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
@@ -310,7 +310,7 @@ void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
             SoundplaneModel* pModel = getModel();
             assert(pModel);
             const std::string& fullName = menu->getItemFullName(result);
-			pModel->setModelProperty(menuName, fullName);
+			pModel->setProperty(menuName, fullName);
 		}
         
 		if (menuName == "zone_preset")
@@ -360,7 +360,7 @@ void SoundplaneController::doZonePresetMenu(int result)
             break;
     }
 
-    pModel->setModelProperty("zone_JSON", zoneStr);
+    pModel->setProperty("zone_JSON", zoneStr);
 }
 
 void SoundplaneController::doOSCServicesMenu(int result)
@@ -368,7 +368,7 @@ void SoundplaneController::doOSCServicesMenu(int result)
  	SoundplaneModel* pModel = getModel();
 	assert(pModel);
 
-    // TODO should this not be in Model::setModelProperty?
+    // TODO should this not be in Model::setProperty?
     std::string name;
     if(result == 1) // set default
     {

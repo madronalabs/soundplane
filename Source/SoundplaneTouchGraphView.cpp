@@ -36,7 +36,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 	
 	const MLSignal& currentTouch = mpModel->getTouchFrame();
 	const MLSignal& touchHistory = mpModel->getTouchHistory();
-	const int frames = mpModel->getModelFloatParam("max_touches");
+	const int frames = mpModel->getFloatProperty("max_touches");
 	if (!frames) return;
 		
 	const Colour c = findColour(MLLookAndFeel::backgroundColor);
