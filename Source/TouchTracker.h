@@ -36,7 +36,7 @@ const int kTouchTrackerMaxPeaks = 16;
 
 const int kPassesToCalibrate = 2;
 const float kNormalizeThresh = 0.125;
-const int kNormMapSamples = 2048;
+const int kNormMapSamples = 1024;
 
 // Soundplane A
 const int kCalibrateWidth = 64;

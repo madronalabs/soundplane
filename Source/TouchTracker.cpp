@@ -833,7 +833,7 @@ Vec3 TouchTracker::closestTouch(Vec2 pos)
 float TouchTracker::getInhibitThreshold(Vec2 a)
 {
 	float inhibitMax = 1.1f;
-	float inhibitRange = 4.f;
+	float inhibitRange = 3.f;
 	float maxInhibit = 0.f;
 	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
@@ -864,7 +864,7 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 		float z = peak.z();
 		
 		// add peak to key state, or bail
-		if (z > mOnThreshold*0.25f)
+		if (z > mOnThreshold)
 		{			
 			Vec2 pos = in.correctPeak(peak.x(), peak.y());	
 			int key = getKeyIndexAtPoint(pos);
@@ -874,7 +874,10 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 				KeyState& keyState = mKeyStates[key];
 				MLRange kdzRange(mOnThreshold, mMaxForce*0.5, 0.001f, 1.f);
 				float iirCoeff = kdzRange.convertAndClip(z);	
-				float dt = mCalibrator.differenceFromTemplateTouch(in, pos);	
+				float dt = mCalibrator.differenceFromTemplateTouch(in, pos);
+                
+                //debug() << "new PEAK dt: " << dt << "\n";
+                
 				keyState.mK = iirCoeff;
 				keyState.zIn = z;
 				keyState.dtIn = dt;
@@ -916,10 +919,10 @@ void TouchTracker::findTouches()
 			bool overrideTest = (z > mOverrideThresh);
 			bool kCoeffTest = (kCoeff > 0.001f);
 			bool ageTest = mKeyStates[i].age > 10;
-			
-			if (ageTest && inhibitTest && kCoeffTest)
+			bool dzTest = kdz > 0.001f;
+            
+			if (ageTest && inhibitTest && kCoeffTest && dzTest)
 			{	
-//debug() << "key:" << i << " z:" << z << " dz:" << kdz << " template:" << templateTest << " inhibit:" << inhibitTest << "\n";
 			
 				// if difference of peak neighborhood from template at subpixel position 
 				// is under threshold, we may have a new touch.		
@@ -927,7 +930,9 @@ void TouchTracker::findTouches()
 				{
 					if(!keyIsOccupied(i))
 					{
-					//	Touch t(pos.x(), pos.y(), z, kCoeff);
+ debug() << "NEW touch:  key:" << i << " z:" << z << " dz:" << kdz << " template:" << templateTest << " inhibit:" << inhibitTest << "\n";
+
+                        //	Touch t(pos.x(), pos.y(), z, kCoeff);
 						Touch t(pos.x(), pos.y(), z, kdz);
 						t.key = i;
 						t.tDist = kdt;
@@ -1281,38 +1286,58 @@ void TouchTracker::Calibrator::makeDefaultTemplate()
 	}
 }
 
+// get the template touch at the point p by bilinear interpolation
+// from the four surrounding templates.
 const MLSignal& TouchTracker::Calibrator::getTemplate(Vec2 p) const
 {
 	static MLSignal temp1(kTemplateSize, kTemplateSize);
 	static MLSignal temp2(kTemplateSize, kTemplateSize);
+	static MLSignal d00(kTemplateSize, kTemplateSize);
+	static MLSignal d10(kTemplateSize, kTemplateSize);
+	static MLSignal d01(kTemplateSize, kTemplateSize);
+	static MLSignal d11(kTemplateSize, kTemplateSize);
 	if(mHasCalibration)
 	{
 		Vec2 pos = getBinPosition(p);
 		Vec2 iPos, fPos;
 		pos.getIntAndFracParts(iPos, fPos);	
 		int idx00 = iPos.y()*mWidth + iPos.x();
-		int idx10 = idx00;
-		int idx01 = idx00;
-		int idx11 = idx00;
-		if(iPos.x() < mWidth - 1)
-		{
-			idx10 += 1;
-			idx11 += 1;
-		}
-		if(iPos.y() < mHeight - 1)
-		{
-			idx01 += mWidth;
-			idx11 += mWidth;
-		}
-		const MLSignal d00 = mCalibrateSignal.getFrame(idx00);
-		const MLSignal d10 = mCalibrateSignal.getFrame(idx10);
-		const MLSignal d01 = mCalibrateSignal.getFrame(idx01);
-		const MLSignal d11 = mCalibrateSignal.getFrame(idx11);		
+
+
+		d00.copy(mCalibrateSignal.getFrame(idx00));
+        if(iPos.x() < mWidth - 3)
+        {
+            d10.copy(mCalibrateSignal.getFrame(idx00 + 1));
+        }
+        else
+        {
+            d10.copy(mDefaultTemplate);
+        }
+        
+        if(iPos.y() < mHeight - 1)
+        {
+            d01.copy(mCalibrateSignal.getFrame(idx00 + mWidth));
+        }
+        else
+        {
+            d01.copy(mDefaultTemplate);
+        }
+        
+        if ((iPos.x() < mWidth - 3) && (iPos.y() < mHeight - 1))
+        {
+            d11.copy(mCalibrateSignal.getFrame(idx00 + mWidth + 1));
+        }
+        else
+        {
+            d11.copy(mDefaultTemplate);
+        }
 		temp1.copy(d00);
-		temp1.sigLerp(d10, fPos.x());
+        
+        temp1.sigLerp(d10, fPos.x());
 		temp2.copy(d01);
 		temp2.sigLerp(d11, fPos.x());
 		temp1.sigLerp(temp2, fPos.y());
+
 		return temp1;
 	}
 	else
@@ -1481,7 +1506,9 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 	{
 		// smooth temp signal, duplicating values at border
 		normTemp.copy(input);		
-		normTemp.convolve3x3rb(kc, ke, kk);		
+		normTemp.convolve3x3rb(kc, ke, kk);
+		normTemp.convolve3x3rb(kc, ke, kk);
+		normTemp.convolve3x3rb(kc, ke, kk);
 	
 		if(peakZ > mAutoThresh)
 		{
@@ -1560,12 +1587,14 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 		
 			// smooth input	
 			mTemp.convolve3x3r(kc, ke, kk);
+			mTemp.convolve3x3r(kc, ke, kk);
+			mTemp.convolve3x3r(kc, ke, kk);
 			
 			// get corrected peak
 			mPeak = mTemp.findPeak();
 			mPeak = mTemp.correctPeak(mPeak.x(), mPeak.y());							
 			Vec2 minPos(2.0, 0.);
-			Vec2 maxPos(mWidth - 3., mHeight - 1.);
+			Vec2 maxPos(mWidth - 2., mHeight - 1.);
 			mPeak = vclamp(mPeak, minPos, maxPos);
 		
 			age++; // continue touch
@@ -1581,7 +1610,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 			int bix = binPeak.x();			
 			int biy = binPeak.y();
 			// clamp to calibratable area
-			bix = clamp(bix, 2, mWidth - 3);
+			bix = clamp(bix, 2, mWidth - 2);
 			biy = clamp(biy, 0, mHeight - 1);
 			Vec2 bIntPeak(bix, biy);
 
@@ -1752,6 +1781,10 @@ float TouchTracker::Calibrator::differenceFromTemplateTouch(const MLSignal& in, 
 	linearZ = clamp(linearZ, 0.00001f, 1.f);
 	float z1 = 1./linearZ;	
 	const MLSignal& a = getTemplate(pos);
+    
+    // TEST
+    //debug() << "TEMPLATE @ " << pos << ":\n";
+   // a.dump(true);
 	
 	// get normalized input values surrounding touch
 	int tr = kTemplateRadius;
@@ -1776,6 +1809,7 @@ float TouchTracker::Calibrator::differenceFromTemplateTouch(const MLSignal& in, 
 	// add differences in z from template
 	a2.copy(a);
 	b2.copy(b);
+    
 	for(int j=0; j < kTemplateSize; ++j)
 	{
 		for(int i=0; i < kTemplateSize; ++i)
