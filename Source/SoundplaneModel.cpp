@@ -120,7 +120,7 @@ SoundplaneModel::SoundplaneModel() :
 	
     clearZones();
 
-	setAllParamsToDefaults();
+	setAllPropertiesToDefaults();
 
 	mTracker.setListener(this);
 }
@@ -138,7 +138,7 @@ SoundplaneModel::~SoundplaneModel()
 	}
 }
 
-void SoundplaneModel::setAllParamsToDefaults()
+void SoundplaneModel::setAllPropertiesToDefaults()
 {
 	// parameter defaults and creation
 	setProperty("max_touches", 4);
@@ -180,7 +180,9 @@ void SoundplaneModel::setAllParamsToDefaults()
     // preset menu defaults (TODO use first choices?)
 	setProperty("zone_preset", "continuous pitch x");
 	setProperty("touch_preset", "touch default");
-    	
+    
+	setProperty("view_page", 0);
+    
 	for(int i=0; i<32; ++i)
 	{
 		setProperty(MLSymbol("carrier_toggle").withFinalNumber(i), 1);		
@@ -227,10 +229,9 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 	}
 }
 
-void SoundplaneModel::setProperty(MLSymbol p, float v) 
+void SoundplaneModel::setFloatProperty(MLSymbol p, float v)
 {
-	MLModel::setProperty(p, v);
-	if (p.withoutFinalNumber() == MLSymbol("carrier_toggle"))
+    if (p.withoutFinalNumber() == MLSymbol("carrier_toggle"))
 	{
 		// toggles changed -- mute carriers 
 		unsigned long mask = 0;	
@@ -376,9 +377,8 @@ void SoundplaneModel::setProperty(MLSymbol p, float v)
 	}
 }
 
-void SoundplaneModel::setProperty(MLSymbol p, const std::string& v)
+void SoundplaneModel::setStringProperty(MLSymbol p, const std::string& v)
 {
-	MLModel::setProperty(p, v);
 	// debug() << "SoundplaneModel::setProperty " << p << " : " << v << "\n";
 
 	if (p == "viewmode")
@@ -395,9 +395,8 @@ void SoundplaneModel::setProperty(MLSymbol p, const std::string& v)
     }
 }
 
-void SoundplaneModel::setProperty(MLSymbol p, const MLSignal& v)
+void SoundplaneModel::setSignalProperty(MLSymbol p, const MLSignal& v)
 {
-	MLModel::setProperty(p, v);
 	if(p == MLSymbol("carriers"))
 	{
 		// get carriers from signal
@@ -416,6 +415,23 @@ void SoundplaneModel::setProperty(MLSymbol p, const MLSignal& v)
 	{
 		mTracker.setNormalizeMap(v);
 	}
+}
+
+void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
+{
+    int type = val.getType();
+    switch(type)
+    {
+        case MLProperty::kFloatProperty:
+            setFloatProperty(p, (val.getFloatValue()));
+            break;
+        case MLProperty::kStringProperty:
+            setStringProperty(p, (*val.getStringValue()));
+            break;
+        case MLProperty::kSignalProperty:
+            setSignalProperty(p, (*val.getSignalValue()));
+            break;
+    }
 }
 
 void SoundplaneModel::initialize()
@@ -673,7 +689,6 @@ void SoundplaneModel::addZone(ZonePtr pz)
         int y = b.y();
         int w = b.width();
         int h = b.height();
-        int hh = mZoneMap.getHeight();
         
         for(int j=y; j < y + h; ++j)
         {
@@ -1091,7 +1106,6 @@ void SoundplaneModel::doInfrequentTasks()
 		mNeedsCarriersSet = false;
 		setCarriers(mCarriers);
 		mNeedsCalibrate = true;
-		dumpCarriers();
 	}
 	else if (mpDriver && mNeedsCalibrate)
 	{
@@ -1119,12 +1133,6 @@ void SoundplaneModel::setCarriers(unsigned char* c)
 	if (mpDriver)
 	{
 		enableOutput(false);
-
-		for(int i=0; i < kSoundplaneSensorWidth; ++i)
-		{
-	debug() << "carrier " << i << ":" << c[i] << "\n";		
-		}
-
 		IOReturn err = mpDriver->setCarriers(c);
 		if (err != kIOReturnSuccess)
 		{

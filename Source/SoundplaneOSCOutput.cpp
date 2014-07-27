@@ -305,7 +305,7 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
                         std::string address("/t3d/tch");
                         int maxSize = 4;
                         char idBuf[maxSize];
-                        snprintf(idBuf, maxSize, "%d", touchID);                                 
+                        snprintf(idBuf, maxSize, "%d", (int)touchID);
                         address += std::string(idBuf);
                         p << osc::BeginMessage( address.c_str() );
                         p << pVoice->x << pVoice->y << pVoice->z << pVoice->note;

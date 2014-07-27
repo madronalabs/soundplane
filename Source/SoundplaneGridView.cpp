@@ -452,11 +452,8 @@ void SoundplaneGridView::renderZGrid()
             int age = touches(ageColumn, t);
             if (age > 0)
             {
-                float x = touches(xColumn, t) * width;
                 float y = touches(yColumn, t) * height;
                 float z = touches(zColumn, t);
-                
-                float tx = xRange.convert(x);
                 float ty = yRange.convert(y);
                 float tz = (z);			
 

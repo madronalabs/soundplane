@@ -5,12 +5,6 @@
 
 #include "SoundplaneView.h"
 
-const float kCanvasRectHeight = 0.8f;
-const float kMenuRectWidth = 0.25f;
-const float kControlsRectWidth = 0.15f;
-const float kVoicesRectWidth = 0.25f;
-
-
 // --------------------------------------------------------------------------------
 #pragma mark header view
 
@@ -149,6 +143,7 @@ void SoundplaneFooterView::paint (Graphics& g)
 
 // --------------------------------------------------------------------------------
 SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLReporter* pRep) :
+    MLPropertyListener(pModel),
 	MLAppView(pResp, pRep),
 	mpFooter(0),
 	mpPages(0),
@@ -158,8 +153,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	mSoundplaneDeviceState(-1),
 	mpCurveGraph(0),
 	mpViewModeButton(0),
-	mpMIDIDeviceButton(0),
-	MLModelListener(pModel)
+	mpMIDIDeviceButton(0)
 {
     setWidgetName("soundplane_view");
     
@@ -527,9 +521,8 @@ void SoundplaneView::modelStateChanged()
 // MLModelListener implementation
 // an updateChangedParams() is needed to get these actions sent by the Model.
 //
-void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & oldVal, const MLProperty & newVal)
+void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & newVal)
 {
-	// debug() << "SoundplaneView::doPropertyChangeAction: " << p << " from " << oldVal << " to " << newVal << "\n";
 	if(p == "viewmode")
 	{
 		const std::string* v = newVal.getStringValue();
@@ -562,9 +555,10 @@ void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & oldVa
 			setViewMode(kNrmMap);
 		}
 	}
-	else if(p == "")
+	else if(p == "view_page")
 	{
-	
+		float v = newVal.getFloatValue();
+        goToPage(v);
 	}
 }
 
@@ -590,6 +584,18 @@ void SoundplaneView::setViewMode(SoundplaneViewMode v)
             mTouchView.setWidgetVisible(1);
 		break;
 	}
+}
+
+int SoundplaneView::getCurrentPage()
+{
+    if(mpPages)
+    {
+        return mpPages->getCurrentPage();
+    }
+    else
+    {
+        return -1;
+    }
 }
 
 void SoundplaneView::makeCarrierTogglesVisible(int v)

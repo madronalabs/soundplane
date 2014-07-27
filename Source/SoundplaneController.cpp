@@ -12,12 +12,11 @@ static void menuItemChosenCallback (int result, SoundplaneController* pC, MLMenu
 
 SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
 	MLReporter(pModel),
+    MLPropertyModifier(pModel),
 	mpSoundplaneModel(pModel),
 	mpSoundplaneView(0),
-//	mCurrMenuInstigator(nullptr),
 	mNeedsLateInitialize(true)
 {
-	MLReporter::mpModel = pModel;
 	startTimer(250);
 }
 
@@ -66,7 +65,7 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 	MLSymbol p (pButton->getTargetPropertyName());
 	MLParamValue t = pButton->getToggleState();
 
-	mpModel->setProperty(p, t);
+	requestPropertyChange(p, t);
 
 	/*
 	if (p == "carriers")
@@ -92,7 +91,7 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 	{		
 		if(confirmRestoreDefaults())
 		{
-			mpSoundplaneModel->setAllParamsToDefaults();
+			mpSoundplaneModel->setAllPropertiesToDefaults();
 			doWelcomeTasks();
 		}
 	}
@@ -124,11 +123,11 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 	}
 	else if(p == "prev")
 	{
-	
 		if(mpSoundplaneView)
 		{
 			mpSoundplaneView->prevPage();
 		}
+        requestPropertyChange("view_page", mpSoundplaneView->getCurrentPage());
 	}
 	else if (p == "next")
 	{
@@ -136,7 +135,8 @@ void SoundplaneController::buttonClicked (MLButton* pButton)
 		{
 			mpSoundplaneView->nextPage();
 		}
-	}	
+        requestPropertyChange("view_page", mpSoundplaneView->getCurrentPage());
+	}
 }
 
 void SoundplaneController::dialValueChanged (MLDial* pDial)
@@ -150,7 +150,7 @@ void SoundplaneController::dialValueChanged (MLDial* pDial)
 
 	debug() << p << ": " << v << "\n";
 	
-	mpModel->setProperty(p, v);
+	requestPropertyChange(p, v);
 	
 }
 
@@ -218,7 +218,7 @@ void SoundplaneController::setupMenus()
 	mMenuMap["osc_services"] = MLMenuPtr(new MLMenu("osc_services"));
 	
 	// setup OSC defaults 
-	mpModel->setProperty("osc_services", kOSCDefaultStr);	
+	requestPropertyChange("osc_services", kOSCDefaultStr);
 }	
 
 void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
@@ -307,10 +307,7 @@ void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
 		MLMenuPtr menu = mMenuMap[menuName];        
 		if (menu != MLMenuPtr())
 		{
-            SoundplaneModel* pModel = getModel();
-            assert(pModel);
-            const std::string& fullName = menu->getItemFullName(result);
-			pModel->setProperty(menuName, fullName);
+			requestPropertyChange(menuName, menu->getItemFullName(result));
 		}
         
 		if (menuName == "zone_preset")
@@ -334,8 +331,6 @@ void SoundplaneController::doZonePresetMenu(int result)
     // TODO mark the zone_preset parameter as changed from saved version, when some
     // zone info changes. Display so the user can see that it's changed, and also
     // ask to verify overwrite when loading a new preset.
-	SoundplaneModel* pModel = getModel();
-	assert(pModel);    
     std::string zoneStr;
     switch(result)
     {
@@ -360,7 +355,7 @@ void SoundplaneController::doZonePresetMenu(int result)
             break;
     }
 
-    pModel->setProperty("zone_JSON", zoneStr);
+    requestPropertyChange("zone_JSON", zoneStr);
 }
 
 void SoundplaneController::doOSCServicesMenu(int result)
@@ -381,8 +376,7 @@ void SoundplaneController::doOSCServicesMenu(int result)
     {
         name = getServiceName(result - 1);
         Resolve(name.c_str(), kUDPType, kLocalDotDomain);
-    }			
-
+    }
 }
 
 void SoundplaneController::formatServiceName(const std::string& inName, std::string& outName)

@@ -48,7 +48,7 @@ public:
 	SoundplaneModel();
 	~SoundplaneModel();	
 	
-	void setAllParamsToDefaults();
+	void setAllPropertiesToDefaults();
 
 	// SoundplaneDriverListener
 	void deviceStateChanged(MLSoundplaneState s);
@@ -62,9 +62,7 @@ public:
 	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint);
 	
 	// MLModel
-	void setProperty(MLSymbol p, float v);
-	void setProperty(MLSymbol p, const std::string& v);
-	void setProperty(MLSymbol p, const MLSignal& v);
+    void doPropertyChangeAction(MLSymbol , const MLProperty & );
 	
 	void initialize();
 	void clearTouchData();
@@ -150,7 +148,10 @@ public:
 	Vec2 xyToKeyGrid(Vec2 xy);
 		
 private:	
-
+	void setFloatProperty(MLSymbol p, float v);
+	void setStringProperty(MLSymbol p, const std::string& v);
+	void setSignalProperty(MLSymbol p, const MLSignal& v);
+    
     void dumpZoneMap();
 
 	void addListener(SoundplaneDataListener* pL) { mListeners.push_back(pL); }

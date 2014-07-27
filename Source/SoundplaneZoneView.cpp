@@ -159,7 +159,7 @@ void SoundplaneZoneView::renderZones()
         MLGL::drawTextAt(zoneRectInView.left() + lineWidth, zoneRectInView.top() + lineWidth, 0.f, name);
         
         // draw any zone-specific things
-        float x, y, z;
+        float x, y;
         int toggle;
         switch(t)
         {

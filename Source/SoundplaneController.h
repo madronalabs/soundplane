@@ -27,7 +27,8 @@ extern const char *kLocalDotDomain;
 
 class SoundplaneController  : 
 	public MLResponder,
-	public MLReporter,
+    public MLReporter,
+    public MLPropertyModifier,
 	public MLNetServiceHub,
     public MLFileCollection::Listener,
 	public Timer

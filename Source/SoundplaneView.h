@@ -76,7 +76,7 @@ private:
 
 class SoundplaneView : 
 	public MLAppView,
-	public MLModelListener,
+	public MLPropertyListener,
 	public Timer
 {
 public:
@@ -91,12 +91,13 @@ public:
 	void timerCallback();
 
 	// MLModelListener implementation
-	void doPropertyChangeAction(MLSymbol p, const MLProperty & oldVal, const MLProperty & newVal);
+	void doPropertyChangeAction(MLSymbol p, const MLProperty & newVal);
 
 	void makeCarrierTogglesVisible(int v);
 	
 	SoundplaneViewMode getViewMode();
 	void setViewMode(SoundplaneViewMode mode);
+    int getCurrentPage();
 	
 	// to go away
 	void setMIDIDeviceString(const std::string& str);
@@ -104,16 +105,11 @@ public:
 	
 	void prevPage();
 	void nextPage();
-
-	//SoundplaneHeaderView* mpHeader;	// TEMP
 	void goToPage (int page);
 
 private:
-
-	SoundplaneFooterView* mpFooter;	
-
+	SoundplaneFooterView* mpFooter;
 	SoundplaneModel* mpModel;
-	
 	MLPageView* mpPages;
 
 	MLDrawableButton* mpPrevButton;

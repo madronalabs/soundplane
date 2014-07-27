@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 45;
+	objectVersion = 46;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -932,6 +932,7 @@
 		9A0E300BBDAFA50EA37EA0D9 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				LastUpgradeCheck = 0510;
 				TargetAttributes = {
 					9F559EB2CC99871D47887B82 = {
 						DevelopmentTeam = QDQ7J5WGMH;
@@ -939,7 +940,7 @@
 				};
 			};
 			buildConfigurationList = C71BF9C42683418116C8426E /* Build configuration list for PBXProject "Soundplane" */;
-			compatibilityVersion = "Xcode 3.1";
+			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -1130,7 +1131,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_C_LANGUAGE_STANDARD = c99;
@@ -1144,8 +1144,8 @@
 				GCC_WARN_TYPECHECK_CALLS_TO_PRINTF = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.6;
-				ONLY_ACTIVE_ARCH = NO;
-				SDKROOT = macosx10.9;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;
 				WARNING_CFLAGS = "-Wreorder";
 				ZERO_LINK = NO;
@@ -1156,8 +1156,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CODE_SIGN_IDENTITY = "Mac Developer: Randy Jones (X494RZB5UA)";
+				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				EXCLUDED_SOURCE_FILE_NAMES = "";
 				"EXCLUDED_SOURCE_FILE_NAMES[arch=x86_64]" = "*Carbon*.cpp";
@@ -1190,7 +1190,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_C_LANGUAGE_STANDARD = c99;
@@ -1204,7 +1203,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				ONLY_ACTIVE_ARCH = NO;
-				SDKROOT = macosx10.9;
+				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;
 				WARNING_CFLAGS = "-Wreorder";
 				ZERO_LINK = NO;
@@ -1215,8 +1214,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CODE_SIGN_IDENTITY = "Mac Developer: Randy Jones (X494RZB5UA)";
+				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				EXCLUDED_SOURCE_FILE_NAMES = "";
 				"EXCLUDED_SOURCE_FILE_NAMES[arch=x86_64]" = "*Carbon*.cpp";
@@ -1249,7 +1248,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_C_LANGUAGE_STANDARD = c99;
@@ -1263,7 +1261,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				ONLY_ACTIVE_ARCH = NO;
-				SDKROOT = macosx10.9;
+				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;
 				WARNING_CFLAGS = "-Wreorder";
 				ZERO_LINK = NO;
@@ -1274,8 +1272,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CODE_SIGN_IDENTITY = "Mac Developer: Randy Jones (X494RZB5UA)";
+				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				EXCLUDED_SOURCE_FILE_NAMES = "";
 				"EXCLUDED_SOURCE_FILE_NAMES[arch=x86_64]" = "*Carbon*.cpp";
