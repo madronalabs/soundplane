@@ -11,8 +11,6 @@
 #include "MLUIBinaryData.h"
 #include "SoundplaneModel.h"
 #include "SoundplaneView.h"
-
-#include "MLResponder.h"
 #include "MLReporter.h"
 
 // widgets
@@ -26,9 +24,8 @@ extern const char *kUDPType;
 extern const char *kLocalDotDomain;
 
 class SoundplaneController  : 
-	public MLResponder,
+	public MLWidget::Listener,
     public MLReporter,
-    public MLPropertyModifier,
 	public MLNetServiceHub,
     public MLFileCollection::Listener,
 	public Timer
@@ -37,32 +34,28 @@ public:
     SoundplaneController(SoundplaneModel* pModel);
     ~SoundplaneController();
 
+	// MLWidget::Listener
+	void handleWidgetAction(MLWidget* w, MLSymbol action, MLSymbol target, const MLProperty& val = MLProperty());
+
 	void initialize();
 	void shutdown();
 	void timerCallback();
-
-	// from MLResponder
-	void buttonClicked (MLButton*);
-	void showMenu (MLSymbol menuName, MLSymbol instigatorName);	
-	void menuItemChosen(MLSymbol menuName, int result);
-	void dialDragStarted (MLDial*) {} // don’t care about drag start.
-	void dialValueChanged (MLDial*);
-	void dialDragEnded (MLDial*) {} // don’t care about drag end.
-	void multiButtonValueChanged (MLMultiButton* , int ) {} // no multiButtons	
-	void multiSliderDragStarted (MLMultiSlider* pSlider, int idx) {} // no multiSliders
-	void multiSliderValueChanged (MLMultiSlider* , int ) {} // no multiSliders
-	void multiSliderDragEnded (MLMultiSlider* pSlider, int idx) {} // no multiSliders
 	
     // from MLFileCollection::Listener
-    void processFile (const MLSymbol collection, const File& f, int idx);
+    void processFileFromCollection (const MLFile& f, const MLFileCollection& collection, int idx, int size);
     
 	// menus
+	void showMenu (MLSymbol menuName, MLSymbol instigatorName);
+	void menuItemChosen(MLSymbol menuName, int result);	
+	MLMenu* findMenuByName(MLSymbol menuName); // TODO move into new controller base class
 	void setupMenus();
     void doZonePresetMenu(int result);
 	void doOSCServicesMenu(int result);
     
 	void formatServiceName(const std::string& inName, std::string& outName);
 	const std::string& getServiceName(int idx);
+	
+	// MLNetServiceHub
 	void didResolveAddress(NetService *pNetService);
 
 	SoundplaneView* getView() { return mpSoundplaneView; }
@@ -73,7 +66,10 @@ public:
 	// show nice message, run calibration, etc. if prefs are not found. 
 	void doWelcomeTasks();
 	bool confirmRestoreDefaults();
-    
+	
+protected:
+	WeakReference<SoundplaneController>::Master masterReference; // TODO -> base class
+	friend class WeakReference<SoundplaneController>;
 	
 private:
 	bool mNeedsLateInitialize;

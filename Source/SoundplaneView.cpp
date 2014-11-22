@@ -9,7 +9,7 @@
 #pragma mark header view
 
 
-SoundplaneHeaderView::SoundplaneHeaderView(SoundplaneModel* pModel, MLResponder* pResp, MLReporter* pRep) :
+SoundplaneHeaderView::SoundplaneHeaderView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep) :
 	MLAppView(pResp, pRep),
 	mpModel(pModel)
 {
@@ -52,7 +52,7 @@ void SoundplaneHeaderView::paint (Graphics& g)
 // --------------------------------------------------------------------------------
 #pragma mark footer view
 
-SoundplaneFooterView::SoundplaneFooterView(SoundplaneModel* pModel, MLResponder* pResp, MLReporter* pRep) :
+SoundplaneFooterView::SoundplaneFooterView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep) :
 	MLAppView(pResp, pRep),
 	mpModel(pModel),
 	mpDevice(0),
@@ -118,7 +118,7 @@ void SoundplaneFooterView::setHardware(const char* c)
 void SoundplaneFooterView::setCalibrateProgress(float p)
 {
 	mCalibrateProgress = p;
-	mpCalibrateProgress->setAttribute("progress", p);
+	mpCalibrateProgress->setProperty("progress", p);
 	mpCalibrateProgress->repaint();
 }
 
@@ -142,8 +142,7 @@ void SoundplaneFooterView::paint (Graphics& g)
 #pragma mark main view
 
 // --------------------------------------------------------------------------------
-SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLReporter* pRep) :
-    MLPropertyListener(pModel),
+SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep) :
 	MLAppView(pResp, pRep),
 	mpFooter(0),
 	mpPages(0),
@@ -156,6 +155,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	mpMIDIDeviceButton(0)
 {
     setWidgetName("soundplane_view");
+	//pModel->addListener(this);
     
 	// setup application's look and feel 
 	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
@@ -318,7 +318,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pB = page0->addToggleButton("matrix", toggleRect.withCenter(13.25, bottomDialsY), "osc_send_matrix", c2);
 	
 	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(12.25, 9.), "osc_services");
-    
+
+	
     // --------------------------------------------------------------------------------
 	// page 1 - raw touches
 	//
@@ -334,6 +335,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	MLRect GLRect1(0, 1.f, pageWidth, 3.5);
 	mGridView.setModel(pModel);
 	page1->addWidgetToView (&mGridView, GLRect1, "grid_view");
+	
+	// grid view gets viewmode changes
+	page1->addParamView("viewmode", &mGridView, MLSymbol("viewmode"));
     
 	MLRect GLRect2(0, 4.5, pageWidth, 3.);
 	mTouchView.setModel(pModel);
@@ -376,7 +380,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	
 	pD = page1->addDial("max force", dialRect.withCenter(3.5, dialY), "z_max", c2);
 	pD->setRange(0.01, 0.1, 0.001);	
-	pD->setDefault(0.05);	
+	pD->setDefault(0.05);
 	
 	pD = page1->addDial("z curve", dialRect.withCenter(5.0, dialY), "z_curve", c2);
 	pD->setRange(0., 1., 0.01);	
@@ -392,7 +396,13 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 
 //	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
-    
+
+	// add parameter views handled directly by this Widget
+	page1->addParamView("viewmode", this, MLSymbol("viewmode"));
+	
+	//page0->addParamView("protocol", this, MLSymbol("show_protocol"));
+	
+
     // --------------------------------------------------------------------------------
     // page 2 - expert stuff
 	//
@@ -438,8 +448,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLResponder* pResp, MLR
 	pD->setDefault(0.2);
     
 	pB = page2->addToggleButton("poll kyma", toggleRect.withCenter(12, dialY), "kyma_poll", c2);
-		
-	pModel->addPropertyListener(this);
+
 }
 
 SoundplaneView::~SoundplaneView()
@@ -447,13 +456,43 @@ SoundplaneView::~SoundplaneView()
 	stopTimer();
 }
 
+// --------------------------------------------------------------------------------
+// MLModelListener implementation
+// an updateChangedParams() is needed to get these actions sent by the Model.
+//
+void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
+{
+	debug() << "SoundplaneView::doPropertyChangeAction: " << p << " -> " << val << "\n";
+	if(p == "viewmode")
+	{
+		const std::string& v = val.getStringValue();
+		if(v == "raw data")
+		{
+			makeCarrierTogglesVisible(1);
+            mTouchView.setWidgetVisible(0);
+		}
+		else
+		{
+			makeCarrierTogglesVisible(0);
+            mTouchView.setWidgetVisible(1);
+		}
+	}
+	else if(p == "view_page")
+	{
+		float v = val.getFloatValue();
+        goToPage(v);
+	}
+	repaint();
+}
+
+
 void SoundplaneView::initialize()
 {
 	startTimer(50);	
-	setAnimationsActive(true);	
-	updateAllProperties();
+	setAnimationsActive(true);
 }
 
+// TODO take this away and use Model Properties and doPropertyChangeAction() instead.
 void SoundplaneView::timerCallback()
 {
 	// poll soundplane status and get info.
@@ -494,9 +533,6 @@ void SoundplaneView::timerCallback()
 			mpFooter->repaint();
 		}
 	}
-
-	updateChangedProperties();
-
 }
 
 /*
@@ -517,74 +553,6 @@ void SoundplaneView::modelStateChanged()
 }
 */
 
-// --------------------------------------------------------------------------------
-// MLModelListener implementation
-// an updateChangedParams() is needed to get these actions sent by the Model.
-//
-void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & newVal)
-{
-	if(p == "viewmode")
-	{
-		const std::string* v = newVal.getStringValue();
-		if(*v == "raw data")
-		{
-			setViewMode(kRaw);
-		}
-		else if(*v == "calibrated")
-		{
-			setViewMode(kCalibrated);
-		}
-		else if(*v == "cooked")
-		{
-			setViewMode(kCooked);
-		}
-		else if(*v == "xy")
-		{
-			setViewMode(kXY);
-		}
-		else if(*v == "test1")
-		{
-			setViewMode(kTest1);
-		}
-		else if(*v == "test2")
-		{
-			setViewMode(kTest2);
-		}
-		else if(*v == "norm. map")
-		{
-			setViewMode(kNrmMap);
-		}
-	}
-	else if(p == "view_page")
-	{
-		float v = newVal.getFloatValue();
-        goToPage(v);
-	}
-}
-
-SoundplaneViewMode SoundplaneView::getViewMode()
-{
-	return mViewMode;
-}
-
-void SoundplaneView::setViewMode(SoundplaneViewMode v)
-{
-	mViewMode = v;
-	
-    mGridView.setViewMode(v);
-		
-	switch(v)
-	{
-		case kRaw:
-			makeCarrierTogglesVisible(1);
-            mTouchView.setWidgetVisible(0);
-		break;
-		default:
-			makeCarrierTogglesVisible(0);
-            mTouchView.setWidgetVisible(1);
-		break;
-	}
-}
 
 int SoundplaneView::getCurrentPage()
 {
@@ -624,14 +592,14 @@ void SoundplaneView::setMIDIDeviceString(const std::string& str)
 {	
 	// TODO auto get button text from menu code
 	if(mpMIDIDeviceButton)
-		mpMIDIDeviceButton->setButtonText(String(str.c_str()));
+		mpMIDIDeviceButton->setProperty("text", str);
 }
 
 void SoundplaneView::setOSCServicesString(const std::string& str)
 {	
 	// TODO auto get button text from menu code
 	if(mpOSCServicesButton)
-		mpOSCServicesButton->setButtonText(String(str.c_str()));
+		mpOSCServicesButton->setProperty("text", str);
 }
 
 void SoundplaneView::paint (Graphics& g)

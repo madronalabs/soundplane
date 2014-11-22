@@ -23,7 +23,6 @@
 #include "MLVector.h"
 #include "MLAppView.h"
 #include "MLPageView.h"
-#include "MLResponder.h"
 #include "SoundplaneBinaryData.h"
 
 const int kViewGridUnitsX = 15;
@@ -36,7 +35,7 @@ class SoundplaneHeaderView :
 	public MLAppView
 {
 public:
-    SoundplaneHeaderView(SoundplaneModel* pModel, MLResponder* pResp, MLReporter* pRep);
+    SoundplaneHeaderView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep);
     ~SoundplaneHeaderView();
     void paint (Graphics& g);
  
@@ -51,7 +50,7 @@ class SoundplaneFooterView :
 	public MLAppView
 {
 public:
-    SoundplaneFooterView(SoundplaneModel* pModel, MLResponder* pResp, MLReporter* pRep);
+    SoundplaneFooterView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep);
     ~SoundplaneFooterView();
     void paint (Graphics& g);
  	void setStatus(const char* stat, const char* client);
@@ -76,27 +75,25 @@ private:
 
 class SoundplaneView : 
 	public MLAppView,
-	public MLPropertyListener,
 	public Timer
 {
 public:
 	const Colour bg1;
 	const Colour bg2;
 
-    SoundplaneView(SoundplaneModel* pModel, MLResponder* pResp, MLReporter* pRep);
+	// TODO view has MLwidget::listener param, why??
+    SoundplaneView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep);
     ~SoundplaneView();
+	
+	// MLModelListener implementation
+	void doPropertyChangeAction(MLSymbol p, const MLProperty & newVal);
 
     void initialize();
     void paint (Graphics& g);
 	void timerCallback();
 
-	// MLModelListener implementation
-	void doPropertyChangeAction(MLSymbol p, const MLProperty & newVal);
-
 	void makeCarrierTogglesVisible(int v);
 	
-	SoundplaneViewMode getViewMode();
-	void setViewMode(SoundplaneViewMode mode);
     int getCurrentPage();
 	
 	// to go away
@@ -109,9 +106,11 @@ public:
 
 private:
 	SoundplaneFooterView* mpFooter;
-	SoundplaneModel* mpModel;
 	MLPageView* mpPages;
 
+	// TODO remove!!
+	SoundplaneModel* mpModel;
+	
 	MLDrawableButton* mpPrevButton;
 	MLDrawableButton* mpNextButton;
 	
@@ -138,9 +137,7 @@ private:
 	
 	int mCalibrateState;
 	int mSoundplaneClientState;
-	int mSoundplaneDeviceState;
-	SoundplaneViewMode mViewMode;
-	
+	int mSoundplaneDeviceState;	
 };
 
 

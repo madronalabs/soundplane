@@ -25,29 +25,20 @@
 #include "cJSON.h"
 #include "Zone.h"
 
-enum SoundplaneViewMode
-{
-	kRaw = 0,
-	kCalibrated = 1,
-	kCooked = 2,
-	kXY = 3,
-	kNrmMap = 4,
-	kTest1 = 5,
-	kTest2 = 6
-};
-
 class SoundplaneModel :
 	public SoundplaneDriverListener,
 	public TouchTracker::Listener,
 	public MLOSCListener,
 	public MLModel
 {
-
 public:
       
 	SoundplaneModel();
 	~SoundplaneModel();	
-	
+
+	// MLModel
+    void doPropertyChangeAction(MLSymbol , const MLProperty & );
+		
 	void setAllPropertiesToDefaults();
 
 	// SoundplaneDriverListener
@@ -60,9 +51,7 @@ public:
 
 	// MLOSCListener
 	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint);
-	
-	// MLModel
-    void doPropertyChangeAction(MLSymbol , const MLProperty & );
+	void ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint);
 	
 	void initialize();
 	void clearTouchData();
@@ -120,16 +109,17 @@ public:
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; }
 	const MLSignal& getCookedSignal() { return mCookedSignal; }
 	const MLSignal& getTestSignal() { return mTestSignal; }
-	const MLSignal& getSignalForViewMode(SoundplaneViewMode m);
 	const MLSignal& getTrackerCalibrateSignal();
 	Vec3 getTrackerCalibratePeak();
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 
+	const MLSignal* getSignalForViewMode(const std::string& m);
+
     const std::vector<ZonePtr>& getZones(){ return mZones; }
     const CriticalSection* getZoneLock() {return &mZoneLock;}
 
-    void loadStateFromJSON(cJSON* pNode, int depth);
+    void setStateFromJSON(cJSON* pNode, int depth);
     bool loadZonePresetByName(const std::string& name);
 
 	int getDeviceState(void);
@@ -147,11 +137,7 @@ public:
 	Vec2 getTrackerCalibrateDims() { return Vec2(kCalibrateWidth, kCalibrateHeight); }	
 	Vec2 xyToKeyGrid(Vec2 xy);
 		
-private:	
-	void setFloatProperty(MLSymbol p, float v);
-	void setStringProperty(MLSymbol p, const std::string& v);
-	void setSignalProperty(MLSymbol p, const MLSignal& v);
-    
+private:
     void dumpZoneMap();
 
 	void addListener(SoundplaneDataListener* pL) { mListeners.push_back(pL); }
@@ -164,7 +150,6 @@ private:
     CriticalSection mZoneLock;
     std::vector<ZonePtr> mZones;
     MLSignal mZoneMap;
-    //std::vector<int> mKeyToZoneMap;
 	
 	MLSoundplaneState mDeviceState;
 	bool mOutputEnabled;
@@ -254,14 +239,13 @@ private:
     
     MLFileCollectionPtr mTouchPresets;
     MLFileCollectionPtr mZonePresets;
+	
+	std::map<std::string, MLSignal*> mViewModeToSignalMap;
 };
-
 
 // JSON utilities (to go where?)
 std::string getJSONString(cJSON* pNode, const char* name);
 double getJSONDouble(cJSON* pNode, const char* name);
 int getJSONInt(cJSON* pNode, const char* name);
-
-
 
 #endif // __SOUNDPLANE_MODEL__

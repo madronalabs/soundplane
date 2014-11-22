@@ -36,7 +36,7 @@ const int kTouchTrackerMaxPeaks = 16;
 
 const int kPassesToCalibrate = 2;
 const float kNormalizeThresh = 0.125;
-const int kNormMapSamples = 1024;
+const int kNormMapSamples = 2048;
 
 // Soundplane A
 const int kCalibrateWidth = 64;
@@ -267,7 +267,7 @@ public:
 	void setCalibration(const MLSignal& v) { mCalibrator.setCalibration(v); }
 	bool isWithinCalibrateArea(int i, int j) { return mCalibrator.isWithinCalibrateArea(i, j); }
 	
-	const MLSignal& getNormalizeMap() { return mCalibrator.mNormalizeMap; }
+	MLSignal& getNormalizeMap() { return mCalibrator.mNormalizeMap; }
 	void setNormalizeMap(const MLSignal& v) { mCalibrator.setNormalizeMap(v); }
 	void setListener(Listener* pL) { mpListener = pL; }
 	void setDefaultNormalizeMap();

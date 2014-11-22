@@ -7,24 +7,114 @@
 	
 const char *kUDPType      =   "_osc._udp";
 const char *kLocalDotDomain   =   "local.";
+static const std::string kOSCDefaultStr("localhost:3123 (default)");
 
-static void menuItemChosenCallback (int result, SoundplaneController* pC, MLMenuPtr menu);
+static void menuItemChosenCallback (int result, WeakReference<SoundplaneController> wpC, MLSymbol menuName);
 
 SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
-	MLReporter(pModel),
-    MLPropertyModifier(pModel),
+	MLReporter(),
 	mpSoundplaneModel(pModel),
 	mpSoundplaneView(0),
 	mNeedsLateInitialize(true)
 {
+	listenTo(pModel);
 	startTimer(250);
 }
 
 SoundplaneController::~SoundplaneController()
 {
+	masterReference.clear();
 }
 	
-static const std::string kOSCDefaultStr("localhost:3123 (default)");
+#pragma mark MLWidget::Listener
+
+void SoundplaneController::handleWidgetAction(MLWidget* w, MLSymbol action, MLSymbol p, const MLProperty& val)
+{
+	MLAppView* view = getView();
+	assert(view);
+	
+	if(action == "click") // handle momentary buttons.
+	{
+		if (p == "clear")
+		{
+			mpSoundplaneModel->clear();
+		}
+		else if (p == "zone_preset")
+		{
+			
+		}
+		else if (p == "select_carriers")
+		{
+			mpSoundplaneModel->beginSelectCarriers();
+		}
+		else if (p == "restore_defaults")
+		{
+			if(confirmRestoreDefaults())
+			{
+				mpSoundplaneModel->setAllPropertiesToDefaults();
+				doWelcomeTasks();
+			}
+		}
+		else if (p == "default_carriers")
+		{
+			mpSoundplaneModel->setDefaultCarriers();
+		}
+		else if (p == "calibrate")
+		{
+			mpSoundplaneModel->beginCalibrate();
+		}
+		else if (p == "normalize")
+		{
+			mpSoundplaneModel->beginCalibrate();
+			mpSoundplaneModel->beginNormalize();
+			if(mpSoundplaneView)
+			{
+				MLWidget* pB = mpSoundplaneView->getWidget("normalize_cancel");
+				pB->getComponent()->setEnabled(true);
+			}
+		}
+		else if (p == "normalize_cancel")
+		{
+			mpSoundplaneModel->cancelNormalize();
+		}
+		else if (p == "normalize_default")
+		{
+			mpSoundplaneModel->setDefaultNormalize();
+		}
+		else if(p == "prev")
+		{
+			if(mpSoundplaneView)
+			{
+				mpSoundplaneView->prevPage();
+			}
+			mpSoundplaneModel->setProperty("view_page", mpSoundplaneView->getCurrentPage());
+		}
+		else if (p == "next")
+		{
+			if(mpSoundplaneView)
+			{
+				mpSoundplaneView->nextPage();
+			}
+			mpSoundplaneModel->setProperty("view_page", mpSoundplaneView->getCurrentPage());
+		}
+	}
+	else if(action == "show_menu")
+	{
+		showMenu(p, w->getWidgetName());
+	}
+	else if(action == "change_property") // handle property changes.
+	{
+		mpSoundplaneModel->setProperty(p, val);
+		/*
+		 if (p == "carriers")
+		 {
+		 MLParamValue b = pButton->getToggleState();
+		 debug() << "buttonClicked: " << b << "\n";
+		 mpModel->enableCarriers(b ? 0xFFFFFFFF : 0);
+		 }
+		 */
+	}
+}
 
 void SoundplaneController::initialize()
 {
@@ -33,14 +123,18 @@ void SoundplaneController::initialize()
     
 	// make OSC services list
 	mServiceNames.clear();
-	services.clear();
-	services.push_back(kOSCDefaultStr);
-	Browse(kUDPType, kLocalDotDomain);
+	mServices.clear();
+	mServices.push_back(kOSCDefaultStr);
+	Browse(kLocalDotDomain, kUDPType);
     
     // get zone presets
-    mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets"), "json"));
-    mZonePresets->setListener(this);
-    mZonePresets->searchForFilesNow();
+	File zoneDir = getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets");
+	
+	debug() << "LOOKING in " << zoneDir.getFileName() << "\n";
+	
+    mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", zoneDir, "json"));
+    mZonePresets->addListener(this);
+    mZonePresets->searchForFilesImmediate();
     
     mZonePresets->dump();
     
@@ -54,114 +148,21 @@ void SoundplaneController::shutdown()
 
 void SoundplaneController::timerCallback()
 {
-	updateChangedProperties();
+	fetchChangedProperties();
 	PollNetServices();
 	debug().display();
 	MLConsole().display();
 }
 	
-void SoundplaneController::buttonClicked (MLButton* pButton)
+void SoundplaneController::processFileFromCollection (const MLFile& file, const MLFileCollection& collection, int idx, int size)
 {
-	MLSymbol p (pButton->getTargetPropertyName());
-	MLParamValue t = pButton->getToggleState();
-
-	requestPropertyChange(p, t);
-
-	/*
-	if (p == "carriers")
-	{
-		MLParamValue b = pButton->getToggleState();
-		debug() << "buttonClicked: " << b << "\n";
-        mpModel->enableCarriers(b ? 0xFFFFFFFF : 0); 
-	}
-	*/
-	if (p == "clear")
-	{
-		mpSoundplaneModel->clear();
-	}
-	else if (p == "zone_preset")
-	{
-
-	}
-	else if (p == "select_carriers")
-	{
-		mpSoundplaneModel->beginSelectCarriers();
-	}
-	else if (p == "restore_defaults")
-	{		
-		if(confirmRestoreDefaults())
-		{
-			mpSoundplaneModel->setAllPropertiesToDefaults();
-			doWelcomeTasks();
-		}
-	}
-	else if (p == "default_carriers")
-	{		
-		mpSoundplaneModel->setDefaultCarriers();
-	}
-	else if (p == "calibrate")
-	{
-		mpSoundplaneModel->beginCalibrate();
-	}
-	else if (p == "normalize")
-	{
-		mpSoundplaneModel->beginCalibrate();
-		mpSoundplaneModel->beginNormalize();
-		if(mpSoundplaneView)
-		{
-			MLWidget* pB = mpSoundplaneView->getWidget("normalize_cancel");
-			pB->getComponent()->setEnabled(true);
-		}
-	}
-	else if (p == "normalize_cancel")
-	{
-		mpSoundplaneModel->cancelNormalize();
-	}
-	else if (p == "normalize_default")
-	{
-		mpSoundplaneModel->setDefaultNormalize();
-	}
-	else if(p == "prev")
-	{
-		if(mpSoundplaneView)
-		{
-			mpSoundplaneView->prevPage();
-		}
-        requestPropertyChange("view_page", mpSoundplaneView->getCurrentPage());
-	}
-	else if (p == "next")
-	{
-		if(mpSoundplaneView)
-		{
-			mpSoundplaneView->nextPage();
-		}
-        requestPropertyChange("view_page", mpSoundplaneView->getCurrentPage());
-	}
-}
-
-void SoundplaneController::dialValueChanged (MLDial* pDial)
-{
-	if (!pDial) return;
-	
-	// mpModel->setParameter(pDial->getParamName(), pDial->getValue());
-	
-	MLSymbol p (pDial->getTargetPropertyName());
-	MLParamValue v = pDial->getValue();
-
-	debug() << p << ": " << v << "\n";
-	
-	requestPropertyChange(p, v);
-	
-}
-
-void SoundplaneController::processFile (const MLSymbol collection, const File& f, int idx)
-{
-    debug() << "got file " << f.getFileNameWithoutExtension() << " from coll " << collection << "\n";
-    if(collection == "touch_preset")
+	MLSymbol collName = collection.getName();
+    debug() << "got file " << file.getJuceFile().getFileNameWithoutExtension() << " from coll " << collName << "\n";
+    if(collName == "touch_preset")
     {
 
     }
-    else if(collection == "zone_preset")
+    else if(collName == "zone_preset")
     {
 
     }
@@ -172,6 +173,7 @@ void SoundplaneController::setView(SoundplaneView* v)
 	mpSoundplaneView = v; 
 }
 
+/*
 static void menuItemChosenCallback (int result, SoundplaneController* pC, MLMenuPtr menu)
 {
 	MLWidgetContainer* pView = pC->getView();
@@ -180,11 +182,54 @@ static void menuItemChosenCallback (int result, SoundplaneController* pC, MLMenu
 		MLWidget* pInstigator = pView->getWidget(menu->getInstigator());
 		if(pInstigator != nullptr)
 		{
-			pInstigator->setAttribute("value", 0);
+			pInstigator->setProperty("value", 0);
 		}
 	}
 	pC->menuItemChosen(menu->getName(), result);
 }
+
+*/
+
+static void menuItemChosenCallback (int result, WeakReference<SoundplaneController> wpC, MLSymbol menuName)
+{
+	SoundplaneController* pC = wpC;
+	
+	// get Controller ptr from weak reference
+	if(pC == nullptr)
+	{
+		debug() << "    null SoundplaneController ref!\n";
+		return;
+	}
+	
+
+	//debug() << "    SoundplaneController:" << std::hex << (void *)pC << std::dec << "\n";
+	
+	const MLMenu* pMenu = pC->findMenuByName(menuName);
+	if (pMenu == nullptr)
+	{
+		debug() << "    SoundplaneController::menuItemChosenCallback(): menu not found!\n";
+	}
+	else
+	{
+		MLWidgetContainer* pView = pC->getView();
+		
+		//debug() << "    pView:" << std::hex << (void *)pView << std::dec << "\n";
+		if(pView != nullptr)
+		{
+			//debug() << "        pView widget name:" << pView->getWidgetName() << "\n";
+			
+			MLWidget* pInstigator = pView->getWidget(pMenu->getInstigator());
+			if(pInstigator != nullptr)
+			{
+				// turn instigator Widget off
+				pInstigator->setPropertyImmediate("value", 0);
+			}
+		}
+		
+		pC->menuItemChosen(menuName, result);
+	}
+}
+
 
 void SoundplaneController::setupMenus()
 {
@@ -218,10 +263,79 @@ void SoundplaneController::setupMenus()
 	mMenuMap["osc_services"] = MLMenuPtr(new MLMenu("osc_services"));
 	
 	// setup OSC defaults 
-	requestPropertyChange("osc_services", kOSCDefaultStr);
+	mpSoundplaneModel->setProperty("osc_services", kOSCDefaultStr);
 }	
 
-void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
+
+MLMenu* SoundplaneController::findMenuByName(MLSymbol menuName)
+{
+	MLMenu* r = nullptr;
+	MLMenuMapT::iterator menuIter(mMenuMap.find(menuName));
+	if (menuIter != mMenuMap.end())
+	{
+		MLMenuPtr menuPtr = menuIter->second;
+		r = menuPtr.get();
+	}
+	return r;
+}
+
+void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
+{
+	if(!mpSoundplaneView) return;
+	
+	MLMenu* menu = findMenuByName(menuName);
+	if (menu != nullptr)
+	{
+		menu->setInstigator(instigatorName);
+		
+		// update menus that are rebuilt each time
+		if (menuName == "midi_device")
+		{
+			// refresh device list
+			menu->clear();
+			SoundplaneMIDIOutput& outs = getModel()->getMIDIOutput();
+			outs.findMIDIDevices ();
+			std::vector<std::string>& devices = outs.getDeviceList();
+			menu->addItems(devices);
+		}
+		else if (menuName == "osc_services")
+		{
+			// TODO refresh!
+			
+			menu->clear();
+			mServiceNames.clear();
+			std::vector<std::string>::iterator it;
+			for(it = mServices.begin(); it != mServices.end(); it++)
+			{
+				const std::string& serviceName = *it;
+				std::string formattedName;
+				formatServiceName(serviceName, formattedName);
+				mServiceNames.push_back(serviceName);
+				menu->addItem(formattedName);
+			}
+		}
+		
+		// find instigator widget and show menu beside it
+		MLWidget* pInstigator = mpSoundplaneView->getWidget(instigatorName);
+		if(pInstigator != nullptr)
+		{
+			Component* pInstComp = pInstigator->getComponent();
+			if(pInstComp)
+			{
+                const int u = pInstigator->getWidgetGridUnitSize();
+                int height = ((float)u)*0.35f;
+                height = clamp(height, 12, 128);
+				JuceMenuPtr juceMenu = menu->getJuceMenu();
+				juceMenu->showMenuAsync (PopupMenu::Options().withTargetComponent(pInstComp).withStandardItemHeight(height),
+										 ModalCallbackFunction::withParam(menuItemChosenCallback,
+																		  WeakReference<SoundplaneController>(this), menuName)
+										 );
+			}
+		}
+	}
+}
+
+/*void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
 {
 	StringArray devices;
 	if(!mpSoundplaneView) return;
@@ -249,7 +363,7 @@ void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
 		MLWidget* pInstigator = mpSoundplaneView->getWidget(instigatorName);
 		if(pInstigator != nullptr)
 		{
-			pInstigator->setAttribute("value", 1);
+			pInstigator->setProperty("value", 1);
 		}
 		
 		// update menus that are rebuilt each time
@@ -299,25 +413,28 @@ void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
 		}
 	}
 }
+*/
 
 void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
 {
 	if (result > 0)
 	{
-		MLMenuPtr menu = mMenuMap[menuName];        
-		if (menu != MLMenuPtr())
-		{
-			requestPropertyChange(menuName, menu->getItemFullName(result));
-		}
-        
 		if (menuName == "zone_preset")
-        {
-            doZonePresetMenu(result);
-        }
+		{
+			doZonePresetMenu(result);
+		}
 		else if (menuName == "osc_services")
 		{
-            doOSCServicesMenu(result);
-        }
+			doOSCServicesMenu(result);
+		}
+		else
+		{
+			MLMenu* menu = findMenuByName(menuName);
+			if (menu != nullptr)
+			{
+				mpSoundplaneModel->setProperty(menuName, menu->getItemFullName(result));
+			}
+		}
  	}
 }
 
@@ -349,13 +466,13 @@ void SoundplaneController::doZonePresetMenu(int result)
             MLMenuPtr menu = mMenuMap["zone_preset"];
             const std::string& fullName = menu->getItemFullName(result);
             MLFilePtr f = mZonePresets->getFileByName(fullName);
-            File zoneFile = f->mFile;
+            File zoneFile = f->getJuceFile();
             String stateStr(zoneFile.loadFileAsString());
             zoneStr = (stateStr.toUTF8());
             break;
     }
 
-    requestPropertyChange("zone_JSON", zoneStr);
+    mpSoundplaneModel->setProperty("zone_JSON", zoneStr);
 }
 
 void SoundplaneController::doOSCServicesMenu(int result)
@@ -363,7 +480,7 @@ void SoundplaneController::doOSCServicesMenu(int result)
  	SoundplaneModel* pModel = getModel();
 	assert(pModel);
 
-    // TODO should this not be in Model::setProperty?
+    // TODO should this not be in Model::doPropertyChangeAction ?
     std::string name;
     if(result == 1) // set default
     {
@@ -374,7 +491,13 @@ void SoundplaneController::doOSCServicesMenu(int result)
     }
     else // resolve a service from list
     {
+		MLMenuPtr menu = mMenuMap["osc_services"];
+		const std::string& fullName = menu->getItemFullName(result);
+debug() << "doOSCServicesMenu fullName: " << fullName << "\n";
+		
         name = getServiceName(result - 1);
+		
+		
         Resolve(name.c_str(), kUDPType, kLocalDotDomain);
     }
 }
@@ -406,7 +529,7 @@ void SoundplaneController::didResolveAddress(NetService *pNetService)
 	const char* hostNameStr = hostName.c_str();
 	int port = pNetService->getPort();
 	
-	debug() << "resolved net service to " << hostName << ", " << port << "\n";
+	debug() << "RESOLVED net service to " << hostName << ", " << port << "\n";
 	
 	// TEMP todo don't access output directly
 	if(mpSoundplaneModel)

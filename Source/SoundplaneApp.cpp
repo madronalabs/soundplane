@@ -27,12 +27,12 @@ void SoundplaneApp::initialise (const String& commandLine)
 	// add view to window but retain ownership here
 	mWindow.setContent(mpView);
 	
-	mpState = new MLAppState(mpModel, mpView, MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber);
-	bool foundState = mpState->loadSavedState();
+	mpState = new MLAppState(mpModel, "app", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber);
+	bool foundState = mpState->loadStateFromAppStateFile();
     
 	mpController->setView(mpView);
     mpView->goToPage(0);
-	mpController->updateAllProperties();
+	mpController->fetchAllProperties();
 			
 	mpModel->initialize();
 	MLConsole() << "Starting Soundplane...\n";
@@ -52,7 +52,7 @@ void SoundplaneApp::initialise (const String& commandLine)
 void SoundplaneApp::shutdown()
 {
 	mpState->updateAllProperties();
-	mpState->saveState();
+	mpState->saveStateToStateFile();
 	
 	if(mpView) delete mpView;
 	if(mpController) delete mpController;

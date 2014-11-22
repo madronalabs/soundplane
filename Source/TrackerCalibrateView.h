@@ -32,7 +32,6 @@ public:
  
 	void renderOpenGL();
  	void setModel(SoundplaneModel* m);
-	void setViewMode(SoundplaneViewMode v){ mViewMode = v; }
  	
 private:
 	Vec2 worldToScreen(const Vec3& world); 
@@ -41,7 +40,6 @@ private:
 	void drawInfoBox(Vec3 pos, char* text, int colorIndex);
 
 	SoundplaneModel* mpModel;
-	SoundplaneViewMode mViewMode;
 };
 
 #endif // __TRK_CAL_VIEW__

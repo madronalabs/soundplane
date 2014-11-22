@@ -7,8 +7,7 @@
 #include "SoundplaneBinaryData.h"
 
 SoundplaneGridView::SoundplaneGridView() :
-	mpModel(nullptr),
-	rotation(0.)
+	mpModel(nullptr)
 {
 	setInterceptsMouseClicks (false, false);
 	MLWidget::setComponent(this);
@@ -19,9 +18,14 @@ SoundplaneGridView::~SoundplaneGridView()
 {
 }
 
+// MLModelListener implementation
+void SoundplaneGridView::doPropertyChangeAction(MLSymbol p, const MLProperty & v)
+{
+	debug() << "SoundplaneGridView::doPropertyChangeAction: " << p << " -> " << v << "\n";
+}
+
 void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
 {
-    //int bScale = getBackingLayerScale();
 	int viewW = getBackingLayerWidth();
 	int viewH = getBackingLayerHeight();
 
@@ -125,7 +129,9 @@ void SoundplaneGridView::renderXYGrid()
 	ymRange.convertTo(MLRange(margin, viewH - margin));
 
 	float dotSize = fabs(yRange(0.08f) - yRange(0.f));
-	const MLSignal& calSignal = mpModel->getSignalForViewMode(kCalibrated);
+	const MLSignal* calSignal = mpModel->getSignalForViewMode("calibrated");
+	if(!calSignal) return;
+	
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	// draw stuff in immediate mode. 
@@ -143,7 +149,7 @@ void SoundplaneGridView::renderXYGrid()
 		// Soundplane A-specific
 		for(int i=2; i<sensorWidth - 2; ++i)
 		{
-			float mix = calSignal(i, j) / fMax;
+			float mix = (*calSignal)(i, j) / fMax;
 			mix *= displayScale;
 			Vec4 dataColor = vlerp(gray, lightGray, mix);
 			glColor4fv(&dataColor[0]);
@@ -311,35 +317,30 @@ void SoundplaneGridView::renderZGrid()
         float sh = myAspect*r/soundplaneAspect;
         yRange.convertTo(MLRange(-sh, sh));
         
-        const MLSignal& viewSignal = mpModel->getSignalForViewMode(mViewMode);
-        
+		const std::string& viewMode = getStringProperty("viewmode");
+        const MLSignal* viewSignal = mpModel->getSignalForViewMode(viewMode);
+		if(!viewSignal) return;
+		
         float displayScale = mpModel->getFloatProperty("display_scale");
-        float scale = displayScale;
-        float offset = 0.f;
+        float gridScale = displayScale * 10.f;
+		
+        float preOffset = 0.f;
         bool separateSurfaces = false;
-        switch(mViewMode)
+        int leftEdge = 0;
+        int rightEdge = width;
+		
+        if(viewMode == "raw data")
         {
-            case kRaw:
-                offset = -1.;
-                scale *= 8.;
-                separateSurfaces = true;
-                break;
-            case kCalibrated:
-                scale *= 10.;
-                break;
-            case kCooked:
-                scale *= 10.;
-                break;
-            case kNrmMap:
-                offset = -displayScale;
-                scale *= 1.;
-                break;
-            case kTest1:
-            default:
-                scale *= 10.;
-                break;
+			preOffset = -0.1;
+			separateSurfaces = true;
+		}
+        else if(viewMode == "norm. map")
+        {
+			// offset = -displayScale;
+            leftEdge += 1;
+            rightEdge -= 1;
         }
-        
+
         // draw stuff in immediate mode. TODO vertex buffers and modern GL code in general.
         //
         Vec4 lineColor;
@@ -349,14 +350,7 @@ void SoundplaneGridView::renderZGrid()
         Vec4 blue(0.1f, 0.1f, 0.9f, 1.f);
         Vec4 purple(0.7f, 0.2f, 0.7f, 0.5f);
         
-        int leftEdge = 0;
-        int rightEdge = width;
-        if(mViewMode == kNrmMap)
-        {
-            leftEdge += 1;
-            rightEdge -= 1;
-        }
-        
+
         if (separateSurfaces)
         {
             // draw lines
@@ -376,7 +370,7 @@ void SoundplaneGridView::renderZGrid()
                 {
                     float x = xRange.convert(i);
                     float y = yRange.convert(j);
-                    float zMean = viewSignal(i, j)*scale + offset;
+                    float zMean = ((*viewSignal)(i, j) + preOffset)*gridScale;
                     glVertex3f(x, y, -zMean);
                 }
                 glEnd();
@@ -389,12 +383,12 @@ void SoundplaneGridView::renderZGrid()
                     {
                         float x1 = xRange.convert(i);
                         float y1 = yRange.convert(j);
-                        float z1 = viewSignal(i, j)*scale + offset;
+                        float z1 = ((*viewSignal)(i, j) + preOffset)*gridScale;
                         glVertex3f(x1, y1, -z1);
                         
                         float x2 = xRange.convert(i + 1);
                         float y2 = yRange.convert(j);
-                        float z2 = viewSignal(i + 1, j)*scale + offset;
+                        float z2 = ((*viewSignal)(i + 1, j) + preOffset)*gridScale;
                         glVertex3f(x2, y2, -z2);
                     }
                     glEnd();
@@ -416,7 +410,7 @@ void SoundplaneGridView::renderZGrid()
                 {
                     float x = xRange.convert(i);
                     float y = yRange.convert(j);
-                    float z = viewSignal(i, j)*scale + offset;
+                    float z = ((*viewSignal)(i, j) + preOffset)*gridScale;
                     glVertex3f(x, y, -z);
                 }
                 glEnd();
@@ -429,7 +423,7 @@ void SoundplaneGridView::renderZGrid()
                 {
                     float x = xRange.convert(i);
                     float y = yRange.convert(j);
-                    float z = viewSignal(i, j)*scale + offset;
+                    float z = ((*viewSignal)(i, j) + preOffset)*gridScale;
                     glVertex3f(x, y, -z);
                 }
                 glEnd();
@@ -498,19 +492,12 @@ void SoundplaneGridView::renderBarChart()
 	MLRange ymRange(0, sensorHeight);
 	ymRange.convertTo(MLRange(margin, viewH - margin));
     
-    const MLSignal& viewSignal = mpModel->getSignalForViewMode(mViewMode);
-    
+    const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
+    if(!viewSignal) return;
+	
     float displayScale = mpModel->getFloatProperty("display_scale");
     float scale = displayScale;
     float offset = 0.f;
-    switch(mViewMode)
-    {
-        case kTest2:
-        default:
-            offset = 0.;
-            scale *= 1.;
-            break;
-    }
 	
 	// draw stuff in immediate mode.
 	// TODO don't use fixed function pipeline.
@@ -563,9 +550,8 @@ void SoundplaneGridView::renderBarChart()
             float x = xmRange.convert(i + 0.5);
             float y = ymRange.convert(j + 0.5);
 
-            float z = viewSignal(i, j)*scale + offset;
+            float z = (*viewSignal)(i, j)*scale + offset;
             MLGL::drawDot(Vec2(x, y), z);
-            
         }
     }
 }
@@ -578,11 +564,12 @@ void SoundplaneGridView::renderOpenGL()
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     const Colour c = findColour(MLLookAndFeel::backgroundColor);
     OpenGLHelpers::clear (c);
-    if (mViewMode == kXY)
+	const std::string& viewMode = getStringProperty("viewmode");
+    if (viewMode == "xy")
     {
         renderXYGrid();
     }
-    else if (mViewMode == kTest2)
+    else if (viewMode == "test2")
     {
         renderBarChart();
     }

@@ -134,8 +134,8 @@
 		B508804D14635BB20039D144 /* Filters2D.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B508804C14635BB20039D144 /* Filters2D.cpp */; };
 		B52365F118ABE93B00ACF69E /* MLDSPUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B52365EF18ABE93B00ACF69E /* MLDSPUtils.cpp */; };
 		B524E63F1811CD5F00A94518 /* Zone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B524E63D1811CD5F00A94518 /* Zone.cpp */; };
+		B52E2D2C1986DE1C00797CC3 /* MLProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B52E2D2A1986DE1C00797CC3 /* MLProperty.cpp */; };
 		B52E304213FDFE7F005650CB /* SoundplaneController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B52E304113FDFE7F005650CB /* SoundplaneController.cpp */; };
-		B55891C317F367B0008EFD30 /* MLWaveform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B55891C117F367B0008EFD30 /* MLWaveform.cpp */; };
 		B55ADF69158BD38100FE9D51 /* SoundplaneMIDIOutput.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B55ADF68158BD38100FE9D51 /* SoundplaneMIDIOutput.cpp */; };
 		B55ADF6C158BD39500FE9D51 /* SoundplaneOSCOutput.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B55ADF6B158BD39500FE9D51 /* SoundplaneOSCOutput.cpp */; };
 		B55D12DF180F62AC002DE3FF /* SoundplaneBinaryData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B55D12DD180F62AC002DE3FF /* SoundplaneBinaryData.cpp */; };
@@ -315,7 +315,6 @@
 		B503016317C69FD2003A4458 /* MLPlatform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLPlatform.h; sourceTree = "<group>"; };
 		B503016417C69FD2003A4458 /* MLReporter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLReporter.cpp; sourceTree = "<group>"; };
 		B503016517C69FD2003A4458 /* MLReporter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLReporter.h; sourceTree = "<group>"; };
-		B503016617C69FD2003A4458 /* MLResponder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLResponder.h; sourceTree = "<group>"; };
 		B503016717C69FD2003A4458 /* MLSymbol.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLSymbol.cpp; sourceTree = "<group>"; };
 		B503016817C69FD2003A4458 /* MLSymbol.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLSymbol.h; sourceTree = "<group>"; };
 		B503016917C69FD2003A4458 /* MLSymbolMap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLSymbolMap.h; sourceTree = "<group>"; };
@@ -388,11 +387,11 @@
 		B524E63D1811CD5F00A94518 /* Zone.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Zone.cpp; sourceTree = "<group>"; };
 		B524E63E1811CD5F00A94518 /* Zone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Zone.h; sourceTree = "<group>"; };
 		B524E6401811CF5200A94518 /* SoundplaneModelA.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SoundplaneModelA.h; sourceTree = "<group>"; };
+		B52E2D2A1986DE1C00797CC3 /* MLProperty.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLProperty.cpp; sourceTree = "<group>"; };
+		B52E2D2B1986DE1C00797CC3 /* MLProperty.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLProperty.h; sourceTree = "<group>"; };
 		B52E304013FDFE7F005650CB /* SoundplaneController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneController.h; sourceTree = "<group>"; };
 		B52E304113FDFE7F005650CB /* SoundplaneController.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneController.cpp; sourceTree = "<group>"; };
 		B54757BF17B423C6004B976C /* MLProjectInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MLProjectInfo.h; sourceTree = "<group>"; };
-		B55891C117F367B0008EFD30 /* MLWaveform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLWaveform.cpp; sourceTree = "<group>"; };
-		B55891C217F367B0008EFD30 /* MLWaveform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLWaveform.h; sourceTree = "<group>"; };
 		B55ADF67158BD38100FE9D51 /* SoundplaneMIDIOutput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneMIDIOutput.h; sourceTree = "<group>"; };
 		B55ADF68158BD38100FE9D51 /* SoundplaneMIDIOutput.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneMIDIOutput.cpp; sourceTree = "<group>"; };
 		B55ADF6A158BD39500FE9D51 /* SoundplaneOSCOutput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneOSCOutput.h; sourceTree = "<group>"; };
@@ -612,8 +611,6 @@
 		B503012717C69FD2003A4458 /* LookAndFeel */ = {
 			isa = PBXGroup;
 			children = (
-				B55891C117F367B0008EFD30 /* MLWaveform.cpp */,
-				B55891C217F367B0008EFD30 /* MLWaveform.h */,
 				B503012817C69FD2003A4458 /* MLButton.cpp */,
 				B503012917C69FD2003A4458 /* MLButton.h */,
 				B503012A17C69FD2003A4458 /* MLDebugDisplay.cpp */,
@@ -680,9 +677,10 @@
 				B503016117C69FD2003A4458 /* MLPath.cpp */,
 				B503016217C69FD2003A4458 /* MLPath.h */,
 				B503016317C69FD2003A4458 /* MLPlatform.h */,
+				B52E2D2A1986DE1C00797CC3 /* MLProperty.cpp */,
+				B52E2D2B1986DE1C00797CC3 /* MLProperty.h */,
 				B503016417C69FD2003A4458 /* MLReporter.cpp */,
 				B503016517C69FD2003A4458 /* MLReporter.h */,
-				B503016617C69FD2003A4458 /* MLResponder.h */,
 				B503016717C69FD2003A4458 /* MLSymbol.cpp */,
 				B503016817C69FD2003A4458 /* MLSymbol.h */,
 				B503016917C69FD2003A4458 /* MLSymbolMap.h */,
@@ -1027,6 +1025,7 @@
 				B50301E417C69FD2003A4458 /* MLProcFade.cpp in Sources */,
 				B50301E517C69FD2003A4458 /* MLProcFadeBipolar.cpp in Sources */,
 				B50301E617C69FD2003A4458 /* MLProcFMBandwidth.cpp in Sources */,
+				B52E2D2C1986DE1C00797CC3 /* MLProperty.cpp in Sources */,
 				B50301E717C69FD2003A4458 /* MLProcGlide.cpp in Sources */,
 				B50301E817C69FD2003A4458 /* MLProcHostPhasor.cpp in Sources */,
 				B50301E917C69FD2003A4458 /* MLProcInputToSignals.cpp in Sources */,
@@ -1115,7 +1114,6 @@
 				B503024917C69FD2003A4458 /* Thread.cpp in Sources */,
 				B503024A17C69FD2003A4458 /* pa_ringbuffer.cpp in Sources */,
 				B5DED64917E0F02100121663 /* MLTriToggleButton.cpp in Sources */,
-				B55891C317F367B0008EFD30 /* MLWaveform.cpp in Sources */,
 				B5C2AF60180752E500664D02 /* MLFileCollection.cpp in Sources */,
 				B55D12DF180F62AC002DE3FF /* SoundplaneBinaryData.cpp in Sources */,
 				B524E63F1811CD5F00A94518 /* Zone.cpp in Sources */,

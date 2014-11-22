@@ -123,6 +123,15 @@ SoundplaneModel::SoundplaneModel() :
 	setAllPropertiesToDefaults();
 
 	mTracker.setListener(this);
+	
+	// set up view modes map
+	mViewModeToSignalMap["raw data"] = &mRawSignal;
+	mViewModeToSignalMap["calibrated"] = &mCalibratedSignal;
+	mViewModeToSignalMap["cooked"] = &mCookedSignal;
+	mViewModeToSignalMap["xy"] = &mCalibratedSignal;
+	mViewModeToSignalMap["test1"] = &mTestSignal;
+	mViewModeToSignalMap["test2"] = &(mTracker.getNormalizeMap());
+	mViewModeToSignalMap["norm. map"] = &(mTracker.getNormalizeMap());
 }
 
 SoundplaneModel::~SoundplaneModel()
@@ -135,6 +144,208 @@ SoundplaneModel::~SoundplaneModel()
 	{ 
 		delete mpDriver; 
 		mpDriver = 0; 
+	}
+}
+
+void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newVal)
+{
+	// debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
+	
+	int propertyType = newVal.getType();
+	switch(propertyType)
+	{
+		case MLProperty::kFloatProperty:
+		{
+			float v = newVal.getFloatValue();
+			if (p.withoutFinalNumber() == MLSymbol("carrier_toggle"))
+			{
+				// toggles changed -- mute carriers
+				unsigned long mask = 0;
+				for(int i=0; i<32; ++i)
+				{
+					MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
+					bool on = (int)(getFloatProperty(tSym));
+					mask = mask | (on << i);
+				}
+				
+				mCarriersMask = mask;
+				mCarrierMaskDirty = true; // trigger carriers set in a second or so
+			}
+			
+			else if (p == "all_toggle")
+			{
+				bool on = (bool)(v);
+				for(int i=0; i<32; ++i)
+				{
+					MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
+					setProperty(tSym, on);
+				}
+				mCarriersMask = on ? ~0 : 0;
+				mCarrierMaskDirty = true; // trigger carriers set in a second or so
+			}
+			else if (p == "max_touches")
+			{
+				mTracker.setMaxTouches(v);
+				mMIDIOutput.setMaxTouches(v);
+				mOSCOutput.setMaxTouches(v);
+			}
+			else if (p == "lopass")
+			{
+				mTracker.setLopass(v);
+			}
+			
+			else if (p == "z_thresh")
+			{
+				mTracker.setThresh(v);
+			}
+			else if (p == "z_max")
+			{
+				mTracker.setMaxForce(v);
+			}
+			else if (p == "z_curve")
+			{
+				mTracker.setForceCurve(v);
+			}
+			else if (p == "snap")
+			{
+				sendParametersToZones();
+			}
+			else if (p == "vibrato")
+			{
+				sendParametersToZones();
+			}
+			else if (p == "lock")
+			{
+				sendParametersToZones();
+			}
+			else if (p == "data_freq_midi")
+			{
+				// TODO attribute
+				mMIDIOutput.setDataFreq(v);
+			}
+			else if (p == "data_freq_osc")
+			{
+				// TODO attribute
+				mOSCOutput.setDataFreq(v);
+			}
+			else if (p == "midi_active")
+			{
+				mMIDIOutput.setActive(bool(v));
+			}
+			else if (p == "midi_multi_chan")
+			{
+				mMIDIOutput.setMultiChannel(bool(v));
+			}
+			else if (p == "midi_start_chan")
+			{
+				mMIDIOutput.setStartChannel(int(v));
+			}
+			else if (p == "midi_pressure_active")
+			{
+				mMIDIOutput.setPressureActive(bool(v));
+			}
+			else if (p == "osc_active")
+			{
+				bool b = v;
+				mOSCOutput.setActive(b);
+				listenToOSC(b ? kDefaultUDPReceivePort : 0);
+			}
+			else if (p == "osc_send_matrix")
+			{
+				bool b = v;
+				mSendMatrixData = b;
+			}
+			else if (p == "t_thresh")
+			{
+				mTracker.setTemplateThresh(v);
+			}
+			else if (p == "bg_filter")
+			{
+				mTracker.setBackgroundFilter(v);
+			}
+			else if (p == "quantize")
+			{
+				bool b = v;
+				mTracker.setQuantize(b);
+				sendParametersToZones();
+			}
+			else if (p == "rotate")
+			{
+				bool b = v;
+				mTracker.setRotate(b);
+			}
+			else if (p == "retrig")
+			{
+				mMIDIOutput.setRetrig(bool(v));
+				sendParametersToZones();
+			}
+			else if (p == "hysteresis")
+			{
+				mMIDIOutput.setHysteresis(v);
+				sendParametersToZones();
+			}
+			else if (p == "transpose")
+			{
+				sendParametersToZones();
+			}
+			else if (p == "bend_range")
+			{
+				mMIDIOutput.setBendRange(v);
+				sendParametersToZones();
+			}
+			else if (p == "debug_pause")
+			{
+				debug().setActive(!bool(v));
+			}
+			else if (p == "kyma_poll")
+			{
+				mMIDIOutput.setKymaPoll(bool(v));
+			}
+		}
+			break;
+		case MLProperty::kStringProperty:
+		{
+			const std::string& str = newVal.getStringValue();
+			if (p == "viewmode")
+			{
+				// nothing to do for Model
+			}
+			else if (p == "midi_device")
+			{
+				mMIDIOutput.setDevice(str);
+			}
+			else if (p == "zone_JSON")
+			{
+				loadZonesFromString(str);
+			}
+		}
+			break;
+		case MLProperty::kSignalProperty:
+		{
+			const MLSignal& sig = newVal.getSignalValue();
+			if(p == MLSymbol("carriers"))
+			{
+				// get carriers from signal
+				assert(sig.getSize() == kSoundplaneSensorWidth);
+				for(int i=0; i<kSoundplaneSensorWidth; ++i)
+				{
+					mCarriers[i] = sig[i];
+				}
+				mNeedsCarriersSet = true;
+			}
+			if(p == MLSymbol("tracker_calibration"))
+			{
+				mTracker.setCalibration(sig);
+			}
+			if(p == MLSymbol("tracker_normalize"))
+			{
+				mTracker.setNormalizeMap(sig);
+			}
+
+		}
+			break;
+		default:
+			break;
 	}
 }
 
@@ -229,209 +440,9 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 	}
 }
 
-void SoundplaneModel::setFloatProperty(MLSymbol p, float v)
+void SoundplaneModel::ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint)
 {
-    if (p.withoutFinalNumber() == MLSymbol("carrier_toggle"))
-	{
-		// toggles changed -- mute carriers 
-		unsigned long mask = 0;	
-		for(int i=0; i<32; ++i)
-		{
-			MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
-			bool on = (int)(getFloatProperty(tSym));
-			mask = mask | (on << i);
-		}
-		
-		mCarriersMask = mask;
-		mCarrierMaskDirty = true; // trigger carriers set in a second or so
-	}
-
-	else if (p == "all_toggle")
-	{
-		bool on = (bool)(v);
-		for(int i=0; i<32; ++i)
-		{
-			MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
-			setProperty(tSym, on);
-		}
-		mCarriersMask = on ? ~0 : 0;
-		mCarrierMaskDirty = true; // trigger carriers set in a second or so
-	}
-	else if (p == "max_touches")
-	{
-		mTracker.setMaxTouches(v);
-		mMIDIOutput.setMaxTouches(v);
-		mOSCOutput.setMaxTouches(v);
-	}
-	else if (p == "lopass")
-	{
-		mTracker.setLopass(v);
-	}
-		
-	else if (p == "z_thresh")
-	{
-		mTracker.setThresh(v);
-	}
-	else if (p == "z_max")
-	{
-		mTracker.setMaxForce(v); 
-	}
-	else if (p == "z_curve")
-	{
-		mTracker.setForceCurve(v); 
-	}
-	else if (p == "snap")
-	{
-        sendParametersToZones();
-	}
-	else if (p == "vibrato")
-	{
-        sendParametersToZones();
-	}
-	else if (p == "lock")
-	{
-        sendParametersToZones();
-	}
-	else if (p == "data_freq_midi")
-	{
-        // TODO attribute
-		mMIDIOutput.setDataFreq(v);
-	}
-	else if (p == "data_freq_osc")
-	{
-        // TODO attribute
-		mOSCOutput.setDataFreq(v);
-	}
-	else if (p == "midi_active")
-	{
-		mMIDIOutput.setActive(bool(v));
-	}
-	else if (p == "midi_multi_chan")
-	{
-		mMIDIOutput.setMultiChannel(bool(v));
-	}
-	else if (p == "midi_start_chan")
-	{
-		mMIDIOutput.setStartChannel(int(v));
-	}
-	else if (p == "midi_pressure_active")
-	{
-		mMIDIOutput.setPressureActive(bool(v));
-	}
-	else if (p == "osc_active")
-	{
-		bool b = v;
-		mOSCOutput.setActive(b);
-		listenToOSC(b ? kDefaultUDPReceivePort : 0);
-	}
-	else if (p == "osc_send_matrix")
-	{
-		bool b = v; 
-		mSendMatrixData = b;
-	}
-	else if (p == "t_thresh")
-	{
-		mTracker.setTemplateThresh(v);
-	}
-	else if (p == "bg_filter")
-	{
-		mTracker.setBackgroundFilter(v);
-	}
-	else if (p == "quantize")
-	{
-		bool b = v;
-		mTracker.setQuantize(b);
-        sendParametersToZones();
-	}
-	else if (p == "rotate")
-	{
-		bool b = v;
-		mTracker.setRotate(b);
-	}
-	else if (p == "retrig")
-	{
-		mMIDIOutput.setRetrig(bool(v));
-        sendParametersToZones();
-	}
-	else if (p == "hysteresis")
-	{
-		mMIDIOutput.setHysteresis(v);
-        sendParametersToZones();
-	}
-	else if (p == "transpose")
-	{
-        sendParametersToZones();
-	}
-	else if (p == "bend_range")
-	{
-		mMIDIOutput.setBendRange(v);
-        sendParametersToZones();
-	}
-	else if (p == "debug_pause")
-	{
-		debug().setActive(!bool(v));
-	}
-	else if (p == "kyma_poll")
-	{
-		mMIDIOutput.setKymaPoll(bool(v));
-	}
-}
-
-void SoundplaneModel::setStringProperty(MLSymbol p, const std::string& v)
-{
-	// debug() << "SoundplaneModel::setProperty " << p << " : " << v << "\n";
-
-	if (p == "viewmode")
-	{
-		// nothing to do for Model
- 	}
-	else if (p == "midi_device")
-	{
-		mMIDIOutput.setDevice(v);
-	}
-	else if (p == "zone_JSON")
-	{
-        loadZonesFromString(v);
-    }
-}
-
-void SoundplaneModel::setSignalProperty(MLSymbol p, const MLSignal& v)
-{
-	if(p == MLSymbol("carriers"))
-	{
-		// get carriers from signal
-		assert(v.getSize() == kSoundplaneSensorWidth);
-		for(int i=0; i<kSoundplaneSensorWidth; ++i)
-		{
-			mCarriers[i] = v[i];
-		}		
-		mNeedsCarriersSet = true;
-	}
-	if(p == MLSymbol("tracker_calibration"))
-	{
-		mTracker.setCalibration(v);
-	}
-	if(p == MLSymbol("tracker_normalize"))
-	{
-		mTracker.setNormalizeMap(v);
-	}
-}
-
-void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
-{
-    int type = val.getType();
-    switch(type)
-    {
-        case MLProperty::kFloatProperty:
-            setFloatProperty(p, (val.getFloatValue()));
-            break;
-        case MLProperty::kStringProperty:
-            setStringProperty(p, (*val.getStringValue()));
-            break;
-        case MLProperty::kSignalProperty:
-            setSignalProperty(p, (*val.getSignalValue()));
-            break;
-    }
+	
 }
 
 void SoundplaneModel::initialize()
@@ -1418,34 +1429,20 @@ void SoundplaneModel::endSelectCarriers()
 
 	mSelectingCarriers = false;
 }
-	
-const MLSignal& SoundplaneModel::getSignalForViewMode(SoundplaneViewMode m)
+
+const MLSignal* SoundplaneModel::getSignalForViewMode(const std::string& m)
 {
-	switch(m)
+	std::map<std::string, MLSignal*>::iterator it;
+	it = mViewModeToSignalMap.find(m);
+	if(it != mViewModeToSignalMap.end())
 	{
-		case kRaw:
-			return mRawSignal;
-			break;
-		case kCalibrated:
-			default:
-			return mCalibratedSignal;
-			break;
-		case kCooked:
-			return mCookedSignal; 
-			break;
-		case kXY:
-			return mCalibratedSignal; 
-			break;
-		case kTest1:
-			return mTestSignal;
-			break;
-		case kTest2:
-			return mTracker.getNormalizeMap();
-			break;
-		case kNrmMap:
-			return mTracker.getNormalizeMap();
-			break;
+		return mViewModeToSignalMap[m];
 	}
+	else
+	{
+		debug() << "SoundplaneModel::getSignalForViewMode: no signal for " << m << "!\n";
+	}
+	return 0;
 }
 
 const MLSignal& SoundplaneModel::getTrackerCalibrateSignal()

@@ -21,8 +21,13 @@
 #include "UdpSocket.h"
 
 extern const char* kDefaultHostnameString;
+
+// default port for t3d plugin communication. Plugins may be receiving on different ports.
 const int kDefaultUDPPort = 3123;
-const int kDefaultUDPReceivePort = 3124;
+
+// Soundplane app input port for Kyma and other config messages
+const int kDefaultUDPReceivePort = 3122;
+
 const int kUDPOutputBufferSize = 4096;
 
 class OSCVoice

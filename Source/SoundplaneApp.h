@@ -44,7 +44,6 @@ private:
 	SoundplaneController* mpController;	
 	MLAppState* mpState;
 	MLAppWindow mWindow;
-	MLNetServiceHub mNetServices;
 };
 
 // This macro creates the application's main() function.

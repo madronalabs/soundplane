@@ -29,6 +29,9 @@ class SoundplaneGridView  :
 public:
     SoundplaneGridView();
     ~SoundplaneGridView();
+	
+	// MLModelListener implementation
+	void doPropertyChangeAction(MLSymbol , const MLProperty & );
  
 	void renderOpenGL();
 	void renderXYGrid();
@@ -36,7 +39,6 @@ public:
 	void renderBarChart();
 
  	void setModel(SoundplaneModel* m);
-	void setViewMode(SoundplaneViewMode v){ mViewMode = v; }
  	
 private:
 	Vec2 worldToScreen(const Vec3& world); 
@@ -47,10 +49,6 @@ private:
 	void drawTestVec();
 
 	SoundplaneModel* mpModel;
-	SoundplaneViewMode mViewMode;
-	
-	// temp
-	float rotation;
 };
 
 #endif // __SOUNDPLANE_GRID_VIEW__
