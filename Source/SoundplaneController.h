@@ -42,7 +42,7 @@ public:
 	void timerCallback();
 	
     // from MLFileCollection::Listener
-    void processFileFromCollection (const MLFile& f, const MLFileCollection& collection, int idx, int size);
+    void processFileFromCollection (MLSymbol action, const MLFile& f, const MLFileCollection& collection, int idx, int size);
     
 	// menus
 	void showMenu (MLSymbol menuName, MLSymbol instigatorName);

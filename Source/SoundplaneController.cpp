@@ -154,7 +154,7 @@ void SoundplaneController::timerCallback()
 	MLConsole().display();
 }
 	
-void SoundplaneController::processFileFromCollection (const MLFile& file, const MLFileCollection& collection, int idx, int size)
+void SoundplaneController::processFileFromCollection (MLSymbol action, const MLFile& file, const MLFileCollection& collection, int idx, int size)
 {
 	MLSymbol collName = collection.getName();
     debug() << "got file " << file.getJuceFile().getFileNameWithoutExtension() << " from coll " << collName << "\n";
@@ -465,10 +465,13 @@ void SoundplaneController::doZonePresetMenu(int result)
         default:          
             MLMenuPtr menu = mMenuMap["zone_preset"];
             const std::string& fullName = menu->getItemFullName(result);
-            MLFilePtr f = mZonePresets->getFileByName(fullName);
-            File zoneFile = f->getJuceFile();
-            String stateStr(zoneFile.loadFileAsString());
-            zoneStr = (stateStr.toUTF8());
+            const MLFile& f = mZonePresets->getFileByName(fullName);
+			if(f.exists())
+			{
+				File zoneFile = f.getJuceFile();
+				String stateStr(zoneFile.loadFileAsString());
+				zoneStr = (stateStr.toUTF8());
+			}
             break;
     }
 

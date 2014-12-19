@@ -354,7 +354,7 @@ private:
 	int mRetrigClock;
 	
 	int mMaxTouchesPerFrame;
-	int mRotateOffset;
+	int mPrevTouchForRotate;
 	bool mRotate;
 	bool mDoNormalize;
 	

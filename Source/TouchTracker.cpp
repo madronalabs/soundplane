@@ -48,7 +48,7 @@ TouchTracker::TouchTracker(int w, int h) :
 	mCalibrator(w, h),
 	mSampleRate(1000.f),
 	mBackgroundFilterFreq(0.125f),
-	mRotateOffset(0),
+	mPrevTouchForRotate(0),
 	mRotate(false),
 	mDoNormalize(true)
 {
@@ -297,7 +297,7 @@ void TouchTracker::setRotate(bool b)
 	mRotate = b; 
 	if(!b)
 	{
-		mRotateOffset = 0;
+		mPrevTouchForRotate = 0;
 	}
 }
 
@@ -313,11 +313,11 @@ int TouchTracker::addTouch(const Touch& t)
 	
 	if(mRotate)
 	{
-		offset = mRotateOffset;
-		mRotateOffset++;
-		if(mRotateOffset >= mMaxTouchesPerFrame)
+		offset = mPrevTouchForRotate;
+		mPrevTouchForRotate++;
+		if(mPrevTouchForRotate >= mMaxTouchesPerFrame)
 		{
-			mRotateOffset = 0;
+			mPrevTouchForRotate = 0;
 		}
 	}
 	
@@ -336,6 +336,7 @@ int TouchTracker::addTouch(const Touch& t)
 		}
 		else
 		{
+			mPrevTouchForRotate++;
 			float rz = r.z;
 			if (r.z < minZ)
 			{

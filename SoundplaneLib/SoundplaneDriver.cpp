@@ -559,7 +559,7 @@ void SoundplaneDriver::setDefaultCarriers()
 //
 void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest)
 {
-	register unsigned short a, b;
+	unsigned short a, b;
 	float *pDestRow0, *pDestRow1;
 	
 	// evey three bytes of payload provide 24 bits, 

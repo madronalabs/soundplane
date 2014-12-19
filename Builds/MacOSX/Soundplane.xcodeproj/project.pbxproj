@@ -158,6 +158,7 @@
 		B592C69216F36A5E001B578F /* juce_gui_extra.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68616F36A5E001B578F /* juce_gui_extra.mm */; };
 		B592C69316F36A5E001B578F /* juce_opengl.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68716F36A5E001B578F /* juce_opengl.mm */; };
 		B59D217514B5425300F061EA /* TouchTracker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B59D217314B5425300F061EA /* TouchTracker.cpp */; };
+		B5BED5021A43EA9800E1BDC7 /* MLStringUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5BED5001A43EA9800E1BDC7 /* MLStringUtils.cpp */; };
 		B5C2AF60180752E500664D02 /* MLFileCollection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5C2AF5E180752E500664D02 /* MLFileCollection.cpp */; };
 		B5C98F491822B5FE00B77A52 /* MLFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5C98F471822B5FE00B77A52 /* MLFile.cpp */; };
 		B5DD1B4813E79F87002BD9C7 /* SoundplaneView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5DD1B4113E79F87002BD9C7 /* SoundplaneView.cpp */; };
@@ -423,6 +424,8 @@
 		B59D217314B5425300F061EA /* TouchTracker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TouchTracker.cpp; path = ../../../soundplane/Source/TouchTracker.cpp; sourceTree = SOURCE_ROOT; };
 		B59D217414B5425300F061EA /* TouchTracker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TouchTracker.h; path = ../../../soundplane/Source/TouchTracker.h; sourceTree = SOURCE_ROOT; };
 		B5A2432D1593F264008D8662 /* SoundplaneDataListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneDataListener.h; sourceTree = "<group>"; };
+		B5BED5001A43EA9800E1BDC7 /* MLStringUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLStringUtils.cpp; sourceTree = "<group>"; };
+		B5BED5011A43EA9800E1BDC7 /* MLStringUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLStringUtils.h; sourceTree = "<group>"; };
 		B5C2AF5E180752E500664D02 /* MLFileCollection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLFileCollection.cpp; sourceTree = "<group>"; };
 		B5C2AF5F180752E500664D02 /* MLFileCollection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLFileCollection.h; sourceTree = "<group>"; };
 		B5C98F471822B5FE00B77A52 /* MLFile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLFile.cpp; sourceTree = "<group>"; };
@@ -681,6 +684,8 @@
 				B52E2D2B1986DE1C00797CC3 /* MLProperty.h */,
 				B503016417C69FD2003A4458 /* MLReporter.cpp */,
 				B503016517C69FD2003A4458 /* MLReporter.h */,
+				B5BED5001A43EA9800E1BDC7 /* MLStringUtils.cpp */,
+				B5BED5011A43EA9800E1BDC7 /* MLStringUtils.h */,
 				B503016717C69FD2003A4458 /* MLSymbol.cpp */,
 				B503016817C69FD2003A4458 /* MLSymbol.h */,
 				B503016917C69FD2003A4458 /* MLSymbolMap.h */,
@@ -1023,6 +1028,7 @@
 				B50301E217C69FD2003A4458 /* MLProcEnvelope.cpp in Sources */,
 				B50301E317C69FD2003A4458 /* MLProcExp2.cpp in Sources */,
 				B50301E417C69FD2003A4458 /* MLProcFade.cpp in Sources */,
+				B5BED5021A43EA9800E1BDC7 /* MLStringUtils.cpp in Sources */,
 				B50301E517C69FD2003A4458 /* MLProcFadeBipolar.cpp in Sources */,
 				B50301E617C69FD2003A4458 /* MLProcFMBandwidth.cpp in Sources */,
 				B52E2D2C1986DE1C00797CC3 /* MLProperty.cpp in Sources */,
@@ -1129,6 +1135,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_LINK_OBJC_RUNTIME = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_C_LANGUAGE_STANDARD = c99;
@@ -1141,7 +1149,7 @@
 				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
 				GCC_WARN_TYPECHECK_CALLS_TO_PRINTF = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;
@@ -1188,6 +1196,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_LINK_OBJC_RUNTIME = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_C_LANGUAGE_STANDARD = c99;
@@ -1199,7 +1209,7 @@
 				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
 				GCC_WARN_TYPECHECK_CALLS_TO_PRINTF = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;
@@ -1246,6 +1256,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_LINK_OBJC_RUNTIME = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GCC_C_LANGUAGE_STANDARD = c99;
@@ -1257,7 +1269,7 @@
 				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
 				GCC_WARN_TYPECHECK_CALLS_TO_PRINTF = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;
