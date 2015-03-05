@@ -132,6 +132,8 @@ SoundplaneModel::SoundplaneModel() :
 	mViewModeToSignalMap["test1"] = &mTestSignal;
 	mViewModeToSignalMap["test2"] = &(mTracker.getNormalizeMap());
 	mViewModeToSignalMap["norm. map"] = &(mTracker.getNormalizeMap());
+	
+	startModelTimer();
 }
 
 SoundplaneModel::~SoundplaneModel()

@@ -31,9 +31,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 	bool foundState = mpState->loadStateFromAppStateFile();
     
 	mpController->setView(mpView);
-    mpView->goToPage(0);
-	mpController->fetchAllProperties();
-			
 	mpModel->initialize();
 	MLConsole() << "Starting Soundplane...\n";
     
@@ -47,6 +44,10 @@ void SoundplaneApp::initialise (const String& commandLine)
 	{
 		mpController->doWelcomeTasks(); 
 	}
+	
+	mpController->fetchAllProperties();
+	mpView->goToPage(0);
+	
 }
 
 void SoundplaneApp::shutdown()

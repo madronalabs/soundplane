@@ -12,10 +12,9 @@ static const std::string kOSCDefaultStr("localhost:3123 (default)");
 static void menuItemChosenCallback (int result, WeakReference<SoundplaneController> wpC, MLSymbol menuName);
 
 SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
-	MLReporter(),
 	mpSoundplaneModel(pModel),
 	mpSoundplaneView(0),
-	mNeedsLateInitialize(true)
+	MLReporter()
 {
 	listenTo(pModel);
 	startTimer(250);
@@ -130,11 +129,11 @@ void SoundplaneController::initialize()
     // get zone presets
 	File zoneDir = getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets");
 	
-	debug() << "LOOKING in " << zoneDir.getFileName() << "\n";
+	debug() << "LOOKING for zones in " << zoneDir.getFileName() << "\n";
 	
     mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", zoneDir, "json"));
     mZonePresets->addListener(this);
-    mZonePresets->searchForFilesImmediate();
+    mZonePresets->processFilesImmediate();
     
     mZonePresets->dump();
     
@@ -157,7 +156,6 @@ void SoundplaneController::timerCallback()
 void SoundplaneController::processFileFromCollection (MLSymbol action, const MLFile& file, const MLFileCollection& collection, int idx, int size)
 {
 	MLSymbol collName = collection.getName();
-    debug() << "got file " << file.getJuceFile().getFileNameWithoutExtension() << " from coll " << collName << "\n";
     if(collName == "touch_preset")
     {
 
@@ -432,7 +430,7 @@ void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
 			MLMenu* menu = findMenuByName(menuName);
 			if (menu != nullptr)
 			{
-				mpSoundplaneModel->setProperty(menuName, menu->getItemFullName(result));
+				mpSoundplaneModel->setProperty(menuName, menu->getMenuItemPath(result));
 			}
 		}
  	}
@@ -449,23 +447,27 @@ void SoundplaneController::doZonePresetMenu(int result)
     // zone info changes. Display so the user can see that it's changed, and also
     // ask to verify overwrite when loading a new preset.
     std::string zoneStr;
+	std::string fullName ("error: preset not found!");
+	MLMenuPtr menu = mMenuMap["zone_preset"];
     switch(result)
     {
         // get built-in JSON string for first menu items
         case 1:
             zoneStr = std::string(SoundplaneBinaryData::continuous_json);
+			fullName = menu->getMenuItemPath(result);
             break;
         case 2:
             zoneStr = std::string(SoundplaneBinaryData::chromaticfourths_json);
+			fullName = menu->getMenuItemPath(result);
             break;
         case 3:
             zoneStr = std::string(SoundplaneBinaryData::chromaticoctaves_json);
+			fullName = menu->getMenuItemPath(result);
             break;
         // get JSON from file
         default:          
-            MLMenuPtr menu = mMenuMap["zone_preset"];
-            const std::string& fullName = menu->getItemFullName(result);
-            const MLFile& f = mZonePresets->getFileByName(fullName);
+            fullName = menu->getMenuItemPath(result);
+            const MLFile& f = mZonePresets->getFileByPath(fullName);
 			if(f.exists())
 			{
 				File zoneFile = f.getJuceFile();
@@ -476,18 +478,19 @@ void SoundplaneController::doZonePresetMenu(int result)
     }
 
     mpSoundplaneModel->setProperty("zone_JSON", zoneStr);
+	mpSoundplaneModel->setPropertyImmediate("zone_preset", fullName);
 }
 
 void SoundplaneController::doOSCServicesMenu(int result)
 {    
+	std::string fullName ("error: preset not found!");
  	SoundplaneModel* pModel = getModel();
 	assert(pModel);
 
     // TODO should this not be in Model::doPropertyChangeAction ?
-    std::string name;
     if(result == 1) // set default
     {
-        name = "default";
+        fullName = "default";
         SoundplaneOSCOutput& output = pModel->getOSCOutput();
         output.connect(kDefaultHostnameString, kDefaultUDPPort);
         pModel->setKymaMode(0);
@@ -495,14 +498,10 @@ void SoundplaneController::doOSCServicesMenu(int result)
     else // resolve a service from list
     {
 		MLMenuPtr menu = mMenuMap["osc_services"];
-		const std::string& fullName = menu->getItemFullName(result);
-debug() << "doOSCServicesMenu fullName: " << fullName << "\n";
-		
-        name = getServiceName(result - 1);
-		
-		
-        Resolve(name.c_str(), kUDPType, kLocalDotDomain);
+		fullName = menu->getMenuItemPath(result);	
+        Resolve(getServiceName(result - 1).c_str(), kUDPType, kLocalDotDomain);
     }
+	mpSoundplaneModel->setProperty("osc_services", fullName);
 }
 
 void SoundplaneController::formatServiceName(const std::string& inName, std::string& outName)

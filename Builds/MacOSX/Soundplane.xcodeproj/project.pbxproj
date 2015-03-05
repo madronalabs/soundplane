@@ -80,7 +80,7 @@
 		B503020917C69FD2003A4458 /* MLDrawableButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503012E17C69FD2003A4458 /* MLDrawableButton.cpp */; };
 		B503020A17C69FD2003A4458 /* MLDrawing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503013017C69FD2003A4458 /* MLDrawing.cpp */; };
 		B503020B17C69FD2003A4458 /* MLEnvelope.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503013217C69FD2003A4458 /* MLEnvelope.cpp */; };
-		B503020C17C69FD2003A4458 /* MLGraph.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503013417C69FD2003A4458 /* MLGraph.cpp */; };
+		B503020C17C69FD2003A4458 /* MLPolynomialWidget.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503013417C69FD2003A4458 /* MLPolynomialWidget.cpp */; };
 		B503020D17C69FD2003A4458 /* MLImageBank.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503013617C69FD2003A4458 /* MLImageBank.cpp */; };
 		B503020E17C69FD2003A4458 /* MLLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503013817C69FD2003A4458 /* MLLabel.cpp */; };
 		B503020F17C69FD2003A4458 /* MLLookAndFeel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503013A17C69FD2003A4458 /* MLLookAndFeel.cpp */; };
@@ -134,7 +134,6 @@
 		B508804D14635BB20039D144 /* Filters2D.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B508804C14635BB20039D144 /* Filters2D.cpp */; };
 		B52365F118ABE93B00ACF69E /* MLDSPUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B52365EF18ABE93B00ACF69E /* MLDSPUtils.cpp */; };
 		B524E63F1811CD5F00A94518 /* Zone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B524E63D1811CD5F00A94518 /* Zone.cpp */; };
-		B52E2D2C1986DE1C00797CC3 /* MLProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B52E2D2A1986DE1C00797CC3 /* MLProperty.cpp */; };
 		B52E304213FDFE7F005650CB /* SoundplaneController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B52E304113FDFE7F005650CB /* SoundplaneController.cpp */; };
 		B55ADF69158BD38100FE9D51 /* SoundplaneMIDIOutput.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B55ADF68158BD38100FE9D51 /* SoundplaneMIDIOutput.cpp */; };
 		B55ADF6C158BD39500FE9D51 /* SoundplaneOSCOutput.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B55ADF6B158BD39500FE9D51 /* SoundplaneOSCOutput.cpp */; };
@@ -157,6 +156,7 @@
 		B592C69116F36A5E001B578F /* juce_gui_basics.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68516F36A5E001B578F /* juce_gui_basics.mm */; };
 		B592C69216F36A5E001B578F /* juce_gui_extra.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68616F36A5E001B578F /* juce_gui_extra.mm */; };
 		B592C69316F36A5E001B578F /* juce_opengl.mm in Sources */ = {isa = PBXBuildFile; fileRef = B592C68716F36A5E001B578F /* juce_opengl.mm */; };
+		B595425F1A5F08BB00CFF295 /* MLProperty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B595425D1A5F08BB00CFF295 /* MLProperty.cpp */; };
 		B59D217514B5425300F061EA /* TouchTracker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B59D217314B5425300F061EA /* TouchTracker.cpp */; };
 		B5BED5021A43EA9800E1BDC7 /* MLStringUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5BED5001A43EA9800E1BDC7 /* MLStringUtils.cpp */; };
 		B5C2AF60180752E500664D02 /* MLFileCollection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5C2AF5E180752E500664D02 /* MLFileCollection.cpp */; };
@@ -269,8 +269,8 @@
 		B503013117C69FD2003A4458 /* MLDrawing.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLDrawing.h; sourceTree = "<group>"; };
 		B503013217C69FD2003A4458 /* MLEnvelope.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLEnvelope.cpp; sourceTree = "<group>"; };
 		B503013317C69FD2003A4458 /* MLEnvelope.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLEnvelope.h; sourceTree = "<group>"; };
-		B503013417C69FD2003A4458 /* MLGraph.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLGraph.cpp; sourceTree = "<group>"; };
-		B503013517C69FD2003A4458 /* MLGraph.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLGraph.h; sourceTree = "<group>"; };
+		B503013417C69FD2003A4458 /* MLPolynomialWidget.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLPolynomialWidget.cpp; sourceTree = "<group>"; };
+		B503013517C69FD2003A4458 /* MLPolynomialWidget.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLPolynomialWidget.h; sourceTree = "<group>"; };
 		B503013617C69FD2003A4458 /* MLImageBank.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLImageBank.cpp; sourceTree = "<group>"; };
 		B503013717C69FD2003A4458 /* MLImageBank.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLImageBank.h; sourceTree = "<group>"; };
 		B503013817C69FD2003A4458 /* MLLabel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLLabel.cpp; sourceTree = "<group>"; };
@@ -388,8 +388,6 @@
 		B524E63D1811CD5F00A94518 /* Zone.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Zone.cpp; sourceTree = "<group>"; };
 		B524E63E1811CD5F00A94518 /* Zone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Zone.h; sourceTree = "<group>"; };
 		B524E6401811CF5200A94518 /* SoundplaneModelA.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SoundplaneModelA.h; sourceTree = "<group>"; };
-		B52E2D2A1986DE1C00797CC3 /* MLProperty.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLProperty.cpp; sourceTree = "<group>"; };
-		B52E2D2B1986DE1C00797CC3 /* MLProperty.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLProperty.h; sourceTree = "<group>"; };
 		B52E304013FDFE7F005650CB /* SoundplaneController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneController.h; sourceTree = "<group>"; };
 		B52E304113FDFE7F005650CB /* SoundplaneController.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneController.cpp; sourceTree = "<group>"; };
 		B54757BF17B423C6004B976C /* MLProjectInfo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MLProjectInfo.h; sourceTree = "<group>"; };
@@ -421,6 +419,8 @@
 		B592C68516F36A5E001B578F /* juce_gui_basics.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_gui_basics.mm; path = ../../../juce/modules/juce_gui_basics/juce_gui_basics.mm; sourceTree = SOURCE_ROOT; };
 		B592C68616F36A5E001B578F /* juce_gui_extra.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_gui_extra.mm; path = ../../../juce/modules/juce_gui_extra/juce_gui_extra.mm; sourceTree = SOURCE_ROOT; };
 		B592C68716F36A5E001B578F /* juce_opengl.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = juce_opengl.mm; path = ../../../juce/modules/juce_opengl/juce_opengl.mm; sourceTree = SOURCE_ROOT; };
+		B595425D1A5F08BB00CFF295 /* MLProperty.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLProperty.cpp; sourceTree = "<group>"; };
+		B595425E1A5F08BB00CFF295 /* MLProperty.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLProperty.h; sourceTree = "<group>"; };
 		B59D217314B5425300F061EA /* TouchTracker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TouchTracker.cpp; path = ../../../soundplane/Source/TouchTracker.cpp; sourceTree = SOURCE_ROOT; };
 		B59D217414B5425300F061EA /* TouchTracker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TouchTracker.h; path = ../../../soundplane/Source/TouchTracker.h; sourceTree = SOURCE_ROOT; };
 		B5A2432D1593F264008D8662 /* SoundplaneDataListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneDataListener.h; sourceTree = "<group>"; };
@@ -597,6 +597,8 @@
 				B503011A17C69FD2003A4458 /* MLProcSum.cpp */,
 				B503011B17C69FD2003A4458 /* MLProcSVF.cpp */,
 				B503011C17C69FD2003A4458 /* MLProcThru.cpp */,
+				B595425D1A5F08BB00CFF295 /* MLProperty.cpp */,
+				B595425E1A5F08BB00CFF295 /* MLProperty.h */,
 				B503011D17C69FD2003A4458 /* MLRatio.cpp */,
 				B503011E17C69FD2003A4458 /* MLRatio.h */,
 				B503011F17C69FD2003A4458 /* MLRingBuffer.cpp */,
@@ -626,8 +628,8 @@
 				B503013117C69FD2003A4458 /* MLDrawing.h */,
 				B503013217C69FD2003A4458 /* MLEnvelope.cpp */,
 				B503013317C69FD2003A4458 /* MLEnvelope.h */,
-				B503013417C69FD2003A4458 /* MLGraph.cpp */,
-				B503013517C69FD2003A4458 /* MLGraph.h */,
+				B503013417C69FD2003A4458 /* MLPolynomialWidget.cpp */,
+				B503013517C69FD2003A4458 /* MLPolynomialWidget.h */,
 				B503013617C69FD2003A4458 /* MLImageBank.cpp */,
 				B503013717C69FD2003A4458 /* MLImageBank.h */,
 				B503013817C69FD2003A4458 /* MLLabel.cpp */,
@@ -680,8 +682,6 @@
 				B503016117C69FD2003A4458 /* MLPath.cpp */,
 				B503016217C69FD2003A4458 /* MLPath.h */,
 				B503016317C69FD2003A4458 /* MLPlatform.h */,
-				B52E2D2A1986DE1C00797CC3 /* MLProperty.cpp */,
-				B52E2D2B1986DE1C00797CC3 /* MLProperty.h */,
 				B503016417C69FD2003A4458 /* MLReporter.cpp */,
 				B503016517C69FD2003A4458 /* MLReporter.h */,
 				B5BED5001A43EA9800E1BDC7 /* MLStringUtils.cpp */,
@@ -1030,8 +1030,8 @@
 				B50301E417C69FD2003A4458 /* MLProcFade.cpp in Sources */,
 				B5BED5021A43EA9800E1BDC7 /* MLStringUtils.cpp in Sources */,
 				B50301E517C69FD2003A4458 /* MLProcFadeBipolar.cpp in Sources */,
+				B595425F1A5F08BB00CFF295 /* MLProperty.cpp in Sources */,
 				B50301E617C69FD2003A4458 /* MLProcFMBandwidth.cpp in Sources */,
-				B52E2D2C1986DE1C00797CC3 /* MLProperty.cpp in Sources */,
 				B50301E717C69FD2003A4458 /* MLProcGlide.cpp in Sources */,
 				B50301E817C69FD2003A4458 /* MLProcHostPhasor.cpp in Sources */,
 				B50301E917C69FD2003A4458 /* MLProcInputToSignals.cpp in Sources */,
@@ -1070,7 +1070,7 @@
 				B503020917C69FD2003A4458 /* MLDrawableButton.cpp in Sources */,
 				B503020A17C69FD2003A4458 /* MLDrawing.cpp in Sources */,
 				B503020B17C69FD2003A4458 /* MLEnvelope.cpp in Sources */,
-				B503020C17C69FD2003A4458 /* MLGraph.cpp in Sources */,
+				B503020C17C69FD2003A4458 /* MLPolynomialWidget.cpp in Sources */,
 				B503020D17C69FD2003A4458 /* MLImageBank.cpp in Sources */,
 				B503020E17C69FD2003A4458 /* MLLabel.cpp in Sources */,
 				B503020F17C69FD2003A4458 /* MLLookAndFeel.cpp in Sources */,
@@ -1149,7 +1149,7 @@
 				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
 				GCC_WARN_TYPECHECK_CALLS_TO_PRINTF = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;
@@ -1209,7 +1209,7 @@
 				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
 				GCC_WARN_TYPECHECK_CALLS_TO_PRINTF = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;
@@ -1269,7 +1269,7 @@
 				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
 				GCC_WARN_TYPECHECK_CALLS_TO_PRINTF = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				ONLY_ACTIVE_ARCH = NO;
 				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;

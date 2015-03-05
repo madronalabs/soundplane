@@ -99,7 +99,7 @@ void SoundplaneFooterView::setStatus (const char* stat, const char* client)
 			temp += client;
 		}
 		temp += ".";
-		mpStatus->setText(temp.c_str());
+		mpStatus->setProperty("text", temp.c_str());
 	}
 }
 
@@ -110,7 +110,7 @@ void SoundplaneFooterView::setHardware(const char* c)
 		std::string temp(c);
 		temp += ", client v.";
 		temp += MLProjectInfo::versionString;
-		mpDevice->setText(temp.c_str());
+		mpDevice->setProperty("text", temp.c_str());
 		mpDevice->repaint();
 	}
 }
@@ -230,7 +230,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	MLAppView* page0 = mpPages->addPage();
     
     // zone preset menu
-    page0->addMenuButton("", presetMenuRect.withCenter(pmw/2., pmh/2.), "zone_preset");
+    MLMenuButton* mB = page0->addMenuButton("", presetMenuRect.withCenter(pmw/2., pmh/2.), "zone_preset");
+	mB->setProperty("strip", 1); // set button to strip displayed filenames
     
 	MLDrawing* pDraw = page0->addDrawing(MLRect(0, 1, 14, 9));
 	page0->renameWidget(pDraw, "page0_lines");
@@ -489,7 +490,7 @@ void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
 void SoundplaneView::initialize()
 {
 	startTimer(50);	
-	setAnimationsActive(true);
+	// ? setAnimationsActive(true);
 }
 
 // TODO take this away and use Model Properties and doPropertyChangeAction() instead.

@@ -25,10 +25,10 @@ extern const char *kLocalDotDomain;
 
 class SoundplaneController  : 
 	public MLWidget::Listener,
+	public MLFileCollection::Listener,
     public MLReporter,
 	public MLNetServiceHub,
-    public MLFileCollection::Listener,
-	public Timer
+	public juce::Timer
 {
 public:
     SoundplaneController(SoundplaneModel* pModel);
@@ -36,14 +36,19 @@ public:
 
 	// MLWidget::Listener
 	void handleWidgetAction(MLWidget* w, MLSymbol action, MLSymbol target, const MLProperty& val = MLProperty());
+	
+	// MLFileCollection::Listener
+	void processFileFromCollection (MLSymbol action, const MLFile& f, const MLFileCollection& collection, int idx, int size);
+ 
+	// MLNetServiceHub
+	void didResolveAddress(NetService *pNetService);
+	
+	// juce::Timer
+	void timerCallback();
 
 	void initialize();
 	void shutdown();
-	void timerCallback();
 	
-    // from MLFileCollection::Listener
-    void processFileFromCollection (MLSymbol action, const MLFile& f, const MLFileCollection& collection, int idx, int size);
-    
 	// menus
 	void showMenu (MLSymbol menuName, MLSymbol instigatorName);
 	void menuItemChosen(MLSymbol menuName, int result);	
@@ -55,9 +60,6 @@ public:
 	void formatServiceName(const std::string& inName, std::string& outName);
 	const std::string& getServiceName(int idx);
 	
-	// MLNetServiceHub
-	void didResolveAddress(NetService *pNetService);
-
 	SoundplaneView* getView() { return mpSoundplaneView; }
 	void setView(SoundplaneView* v);
 
@@ -65,6 +67,7 @@ public:
 	
 	// show nice message, run calibration, etc. if prefs are not found. 
 	void doWelcomeTasks();
+	
 	bool confirmRestoreDefaults();
 	
 protected:
@@ -72,7 +75,6 @@ protected:
 	friend class WeakReference<SoundplaneController>;
 	
 private:
-	bool mNeedsLateInitialize;
 	SoundplaneModel* mpSoundplaneModel;	
 	SoundplaneView* mpSoundplaneView;
 
@@ -82,7 +84,6 @@ private:
 
     MLFileCollectionPtr mZonePresets;
     int mZoneMenuStartItems;
-
 };
 
 

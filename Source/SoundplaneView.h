@@ -19,7 +19,7 @@
 #include "MLMultiButton.h"
 #include "MLEnvelope.h"
 #include "MLProgressBar.h"
-#include "MLGraph.h"
+#include "MLPolynomialWidget.h"
 #include "MLVector.h"
 #include "MLAppView.h"
 #include "MLPageView.h"
@@ -121,7 +121,7 @@ private:
 	MLTextButton* mpClearButton;
 	MLMenuButton* mpViewModeButton;
 	
-	MLGraph* mpCurveGraph;
+	MLPolynomialWidget* mpCurveGraph;
 	
 	// page 1
 	SoundplaneZoneView mGLView3;
