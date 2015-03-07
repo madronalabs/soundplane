@@ -870,10 +870,11 @@ void SoundplaneModel::sendTouchDataToZones()
         dz = mTouchFrame(dzColumn, i);
 		if(age > 0)
 		{            
- 			// apply adjustable force curve for z over [z_thresh, z_max] 
+ 			// apply adjustable force curve for z over [z_thresh, z_max] and clamp
 			z /= zmax;
 			z = (1.f - zcurve)*z + zcurve*z*z*z;		
-			mTouchFrame(zColumn, i) = clamp(z, 0.f, 1.f);
+			z = clamp(z, 0.f, 1.f);
+			mTouchFrame(zColumn, i) = z;
 						
 			// get fractional key grid position (Soundplane A)
 			Vec2 keyXY = xyToKeyGrid(Vec2(x, y));
