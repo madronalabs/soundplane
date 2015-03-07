@@ -161,7 +161,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
 	LookAndFeel::setDefaultLookAndFeel (myLookAndFeel);	
 	myLookAndFeel->setGradientMode(1); // A->B->A
-
 	myLookAndFeel->setGlobalTextScale(1.0f);
 
 	MLDial* pD;

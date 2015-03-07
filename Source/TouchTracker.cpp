@@ -643,6 +643,8 @@ public:
 // 
 void TouchTracker::updateTouches(const MLSignal& in)
 {
+	const float e = 2.718281828;
+
 	// copy input signal to border land
 	int width = in.getWidth();
 	int height = in.getHeight();
@@ -662,7 +664,6 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			mTouchesToSort[activeTouches++] = t;
 		}
 	}
-
 	std::sort(mTouchesToSort.begin(), mTouchesToSort.begin() + activeTouches, compareTouchZ());
 
 	// update active touches in sorted order, referring to existing touches in place
@@ -707,6 +708,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 				t.key = newKey;
 			}							
 		}
+
 		
 		// look for reasons to release
 		newZ = in.getInterpolatedLinear(newPos);
@@ -751,24 +753,25 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			t.releaseCtr = 0;	
 		}
 
-		// filter position and assign new touch values
-		const float e = 2.718281828;
-		float xyCutoff = (newZ - mOnThreshold) / (mMaxForce*0.25);
-		xyCutoff = clamp(xyCutoff, 0.f, 1.f);
-		xyCutoff *= xyCutoff;
-		xyCutoff *= xyCutoff;
-		xyCutoff = xyCutoff*100.;
-		xyCutoff = clamp(xyCutoff, 1.f, 100.f);
-		float x = powf(e, -kMLTwoPi * xyCutoff / (float)mSampleRate);
-		float a0 = 1.f - x;
-		float b1 = -x;
-		t.dz = newZ - t.z;	
-		
-		// these can't be filtered too much or updateTouches will not work
-		// for fast movements.  Revisit when we rewrite the touch tracker.		
-		t.x = a0*newX - b1*t.x;
-		t.y = a0*newY - b1*t.y;
-		t.z = newZ;
+		{
+			// filter position and assign new touch values
+			float xyCutoff = (newZ - mOnThreshold) / (mMaxForce*0.25);
+			xyCutoff = clamp(xyCutoff, 0.f, 1.f);
+			xyCutoff *= xyCutoff;
+			xyCutoff *= xyCutoff;
+			xyCutoff = xyCutoff*100.;
+			xyCutoff = clamp(xyCutoff, 1.f, 100.f);
+			float x = powf(e, -kMLTwoPi * xyCutoff / (float)mSampleRate);
+			float a0 = 1.f - x;
+			float b1 = -x;
+			t.dz = newZ - t.z;	
+			
+			// these can't be filtered too much or updateTouches will not work
+			// for fast movements.  Revisit when we rewrite the touch tracker.		
+			t.x = a0*newX - b1*t.x;
+			t.y = a0*newY - b1*t.y;
+			t.z = newZ;
+		}
 		
 		// filter z based on user lowpass setting and touch age
 		float lp = mLopass;
@@ -780,7 +783,6 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		float b1z = -xz;
 		t.zf = a0z*(newZ - mOnThreshold) - b1z*t.zf;	
 				
-		
 		// remove touch if filtered z is below threshold
 		if(t.zf < 0.)
 		{
@@ -924,14 +926,13 @@ void TouchTracker::findTouches()
             
 			if (ageTest && inhibitTest && kCoeffTest && dzTest)
 			{	
-			
 				// if difference of peak neighborhood from template at subpixel position 
 				// is under threshold, we may have a new touch.		
 				if (templateTest || overrideTest) 
 				{
 					if(!keyIsOccupied(i))
 					{
- debug() << "NEW touch:  key:" << i << " z:" << z << " dz:" << kdz << " template:" << templateTest << " inhibit:" << inhibitTest << "\n";
+// debug() << "NEW touch at " << pos << " key:" << i << " z:" << z << " dz:" << kdz << " T:" << templateTest << " I:" << inhibitTest << "\n";
 
                         //	Touch t(pos.x(), pos.y(), z, kCoeff);
 						Touch t(pos.x(), pos.y(), z, kdz);
@@ -941,17 +942,14 @@ void TouchTracker::findTouches()
 						if(newIdx >= 0)
 						{		
 							mKeyStates[i].age = 0;										
-							
+																			
+//debug() << newIdx << " ON z:" << z << " kdt:" << kdt << " at " << pos << "\n";	
+//debug() << "          template: " << templateTest << " overrideTest: " << overrideTest << "\n";
+//			debug() << "********\n";
+//			debug() << "KC " << kCoeff << "\n";
+//			debug() << "KDZ " << kdz << "\n";
+//			debug() << "********\n";
 
-/*
-												
-debug() << newIdx << " ON z:" << z << " kdt:" << kdt << " at " << pos << "\n";	
-debug() << "          template: " << templateTest << " overrideTest: " << overrideTest << "\n";
-			debug() << "********\n";
-			debug() << "KC " << kCoeff << "\n";
-			debug() << "KDZ " << kdz << "\n";
-			debug() << "********\n";
-*/
 			
 			// set age for key state to inhibit retrigger
 			
@@ -1024,7 +1022,7 @@ void TouchTracker::process(int)
 		{
 			// smooth input	
 			float kc, ke, kk;
-			kc = 4./16.; ke = 2./16.; kk=1./16.;
+			kc = 4.f/16.f; ke = 2.f/16.f; kk=1.f/16.f;
 			mFilteredInput.convolve3x3r(kc, ke, kk);
 
 			// build sum of currently tracked touches	
@@ -1075,9 +1073,8 @@ void TouchTracker::process(int)
 			// set asymmetric filter coeffs and get background
 			mBackgroundFilter.setCoeffs(mBackgroundFilterFrequency, mBackgroundFilterFrequency2);
 			mBackgroundFilter.process(1);	
-
  		}
-
+		
 		// subtract background from input 
 		//
 		mInputMinusBackground.copy(mFilteredInput);
@@ -1162,7 +1159,7 @@ void TouchTracker::process(int)
 	if (mCount++ > 1000) 
 	{
 		mCount = 0;
-//		dumpTouches();
+		//dumpTouches();
 	}
 #endif	
 }

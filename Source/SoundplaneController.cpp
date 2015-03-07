@@ -29,9 +29,6 @@ SoundplaneController::~SoundplaneController()
 
 void SoundplaneController::handleWidgetAction(MLWidget* w, MLSymbol action, MLSymbol p, const MLProperty& val)
 {
-	MLAppView* view = getView();
-	assert(view);
-	
 	if(action == "click") // handle momentary buttons.
 	{
 		if (p == "clear")

@@ -245,7 +245,7 @@ void SoundplaneGridView::renderXYGrid()
 		}
 	}
 	
-	// render touch position history xy
+	// render touch position history xy lines
 	const MLSignal& touchHistory = mpModel->getTouchHistory();
     
 	int ctr = mpModel->getHistoryCtr();

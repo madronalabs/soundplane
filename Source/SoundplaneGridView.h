@@ -12,15 +12,12 @@
 #include "MLWidget.h"
 #include "MLLookAndFeel.h"
 
-/*
-#ifdef _WIN32
- #include <windows.h>
-#endif
-*/
-
 #ifndef GL_BGRA_EXT
  #define GL_BGRA_EXT 0x80e1
 #endif
+
+// This is the view of the Soundplane surface used on the "Touches" page. It can be a perspective view of the
+// surface or an xy view from directly overhead. 
 
 class SoundplaneGridView  : 
 	public Component,
