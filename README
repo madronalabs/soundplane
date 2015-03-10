@@ -2,7 +2,7 @@ Soundplane: client application for the Madrona Labs Soundplane.
 Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
-To compile this project, the following libraries will be needed:
+The project depends on the following libraries:
 
 MadronaLib https://github.com/madronalabs/madronalib
 
@@ -12,3 +12,7 @@ oscpack https://code.google.com/p/oscpack/downloads/list
 
 osctools https://github.com/tap/osctools
 
+These libraries are in submodules of this git repository. In order to
+download them into the right paths, issue the following command:
+
+git submodule update --init

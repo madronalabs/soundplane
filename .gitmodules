@@ -1,0 +1,12 @@
+[submodule "vendor/madronalib"]
+	path = vendor/madronalib
+	url = https://github.com/madronalabs/madronalib.git
+[submodule "osctools"]
+	path = vendor/osctools
+	url = https://github.com/tap/osctools.git
+[submodule "juce"]
+	path = vendor/juce
+	url = https://github.com/julianstorer/JUCE.git
+[submodule "oscpack"]
+	path = vendor/oscpack
+	url = https://github.com/svn2github/oscpack.git
