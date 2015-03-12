@@ -450,15 +450,15 @@ void SoundplaneController::doZonePresetMenu(int result)
     {
         // get built-in JSON string for first menu items
         case 1:
-            zoneStr = std::string(SoundplaneBinaryData::continuous_json);
+            zoneStr = std::string(SoundplaneBinaryData::chromatic_json);
 			fullName = menu->getMenuItemPath(result);
             break;
         case 2:
-            zoneStr = std::string(SoundplaneBinaryData::chromaticfourths_json);
+            zoneStr = std::string(SoundplaneBinaryData::rows_in_fourths_json);
 			fullName = menu->getMenuItemPath(result);
             break;
         case 3:
-            zoneStr = std::string(SoundplaneBinaryData::chromaticoctaves_json);
+            zoneStr = std::string(SoundplaneBinaryData::rows_in_octaves_json);
 			fullName = menu->getMenuItemPath(result);
             break;
         // get JSON from file
