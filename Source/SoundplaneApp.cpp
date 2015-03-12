@@ -19,6 +19,8 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mWindow.setGridUnits(kViewGridUnitsX, kViewGridUnitsY);
 
 	mpModel = new SoundplaneModel();
+	mpModel->initialize();
+	
 	mpController = new SoundplaneController(mpModel);
 	mpController->initialize();
 	mpView = new SoundplaneView(mpModel, mpController, mpController);
@@ -31,7 +33,7 @@ void SoundplaneApp::initialise (const String& commandLine)
 	bool foundState = mpState->loadStateFromAppStateFile();
     
 	mpController->setView(mpView);
-	mpModel->initialize();
+
 	MLConsole() << "Starting Soundplane...\n";
     
 #if GLX

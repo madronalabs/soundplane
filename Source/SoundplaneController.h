@@ -82,7 +82,7 @@ private:
 	std::vector<std::string> mServiceNames;
 	std::vector<String> mFormattedServiceNames; // for popup menu
 
-    MLFileCollectionPtr mZonePresets;
+
     int mZoneMenuStartItems;
 };
 

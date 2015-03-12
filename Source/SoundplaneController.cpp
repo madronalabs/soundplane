@@ -16,7 +16,11 @@ SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
 	mpSoundplaneView(0),
 	MLReporter()
 {
-	listenTo(pModel);
+	MLReporter::listenTo(mpSoundplaneModel);
+	
+	// listen to the model's zone presets, for creating menus
+	mpSoundplaneModel->getZonePresetsCollection().addListener(this);
+	
 	startTimer(250);
 }
 
@@ -49,6 +53,8 @@ void SoundplaneController::handleWidgetAction(MLWidget* w, MLSymbol action, MLSy
 			{
 				mpSoundplaneModel->setAllPropertiesToDefaults();
 				doWelcomeTasks();
+				mpSoundplaneModel->updateAllProperties(); // MLTEST
+
 			}
 		}
 		else if (p == "default_carriers")
@@ -123,17 +129,6 @@ void SoundplaneController::initialize()
 	mServices.push_back(kOSCDefaultStr);
 	Browse(kLocalDotDomain, kUDPType);
     
-    // get zone presets
-	File zoneDir = getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets");
-	
-	debug() << "LOOKING for zones in " << zoneDir.getFileName() << "\n";
-	
-    mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", zoneDir, "json"));
-    mZonePresets->addListener(this);
-    mZonePresets->processFilesImmediate();
-    
-    mZonePresets->dump();
-    
     setupMenus(); 
 }
 	
@@ -150,6 +145,8 @@ void SoundplaneController::timerCallback()
 	MLConsole().display();
 }
 	
+// process a file from one of the Model's collections. Currenlty unused but will be used when file
+// collections update menus constantly in the background. 
 void SoundplaneController::processFileFromCollection (MLSymbol action, const MLFile& file, const MLFileCollection& collection, int idx, int size)
 {
 	MLSymbol collName = collection.getName();
@@ -168,23 +165,6 @@ void SoundplaneController::setView(SoundplaneView* v)
 	mpSoundplaneView = v; 
 }
 
-/*
-static void menuItemChosenCallback (int result, SoundplaneController* pC, MLMenuPtr menu)
-{
-	MLWidgetContainer* pView = pC->getView();
-	if(pView)
-	{
-		MLWidget* pInstigator = pView->getWidget(menu->getInstigator());
-		if(pInstigator != nullptr)
-		{
-			pInstigator->setProperty("value", 0);
-		}
-	}
-	pC->menuItemChosen(menu->getName(), result);
-}
-
-*/
-
 static void menuItemChosenCallback (int result, WeakReference<SoundplaneController> wpC, MLSymbol menuName)
 {
 	SoundplaneController* pC = wpC;
@@ -196,9 +176,7 @@ static void menuItemChosenCallback (int result, WeakReference<SoundplaneControll
 		return;
 	}
 	
-
 	//debug() << "    SoundplaneController:" << std::hex << (void *)pC << std::dec << "\n";
-	
 	const MLMenu* pMenu = pC->findMenuByName(menuName);
 	if (pMenu == nullptr)
 	{
@@ -242,17 +220,6 @@ void SoundplaneController::setupMenus()
     
 	MLMenuPtr zoneMenu(new MLMenu("zone_preset"));
 	mMenuMap["zone_preset"] = zoneMenu;
-    
-    // set up built-in zone maps
-    zoneMenu->addItem("chromatic");
-	zoneMenu->addItem("rows in fourths");
-	zoneMenu->addItem("rows in octaves");
-	zoneMenu->addSeparator();
-    
-    // add zone presets from disk
-    mZoneMenuStartItems = zoneMenu->getSize();
-    MLMenuPtr p = mZonePresets->buildMenu();
-    zoneMenu->appendMenu(p);
     
  	mMenuMap["touch_preset"] = MLMenuPtr(new MLMenu("touch_preset"));
 	mMenuMap["osc_services"] = MLMenuPtr(new MLMenu("osc_services"));
@@ -309,6 +276,20 @@ void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 				menu->addItem(formattedName);
 			}
 		}
+		else if (menuName == "zone_preset")
+		{
+			menu->clear();
+
+			// set up built-in zone maps
+			menu->addItem("chromatic");
+			menu->addItem("rows in fourths");
+			menu->addItem("rows in octaves");
+			menu->addSeparator();
+			
+			// add zone presets from disk
+			mZoneMenuStartItems = menu->getSize();
+			menu->appendMenu(mpSoundplaneModel->getZonePresetsCollection().buildMenu());
+		}
 		
 		// find instigator widget and show menu beside it
 		MLWidget* pInstigator = mpSoundplaneView->getWidget(instigatorName);
@@ -329,86 +310,6 @@ void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 		}
 	}
 }
-
-/*void SoundplaneController::showMenu(MLSymbol menuName, MLSymbol instigatorName)
-{
-	StringArray devices;
-	if(!mpSoundplaneView) return;
- 	
-    // dump menu map
-    if(0)
-    {
-        debug() << "LOOKING for MENU " << menuName << "\n";
-        MLMenuMapT::iterator it;
-        debug() << mMenuMap.size() << "menus:\n";
-        for(it=mMenuMap.begin(); it != mMenuMap.end(); ++it)
-        {
-            MLSymbol name = it->first;
-            debug() << "    " << name << "\n";
-        }
-    }
- 
-	MLMenuMapT::iterator menuIter(mMenuMap.find(menuName));
-	if (menuIter != mMenuMap.end())
-	{
-		MLMenuPtr menu = menuIter->second;
-		menu->setInstigator(instigatorName);
-
-		// find instigator widget and set value to 1 - this depresses menu buttons for example
-		MLWidget* pInstigator = mpSoundplaneView->getWidget(instigatorName);
-		if(pInstigator != nullptr)
-		{
-			pInstigator->setProperty("value", 1);
-		}
-		
-		// update menus that are rebuilt each time
-		if (menuName == "midi_device")
-		{
-			// refresh device list
-			menu->clear();		
-			SoundplaneMIDIOutput& outs = getModel()->getMIDIOutput();
-			outs.findMIDIDevices ();
-			std::vector<std::string>& devices = outs.getDeviceList();
-			menu->addItems(devices);
-		}
-		else if (menuName == "osc_services")
-		{
-			menu->clear();		
-			mServiceNames.clear();
-			std::vector<std::string>::iterator it;
-			for(it = services.begin(); it != services.end(); it++)
-			{
-				const std::string& serviceName = *it;
-				std::string formattedName;
-				formatServiceName(serviceName, formattedName);
-				mServiceNames.push_back(serviceName);
-				menu->addItem(formattedName);
-			}
-		}
-        
-        // show menu
-        if(menu != MLMenuPtr())
-		{
-                // TEMP
-            menu->dump();
-            
-			if(pInstigator != nullptr)
-			{
-				Component* pInstComp = pInstigator->getComponent();
-				if(pInstComp)
-				{
-                    const int u = pInstigator->getWidgetGridUnitSize();
-                    int height = ((float)u)*0.35f;
-                    height = clamp(height, 12, 128);
-					JuceMenuPtr juceMenu = menu->getJuceMenu();
-					juceMenu->showMenuAsync (PopupMenu::Options().withTargetComponent(pInstComp).withStandardItemHeight(height),
-						ModalCallbackFunction::withParam(menuItemChosenCallback, this, menu));
-				}
-			}
-		}
-	}
-}
-*/
 
 void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
 {
@@ -446,36 +347,7 @@ void SoundplaneController::doZonePresetMenu(int result)
     std::string zoneStr;
 	std::string fullName ("error: preset not found!");
 	MLMenuPtr menu = mMenuMap["zone_preset"];
-    switch(result)
-    {
-        // get built-in JSON string for first menu items
-        case 1:
-            zoneStr = std::string(SoundplaneBinaryData::chromatic_json);
-			fullName = menu->getMenuItemPath(result);
-            break;
-        case 2:
-            zoneStr = std::string(SoundplaneBinaryData::rows_in_fourths_json);
-			fullName = menu->getMenuItemPath(result);
-            break;
-        case 3:
-            zoneStr = std::string(SoundplaneBinaryData::rows_in_octaves_json);
-			fullName = menu->getMenuItemPath(result);
-            break;
-        // get JSON from file
-        default:          
-            fullName = menu->getMenuItemPath(result);
-            const MLFile& f = mZonePresets->getFileByPath(fullName);
-			if(f.exists())
-			{
-				File zoneFile = f.getJuceFile();
-				String stateStr(zoneFile.loadFileAsString());
-				zoneStr = (stateStr.toUTF8());
-			}
-            break;
-    }
-
-    mpSoundplaneModel->setProperty("zone_JSON", zoneStr);
-	mpSoundplaneModel->setPropertyImmediate("zone_preset", fullName);
+	mpSoundplaneModel->setPropertyImmediate("zone_preset", menu->getMenuItemPath(result));            
 }
 
 void SoundplaneController::doOSCServicesMenu(int result)
@@ -601,14 +473,6 @@ void SoundplaneController::doWelcomeTasks()
 			String::empty, "Setup cancelled. Calibration not complete. ",
 			"OK");
 	}
-    if(mpSoundplaneView)
-    {
-        // quick hack to refresh grid.
-        // otherwise it's blank.
-        // TODO find out why grid is blank after welcome! 
-        mpSoundplaneView->goToPage(1);
-        mpSoundplaneView->goToPage(0);
-    }
 }
 
 bool SoundplaneController::confirmRestoreDefaults()

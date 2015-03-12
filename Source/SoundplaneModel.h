@@ -24,6 +24,7 @@
 #include <map>
 #include "cJSON.h"
 #include "Zone.h"
+#include "SoundplaneBinaryData.h"
 
 class SoundplaneModel :
 	public SoundplaneDriverListener,
@@ -58,6 +59,8 @@ public:
 	void sendTouchDataToZones();
 	void notifyListeners(int c);
     void sendMessageToListeners();
+	
+	MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
 	
 	void processCallback();
 	float getSampleHistory(int x, int y);
@@ -156,7 +159,7 @@ private:
 	
 	static const int miscStrSize = 256;
     void loadZonesFromString(const std::string& zoneStr);
-	
+
 	void doInfrequentTasks();
 	UInt64 mLastInfrequentTaskTime;
 

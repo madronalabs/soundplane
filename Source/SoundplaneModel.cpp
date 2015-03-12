@@ -320,6 +320,33 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				loadZonesFromString(str);
 			}
+			else if (p == "zone_preset")
+			{
+				// look for built in zone map names. 
+				if(str == "chromatic")
+				{
+					setProperty("zone_JSON", std::string(SoundplaneBinaryData::chromatic_json));
+				}
+				else if(str == "rows in fourths")
+				{
+					setProperty("zone_JSON", std::string(SoundplaneBinaryData::rows_in_fourths_json));
+				}
+				else if(str == "rows in octaves")
+				{
+					setProperty("zone_JSON", std::string(SoundplaneBinaryData::rows_in_fourths_json));
+				}
+				// if not built in, load a zone map file.
+				else
+				{
+					const MLFile& f = mZonePresets->getFileByPath(str);
+					if(f.exists())
+					{
+						File zoneFile = f.getJuceFile();
+						String stateStr(zoneFile.loadFileAsString());
+						setPropertyImmediate("zone_JSON", std::string(stateStr.toUTF8()));
+					}
+				}
+			}
 		}
 			break;
 		case MLProperty::kSignalProperty:
@@ -476,6 +503,13 @@ void SoundplaneModel::initialize()
 	err = pthread_create(&mProcessThread, &attr, soundplaneModelProcessThreadStart, this);
 	assert(!err);
 	setThreadPriority(mProcessThread, 96, true);
+	
+	// make zone presets collection
+	File zoneDir = getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets");	
+	debug() << "LOOKING for zones in " << zoneDir.getFileName() << "\n";
+	mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", zoneDir, "json"));
+	mZonePresets->processFilesImmediate();
+	mZonePresets->dump();
 }
 
 int SoundplaneModel::getClientState(void)
