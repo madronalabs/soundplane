@@ -391,7 +391,7 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("viewmode", "calibrated");
     
     // preset menu defaults (TODO use first choices?)
-	setProperty("zone_preset", "continuous pitch x");
+	setProperty("zone_preset", "rows in fourths");
 	setProperty("touch_preset", "touch default");
     
 	setProperty("view_page", 0);
