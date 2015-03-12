@@ -550,7 +550,7 @@ class SoundplaneSetupThread  : public ThreadWithProgressWindow
 {
 public:
     SoundplaneSetupThread(SoundplaneModel* m, Component* parent)
-        : ThreadWithProgressWindow (String::empty, true, true, 1000, "Cancel", parent),
+        : ThreadWithProgressWindow (" ", true, true, 1000, "Cancel", parent),
 		mpModel(m)
     {
         setStatusMessage ("Welcome to Soundplane!");
