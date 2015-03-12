@@ -375,7 +375,7 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("midi_start_chan", 1);
 	setProperty("data_freq_midi", 250.);
 	
-	setProperty("kyma_poll", 1);
+	setProperty("kyma_poll", 0);
 	
 	setProperty("osc_active", 1);
 	setProperty("osc_raw", 0);
