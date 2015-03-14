@@ -1106,16 +1106,6 @@ void SoundplaneModel::processCallback()
 			}
 		}
 		
-		// fill in null data at edges
-		int ww = mSurface.getWidth() - 1;
-		for(int j=0; j<mSurface.getHeight(); ++j)
-		{
-			mSurface(0, j) = 0.;   
-			mSurface(1, j) = mSurface(2, j);    
-			mSurface(ww, j) = 0.;
-			mSurface(ww - 1, j) = mSurface(ww - 2, j);
-		}
-        
 		// filter data in time
 		mNotchFilter.setInputSignal(&mSurface);
 		mNotchFilter.setOutputSignal(&mSurface);
