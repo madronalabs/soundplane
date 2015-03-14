@@ -419,10 +419,10 @@ Vec2 TouchTracker::adjustPeak(const MLSignal& in, int xp, int yp)
 {
 	int width = in.getWidth();
 	int height = in.getHeight();
-	
+
 	int x = clamp(xp, 1, width - 2);
 	int y = clamp(yp, 1, height - 2);
-										
+	
 	float t = 0.0;
 	int rx = x;
 	int ry = y;
@@ -633,6 +633,51 @@ public:
 	}
 };
 
+Vec2 correctTouchPosition(const MLSignal& in, int ix, int iy)
+{
+	int width = in.getWidth();
+	int height = in.getHeight();
+	
+	int x = clamp(ix, 1, width - 2);
+	int y = clamp(iy, 1, height - 2);
+	
+	if(within(y, 2, height - 2))
+	{
+		return in.correctPeak(ix, iy, 0.75);
+	}
+	
+	Vec2 pos(x, y);
+		
+	// Use centered differences to find derivatives.
+	float dx = (in(x + 1, y) - in(x - 1, y)) / 2.f;
+	float dy = (in(x, y + 1) - in(x, y - 1)) / 2.f;
+	float dxx = (in(x + 1, y) + in(x - 1, y) - 2*in(x, y));
+	float dyy = (in(x, y + 1) + in(x, y - 1) - 2*in(x, y));
+	float dxy = (in(x + 1, y + 1) + in(x - 1, y - 1) - in(x + 1, y - 1) - in(x - 1, y + 1)) / 4.f;
+
+	if((dxx != 0.f)&&(dxx != 0.f)&&(dxx != 0.f))
+	{
+		float oneOverDiscriminant = 1.f/(dxx*dyy - dxy*dxy);
+		float fx = (dyy*dx - dxy*dy) * oneOverDiscriminant;
+		float fy = (dxx*dy - dxy*dx) * oneOverDiscriminant;
+		
+		fx = clamp(fx, -0.5f, 0.5f);
+		fy = clamp(fy, -0.5f, 0.5f);
+		
+		if(y == 1)
+		{
+			fy *= 2.f;
+		}
+		else if(y == height - 2)
+		{
+			fy *= 2.f;
+		}
+		
+		pos -= Vec2(fx, fy);
+	}
+	return pos;
+}
+
 // with whole input minus background:
 // for all touches t from most pressure to least:
 //   use taylor correct to get new position
@@ -693,8 +738,9 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			int newPx = newPeakI.x();
 			int newPy = newPeakI.y();
 			
-			// get exact location and new key
-			Vec2 correctPos = mTemp.correctPeak(newPx, newPy);
+			// get exact location and possibly new key. 
+			Vec2 correctPos = correctTouchPosition(mTemp, newPx, newPy); 
+			
 			newPos = correctPos;	
 			int newKey = getKeyIndexAtPoint(newPos);												
 			
@@ -708,7 +754,6 @@ void TouchTracker::updateTouches(const MLSignal& in)
 				t.key = newKey;
 			}							
 		}
-
 		
 		// look for reasons to release
 		newZ = in.getInterpolatedLinear(newPos);
@@ -869,7 +914,7 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 		// add peak to key state, or bail
 		if (z > mOnThreshold)
 		{			
-			Vec2 pos = in.correctPeak(peak.x(), peak.y());	
+			Vec2 pos = in.correctPeak(peak.x(), peak.y(), 0.5f);	
 			int key = getKeyIndexAtPoint(pos);
 			if(within(key, 0, mNumKeys))
 			{
@@ -901,7 +946,7 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 	}
 }							
 
-// this is where new touches are born
+// this is where all new touches are born.
 void TouchTracker::findTouches()
 {
 	for(int i=0; i<mNumKeys; ++i)
@@ -932,7 +977,7 @@ void TouchTracker::findTouches()
 				{
 					if(!keyIsOccupied(i))
 					{
-// debug() << "NEW touch at " << pos << " key:" << i << " z:" << z << " dz:" << kdz << " T:" << templateTest << " I:" << inhibitTest << "\n";
+						//debug() << "NEW touch at " << pos << " key:" << i << " z:" << z << " dz:" << kdz << " T:" << templateTest << " I:" << inhibitTest << "\n";
 
                         //	Touch t(pos.x(), pos.y(), z, kCoeff);
 						Touch t(pos.x(), pos.y(), z, kdz);
@@ -1590,7 +1635,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 			
 			// get corrected peak
 			mPeak = mTemp.findPeak();
-			mPeak = mTemp.correctPeak(mPeak.x(), mPeak.y());							
+			mPeak = mTemp.correctPeak(mPeak.x(), mPeak.y(), 0.5f);							
 			Vec2 minPos(2.0, 0.);
 			Vec2 maxPos(mWidth - 2., mHeight - 1.);
 			mPeak = vclamp(mPeak, minPos, maxPos);
