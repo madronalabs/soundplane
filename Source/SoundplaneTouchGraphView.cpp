@@ -33,6 +33,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
     
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
+	int viewScale = getRenderingScale();
 	
 	const MLSignal& currentTouch = mpModel->getTouchFrame();
 	const MLSignal& touchHistory = mpModel->getTouchHistory();
@@ -65,7 +66,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		MLGL::fillRect(fr);	
 		p = 0.6f;
 		glColor4f(p, p, p, 1.0f);
-        MLGL::strokeRect(fr);
+        MLGL::strokeRect(fr, viewScale);
 		
 		// draw touch activity indicators at left
 		glColor4fv(MLGL::getIndicatorColor(j));
@@ -75,7 +76,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		if (age > 0)
 			MLGL::fillRect(tr);	
 		else
-			MLGL::strokeRect(tr);
+			MLGL::strokeRect(tr, viewScale);
 			
 		// draw history	
 		MLRange frameXRange(fr.left(), fr.right());

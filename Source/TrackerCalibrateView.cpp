@@ -22,18 +22,6 @@ void TrackerCalibrateView::setModel(SoundplaneModel* m)
 	mpModel = m;
 }
 
-void TrackerCalibrateView::drawTextAt(float x, float y, float z, const char* ps)
-{
-	int len, i;
-
-	glRasterPos3f(x, y, z);
-	len = (int) strlen(ps);
-	for (i = 0; i < len; i++) 
-	{
-		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10, ps[i]);
-	}
-}
-
 Vec2 TrackerCalibrateView::worldToScreen(const Vec3& world) 
 {
 	GLint viewport[4];

@@ -36,7 +36,6 @@ public:
 private:
 	Vec2 worldToScreen(const Vec3& world); 
 
-	void drawTextAt(float x, float y, float z, const char* ps);
 	void drawInfoBox(Vec3 pos, char* text, int colorIndex);
 
 	SoundplaneModel* mpModel;

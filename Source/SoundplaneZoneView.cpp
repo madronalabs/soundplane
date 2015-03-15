@@ -103,6 +103,7 @@ void SoundplaneZoneView::renderZones()
 
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
+	int viewScale = getRenderingScale();
 	// float viewAspect = (float)viewW / (float)viewH;
     
 	int gridWidth = 30; // Soundplane A TODO get from tracker
@@ -152,11 +153,11 @@ void SoundplaneZoneView::renderZones()
         MLGL::fillRect(zoneRectInView);
         glColor4fv(&zoneStroke[0]);
         glLineWidth(lineWidth);
-        MLGL::strokeRect(zoneRectInView);
+        MLGL::strokeRect(zoneRectInView, viewScale);
         glLineWidth(1);
         // draw name
         // all these rect calculations read upside-down here because view origin is at bottom
-        MLGL::drawTextAt(zoneRectInView.left() + lineWidth, zoneRectInView.top() + lineWidth, 0.f, name);
+        MLGL::drawTextAt(zoneRectInView.left() + lineWidth, zoneRectInView.top() + lineWidth, 0.f, 0.1f, viewScale, name);
         
         // draw any zone-specific things
         float x, y;
@@ -183,7 +184,7 @@ void SoundplaneZoneView::renderZones()
                 x = xRange(zone.getXKeyPos());
                 glColor4fv(&zoneStroke[0]);
                 glLineWidth(thinLineWidth);
-                MLGL::strokeRect(MLRect(x, zoneRectInView.top(), 0., zoneRectInView.height()));
+                MLGL::strokeRect(MLRect(x, zoneRectInView.top(), 0., zoneRectInView.height()), viewScale);
                 glColor4fv(&activeFill[0]);
                 MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), x - zoneRectInView.left(), zoneRectInView.height()));
                 break;
@@ -192,7 +193,7 @@ void SoundplaneZoneView::renderZones()
                 y = yRange(zone.getYKeyPos());
                 glColor4fv(&zoneStroke[0]);
                 glLineWidth(thinLineWidth);                
-                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.));
+                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.), viewScale);
                 glColor4fv(&activeFill[0]);
                 MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), zoneRectInView.width(), y - zoneRectInView.top()));
                 break;
@@ -203,8 +204,8 @@ void SoundplaneZoneView::renderZones()
                 glColor4fv(&zoneStroke[0]);
                 glLineWidth(thinLineWidth);
                 // cross-hairs centered on dot
-                MLGL::strokeRect(MLRect(x, zoneRectInView.top(), 0., zoneRectInView.height()));
-                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.));
+                MLGL::strokeRect(MLRect(x, zoneRectInView.top(), 0., zoneRectInView.height()), viewScale);
+                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.), viewScale);
                 glColor4fv(&dotFill[0]);
                 MLGL::drawDot(Vec2(x, y), smallDotSize*0.25f);
                 break;
@@ -213,7 +214,7 @@ void SoundplaneZoneView::renderZones()
                 y = yRange(zone.mYRange(zone.getValue(0))); // look at z value over y range
                 glColor4fv(&zoneStroke[0]);
                 glLineWidth(thinLineWidth);
-                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.));
+                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.), viewScale);
                 glColor4fv(&activeFill[0]);
                 MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), zoneRectInView.width(), y - zoneRectInView.top()));
                 break;
