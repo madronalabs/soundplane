@@ -153,7 +153,7 @@ void SoundplaneZoneView::renderZones()
         MLGL::fillRect(zoneRectInView);
         glColor4fv(&zoneStroke[0]);
         glLineWidth(lineWidth);
-        MLGL::strokeRect(zoneRectInView, viewScale);
+        MLGL::strokeRect(zoneRectInView, 2.0f*viewScale);
         glLineWidth(1);
         // draw name
         // all these rect calculations read upside-down here because view origin is at bottom
