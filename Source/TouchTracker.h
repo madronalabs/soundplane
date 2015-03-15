@@ -203,19 +203,6 @@ public:
 		float mK;
 		int age;
 	};	
-		
-	// key neighbor flags
-	enum 
-	{
-		kNorthWest = 1 << 7,
-		kNorth = 1 << 6,
-		kNorthEast = 1 << 5,
-		kWest = 1 << 4,
-		kEast = 1 << 3,
-		kSouthWest = 1 << 2,
-		kSouth = 1 << 1,
-		kSouthEast = 1 << 0
-	};
 
 	TouchTracker(int w, int h);
 	~TouchTracker();
@@ -272,6 +259,7 @@ public:
 	void setListener(Listener* pL) { mpListener = pL; }
 	void setDefaultNormalizeMap();
 	void setRotate(bool b);
+	void setUseTestSignal(bool b) { mUseTestSignal = b; }
 
 private:	
 
@@ -345,6 +333,7 @@ private:
 	MLSignal mTemplateMask;	
 	MLSignal mDzSignal;	
 	MLSignal mRetrigTimer;
+	MLSignal mPaddedForFFT;
 
 	AsymmetricOnepoleMatrix mBackgroundFilter;
 	MLSignal mBackgroundFilterFrequency;
@@ -357,6 +346,7 @@ private:
 	int mPrevTouchForRotate;
 	bool mRotate;
 	bool mDoNormalize;
+	bool mUseTestSignal;
 	
 	std::vector<Vec3> mPeaks;
 	std::vector<Touch> mTouches;

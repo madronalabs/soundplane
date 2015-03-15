@@ -26,21 +26,23 @@ void SoundplaneGridView::doPropertyChangeAction(MLSymbol p, const MLProperty & v
 
 void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
 {
+	int viewScale = getRenderingScale();
 	int viewW = getBackingLayerWidth();
 	int viewH = getBackingLayerHeight();
-
+	
 	int len = strlen(text);
 	clamp(len, 0, 32);
 	
-	float margin = 2;
-	float charWidth = 5; 
-	float charHeight = 9;
+	float margin = 5*viewScale;
+	float charWidth = 10*viewScale; 
+	float charHeight = 10*viewScale;
 	float w = len * charWidth + margin*2;
 	float h = charHeight + margin*2;
 //	float shadow = 2; // TODO
 	
+	const float heightAboveSurface = 0.4f;
 	Vec3 rectPos = pos;
-	rectPos[2] = 0.2f;
+	rectPos[2] = heightAboveSurface;
 	Vec3 surfacePos = pos;	
 	surfacePos[2] = 0.f;
 	Vec2 screen = MLGL::worldToScreen(rectPos);
@@ -86,7 +88,7 @@ void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
 	
 	// text
 	glColor4fv(MLGL::getIndicatorColor(colorIndex));
-    MLGL::drawTextAt(screen[0] + margin, screen[1] + margin, 0.f, text);
+    MLGL::drawTextAt(screen[0] + margin, screen[1] + margin, 0.f, 0.1f, viewScale, text);
 	
 	// outline
 
@@ -112,6 +114,7 @@ void SoundplaneGridView::renderXYGrid()
     
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
+	float viewScale = getRenderingScale();
 	int margin = viewH / 30;
     
 	int keyWidth = 30; // Soundplane A TODO get from tracker
@@ -166,6 +169,11 @@ void SoundplaneGridView::renderXYGrid()
 			glEnd();
 		}
 	}	
+	
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glDisable(GL_LINE_SMOOTH);
+	glLineWidth(1.0*viewScale);
 	
 	// draw lines at key grid
 	lineColor = darkBlue;
@@ -223,7 +231,6 @@ void SoundplaneGridView::renderXYGrid()
 	//
 	const int nt = mpModel->getFloatProperty("max_touches");
 	const MLSignal& touches = mpModel->getTouchFrame();
-
 	for(int t=0; t<nt; ++t)
 	{
 		int age = touches(ageColumn, t);
@@ -247,7 +254,12 @@ void SoundplaneGridView::renderXYGrid()
 	
 	// render touch position history xy lines
 	const MLSignal& touchHistory = mpModel->getTouchHistory();
-    
+	
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glEnable(GL_LINE_SMOOTH);
+	glLineWidth(1.0*viewScale);
+	
 	int ctr = mpModel->getHistoryCtr();
 	for(int touch=0; touch<nt; ++touch)
 	{
@@ -282,191 +294,194 @@ void SoundplaneGridView::renderZGrid()
 	if (!mpModel) return;
 	int width = mpModel->getWidth();
 	int height = mpModel->getHeight();
-    
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
-    
-    const float scale = getRenderingScale();
-    
+    const float viewScale = getRenderingScale();
     ScopedPointer<LowLevelGraphicsContext> glRenderer
         (createOpenGLGraphicsContext (*getGLContext(), viewW, viewH));
     
-    if (glRenderer != nullptr)
-    {
-        Graphics g (*glRenderer);
-        
-        g.addTransform (AffineTransform::scale (scale));    // draw grid
-        float myAspect = (float)viewW / (float)viewH;
-        float soundplaneAspect = 4.f; // TEMP
-        int state = mpModel->getDeviceState();
-        
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        gluPerspective(8.0, myAspect, 0.5, 50.0);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        gluLookAt(0.0, -16.0, 3., // eyepoint x y z
-                  0.0, 0.0, -0.5, // center x y z
-                  0.0, 1.0, 0.0); // up vector
-        
-        glColor4f(1, 1, 1, 0.5);
-        MLRange xRange(0, width-1);
-        float r = 0.95;
-        xRange.convertTo(MLRange(-myAspect*r, myAspect*r));
-        MLRange yRange(0, height-1);
-        float sh = myAspect*r/soundplaneAspect;
-        yRange.convertTo(MLRange(-sh, sh));
-        
-		const std::string& viewMode = getStringProperty("viewmode");
-        const MLSignal* viewSignal = mpModel->getSignalForViewMode(viewMode);
-		if(!viewSignal) return;
-		
-        float displayScale = mpModel->getFloatProperty("display_scale");
-        float gridScale = displayScale * 10.f;
-		
-        float preOffset = 0.f;
-        bool separateSurfaces = false;
-        int leftEdge = 0;
-        int rightEdge = width;
-		
-        if(viewMode == "raw data")
-        {
-			preOffset = -0.1;
-			separateSurfaces = true;
+	if (!glRenderer) return;
+
+	Graphics g (*glRenderer);
+	
+	g.addTransform (AffineTransform::scale (viewScale));    // draw grid
+	float myAspect = (float)viewW / (float)viewH;
+	float soundplaneAspect = 4.f; // TEMP
+	int state = mpModel->getDeviceState();
+	
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(8.0, myAspect, 0.5, 50.0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	gluLookAt(0.0, -14.0, 6., // eyepoint x y z
+			  0.0, 0.0, -0.25, // center x y z
+			  0.0, 1.0, 0.0); // up vector
+	
+	glColor4f(1, 1, 1, 0.5);
+	MLRange xSensorRange(0, width-1);
+	float r = 0.95;
+	xSensorRange.convertTo(MLRange(-myAspect*r, myAspect*r));
+	MLRange ySensorRange(0, height-1);
+	float sh = myAspect*r/soundplaneAspect;
+	ySensorRange.convertTo(MLRange(-sh, sh));
+	
+	int keyWidth = 30; // Soundplane A TODO get from tracker
+	int keyHeight = 5;
+	MLRange xKeyRange(0, keyWidth, -myAspect*r, myAspect*r);
+	MLRange yKeyRange(0, keyHeight, -sh, sh);
+	
+	const std::string& viewMode = getStringProperty("viewmode");
+	const MLSignal* viewSignal = mpModel->getSignalForViewMode(viewMode);
+	if(!viewSignal) return;
+	
+	float displayScale = mpModel->getFloatProperty("display_scale");
+	float gridScale = displayScale * 10.f;
+	
+	float preOffset = 0.f;
+	bool separateSurfaces = false;
+	int leftEdge = 0;
+	int rightEdge = width;
+	
+	if(viewMode == "raw data")
+	{
+		preOffset = -0.1;
+		separateSurfaces = true;
+	}
+	else if(viewMode == "norm. map")
+	{
+		// offset = -displayScale;
+		leftEdge += 1;
+		rightEdge -= 1;
+	}
+
+	// draw stuff in immediate mode. TODO vertex buffers and modern GL code in general.
+	//
+	Vec4 lineColor;
+	Vec4 white(1.f, 1.f, 1.f, 1.f);
+	Vec4 darkBlue(0.f, 0.f, 0.4f, 1.f);
+	Vec4 green(0.f, 0.5f, 0.1f, 1.f);
+	Vec4 blue(0.1f, 0.1f, 0.9f, 1.f);
+	Vec4 purple(0.7f, 0.2f, 0.7f, 0.5f);
+	
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glDisable(GL_LINE_SMOOTH);
+	glLineWidth(1.0*viewScale);
+	
+	if (separateSurfaces)
+	{
+		// draw lines
+		for(int i=0; i<width; ++i)
+		{
+			// alternate colors every flex circuit
+			lineColor = (i/16)&1 ? darkBlue : blue;
+			if(state != kDeviceHasIsochSync)
+			{
+				lineColor[3] = 0.1f;
+			}
+			glColor4fv(&lineColor[0]);
+			
+			// vert
+			glBegin(GL_LINE_STRIP);
+			for(int j=0; j<height; ++j)
+			{
+				float x = xSensorRange.convert(i);
+				float y = ySensorRange.convert(j);
+				float zMean = ((*viewSignal)(i, j) + preOffset)*gridScale;
+				glVertex3f(x, y, -zMean);
+			}
+			glEnd();
+			
+			// horiz
+			if (i%16 != 15)
+			{
+				glBegin(GL_LINES);
+				for(int j=0; j<height; ++j)
+				{
+					float x1 = xSensorRange.convert(i);
+					float y1 = ySensorRange.convert(j);
+					float z1 = ((*viewSignal)(i, j) + preOffset)*gridScale;
+					glVertex3f(x1, y1, -z1);
+					
+					float x2 = xSensorRange.convert(i + 1);
+					float y2 = ySensorRange.convert(j);
+					float z2 = ((*viewSignal)(i + 1, j) + preOffset)*gridScale;
+					glVertex3f(x2, y2, -z2);
+				}
+				glEnd();
+			}
 		}
-        else if(viewMode == "norm. map")
-        {
-			// offset = -displayScale;
-            leftEdge += 1;
-            rightEdge -= 1;
-        }
+	}
+	else
+	{
+		lineColor = darkBlue;
+		if(state != kDeviceHasIsochSync)
+		{
+			lineColor[3] = 0.1f;
+		}
+		glColor4fv(&lineColor[0]);
+		for(int j=0; j<height; ++j)
+		{
+			glBegin(GL_LINE_STRIP);
+			for(int i=leftEdge; i<rightEdge; ++i)
+			{
+				float x = xSensorRange.convert(i);
+				float y = ySensorRange.convert(j);
+				float z = ((*viewSignal)(i, j) + preOffset)*gridScale;
+				glVertex3f(x, y, -z);
+			}
+			glEnd();
+		}
+		// vert lines
+		for(int i=leftEdge; i<rightEdge; ++i)
+		{
+			glBegin(GL_LINE_STRIP);
+			for(int j=0; j<height; ++j)
+			{
+				float x = xSensorRange.convert(i);
+				float y = ySensorRange.convert(j);
+				float z = ((*viewSignal)(i, j) + preOffset)*gridScale;
+				glVertex3f(x, y, -z);
+			}
+			glEnd();
+		}
+	}
+	
+	if(state != kDeviceHasIsochSync)
+	{	// TODO draw question mark
+		
+	}
 
-        // draw stuff in immediate mode. TODO vertex buffers and modern GL code in general.
-        //
-        Vec4 lineColor;
-        Vec4 white(1.f, 1.f, 1.f, 1.f);
-        Vec4 darkBlue(0.f, 0.f, 0.4f, 1.f);
-        Vec4 green(0.f, 0.5f, 0.1f, 1.f);
-        Vec4 blue(0.1f, 0.1f, 0.9f, 1.f);
-        Vec4 purple(0.7f, 0.2f, 0.7f, 0.5f);
-        
+	float dotSize = fabs(yKeyRange(0.08f) - yKeyRange(0.f));
+	const int nt = mpModel->getFloatProperty("max_touches");
+	const MLSignal& touches = mpModel->getTouchFrame();
+	char strBuf[64] = {0};
+	for(int t=0; t<nt; ++t)
+	{
+		int age = touches(ageColumn, t);
+		if (age > 0)
+		{
+			float x = touches(xColumn, t);
+			float y = touches(yColumn, t);
+			
+			Vec2 xyPos(x, y);
+			Vec2 gridPos = mpModel->xyToKeyGrid(xyPos);
+			float tx = xKeyRange.convert(gridPos.x());
+			float ty = yKeyRange.convert(gridPos.y());
+			float tz = touches(zColumn, t);
+			
+			Vec4 dataColor(MLGL::getIndicatorColor(t));
+			dataColor[3] = 0.75;
+			glColor4fv(&dataColor[0]);
+			
+			// draw dot on surface
+			MLGL::drawDot(Vec2(tx, ty), dotSize*10.0*tz);
+			sprintf(strBuf, "%5.3f", tz);			
+			drawInfoBox(Vec3(tx, ty, 0.), strBuf, t);                
 
-        if (separateSurfaces)
-        {
-            // draw lines
-            for(int i=0; i<width; ++i)
-            {
-                // alternate colors every flex circuit
-                lineColor = (i/16)&1 ? darkBlue : blue;
-                if(state != kDeviceHasIsochSync)
-                {
-                    lineColor[3] = 0.1f;
-                }
-                glColor4fv(&lineColor[0]);
-                
-                // vert
-                glBegin(GL_LINE_STRIP);
-                for(int j=0; j<height; ++j)
-                {
-                    float x = xRange.convert(i);
-                    float y = yRange.convert(j);
-                    float zMean = ((*viewSignal)(i, j) + preOffset)*gridScale;
-                    glVertex3f(x, y, -zMean);
-                }
-                glEnd();
-                
-                // horiz
-                if (i%16 != 15)
-                {
-                    glBegin(GL_LINES);
-                    for(int j=0; j<height; ++j)
-                    {
-                        float x1 = xRange.convert(i);
-                        float y1 = yRange.convert(j);
-                        float z1 = ((*viewSignal)(i, j) + preOffset)*gridScale;
-                        glVertex3f(x1, y1, -z1);
-                        
-                        float x2 = xRange.convert(i + 1);
-                        float y2 = yRange.convert(j);
-                        float z2 = ((*viewSignal)(i + 1, j) + preOffset)*gridScale;
-                        glVertex3f(x2, y2, -z2);
-                    }
-                    glEnd();
-                }
-            }
-        }
-        else
-        {
-            lineColor = darkBlue;
-            if(state != kDeviceHasIsochSync)
-            {
-                lineColor[3] = 0.1f;
-            }
-            glColor4fv(&lineColor[0]);
-            for(int j=0; j<height; ++j)
-            {
-                glBegin(GL_LINE_STRIP);
-                for(int i=leftEdge; i<rightEdge; ++i)
-                {
-                    float x = xRange.convert(i);
-                    float y = yRange.convert(j);
-                    float z = ((*viewSignal)(i, j) + preOffset)*gridScale;
-                    glVertex3f(x, y, -z);
-                }
-                glEnd();
-            }
-            // vert lines
-            for(int i=leftEdge; i<rightEdge; ++i)
-            {
-                glBegin(GL_LINE_STRIP);
-                for(int j=0; j<height; ++j)
-                {
-                    float x = xRange.convert(i);
-                    float y = yRange.convert(j);
-                    float z = ((*viewSignal)(i, j) + preOffset)*gridScale;
-                    glVertex3f(x, y, -z);
-                }
-                glEnd();
-            }
-        }
-        
-        if(state != kDeviceHasIsochSync)
-        {	// TODO draw question mark
-            
-        }
-        
-        // render current touches on top of surface
-        //
-        const int nt = mpModel->getFloatProperty("max_touches");
-        const MLSignal& touches = mpModel->getTouchFrame();
-        
-        char strBuf[64] = {0};
-        for(int t=0; t<nt; ++t)
-        {
-            int age = touches(ageColumn, t);
-            if (age > 0)
-            {
-                float y = touches(yColumn, t) * height;
-                float z = touches(zColumn, t);
-                float ty = yRange.convert(y);
-                float tz = (z);			
-
-    #if DEBUG
-                float dt = touches(dtColumn, t);
-                sprintf(strBuf, "%5.3f, %i", dt, age);
-    #else
-                sprintf(strBuf, "%5.3f", z);
-    #endif
-                float stackOffset = 0.25f;
-                ty += (float)t*stackOffset;
-                tz += (float)t*stackOffset;
-                
-// TODO fix boxes in resolution-independent way
-//                drawInfoBox(Vec3(tx, ty, -tz), strBuf, t);                
-// debug() << "x: " << x << ", y: " << y << ", z: " << z << ", age:" << age << "\n";
-            }
-        }
-    }
+		}
+	}
 }
 
 

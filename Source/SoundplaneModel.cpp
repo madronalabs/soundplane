@@ -83,6 +83,7 @@ SoundplaneModel::SoundplaneModel() :
 	mCarrierMaskDirty(false),
 	mNeedsCarriersSet(true),
 	mNeedsCalibrate(true),
+	mTesting(false),
 	mLastInfrequentTaskTime(0),
 	mCarriersMask(0xFFFFFFFF),
 	//
@@ -275,6 +276,12 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				bool b = v;
 				mTracker.setRotate(b);
+			}
+			else if (p == "test_signal")
+			{
+				bool b = v;
+				mTracker.setUseTestSignal(b);
+				mTesting = b;
 			}
 			else if (p == "retrig")
 			{
@@ -1013,6 +1020,10 @@ void *soundplaneModelProcessThreadStart(void *arg)
 	{
 		waitTimeMicrosecs = 1000; 
 		usleep(waitTimeMicrosecs);
+		if(m->isTesting())
+		{
+			m->testCallback();
+		}
 	}
 	
 	while(m->getDeviceState() != kDeviceIsTerminating) 
@@ -1043,6 +1054,49 @@ void SoundplaneModel::setKymaMode(bool m)
 // --------------------------------------------------------------------------------
 //
 #pragma mark -
+
+void SoundplaneModel::testCallback()
+{	
+	// make test surface
+	{
+		int h = mSurface.getWidth();
+		int v = mSurface.getHeight();
+
+		for(int j=0; j< v; j++)
+		{
+			for(int i=0; i < h; i++)
+			{
+				mSurface(i, j) = fabs(MLRand())*0.1f;
+			}
+		}
+	}
+	
+	{		
+		// filter data in time
+		mNotchFilter.setInputSignal(&mSurface);
+		mNotchFilter.setOutputSignal(&mSurface);
+		mNotchFilter.process(1);					
+		mLopassFilter.setInputSignal(&mSurface);
+		mLopassFilter.setOutputSignal(&mSurface);
+		mLopassFilter.process(1);	
+		
+		// send filtered data to touch tracker.
+		mTracker.setInputSignal(&mSurface);					
+		mTracker.setOutputSignal(&mTouchFrame);
+		mTracker.process(1);
+		
+		// get calibrated and cooked signals for viewing
+		mCalibratedSignal = mTracker.getCalibratedSignal();								
+		mCookedSignal = mTracker.getCookedSignal();
+		mTestSignal = mTracker.getTestSignal();
+		
+		sendTouchDataToZones();
+		
+		mHistoryCtr++;
+		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
+		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);			
+	}	
+}
 
 // called by the process thread in a tight loop to receive data from the driver.
 //

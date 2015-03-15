@@ -166,6 +166,7 @@
 		B5DD1B4A13E79F87002BD9C7 /* SoundplaneModel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5DD1B4513E79F87002BD9C7 /* SoundplaneModel.cpp */; };
 		B5DED64917E0F02100121663 /* MLTriToggleButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5DED64717E0F02100121663 /* MLTriToggleButton.cpp */; };
 		B5E3C7541971CA9B00966A56 /* MLControlEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5E3C7521971CA9B00966A56 /* MLControlEvent.cpp */; };
+		B5E71E841AB4D96100F1C807 /* MLFFT.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5E71E821AB4D96100F1C807 /* MLFFT.cpp */; };
 		B5E9225A13E4F7620094722F /* SoundplaneGridView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5E9225913E4F7620094722F /* SoundplaneGridView.cpp */; };
 		C5E169F7107EC2306276438A /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D9D2682DE4A5B07668895C2A /* IOKit.framework */; };
 		EFF4A46CD8DC98212AF9F5A0 /* DiscRecording.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6866E587FFD01BF7EA2ADE1F /* DiscRecording.framework */; };
@@ -442,6 +443,8 @@
 		B5DED64817E0F02100121663 /* MLTriToggleButton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLTriToggleButton.h; sourceTree = "<group>"; };
 		B5E3C7521971CA9B00966A56 /* MLControlEvent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLControlEvent.cpp; sourceTree = "<group>"; };
 		B5E3C7531971CA9B00966A56 /* MLControlEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLControlEvent.h; sourceTree = "<group>"; };
+		B5E71E821AB4D96100F1C807 /* MLFFT.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLFFT.cpp; path = ../../madronalib/Source/DSP/MLFFT.cpp; sourceTree = "<group>"; };
+		B5E71E831AB4D96100F1C807 /* MLFFT.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLFFT.h; path = ../../madronalib/Source/DSP/MLFFT.h; sourceTree = "<group>"; };
 		B5E9225813E4F7620094722F /* SoundplaneGridView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SoundplaneGridView.h; path = ../../soundplane/Source/SoundplaneGridView.h; sourceTree = "<group>"; };
 		B5E9225913E4F7620094722F /* SoundplaneGridView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SoundplaneGridView.cpp; path = ../../soundplane/Source/SoundplaneGridView.cpp; sourceTree = "<group>"; };
 		B786F246076E6F5D363A6A2C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = SOURCE_ROOT; };
@@ -872,6 +875,8 @@
 				B5648A2C16CB2EC9008446AA /* TrackerCalibrateView.cpp */,
 				B5648A2B16CB2EC9008446AA /* TrackerCalibrateView.h */,
 				B59D217314B5425300F061EA /* TouchTracker.cpp */,
+				B5E71E821AB4D96100F1C807 /* MLFFT.cpp */,
+				B5E71E831AB4D96100F1C807 /* MLFFT.h */,
 				B59D217414B5425300F061EA /* TouchTracker.h */,
 				B524E63D1811CD5F00A94518 /* Zone.cpp */,
 				B524E63E1811CD5F00A94518 /* Zone.h */,
@@ -1119,6 +1124,7 @@
 				B503024817C69FD2003A4458 /* NetServiceThread.cpp in Sources */,
 				B503024917C69FD2003A4458 /* Thread.cpp in Sources */,
 				B503024A17C69FD2003A4458 /* pa_ringbuffer.cpp in Sources */,
+				B5E71E841AB4D96100F1C807 /* MLFFT.cpp in Sources */,
 				B5DED64917E0F02100121663 /* MLTriToggleButton.cpp in Sources */,
 				B5C2AF60180752E500664D02 /* MLFileCollection.cpp in Sources */,
 				B55D12DF180F62AC002DE3FF /* SoundplaneBinaryData.cpp in Sources */,

@@ -50,7 +50,8 @@ TouchTracker::TouchTracker(int w, int h) :
 	mBackgroundFilterFreq(0.125f),
 	mPrevTouchForRotate(0),
 	mRotate(false),
-	mDoNormalize(true)
+	mDoNormalize(true),
+	mUseTestSignal(false)
 {
 	mTouches.resize(kTrackerMaxTouches);	
 	mTouchesToSort.resize(kTrackerMaxTouches);	
@@ -977,7 +978,7 @@ void TouchTracker::findTouches()
 				{
 					if(!keyIsOccupied(i))
 					{
-						//debug() << "NEW touch at " << pos << " key:" << i << " z:" << z << " dz:" << kdz << " T:" << templateTest << " I:" << inhibitTest << "\n";
+						debug() << "NEW touch at " << pos << " key:" << i << " z:" << z << " dz:" << kdz << " T:" << templateTest << " I:" << inhibitTest << "\n";
 
                         //	Touch t(pos.x(), pos.y(), z, kCoeff);
 						Touch t(pos.x(), pos.y(), z, kdz);
@@ -1119,6 +1120,12 @@ void TouchTracker::process(int)
 			mBackgroundFilter.setCoeffs(mBackgroundFilterFrequency, mBackgroundFilterFrequency2);
 			mBackgroundFilter.process(1);	
  		}
+		
+		// MLTEST 
+		
+		
+		
+		
 		
 		// subtract background from input 
 		//
