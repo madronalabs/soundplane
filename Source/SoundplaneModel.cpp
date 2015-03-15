@@ -1028,8 +1028,14 @@ void *soundplaneModelProcessThreadStart(void *arg)
 	
 	while(m->getDeviceState() != kDeviceIsTerminating) 
 	{
-		m->processCallback();
-		
+		if(m->isTesting())
+		{
+			m->testCallback();
+		}
+		else
+		{
+			m->processCallback();
+		}
 		waitTimeMicrosecs = 250; 
 		usleep(waitTimeMicrosecs);
 	}
@@ -1057,7 +1063,7 @@ void SoundplaneModel::setKymaMode(bool m)
 
 void SoundplaneModel::testCallback()
 {	
-	// make test surface
+	// make test surface (placeholder!)
 	{
 		int h = mSurface.getWidth();
 		int v = mSurface.getHeight();
