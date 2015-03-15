@@ -62,6 +62,7 @@ public:
 	
 	MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
 	
+	void testCallback();
 	void processCallback();
 	float getSampleHistory(int x, int y);
 	
@@ -90,6 +91,7 @@ public:
 	bool getRaw(){ return mRaw; }
 
 	void beginCalibrate();
+	bool isTesting() { return mTesting; }
 	bool isCalibrating() { return mCalibrating; }	
 	float getCalibrateProgress();
 	void endCalibrate();
@@ -234,6 +236,7 @@ private:
 	bool mNeedsCalibrate;
 	unsigned long mCarriersMask;
 	int mTest;
+	bool mTesting;
 	
 	std::vector<float> mMaxNoiseByCarrierSet;
 	std::vector<float> mMaxNoiseFreqByCarrierSet;

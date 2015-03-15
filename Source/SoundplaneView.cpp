@@ -448,6 +448,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setDefault(0.2);
     
 	pB = page2->addToggleButton("poll kyma", toggleRect.withCenter(12, dialY), "kyma_poll", c2);
+	pB = page2->addToggleButton("test", toggleRect.withCenter(13, dialY), "test_signal", c2);
 
 }
 

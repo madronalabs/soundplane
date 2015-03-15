@@ -50,7 +50,8 @@ TouchTracker::TouchTracker(int w, int h) :
 	mBackgroundFilterFreq(0.125f),
 	mPrevTouchForRotate(0),
 	mRotate(false),
-	mDoNormalize(true)
+	mDoNormalize(true),
+	mUseTestSignal(false)
 {
 	mTouches.resize(kTrackerMaxTouches);	
 	mTouchesToSort.resize(kTrackerMaxTouches);	
@@ -1119,6 +1120,12 @@ void TouchTracker::process(int)
 			mBackgroundFilter.setCoeffs(mBackgroundFilterFrequency, mBackgroundFilterFrequency2);
 			mBackgroundFilter.process(1);	
  		}
+		
+		// MLTEST 
+		
+		
+		
+		
 		
 		// subtract background from input 
 		//
