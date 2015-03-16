@@ -667,11 +667,13 @@ Vec2 correctTouchPosition(const MLSignal& in, int ix, int iy)
 		
 		if(y == 1)
 		{
-			fy *= 2.f;
+			if(fy > 0.)
+				fy *= 2.f;
 		}
 		else if(y == height - 2)
 		{
-			fy *= 2.f;
+			if(fy < 0.)
+				fy *= 2.f;
 		}
 		
 		pos -= Vec2(fx, fy);
