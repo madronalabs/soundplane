@@ -3,30 +3,30 @@
 		"name":	"B2",
 		"type":	"note_row",
 		"rect":	[0, 0, 30, 1],
-		"note": 50
+		"note": 47
 	},
 	"zone":	{
 		"name":	"E2",
 		"type":	"note_row",
 		"rect":	[0, 1, 30, 1],
-		"note": 55
+		"note": 52
 	},
 	"zone":	{
 		"name":	"A2",
 		"type":	"note_row",
 		"rect":	[0, 2, 30, 1],
-		"note": 60
+		"note": 57
 	},
 	"zone":	{
 		"name":	"D3",
 		"type":	"note_row",
 		"rect":	[0, 3, 30, 1],
-		"note": 65
+		"note": 62
 	},
 	"zone":	{
 		"name":	"G3",
 		"type":	"note_row",
 		"rect":	[0, 4, 30, 1],
-		"note": 70
+		"note": 67
 	}
 }
