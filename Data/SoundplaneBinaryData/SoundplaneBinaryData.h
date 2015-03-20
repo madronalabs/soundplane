@@ -27,7 +27,7 @@ namespace SoundplaneBinaryData
     const int           rows_in_fourths_jsonSize = 488;
 
     extern const char*  rows_in_octaves_json;
-    const int           rows_in_octaves_jsonSize = 483;
+    const int           rows_in_octaves_jsonSize = 488;
 
 };
 
