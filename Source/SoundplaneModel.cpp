@@ -311,7 +311,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				mMIDIOutput.setKymaPoll(bool(v));
 			}
 		}
-			break;
+		break;
 		case MLProperty::kStringProperty:
 		{
 			const std::string& str = newVal.getStringValue();
@@ -340,7 +340,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				}
 				else if(str == "rows in octaves")
 				{
-					setProperty("zone_JSON", std::string(SoundplaneBinaryData::rows_in_fourths_json));
+					setProperty("zone_JSON", std::string(SoundplaneBinaryData::rows_in_octaves_json));
 				}
 				// if not built in, load a zone map file.
 				else
