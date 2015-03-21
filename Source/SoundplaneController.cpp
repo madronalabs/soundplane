@@ -222,10 +222,10 @@ void SoundplaneController::setupMenus()
 	mMenuMap["zone_preset"] = zoneMenu;
     
  	mMenuMap["touch_preset"] = MLMenuPtr(new MLMenu("touch_preset"));
-	mMenuMap["osc_services"] = MLMenuPtr(new MLMenu("osc_services"));
+	mMenuMap["osc_service_name"] = MLMenuPtr(new MLMenu("osc_service_name"));
 	
 	// setup OSC defaults 
-	mpSoundplaneModel->setProperty("osc_services", kOSCDefaultStr);
+	mpSoundplaneModel->setProperty("osc_service_name", kOSCDefaultStr);
 }	
 
 
@@ -260,7 +260,7 @@ void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 			std::vector<std::string>& devices = outs.getDeviceList();
 			menu->addItems(devices);
 		}
-		else if (menuName == "osc_services")
+		else if (menuName == "osc_service_name")
 		{
 			// TODO refresh!
 			
@@ -319,7 +319,7 @@ void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
 		{
 			doZonePresetMenu(result);
 		}
-		else if (menuName == "osc_services")
+		else if (menuName == "osc_service_name")
 		{
 			doOSCServicesMenu(result);
 		}
@@ -366,11 +366,13 @@ void SoundplaneController::doOSCServicesMenu(int result)
     }
     else // resolve a service from list
     {
-		MLMenuPtr menu = mMenuMap["osc_services"];
+		MLMenuPtr menu = mMenuMap["osc_service_name"];
 		fullName = menu->getMenuItemPath(result);	
+		debug() << "resolving... " << getServiceName(result - 1) << "\n";
+		
         Resolve(getServiceName(result - 1).c_str(), kUDPType, kLocalDotDomain);
     }
-	mpSoundplaneModel->setProperty("osc_services", fullName);
+	mpSoundplaneModel->setProperty("osc_service_name", fullName);
 }
 
 void SoundplaneController::formatServiceName(const std::string& inName, std::string& outName)
@@ -400,7 +402,7 @@ void SoundplaneController::didResolveAddress(NetService *pNetService)
 	const char* hostNameStr = hostName.c_str();
 	int port = pNetService->getPort();
 	
-	debug() << "RESOLVED net service to " << hostName << ", " << port << "\n";
+	debug() << "didResolveAddress: RESOLVED net service to " << hostName << ", " << port << "\n";
 	
 	// TEMP todo don't access output directly
 	if(mpSoundplaneModel)
