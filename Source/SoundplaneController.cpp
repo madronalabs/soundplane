@@ -370,7 +370,7 @@ void SoundplaneController::doOSCServicesMenu(int result)
 		fullName = menu->getMenuItemPath(result);	
 		debug() << "resolving... " << getServiceName(result - 1) << "\n";
 		
-        Resolve(getServiceName(result - 1).c_str(), kUDPType, kLocalDotDomain);
+        Resolve(kLocalDotDomain, kUDPType, getServiceName(result - 1).c_str());
     }
 	mpSoundplaneModel->setProperty("osc_service_name", fullName);
 }
