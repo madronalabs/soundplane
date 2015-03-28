@@ -6,7 +6,7 @@
 #ifndef __SOUNDPLANE_VIEW_H__
 #define __SOUNDPLANE_VIEW_H__
 
-#include "JuceHeader.h"
+//#include "JuceHeader.h"
 #include "SoundplaneGridView.h"
 #include "SoundplaneTouchGraphView.h"
 #include "SoundplaneZoneView.h"
@@ -25,8 +25,8 @@
 #include "MLPageView.h"
 #include "SoundplaneBinaryData.h"
 
-const int kViewGridUnitsX = 15;
-const int kViewGridUnitsY = 10;
+const int kSoundplaneViewGridUnitsX = 15;
+const int kSoundplaneViewGridUnitsY = 10;
 
 // --------------------------------------------------------------------------------
 #pragma mark header view
@@ -81,7 +81,9 @@ public:
 	const Colour bg1;
 	const Colour bg2;
 
-	// TODO view has MLwidget::listener param, why??
+	// pModel: TODO remove! Currently we are looking at some Model Properties directly. should use Reporter.
+	// pResp: will implement HandleWidgetAction() to handle actions from any Widgets added to the view. 
+	// pRep: will listen to the Model and visualize its Properties by setting Attributes of Widgets.
     SoundplaneView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep);
     ~SoundplaneView();
 	
