@@ -8,38 +8,39 @@
 SoundplaneApp::SoundplaneApp() :
 	mpModel(0),
 	mpView(0),
-	mpController(0),	
-	mpState(nullptr)
+	mpController(0)
 {
 }
 
 void SoundplaneApp::initialise (const String& commandLine)
 {	
-	mWindow.centreWithSize(800, 800*kViewGridUnitsY/kViewGridUnitsX);
-	mWindow.setGridUnits(kViewGridUnitsX, kViewGridUnitsY);
-
+	mpWindow = std::unique_ptr<MLAppWindow>(new MLAppWindow());
+	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
+	// mpWindow->centreWithSize(800, 800*kSoundplaneViewGridUnitsY/kSoundplaneViewGridUnitsX);
+	
 	mpModel = new SoundplaneModel();
 	mpModel->initialize();
 	
 	mpController = new SoundplaneController(mpModel);
 	mpController->initialize();
+	
 	mpView = new SoundplaneView(mpModel, mpController, mpController);
 	mpView->initialize();		
     
 	// add view to window but retain ownership here
-	mWindow.setContent(mpView);
+	mpWindow->setContent(mpView);
 	
-	mpState = new MLAppState(mpModel, "app", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber);
-	bool foundState = mpState->loadStateFromAppStateFile();
+	mpModelState = std::unique_ptr<MLAppState>(new MLAppState(mpModel, "", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
+	bool foundState = mpModelState->loadStateFromAppStateFile();
     
 	mpController->setView(mpView);
 
-	MLConsole() << "Starting Soundplane...\n";
+	debug() << "Starting Soundplane...\n";
     
 #if GLX
-    mWindow.setUsingOpenGL(true);
+    mpWindow->setUsingOpenGL(true);
 #endif
-    mWindow.setVisible(true);
+    mpWindow->setVisible(true);
 	
 	// do setup first time or after trashed prefs, or if control is held down
 	if (!foundState) 
@@ -50,19 +51,34 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpController->fetchAllProperties();
 	mpView->goToPage(0);
 	
+	// generate a persistent state for the application's view. 
+	mpViewState = std::unique_ptr<MLAppState>(new MLAppState(mpView, "View", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
+	bool foundViewState = mpViewState->loadStateFromAppStateFile();
+	
+	if(!foundViewState)
+	{
+		// set default size
+		mpWindow->centreWithSize(800, 800*kSoundplaneViewGridUnitsY/kSoundplaneViewGridUnitsX);
+	}
+	else
+	{
+		mpView->updateAllProperties();	
+	}
 }
 
 void SoundplaneApp::shutdown()
 {
-	mpState->updateAllProperties();
-	mpState->saveStateToStateFile();
+	mpModelState->updateAllProperties();
+	mpModelState->saveStateToStateFile();
+	
+	mpViewState->updateAllProperties();
+	mpViewState->saveStateToStateFile();
 	
 	if(mpView) delete mpView;
 	if(mpController) delete mpController;
 	if(mpModel) delete mpModel;
 	
-	delete mpState;
-    debug().display();
+//    debug().display();
 }
 
 bool SoundplaneApp::moreThanOneInstanceAllowed()

@@ -21,7 +21,6 @@ SoundplaneGridView::~SoundplaneGridView()
 // MLModelListener implementation
 void SoundplaneGridView::doPropertyChangeAction(MLSymbol p, const MLProperty & v)
 {
-	debug() << "SoundplaneGridView::doPropertyChangeAction: " << p << " -> " << v << "\n";
 }
 
 void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)

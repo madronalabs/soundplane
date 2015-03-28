@@ -42,8 +42,9 @@ private:
 	SoundplaneModel* mpModel;
 	SoundplaneView* mpView;
 	SoundplaneController* mpController;	
-	MLAppState* mpState;
-	MLAppWindow mWindow;
+	std::unique_ptr<MLAppState> mpModelState;
+	std::unique_ptr<MLAppState> mpViewState;
+	std::unique_ptr<MLAppWindow> mpWindow;
 };
 
 // This macro creates the application's main() function.

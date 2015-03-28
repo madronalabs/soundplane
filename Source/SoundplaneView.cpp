@@ -8,7 +8,6 @@
 // --------------------------------------------------------------------------------
 #pragma mark header view
 
-
 SoundplaneHeaderView::SoundplaneHeaderView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep) :
 	MLAppView(pResp, pRep),
 	mpModel(pModel)
@@ -64,7 +63,7 @@ SoundplaneFooterView::SoundplaneFooterView(SoundplaneModel* pModel, MLWidget::Li
 	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
 	
 	float labelWidth = 6.;
-	float w = kViewGridUnitsX;
+	float w = kSoundplaneViewGridUnitsX;
 	float h = 0.5;
 	mpDevice = addLabel("---", MLRect(0, 0, labelWidth, h));
 	mpDevice->setFont(myLookAndFeel->mCaptionFont);
@@ -167,8 +166,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	MLButton* pB;
     MLLabel* pL;
     
-	float width = kViewGridUnitsX;
-	float height = kViewGridUnitsY;
+	float width = kSoundplaneViewGridUnitsX;
+	float height = kSoundplaneViewGridUnitsY;
 	float footerHeight = 0.5f;
     
 	mpFooter = new SoundplaneFooterView(pModel, pResp, pRep);
@@ -193,8 +192,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 
 	// setup controls on main view
 	MLRect t(0, 0, 0.5, 0.75);
-	MLRect prevRect = t.withCenter(0.175, kViewGridUnitsY/2.f);
-	MLRect nextRect = t.withCenter(kViewGridUnitsX - 0.175, kViewGridUnitsY/2.f);
+	MLRect prevRect = t.withCenter(0.175, kSoundplaneViewGridUnitsY/2.f);
+	MLRect nextRect = t.withCenter(kSoundplaneViewGridUnitsX - 0.175, kSoundplaneViewGridUnitsY/2.f);
 	
 	mpPrevButton = addRawImageButton(prevRect, "prev", c1, myLookAndFeel->getPicture("arrowleft"));
 	mpNextButton = addRawImageButton(nextRect, "next", c1, myLookAndFeel->getPicture("arrowright"));
@@ -317,7 +316,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setDefault(250.);
 	pB = page0->addToggleButton("matrix", toggleRect.withCenter(13.25, bottomDialsY), "osc_send_matrix", c2);
 	
-	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(12.25, 9.), "osc_services");
+	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(12.25, 9.), "osc_service_name");
 
 	
     // --------------------------------------------------------------------------------
@@ -428,12 +427,13 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 
 	// debug pane
 	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));
-	//debug().sendOutputToListener(pDebug);
-	debug().sendOutputToListener(0);
-	MLConsole().sendOutputToListener(pDebug);
-	MLError().sendOutputToListener(pDebug);
 	
-	//page2->addToggleButton("pause", toggleRect.withCenter(13.5, 5.5), "debug_pause", c2);
+	// MLTEST temp
+	//debug().sendOutputToListener(pDebug);
+
+	//debug().sendOutputToListener(0);
+	//MLConsole().sendOutputToListener(pDebug);
+	//MLError().sendOutputToListener(pDebug);
 	
 	pD = page2->addDial("bg filter", dialRect.withCenter(2, dialY), "bg_filter", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
@@ -459,13 +459,14 @@ SoundplaneView::~SoundplaneView()
 
 // --------------------------------------------------------------------------------
 // MLModelListener implementation
-// an updateChangedParams() is needed to get these actions sent by the Model.
+// an updateChangedParams() or updateAllParams() is needed to get these actions sent by the Model.
 //
 void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
 {
-	debug() << "SoundplaneView::doPropertyChangeAction: " << p << " -> " << val << "\n";
+	bool handled = false;
 	if(p == "viewmode")
 	{
+		handled = true;
 		const std::string& v = val.getStringValue();
 		if(v == "raw data")
 		{
@@ -477,20 +478,27 @@ void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
 			makeCarrierTogglesVisible(0);
             mTouchView.setWidgetVisible(1);
 		}
+		repaint();
 	}
 	else if(p == "view_page")
 	{
+		handled = true;
 		float v = val.getFloatValue();
         goToPage(v);
+		repaint();
 	}
-	repaint();
+
+	if(!handled)
+	{
+		MLAppView::doPropertyChangeAction(p, val);
+	}
 }
 
 
 void SoundplaneView::initialize()
 {
 	startTimer(50);	
-	// ? setAnimationsActive(true);
+	MLAppView::initialize();
 }
 
 // TODO take this away and use Model Properties and doPropertyChangeAction() instead.
