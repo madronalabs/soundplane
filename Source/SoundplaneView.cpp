@@ -435,8 +435,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	//MLConsole().sendOutputToListener(pDebug);
 	//MLError().sendOutputToListener(pDebug);
 	
-	//page2->addToggleButton("pause", toggleRect.withCenter(13.5, 5.5), "debug_pause", c2);
-	
 	pD = page2->addDial("bg filter", dialRect.withCenter(2, dialY), "bg_filter", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.05);

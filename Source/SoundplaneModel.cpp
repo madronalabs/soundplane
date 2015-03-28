@@ -302,10 +302,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				mMIDIOutput.setBendRange(v);
 				sendParametersToZones();
 			}
-			else if (p == "debug_pause")
-			{
-				debug().setActive(!bool(v));
-			}
 			else if (p == "kyma_poll")
 			{
 				mMIDIOutput.setKymaPoll(bool(v));
