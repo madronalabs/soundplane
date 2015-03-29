@@ -824,7 +824,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		// filter z based on user lowpass setting and touch age
 		float lp = mLopass;
 		lp -= t.age*(mLopass*0.75f/kAttackFrames);
-		lp = clamp(lp, mLopass, mLopass*0.25f);	// WTF???		
+		lp = clamp(lp, mLopass, mLopass*0.25f);	
 				
 		float xz = powf(e, -kMLTwoPi * lp / (float)mSampleRate);
 		float a0z = 1.f - xz;
@@ -884,7 +884,7 @@ Vec3 TouchTracker::closestTouch(Vec2 pos)
 float TouchTracker::getInhibitThreshold(Vec2 a)
 {
 	float inhibitMax = 1.1f;
-	float inhibitRange = 3.f;
+	float inhibitRange = 4.f;
 	float maxInhibit = 0.f;
 	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
@@ -915,9 +915,9 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 		float z = peak.z();
 		
 		// add peak to key state, or bail
-		if (z > mOnThreshold)
+		if (z > mOnThreshold*0.25f)
 		{			
-			Vec2 pos = in.correctPeak(peak.x(), peak.y(), 0.5f);	
+			Vec2 pos = in.correctPeak(peak.x(), peak.y(), 1.0f);	
 			int key = getKeyIndexAtPoint(pos);
 			if(within(key, 0, mNumKeys))
 			{
@@ -980,7 +980,7 @@ void TouchTracker::findTouches()
 				{
 					if(!keyIsOccupied(i))
 					{
-						debug() << "NEW touch at " << pos << " key:" << i << " z:" << z << " dz:" << kdz << " T:" << templateTest << " I:" << inhibitTest << "\n";
+						//debug() << "NEW touch at " << pos << " key:" << i << " z:" << z << " dz:" << kdz << " T:" << templateTest << " I:" << inhibitTest << "\n";
 
                         //	Touch t(pos.x(), pos.y(), z, kCoeff);
 						Touch t(pos.x(), pos.y(), z, kdz);
@@ -1122,12 +1122,6 @@ void TouchTracker::process(int)
 			mBackgroundFilter.setCoeffs(mBackgroundFilterFrequency, mBackgroundFilterFrequency2);
 			mBackgroundFilter.process(1);	
  		}
-		
-		// MLTEST 
-		
-		
-		
-		
 		
 		// subtract background from input 
 		//
@@ -1640,11 +1634,10 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 			// smooth input	
 			mTemp.convolve3x3r(kc, ke, kk);
 			mTemp.convolve3x3r(kc, ke, kk);
-			mTemp.convolve3x3r(kc, ke, kk);
 			
 			// get corrected peak
 			mPeak = mTemp.findPeak();
-			mPeak = mTemp.correctPeak(mPeak.x(), mPeak.y(), 0.5f);							
+			mPeak = mTemp.correctPeak(mPeak.x(), mPeak.y(), 1.0f);							
 			Vec2 minPos(2.0, 0.);
 			Vec2 maxPos(mWidth - 2., mHeight - 1.);
 			mPeak = vclamp(mPeak, minPos, maxPos);
