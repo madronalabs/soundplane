@@ -631,7 +631,6 @@ void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 			// shutdown processing
 			if (mProcessThread)
 			{
-				debug() << "SoundplaneModel: terminating \n";
 				int exitResult = pthread_join(mProcessThread, NULL); // TODO this can hang here
 				printf("SoundplaneModel:: process thread terminated.  Returned %d \n", exitResult);			
 				mProcessThread = 0;
@@ -1113,7 +1112,6 @@ void *soundplaneModelProcessThreadStart(void *arg)
 		waitTimeMicrosecs = 250; 
 		usleep(waitTimeMicrosecs);
 	}
-	debug() << "soundplaneModelProcessThread terminating\n";
 	return 0;
 }
 

@@ -1451,8 +1451,8 @@ float TouchTracker::Calibrator::makeNormalizeMap()
 	float mean = sum/(float)samples;
 	mNormalizeMap.scale(mean);	
 
-	// constrain output values to salvage situation in case of weird outliers
-	mNormalizeMap.sigMin(4.f);
+	// constrain output values
+	mNormalizeMap.sigMin(3.f);
 	mNormalizeMap.sigMax(0.125f);	
 	
 	// return maximum
@@ -1632,6 +1632,7 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 			mTemp.multiply(mNormalizeMap);
 		
 			// smooth input	
+			mTemp.convolve3x3r(kc, ke, kk);
 			mTemp.convolve3x3r(kc, ke, kk);
 			mTemp.convolve3x3r(kc, ke, kk);
 			

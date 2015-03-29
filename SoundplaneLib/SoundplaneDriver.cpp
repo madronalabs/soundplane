@@ -86,18 +86,11 @@ SoundplaneDriver::SoundplaneDriver() :
 
 SoundplaneDriver::~SoundplaneDriver()
 {
-	printf("SoundplaneDriver shutting down...\n");
-	
+	printf("SoundplaneDriver shutting down...\n");	
 	shutdown();	
-	
-	printf("freeing...\n");
-	
 	if (mpTransactionData) free(mpTransactionData);
 	if (mpOutputData) free(mpOutputData);
-	
-	printf("done.\n");
 }
-
 
 void SoundplaneDriver::init()
 {
@@ -1722,8 +1715,6 @@ void *soundplaneProcessThread(void *arg)
 			usleep(500);
 		}
 	}
-	
-	printf("process thread: terminating.\n");
 	
 	// confirm termination
 	
