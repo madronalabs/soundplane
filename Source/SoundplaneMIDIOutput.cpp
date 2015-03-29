@@ -208,11 +208,6 @@ void SoundplaneMIDIOutput::setStartChannel(int v)
 	}
 }
 
-void SoundplaneMIDIOutput::modelStateChanged()
-{
-
-}
-
 void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage* msg)
 {
     static const MLSymbol startFrameSym("start_frame");

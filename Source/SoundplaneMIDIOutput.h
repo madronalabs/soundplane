@@ -9,7 +9,7 @@
 #include "JuceHeader.h"
 
 #include <vector>
-#include <tr1/memory>
+#include <memory>
 #include <stdlib.h>
 
 #include "MLDebug.h"
@@ -62,7 +62,7 @@ private:
 	bool mIsInternal; // for interapplication devices
 };
 
-typedef std::tr1::shared_ptr<MIDIDevice> MIDIDevicePtr;
+typedef std::shared_ptr<MIDIDevice> MIDIDevicePtr;
 
 class SoundplaneMIDIOutput :
 	public SoundplaneDataListener
@@ -75,7 +75,6 @@ public:
     // SoundplaneDataListener
     void processSoundplaneMessage(const SoundplaneDataMessage* msg);
 
-    void modelStateChanged();
 	void setDataFreq(float f) { mDataFreq = f; }
 	
 	void findMIDIDevices ();

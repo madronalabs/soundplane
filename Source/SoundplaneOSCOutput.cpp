@@ -60,7 +60,7 @@ void SoundplaneOSCOutput::connect(const char* name, int port)
 		}
 		catch(std::runtime_error err)
 		{
-			MLError() << "SoundplaneOSCOutput: error connecting to " << name << ", port " << port << "\n";
+			debug() << "SoundplaneOSCOutput: error connecting to " << name << ", port " << port << "\n";
 			return;
 		}
 		debug() << "SoundplaneOSCOutput:connected to " << name << ", port " << port << "\n";
@@ -84,11 +84,6 @@ void SoundplaneOSCOutput::setActive(bool v)
 	
 	// reset frame ID
 	mFrameId = 0;
-}
-
-void SoundplaneOSCOutput::modelStateChanged()
-{
-
 }
 
 void SoundplaneOSCOutput::doInfrequentTasks()

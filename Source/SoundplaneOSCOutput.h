@@ -8,7 +8,7 @@
 
 #include <vector>
 #include <list>
-#include <tr1/memory>
+#include <memory>
 
 #include "MLDebug.h"
 #include "MLTime.h"
@@ -26,7 +26,7 @@ extern const char* kDefaultHostnameString;
 const int kDefaultUDPPort = 3123;
 
 // Soundplane app input port for Kyma and other config messages
-const int kDefaultUDPReceivePort = 3122;
+const int kDefaultUDPReceivePort = 3124;
 
 const int kUDPOutputBufferSize = 4096;
 
@@ -61,7 +61,6 @@ public:
     // SoundplaneDataListener
     void processSoundplaneMessage(const SoundplaneDataMessage* msg);
     
-	void modelStateChanged();
 	void setDataFreq(float f) { mDataFreq = f; }
 	
 	void setActive(bool v);
