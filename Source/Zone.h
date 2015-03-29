@@ -162,6 +162,6 @@ private:
 	std::vector<Biquad> mVibratoFilters;
 
 };
-typedef std::tr1::shared_ptr<Zone> ZonePtr;
+typedef std::shared_ptr<Zone> ZonePtr;
 
 #endif /* defined(__Soundplane__SoundplaneZone__) */
