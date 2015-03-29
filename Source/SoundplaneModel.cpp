@@ -264,7 +264,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				bool b = v;
 				mOSCOutput.setActive(b);
-				listenToOSC(b ? kDefaultUDPReceivePort : 0);
 			}
 			else if (p == "osc_send_matrix")
 			{
@@ -317,7 +316,9 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			}
 			else if (p == "kyma_poll")
 			{
+				bool b = v;
 				mMIDIOutput.setKymaPoll(bool(v));
+				listenToOSC(b ? kDefaultUDPReceivePort : 0);
 			}
 		}
 		break;
