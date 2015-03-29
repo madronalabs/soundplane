@@ -425,16 +425,13 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	mTrkCalView.setModel(pModel);
 	page2->addWidgetToView (&mTrkCalView, TCVRect, "trk_cal_view");
 
-	// debug pane
+	// console
 	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));
+	MLConsole().sendOutputToListener(pDebug);
 	
 	// MLTEST temp
 	//debug().sendOutputToListener(pDebug);
 
-	//debug().sendOutputToListener(0);
-	//MLConsole().sendOutputToListener(pDebug);
-	//MLError().sendOutputToListener(pDebug);
-	
 	pD = page2->addDial("bg filter", dialRect.withCenter(2, dialY), "bg_filter", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.05);
@@ -543,25 +540,6 @@ void SoundplaneView::timerCallback()
 		}
 	}
 }
-
-/*
-void SoundplaneView::modelStateChanged()
-{
-	// draw force curve
-	//
-	const float c = mpModel->getParam("zcurve");
-	std::vector<float> p;
-	p.resize(4);
-	p[1] = 1.f - c;
-	p[3] = c;
-	if(mpCurveGraph)
-	{
-		mpCurveGraph->setPolyCoeffs(p);
-		mpCurveGraph->repaint();
-	}
-}
-*/
-
 
 int SoundplaneView::getCurrentPage()
 {

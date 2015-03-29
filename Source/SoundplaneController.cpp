@@ -4,10 +4,6 @@
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
 #include "SoundplaneController.h"
-	
-const char *kUDPType      =   "_osc._udp";
-const char *kLocalDotDomain   =   "local.";
-static const std::string kOSCDefaultStr("localhost:3123 (default)");
 
 static void menuItemChosenCallback (int result, WeakReference<SoundplaneController> wpC, MLSymbol menuName);
 
@@ -53,8 +49,7 @@ void SoundplaneController::handleWidgetAction(MLWidget* w, MLSymbol action, MLSy
 			{
 				mpSoundplaneModel->setAllPropertiesToDefaults();
 				doWelcomeTasks();
-				mpSoundplaneModel->updateAllProperties(); // MLTEST
-
+				mpSoundplaneModel->updateAllProperties();
 			}
 		}
 		else if (p == "default_carriers")
@@ -122,14 +117,8 @@ void SoundplaneController::initialize()
 {
 	// prime MIDI device pump
 	StringArray devices = MidiOutput::getDevices();
-    
-	// make OSC services list
-	mServiceNames.clear();
-	mServices.clear();
-	mServices.push_back(kOSCDefaultStr);
-	Browse(kLocalDotDomain, kUDPType);
-    
-    setupMenus(); 
+   
+	setupMenus(); 
 }
 	
 void SoundplaneController::shutdown()
@@ -140,8 +129,9 @@ void SoundplaneController::shutdown()
 void SoundplaneController::timerCallback()
 {
 	fetchChangedProperties();
-	PollNetServices();
-	debug().display();
+	
+	// MLTEST
+	//debug().display();
 	MLConsole().display();
 }
 	
@@ -223,9 +213,6 @@ void SoundplaneController::setupMenus()
     
  	mMenuMap["touch_preset"] = MLMenuPtr(new MLMenu("touch_preset"));
 	mMenuMap["osc_service_name"] = MLMenuPtr(new MLMenu("osc_service_name"));
-	
-	// setup OSC defaults 
-	mpSoundplaneModel->setProperty("osc_service_name", kOSCDefaultStr);
 }	
 
 
@@ -244,6 +231,7 @@ MLMenu* SoundplaneController::findMenuByName(MLSymbol menuName)
 void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 {
 	if(!mpSoundplaneView) return;
+	if(!mpSoundplaneModel) return;
 	
 	MLMenu* menu = findMenuByName(menuName);
 	if (menu != nullptr)
@@ -255,26 +243,17 @@ void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 		{
 			// refresh device list
 			menu->clear();
-			SoundplaneMIDIOutput& outs = getModel()->getMIDIOutput();
+			SoundplaneMIDIOutput& outs = mpSoundplaneModel->getMIDIOutput();
 			outs.findMIDIDevices ();
-			std::vector<std::string>& devices = outs.getDeviceList();
+			const std::vector<std::string>& devices = outs.getDeviceList();
 			menu->addItems(devices);
 		}
 		else if (menuName == "osc_service_name")
 		{
-			// TODO refresh!
-			
 			menu->clear();
-			mServiceNames.clear();
-			std::vector<std::string>::iterator it;
-			for(it = mServices.begin(); it != mServices.end(); it++)
-			{
-				const std::string& serviceName = *it;
-				std::string formattedName;
-				formatServiceName(serviceName, formattedName);
-				mServiceNames.push_back(serviceName);
-				menu->addItem(formattedName);
-			}
+			mpSoundplaneModel->refreshServices();
+			const std::vector<std::string>& services = mpSoundplaneModel->getServicesList();
+			menu->addItems(services);
 		}
 		else if (menuName == "zone_preset")
 		{
@@ -352,72 +331,20 @@ void SoundplaneController::doZonePresetMenu(int result)
 
 void SoundplaneController::doOSCServicesMenu(int result)
 {    
-	std::string fullName ("error: preset not found!");
- 	SoundplaneModel* pModel = getModel();
-	assert(pModel);
+	if(!mpSoundplaneModel) return;
+	std::string fullName ("OSC service not found.");
 
-    // TODO should this not be in Model::doPropertyChangeAction ?
     if(result == 1) // set default
     {
         fullName = "default";
-        SoundplaneOSCOutput& output = pModel->getOSCOutput();
-        output.connect(kDefaultHostnameString, kDefaultUDPPort);
-        pModel->setKymaMode(0);
     }
     else // resolve a service from list
     {
 		MLMenuPtr menu = mMenuMap["osc_service_name"];
 		fullName = menu->getMenuItemPath(result);	
-		debug() << "resolving... " << getServiceName(result - 1) << "\n";
-		
-        Resolve(kLocalDotDomain, kUDPType, getServiceName(result - 1).c_str());
     }
+	
 	mpSoundplaneModel->setProperty("osc_service_name", fullName);
-}
-
-void SoundplaneController::formatServiceName(const std::string& inName, std::string& outName)
-{
-	const char* inStr = inName.c_str();
-	if(!strncmp(inStr, "beslime", 7))
-	{
-		outName = inName + std::string(" (Kyma)");
-	}
-	else
-	{
-		outName = inName;
-	}
-}
-
-const std::string& SoundplaneController::getServiceName(int idx)
-{
-	return mServiceNames[idx];
-}
-
-// called asynchronously after Resolve() when host and port are found
-//
-void SoundplaneController::didResolveAddress(NetService *pNetService)
-{
-	const std::string& serviceName = pNetService->getName();
-	const std::string& hostName = pNetService->getHostName();
-	const char* hostNameStr = hostName.c_str();
-	int port = pNetService->getPort();
-	
-	debug() << "didResolveAddress: RESOLVED net service to " << hostName << ", " << port << "\n";
-	
-	// TEMP todo don't access output directly
-	if(mpSoundplaneModel)
-	{
-		SoundplaneOSCOutput& output = mpSoundplaneModel->getOSCOutput();
-		output.connect(hostNameStr, port);
-	}
-	
-	// if we are talking to a kyma, set kyma mode
-	static const char* kymaStr = "beslime";
-	int len = strlen(kymaStr);
-	bool isProbablyKyma = !strncmp(serviceName.c_str(), kymaStr, len);
-debug() << "kyma mode " << isProbablyKyma << "\n";
-	mpSoundplaneModel->setKymaMode(isProbablyKyma);
-	
 }
 
 class SoundplaneSetupThread  : public ThreadWithProgressWindow
@@ -461,7 +388,8 @@ public:
 
 void SoundplaneController::doWelcomeTasks()
 {
-	SoundplaneSetupThread demoThread(getModel(), getView());
+	if(!mpSoundplaneModel) return;
+	SoundplaneSetupThread demoThread(mpSoundplaneModel, getView());
 	if (demoThread.runThread())
 	{
 		// thread finished normally..

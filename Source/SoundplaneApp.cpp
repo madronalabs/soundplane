@@ -14,10 +14,6 @@ SoundplaneApp::SoundplaneApp() :
 
 void SoundplaneApp::initialise (const String& commandLine)
 {	
-	mpWindow = std::unique_ptr<MLAppWindow>(new MLAppWindow());
-	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
-	// mpWindow->centreWithSize(800, 800*kSoundplaneViewGridUnitsY/kSoundplaneViewGridUnitsX);
-	
 	mpModel = new SoundplaneModel();
 	mpModel->initialize();
 	
@@ -26,16 +22,17 @@ void SoundplaneApp::initialise (const String& commandLine)
 	
 	mpView = new SoundplaneView(mpModel, mpController, mpController);
 	mpView->initialize();		
-    
+	mpController->setView(mpView);
+	    
+	mpWindow = std::unique_ptr<MLAppWindow>(new MLAppWindow());	
+	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
+	
 	// add view to window but retain ownership here
 	mpWindow->setContent(mpView);
 	
 	mpModelState = std::unique_ptr<MLAppState>(new MLAppState(mpModel, "", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
-	bool foundState = mpModelState->loadStateFromAppStateFile();
     
-	mpController->setView(mpView);
-
-	debug() << "Starting Soundplane...\n";
+	MLConsole() << "Starting Soundplane...\n";
     
 #if GLX
     mpWindow->setUsingOpenGL(true);
@@ -43,26 +40,24 @@ void SoundplaneApp::initialise (const String& commandLine)
     mpWindow->setVisible(true);
 	
 	// do setup first time or after trashed prefs, or if control is held down
-	if (!foundState) 
+	if (!mpModelState->loadStateFromAppStateFile()) 
 	{
 		mpController->doWelcomeTasks(); 
 	}
-	
 	mpController->fetchAllProperties();
 	mpView->goToPage(0);
 	
 	// generate a persistent state for the application's view. 
 	mpViewState = std::unique_ptr<MLAppState>(new MLAppState(mpView, "View", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
-	bool foundViewState = mpViewState->loadStateFromAppStateFile();
 	
-	if(!foundViewState)
+	if(mpViewState->loadStateFromAppStateFile())
 	{
-		// set default size
-		mpWindow->centreWithSize(800, 800*kSoundplaneViewGridUnitsY/kSoundplaneViewGridUnitsX);
+		mpView->updateAllProperties();	
 	}
 	else
 	{
-		mpView->updateAllProperties();	
+		// set default size
+		mpWindow->centreWithSize(800, 800*kSoundplaneViewGridUnitsY/kSoundplaneViewGridUnitsX);
 	}
 }
 
@@ -77,8 +72,6 @@ void SoundplaneApp::shutdown()
 	if(mpView) delete mpView;
 	if(mpController) delete mpController;
 	if(mpModel) delete mpModel;
-	
-//    debug().display();
 }
 
 bool SoundplaneApp::moreThanOneInstanceAllowed()

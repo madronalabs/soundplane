@@ -5,6 +5,10 @@
 
 #include "SoundplaneModel.h"
 
+static const std::string kOSCDefaultStr("localhost:3123 (default)");
+const char *kUDPType      =   "_osc._udp";
+const char *kLocalDotDomain   =   "local.";
+
 void *soundplaneModelProcessThreadStart(void *arg);
 
 const int kModelDefaultCarriersSize = 40;
@@ -134,6 +138,15 @@ SoundplaneModel::SoundplaneModel() :
 	mViewModeToSignalMap["test2"] = &(mTracker.getNormalizeMap());
 	mViewModeToSignalMap["norm. map"] = &(mTracker.getNormalizeMap());
 	
+	// setup OSC default
+	setProperty("osc_service_name", kOSCDefaultStr);
+	
+	// start Browsing OSC services
+	mServiceNames.clear();
+	mServices.clear();
+	mServices.push_back(kOSCDefaultStr);
+	Browse(kLocalDotDomain, kUDPType);
+
 	startModelTimer();
 }
 
@@ -311,6 +324,19 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 		case MLProperty::kStringProperty:
 		{
 			const std::string& str = newVal.getStringValue();
+			if(p == "osc_service_name")
+			{
+				if(str == "default")
+				{
+					// connect via number directly to default port
+					mOSCOutput.connect(kDefaultHostnameString, kDefaultUDPPort);
+				}
+				else
+				{
+					// resolve service for named port				
+					Resolve(kLocalDotDomain, kUDPType, str.c_str());					
+				}
+			}
 			if (p == "viewmode")
 			{
 				// nothing to do for Model
@@ -467,7 +493,7 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 	}
 	catch( osc::Exception& e )
 	{
-		MLError() << "oscpack error while parsing message: "
+		MLConsole() << "oscpack error while parsing message: "
 			<< m.AddressPattern() << ": " << e.what() << "\n";
 	}
 }
@@ -475,6 +501,57 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 void SoundplaneModel::ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint)
 {
 	
+}
+
+// called asynchronously after Resolve() when host and port are found by the resolver.
+// requires that PollNetServices() be called periodically.
+//
+void SoundplaneModel::didResolveAddress(NetService *pNetService)
+{
+	const std::string& serviceName = pNetService->getName();
+	const std::string& hostName = pNetService->getHostName();
+	const char* hostNameStr = hostName.c_str();
+	int port = pNetService->getPort();
+	
+	debug() << "SoundplaneModel::didResolveAddress: RESOLVED net service to " << hostName << ", port " << port << "\n";
+	mOSCOutput.connect(hostNameStr, port);
+	
+	// if we are talking to a kyma, set kyma mode
+	static const char* kymaStr = "beslime";
+	int len = strlen(kymaStr);
+	bool isProbablyKyma = !strncmp(serviceName.c_str(), kymaStr, len);
+	debug() << "kyma mode " << isProbablyKyma << "\n";
+	setKymaMode(isProbablyKyma);
+}
+
+
+void SoundplaneModel::formatServiceName(const std::string& inName, std::string& outName)
+{
+	const char* inStr = inName.c_str();
+	if(!strncmp(inStr, "beslime", 7))
+	{
+		outName = inName + std::string(" (Kyma)");
+	}
+	else
+	{
+		outName = inName;
+	}
+}
+
+void SoundplaneModel::refreshServices()
+{
+	mServiceNames.clear();
+	std::vector<std::string>::iterator it;
+	for(it = mServices.begin(); it != mServices.end(); it++)
+	{
+		const std::string& serviceName = *it;
+		mServiceNames.push_back(serviceName);
+	}
+}
+
+const std::vector<std::string>& SoundplaneModel::getServicesList()
+{
+	return mServiceNames;
 }
 
 void SoundplaneModel::initialize()
@@ -492,7 +569,7 @@ void SoundplaneModel::initialize()
 	// TODO mem err handling	
 	if (!mCalibrateData.setDims(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneCalibrateSize))
 	{
-		MLError() << "SoundplaneModel: out of memory!\n";
+		MLConsole() << "SoundplaneModel: out of memory!\n";
 	}
 	
 	mTouchFrame.setDims(kTouchWidth, kSoundplaneMaxTouches);
@@ -574,16 +651,16 @@ void SoundplaneModel::handleDeviceError(int errorType, int data1, int data2, flo
 		case kDevDataDiffTooLarge:
 			if(!mSelectingCarriers)
 			{
-				MLError() << "note: diff too large (" << fd1 << ")\n";
-				MLError() << "startup count = " << data1 << "\n";
+				MLConsole() << "note: diff too large (" << fd1 << ")\n";
+				MLConsole() << "startup count = " << data1 << "\n";
 			}
 			break;
 		case kDevGapInSequence:
-			MLError() << "note: gap in sequence (" << data1 << " -> " << data2 << ")\n";
+			MLConsole() << "note: gap in sequence (" << data1 << " -> " << data2 << ")\n";
 			break;
 		case kDevNoErr:
 		default:
-			MLError() << "SoundplaneModel::handleDeviceError: unknown error!\n";
+			MLConsole() << "SoundplaneModel::handleDeviceError: unknown error!\n";
 			break;
 	}
 }
@@ -750,7 +827,7 @@ void SoundplaneModel::addZone(ZonePtr pz)
     }
     else
     {
-        MLError() << "SoundplaneModel::addZone: out of zones!\n";
+        MLConsole() << "SoundplaneModel::addZone: out of zones!\n";
     }
 }
 
@@ -760,9 +837,9 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
     cJSON* root = cJSON_Parse(zoneStr.c_str());
     if(!root)
     {
-        MLError() << "zone file parse failed!\n";
+        MLConsole() << "zone file parse failed!\n";
         const char* errStr = cJSON_GetErrorPtr();
-        MLError() << "    error at: " << errStr << "\n";
+        MLConsole() << "    error at: " << errStr << "\n";
         return;
     }
     cJSON* pNode = root->child;
@@ -783,12 +860,12 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
                 }
                 else
                 {
-                    MLError() << "Unknown type " << typeSym << " for zone!\n";
+                    MLConsole() << "Unknown type " << typeSym << " for zone!\n";
                 }
             }
             else
             {
-                MLError() << "No type for zone!\n";
+                MLConsole() << "No type for zone!\n";
             }
             
             // get zone rect
@@ -806,12 +883,12 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
                 }
                 else
                 {
-                    MLError() << "Bad rect for zone!\n";
+                    MLConsole() << "Bad rect for zone!\n";
                 }
             }
             else
             {
-                MLError() << "No rect for zone\n";
+                MLConsole() << "No rect for zone\n";
             }
             
             pz->mName = getJSONString(pNode, "name");
@@ -1190,7 +1267,9 @@ void SoundplaneModel::processCallback()
 
 void SoundplaneModel::doInfrequentTasks()
 {
+	PollNetServices();
     mOSCOutput.doInfrequentTasks();
+	
 	if (mCarrierMaskDirty)
 	{
 		enableCarriers(mCarriersMask);

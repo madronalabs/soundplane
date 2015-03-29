@@ -82,7 +82,7 @@ public:
 	void setDevice(const std::string& deviceStr);
 	int getNumDevices();
 	const std::string& getDeviceName(int d);
-	std::vector<std::string>& getDeviceList();
+	const std::vector<std::string>& getDeviceList();
 	
 	void setActive(bool v);
 	void setPressureActive(bool v);

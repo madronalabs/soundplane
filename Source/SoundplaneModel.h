@@ -6,22 +6,22 @@
 #ifndef __SOUNDPLANE_MODEL__
 #define __SOUNDPLANE_MODEL__
 
+#include <list>
+#include <map>
+
 #include "MLTime.h"
 #include "MLModel.h"
 #include "SoundplaneModelA.h"
 #include "SoundplaneDriver.h"
 #include "SoundplaneDataListener.h"
 #include "MLOSCListener.h"
-#include "NetService.h"
-#include "NetServiceBrowser.h"
+#include "MLNetServiceHub.h"
 #include "TouchTracker.h"
 #include "SoundplaneMIDIOutput.h"
 #include "SoundplaneOSCOutput.h"
 #include "MLSymbol.h"
 #include "MLParameter.h"
 #include "MLFileCollection.h"
-#include <list>
-#include <map>
 #include "cJSON.h"
 #include "Zone.h"
 #include "SoundplaneBinaryData.h"
@@ -30,6 +30,7 @@ class SoundplaneModel :
 	public SoundplaneDriverListener,
 	public TouchTracker::Listener,
 	public MLOSCListener,
+	public MLNetServiceHub,
 	public MLModel
 {
 public:
@@ -54,6 +55,14 @@ public:
 	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint);
 	void ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint);
 	
+	// MLNetServiceHub
+	void didResolveAddress(NetService *pNetService);
+	
+	// OSC services 
+	void refreshServices();
+	const std::vector<std::string>& getServicesList();
+	void formatServiceName(const std::string& inName, std::string& outName);	
+
 	void initialize();
 	void clearTouchData();
 	void sendTouchDataToZones();
@@ -131,7 +140,6 @@ public:
 	int getClientState(void);
 
 	SoundplaneMIDIOutput& getMIDIOutput() { return mMIDIOutput; } 
-	SoundplaneOSCOutput& getOSCOutput() { return mOSCOutput; }  // TODO NO
 	
 	void setKymaMode(bool m);
 	void beginNormalize();
@@ -247,6 +255,11 @@ private:
     MLFileCollectionPtr mZonePresets;
 	
 	std::map<std::string, MLSignal*> mViewModeToSignalMap;
+
+	// OSC services
+	
+	std::vector<std::string> mServiceNames;
+
 };
 
 // JSON utilities (to go where?)

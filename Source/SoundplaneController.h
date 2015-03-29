@@ -27,10 +27,11 @@ class SoundplaneController  :
 	public MLWidget::Listener,
 	public MLFileCollection::Listener,
     public MLReporter,
-	public MLNetServiceHub,
 	public juce::Timer
 {
 public:
+	friend class SoundplaneApp;
+	
     SoundplaneController(SoundplaneModel* pModel);
     ~SoundplaneController();
 
@@ -39,9 +40,6 @@ public:
 	
 	// MLFileCollection::Listener
 	void processFileFromCollection (MLSymbol action, const MLFile& f, const MLFileCollection& collection, int idx, int size);
- 
-	// MLNetServiceHub
-	void didResolveAddress(NetService *pNetService);
 	
 	// juce::Timer
 	void timerCallback();
@@ -56,14 +54,8 @@ public:
 	void setupMenus();
     void doZonePresetMenu(int result);
 	void doOSCServicesMenu(int result);
-    
-	void formatServiceName(const std::string& inName, std::string& outName);
-	const std::string& getServiceName(int idx);
-	
+ 	
 	SoundplaneView* getView() { return mpSoundplaneView; }
-	void setView(SoundplaneView* v);
-
-	SoundplaneModel* getModel() { return mpSoundplaneModel; }
 	
 	// show nice message, run calibration, etc. if prefs are not found. 
 	void doWelcomeTasks();
@@ -74,14 +66,13 @@ protected:
 	WeakReference<SoundplaneController>::Master masterReference; // TODO -> base class
 	friend class WeakReference<SoundplaneController>;
 	
+	// for application setup
+	void setView(SoundplaneView* v);
 private:
 	SoundplaneModel* mpSoundplaneModel;	
 	SoundplaneView* mpSoundplaneView;
 
 	MLMenuMapT mMenuMap; 	
-	std::vector<std::string> mServiceNames;
-	std::vector<String> mFormattedServiceNames; // for popup menu
-
 
     int mZoneMenuStartItems;
 };
