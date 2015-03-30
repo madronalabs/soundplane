@@ -65,6 +65,7 @@ TouchTracker::TouchTracker(int w, int h) :
 	mpInputMap = new e_pixdata[w*h];
 	
 	mTestSignal.setDims(w, h);
+	mTestSignal2.setDims(w, h);
 	mCalibratedSignal.setDims(w, h);
 	mCookedSignal.setDims(w, h);
 	mBackground.setDims(w, h);
@@ -85,6 +86,18 @@ TouchTracker::TouchTracker(int w, int h) :
 	mBackgroundFilter.setDims(w, h);
 	mBackgroundFilter.setSampleRate(mSampleRate);
 	mTemplateScaled.setDims (kTemplateSize, kTemplateSize);
+	
+	
+	// new
+	// NEW
+	int wb = bitsToContain(w);
+	int hb = bitsToContain(h);
+	mFFT1.setDims(1 << wb, 1 << hb);
+	mFFT2.setDims(1 << wb, 1 << hb);
+	
+	
+
+	
 
 	mNumKeys = 150; // Soundplane A
 	mKeyStates.resize(mNumKeys);
@@ -1030,6 +1043,8 @@ void TouchTracker::KeyState::tick()
 	posIn = mKeyCenter; 
 }
 
+#pragma mark process
+
 void TouchTracker::process(int)
 {	
 	if (!mpIn) return;
@@ -1061,10 +1076,53 @@ void TouchTracker::process(int)
 	}
 	else
 	{
+		// TODO separate calibrator from Tracker and own in Model so test input can bypass calibration more cleanly
 		if(mDoNormalize)
 		{
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
+		
+		// copy into padded signal for FFT
+		int w = mFilteredInput.getWidth();
+		int h = mFilteredInput.getHeight();
+		int wb = bitsToContain(w);
+		int hb = bitsToContain(h);
+		int ww = 1<<wb;
+		int hh = 1<<hb;
+		int wBorder = (ww - w)/2;
+		int hBorder = (hh - h)/2;
+		
+		mFFT1.clear();
+		mFFT1.add2D(mFilteredInput, wBorder, hBorder);
+		
+		// forward FFT -> FFT1
+		FFT2DReal(mFFT1, 1);
+		
+		mFFT2 = mFFT1;
+		// mFFT2.scale(-1.f); // no difference
+		
+		// inverse FFT -> FFT2
+		FFT2DReal(mFFT2, -1);
+		
+		mTestSignal.clear();
+		mTestSignal.add2D(mFFT1, -wBorder, -hBorder);
+		
+		mTestSignal.scale(512);
+		
+		mTestSignal2.clear();
+		mTestSignal2.add2D(mFFT2, -wBorder, -hBorder);
+		
+		mTestSignal2.scale(512);
+		
+		/*
+		for(int j=0; j<mTestSignal.getHeight(); ++j)
+		{
+			for(int i=0; i<mTestSignal.getWidth(); ++i)
+			{
+				mTestSignal2(i, j) = fabs(MLRand());
+			}
+		}
+		*/
 		
 		if(mMaxTouchesPerFrame > 0)
 		{
@@ -1161,7 +1219,7 @@ void TouchTracker::process(int)
 		// TODO optimize: we only have to copy these each time a view is needed
 		mCalibratedSignal.copy(mInputMinusBackground);
 		mCookedSignal.copy(mSumOfTouches);		
-		mTestSignal.copy(mResidual);		
+		//mTestSignal.copy(mResidual);		
 		
 		// get subpixel xyz peak from residual
 		addPeakToKeyState(mResidual);

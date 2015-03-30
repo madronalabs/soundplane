@@ -347,7 +347,7 @@ void SoundplaneGridView::renderZGrid()
 		preOffset = -0.1;
 		separateSurfaces = true;
 	}
-	else if(viewMode == "norm. map")
+	else if(viewMode == "norm map")
 	{
 		// offset = -displayScale;
 		leftEdge += 1;
@@ -489,45 +489,47 @@ void SoundplaneGridView::renderBarChart()
 	int sensorWidth = mpModel->getWidth();
 	int sensorHeight = mpModel->getHeight();
 	int state = mpModel->getDeviceState();
-    int viewW = getBackingLayerWidth();
-    int viewH = getBackingLayerHeight();
+	int viewW = getBackingLayerWidth();
+	int viewH = getBackingLayerHeight();
 	int margin = viewH / 30;
 	int keyWidth = 30; // Soundplane A TODO get from tracker
 	int keyHeight = 5;
-    
-    // put origin in lower left.
-    MLGL::orthoView2(viewW, viewH);
-    MLRange xRange(0, keyWidth, margin, viewW - margin);
+	
+	// put origin in lower left.
+	MLGL::orthoView2(viewW, viewH);
+	MLRange xRange(0, keyWidth, margin, viewW - margin);
 	MLRange yRange(0, keyHeight, margin, viewH - margin);
-    
+	
 	// Soundplane A
 	MLRange xmRange(2, sensorWidth-2);
 	xmRange.convertTo(MLRange(margin, viewW - margin));
 	MLRange ymRange(0, sensorHeight);
 	ymRange.convertTo(MLRange(margin, viewH - margin));
-    
-    const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
-    if(!viewSignal) return;
 	
-    float displayScale = mpModel->getFloatProperty("display_scale");
-    float scale = displayScale;
-    float offset = 0.f;
+	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
+	if(!viewSignal) return;
+	
+	float displayScale = mpModel->getFloatProperty("display_scale");
+	float scale = displayScale;
+	float offset = 0.f;
 	
 	// draw stuff in immediate mode.
 	// TODO don't use fixed function pipeline.
 	//
 	Vec4 lineColor;
-	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 0.5f);
 	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
 	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
-    
+	
 	// draw lines at key grid
 	lineColor = darkBlue;
-	if(state != kDeviceHasIsochSync)
-	{
+	/*
+	 if(state != kDeviceHasIsochSync)
+	 {
 		lineColor[3] = 0.1f;
-	}
+	 }
+	 */
 	// horiz lines
 	glColor4fv(&lineColor[0]);
 	for(int j=0; j<=keyHeight; ++j)
@@ -559,15 +561,64 @@ void SoundplaneGridView::renderBarChart()
 	// draw dots
 	for(int j=0; j<sensorHeight; ++j)
 	{
-        for(int i=0; i<sensorWidth; ++i)
-        {
-            float x = xmRange.convert(i + 0.5);
-            float y = ymRange.convert(j + 0.5);
+		for(int i=0; i<sensorWidth; ++i)
+		{
+			float x = xmRange.convert(i + 0.5);
+			float y = ymRange.convert(j + 0.5);
+			
+			float z = (*viewSignal)(i, j)*scale + offset;
+			MLGL::drawDot(Vec2(x, y), z);
+		}
+	}
+}
 
-            float z = (*viewSignal)(i, j)*scale + offset;
-            MLGL::drawDot(Vec2(x, y), z);
-        }
-    }
+void SoundplaneGridView::renderBarChartRaw()
+{
+	int sensorWidth = mpModel->getWidth();
+	int sensorHeight = mpModel->getHeight();
+	int viewW = getBackingLayerWidth();
+	int viewH = getBackingLayerHeight();
+	int margin = viewH / 30;
+	
+	// put origin in lower left.
+	MLGL::orthoView2(viewW, viewH);
+
+	MLRange xmRange(0, sensorWidth);
+	xmRange.convertTo(MLRange(margin, viewW - margin));
+	MLRange ymRange(0, sensorHeight);
+	ymRange.convertTo(MLRange(margin, viewH - margin));
+	
+	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
+	if(!viewSignal) return;
+	
+	float displayScale = mpModel->getFloatProperty("display_scale");
+	float scale = displayScale;
+	float offset = 0.f;
+	
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 0.5f);
+	Vec4 darkRed(0.5f, 0.3f, 0.3f, 0.5f);
+
+	// draw dots
+	for(int j=0; j<sensorHeight; ++j)
+	{
+		for(int i=0; i<sensorWidth; ++i)
+		{
+			float x = xmRange.convert(i + 0.5);
+			float y = ymRange.convert(j + 0.5);
+			
+			float z = (*viewSignal)(i, j)*scale + offset;
+			
+			if(z > 0)
+			{
+				glColor4fv(&darkBlue[0]);
+			}
+			else
+			{
+				glColor4fv(&darkRed[0]);
+			}
+			MLGL::drawDot(Vec2(x, y), z);
+		}
+	}
 }
 
 void SoundplaneGridView::renderOpenGL()
@@ -583,10 +634,14 @@ void SoundplaneGridView::renderOpenGL()
     {
         renderXYGrid();
     }
-    else if (viewMode == "test2")
-    {
-        renderBarChart();
-    }
+	else if (viewMode == "norm map")
+	{
+		renderBarChart();
+	}
+	else if ((viewMode == "test1") || (viewMode == "test2"))
+	{
+		renderBarChartRaw();
+	}
     else
     {
         renderZGrid();

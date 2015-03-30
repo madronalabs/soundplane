@@ -11,6 +11,8 @@
 #include "MLDebug.h"
 #include "pa_ringbuffer.h"
 
+#include "MLFFT.h" // not production code
+
 #include <list>
 
 #define	MAX_PEAKS	64			// number of potential centroids gathered before sorting.
@@ -240,6 +242,7 @@ public:
 	void process(int);
 	
 	const MLSignal& getTestSignal() { return mTestSignal; } 
+	const MLSignal& getTestSignal2() { return mTestSignal2; } 
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; } 
 	const MLSignal& getCookedSignal() { return mCookedSignal; } 
 	const MLSignal& getCalibrationProgressSignal() { return mCalibrationProgressSignal; } 
@@ -260,6 +263,7 @@ public:
 	void setDefaultNormalizeMap();
 	void setRotate(bool b);
 	void setUseTestSignal(bool b) { mUseTestSignal = b; }
+	void doNormalize(bool b) { mDoNormalize = b; }
 
 private:	
 
@@ -321,6 +325,7 @@ private:
 	MLSignal mTemp;
 	MLSignal mTempWithBorder;
 	MLSignal mTestSignal;
+	MLSignal mTestSignal2;
 	MLSignal mCalibratedSignal;
 	MLSignal mCookedSignal;
 	MLSignal mXYSignal;
@@ -333,12 +338,15 @@ private:
 	MLSignal mTemplateMask;	
 	MLSignal mDzSignal;	
 	MLSignal mRetrigTimer;
-	MLSignal mPaddedForFFT;
 
 	AsymmetricOnepoleMatrix mBackgroundFilter;
 	MLSignal mBackgroundFilterFrequency;
 	MLSignal mBackgroundFilterFrequency2;
 	MLSignal mBackground;
+	
+	// new
+	MLSignal mFFT1;
+	MLSignal mFFT2;
 	
 	int mRetrigClock;
 	

@@ -34,6 +34,7 @@ public:
 	void renderXYGrid();
 	void renderZGrid();
 	void renderBarChart();
+	void renderBarChartRaw();
 
  	void setModel(SoundplaneModel* m);
  	

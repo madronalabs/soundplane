@@ -73,6 +73,8 @@ public:
 	
 	void testCallback();
 	void processCallback();
+	void filterAndSendData();
+
 	float getSampleHistory(int x, int y);
 	
 	void getHistoryStats(float& mean, float& stdDev);
@@ -209,6 +211,7 @@ private:
 	MLSignal mCalibratedSignal;
 	MLSignal mCookedSignal;
 	MLSignal mTestSignal;
+	MLSignal mTestSignal2;
 	MLSignal mTempSignal;
 	
 	int mCalibrateCount; // samples in one calibrate step
@@ -237,6 +240,7 @@ private:
 	pthread_t	mProcessThread;
 	
 	int mHistoryCtr;
+	int mTestCtr;
 	
 	int mZoneModeTemp;
 	bool mCarrierMaskDirty;

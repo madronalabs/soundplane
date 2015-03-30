@@ -63,6 +63,7 @@ SoundplaneModel::SoundplaneModel() :
 	mTempSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mCookedSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTestSignal(kSoundplaneWidth, kSoundplaneHeight),
+	mTestSignal2(kSoundplaneWidth, kSoundplaneHeight),
 
 	mCalibrating(false),
 	mSelectingCarriers(false),
@@ -80,6 +81,7 @@ SoundplaneModel::SoundplaneModel() :
 	mZoneMap(kSoundplaneAKeyWidth, kSoundplaneAKeyHeight),
 
 	mHistoryCtr(0),
+	mTestCtr(0),
 
 	mProcessThread(0),
 	mLastTimeDataWasSent(0),
@@ -134,9 +136,10 @@ SoundplaneModel::SoundplaneModel() :
 	mViewModeToSignalMap["calibrated"] = &mCalibratedSignal;
 	mViewModeToSignalMap["cooked"] = &mCookedSignal;
 	mViewModeToSignalMap["xy"] = &mCalibratedSignal;
+	
 	mViewModeToSignalMap["test1"] = &mTestSignal;
-	mViewModeToSignalMap["test2"] = &(mTracker.getNormalizeMap());
-	mViewModeToSignalMap["norm. map"] = &(mTracker.getNormalizeMap());
+	mViewModeToSignalMap["test2"] = &mTestSignal2;
+	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());
 	
 	// setup OSC default
 	setProperty("osc_service_name", kOSCDefaultStr);
@@ -1088,15 +1091,15 @@ void *soundplaneModelProcessThreadStart(void *arg)
 	SoundplaneModel* m = static_cast<SoundplaneModel*>(arg);
 	int waitTimeMicrosecs;
 	
-	// wait for data
+	// wait for data or test wtihout Soundplane connected
 	while((m->getDeviceState() != kDeviceHasIsochSync) && (m->getDeviceState() != kDeviceIsTerminating))
 	{
-		waitTimeMicrosecs = 1000; 
-		usleep(waitTimeMicrosecs);
 		if(m->isTesting())
 		{
 			m->testCallback();
-		}
+		}		
+		waitTimeMicrosecs = 1000; 
+		usleep(waitTimeMicrosecs);
 	}
 	
 	while(m->getDeviceState() != kDeviceIsTerminating) 
@@ -1133,47 +1136,56 @@ void SoundplaneModel::setKymaMode(bool m)
 //
 #pragma mark -
 
+const int kTestLength = 8000;
+
 void SoundplaneModel::testCallback()
 {	
-	// make test surface (placeholder!)
+	mSurface.clear();
+	
+	int h = mSurface.getWidth();
+	int v = mSurface.getHeight();
+	
+	// make kernel (where is 2D Gaussian utility?)
+	MLSignal k;
+	int kSize = 5;
+	float kr = (float)kSize*0.5f;
+	float amp = 0.25f;
+	k.setDims(5, 5);
+	k.addDeinterpolatedLinear(kr, kr, amp);
+	float kc, ke, kk;
+	kc = 4.f/16.f; ke = 2.f/16.f; kk=1.f/16.f;
+	k.convolve3x3r(kc, ke, kk);
+	
+	// get phase
+	mTestCtr++;
+	if(mTestCtr >= kTestLength)
 	{
-		int h = mSurface.getWidth();
-		int v = mSurface.getHeight();
+		mTestCtr = 0;
+	}
+	float omega = kMLTwoPi*(float)mTestCtr/(float)kTestLength;
+	
+	MLRange xRange(-1, 1, 0 - kr + 1.f, h - kr - 1.f);
+	MLRange yRange(-1, 1, 0 - kr + 1.f, v - kr - 1.f);
+	
+	float x = xRange(cosf(omega));
+	float y = yRange(sinf(omega*3.f));
+	float z = clamp(sinf(omega*9.f) + 0.75f, 0.f, 1.f);
 
-		for(int j=0; j< v; j++)
+	// draw touches
+	k.scale(z);
+	mSurface.add2D(k, Vec2(x, y));
+	
+	// add noise
+	for(int j=0; j< v; j++)
+	{
+		for(int i=0; i < h; i++)
 		{
-			for(int i=0; i < h; i++)
-			{
-				mSurface(i, j) = fabs(MLRand())*0.1f;
-			}
+			mSurface(i, j) += fabs(MLRand())*0.01f;
 		}
 	}
 	
-	{		
-		// filter data in time
-		mNotchFilter.setInputSignal(&mSurface);
-		mNotchFilter.setOutputSignal(&mSurface);
-		mNotchFilter.process(1);					
-		mLopassFilter.setInputSignal(&mSurface);
-		mLopassFilter.setOutputSignal(&mSurface);
-		mLopassFilter.process(1);	
-		
-		// send filtered data to touch tracker.
-		mTracker.setInputSignal(&mSurface);					
-		mTracker.setOutputSignal(&mTouchFrame);
-		mTracker.process(1);
-		
-		// get calibrated and cooked signals for viewing
-		mCalibratedSignal = mTracker.getCalibratedSignal();								
-		mCookedSignal = mTracker.getCookedSignal();
-		mTestSignal = mTracker.getTestSignal();
-		
-		sendTouchDataToZones();
-		
-		mHistoryCtr++;
-		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
-		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);			
-	}	
+	mTracker.doNormalize(false);
+	filterAndSendData();
 }
 
 // called by the process thread in a tight loop to receive data from the driver.
@@ -1238,30 +1250,38 @@ void SoundplaneModel::processCallback()
 			}
 		}
 		
-		// filter data in time
-		mNotchFilter.setInputSignal(&mSurface);
-		mNotchFilter.setOutputSignal(&mSurface);
-		mNotchFilter.process(1);					
-		mLopassFilter.setInputSignal(&mSurface);
-		mLopassFilter.setOutputSignal(&mSurface);
-		mLopassFilter.process(1);	
+		mTracker.doNormalize(true);
+		filterAndSendData();
 		
-		// send filtered data to touch tracker.
-		mTracker.setInputSignal(&mSurface);					
-		mTracker.setOutputSignal(&mTouchFrame);
-		mTracker.process(1);
-		
-		// get calibrated and cooked signals for viewing
-		mCalibratedSignal = mTracker.getCalibratedSignal();								
-		mCookedSignal = mTracker.getCookedSignal();
-		mTestSignal = mTracker.getTestSignal();
-
- 		sendTouchDataToZones();
-   		
-		mHistoryCtr++;
-		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
-		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);			
 	}	
+}
+
+void SoundplaneModel::filterAndSendData()
+{
+	// filter data in time
+	mNotchFilter.setInputSignal(&mSurface);
+	mNotchFilter.setOutputSignal(&mSurface);
+	mNotchFilter.process(1);					
+	mLopassFilter.setInputSignal(&mSurface);
+	mLopassFilter.setOutputSignal(&mSurface);
+	mLopassFilter.process(1);	
+	
+	// send filtered data to touch tracker.
+	mTracker.setInputSignal(&mSurface);					
+	mTracker.setOutputSignal(&mTouchFrame);
+	mTracker.process(1);
+	
+	// get calibrated and cooked signals for viewing
+	mCalibratedSignal = mTracker.getCalibratedSignal();								
+	mCookedSignal = mTracker.getCookedSignal();
+	mTestSignal = mTracker.getTestSignal();
+	mTestSignal2 = mTracker.getTestSignal2();
+	
+	sendTouchDataToZones();
+	
+	mHistoryCtr++;
+	if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
+	mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);			
 }
 
 void SoundplaneModel::doInfrequentTasks()
