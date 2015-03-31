@@ -94,10 +94,8 @@ TouchTracker::TouchTracker(int w, int h) :
 	int hb = bitsToContain(h);
 	mFFT1.setDims(1 << wb, 1 << hb);
 	mFFT2.setDims(1 << wb, 1 << hb);
-	
-	
-
-	
+	mTouchKernel.setDims(w, h);
+	makeFilter(3., 2.);
 
 	mNumKeys = 150; // Soundplane A
 	mKeyStates.resize(mNumKeys);
@@ -1043,6 +1041,41 @@ void TouchTracker::KeyState::tick()
 	posIn = mKeyCenter; 
 }
 
+void TouchTracker::makeFilter(float sxu, float syu)
+{
+	// TEMP
+	
+	float sx = 13.;
+	float sy = 3.;
+	int rx = (int)sx;
+	int ry = (int)sy;
+	
+	// build touch kernel - TEST
+	MLSignal k(rx*2 + 1, ry*2 + 1);
+	
+	k.makeGaussian(rx + 1, ry + 1, sx, sy);
+	
+	mTouchKernel.add2DWithWrap(k, -rx, -ry);
+	
+	
+	// block DC
+	k.makeGaussian(rx + 1, ry + 1, sx*0.5f, sy*0.5f);
+	k.scale(-1.);
+	mTouchKernel.add2DWithWrap(k, -rx, -ry);
+	
+	mTouchKernel(0, 0) = 0.;
+//	mTouchKernel(-1, 0) = 0.;
+//	mTouchKernel(1, 0) = 0.;
+//	mTouchKernel(0, 1) = 0.;
+//	mTouchKernel(0, -1) = 0.;
+	
+	mTouchKernel.dump(std::cout, true);
+	
+	
+	
+
+}
+
 #pragma mark process
 
 void TouchTracker::process(int)
@@ -1082,7 +1115,8 @@ void TouchTracker::process(int)
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
 		
-		// copy into padded signal for FFT
+		// copy into padded signal for power of two dims FFT
+		// (padding not actually needed for 64x8 sensor)
 		int w = mFilteredInput.getWidth();
 		int h = mFilteredInput.getHeight();
 		int wb = bitsToContain(w);
@@ -1091,38 +1125,28 @@ void TouchTracker::process(int)
 		int hh = 1<<hb;
 		int wBorder = (ww - w)/2;
 		int hBorder = (hh - h)/2;
-		
-		mFFT1.clear();
-		mFFT1.add2D(mFilteredInput, wBorder, hBorder);
+
 		
 		// forward FFT -> FFT1
-		FFT2DReal(mFFT1, 1);
+		mFFT1 = mFilteredInput;		
+		FFT2DReal(mFFT1);
 		
-		mFFT2 = mFFT1;
-		// mFFT2.scale(-1.f); // no difference
+		
+		// tests
+		mFFT1.multiply(mTouchKernel);
 		
 		// inverse FFT -> FFT2
-		FFT2DReal(mFFT2, -1);
+		mFFT2 = mFFT1;		
+		FFT2DRealInverse(mFFT2);
 		
-		mTestSignal.clear();
-		mTestSignal.add2D(mFFT1, -wBorder, -hBorder);
+		mTestSignal = mFFT1;
+		mTestSignal.scale(ww*hh);
 		
-		mTestSignal.scale(512);
 		
-		mTestSignal2.clear();
-		mTestSignal2.add2D(mFFT2, -wBorder, -hBorder);
+		mTestSignal2 = mFFT2;
 		
-		mTestSignal2.scale(512);
+			
 		
-		/*
-		for(int j=0; j<mTestSignal.getHeight(); ++j)
-		{
-			for(int i=0; i<mTestSignal.getWidth(); ++i)
-			{
-				mTestSignal2(i, j) = fabs(MLRand());
-			}
-		}
-		*/
 		
 		if(mMaxTouchesPerFrame > 0)
 		{

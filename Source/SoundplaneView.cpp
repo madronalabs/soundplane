@@ -366,7 +366,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	// page1->addTextButton("test", textButtonRect2.withCenter(7., 8.), "test");
 
 	pD = page1->addDial("view scale", dialRectSmall.withCenter(13, dialY - 0.125), "display_scale", c2);
-	pD->setRange(0.5, 10., 0.1);
+	pD->setRange(0.5, 20., 0.1);
 	pD->setDefault(1.);	
 	
 	pD = page1->addDial("touches", dialRect.withCenter(0.5, dialY), "max_touches", c2);

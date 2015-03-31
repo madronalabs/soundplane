@@ -347,7 +347,7 @@ void SoundplaneController::doOSCServicesMenu(int result)
 	mpSoundplaneModel->setProperty("osc_service_name", fullName);
 }
 
-class SoundplaneSetupThread  : public ThreadWithProgressWindow
+class SoundplaneSetupThread : public ThreadWithProgressWindow
 {
 public:
     SoundplaneSetupThread(SoundplaneModel* m, Component* parent)

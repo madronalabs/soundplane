@@ -282,7 +282,8 @@ private:
 	
 	void dumpTouches();
 	int countActiveTouches();
-	
+	void makeFilter(float sx, float sy);
+
 	int mWidth;
 	int mHeight;
 	MLSignal* mpIn;
@@ -347,6 +348,7 @@ private:
 	// new
 	MLSignal mFFT1;
 	MLSignal mFFT2;
+	MLSignal mTouchKernel;
 	
 	int mRetrigClock;
 	
