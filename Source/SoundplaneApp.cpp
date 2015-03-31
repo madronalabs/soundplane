@@ -23,15 +23,19 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpView = new SoundplaneView(mpModel, mpController, mpController);
 	mpView->initialize();		
 	mpController->setView(mpView);
-	    
+	
 	mpWindow = std::unique_ptr<MLAppWindow>(new MLAppWindow());	
 	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
 	
 	// add view to window but retain ownership here
 	mpWindow->setContent(mpView);
 	
+	// generate a persistent state for the Model
 	mpModelState = std::unique_ptr<MLAppState>(new MLAppState(mpModel, "", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
     
+	// generate a persistent state for the application's view. 
+	mpViewState = std::unique_ptr<MLAppState>(new MLAppState(mpView, "View", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
+	
 	MLConsole() << "Starting Soundplane...\n";
     
 #if GLX
@@ -42,13 +46,11 @@ void SoundplaneApp::initialise (const String& commandLine)
 	// do setup first time or after trashed prefs, or if control is held down
 	if (!mpModelState->loadStateFromAppStateFile()) 
 	{
+		setDefaultWindowSize();
 		mpController->doWelcomeTasks(); 
 	}
 	mpController->fetchAllProperties();
 	mpView->goToPage(0);
-	
-	// generate a persistent state for the application's view. 
-	mpViewState = std::unique_ptr<MLAppState>(new MLAppState(mpView, "View", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
 	
 	if(mpViewState->loadStateFromAppStateFile())
 	{
@@ -56,7 +58,14 @@ void SoundplaneApp::initialise (const String& commandLine)
 	}
 	else
 	{
-		// set default size
+		setDefaultWindowSize();
+	}
+}
+
+void SoundplaneApp::setDefaultWindowSize()
+{
+	if(mpWindow)
+	{
 		mpWindow->centreWithSize(800, 800*kSoundplaneViewGridUnitsY/kSoundplaneViewGridUnitsX);
 	}
 }
