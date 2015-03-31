@@ -23,6 +23,7 @@ public:
     ~SoundplaneApp(){}
 
     void initialise (const String& commandLine);
+	
     void shutdown();
 	
     const String getApplicationName()
@@ -39,6 +40,9 @@ public:
     void anotherInstanceStarted (const String& commandLine){}
 
 private:	
+	
+	void setDefaultWindowSize();
+	
 	SoundplaneModel* mpModel;
 	SoundplaneView* mpView;
 	SoundplaneController* mpController;	
