@@ -29,7 +29,6 @@ void SoundplaneTouchGraphView::mouseDrag (const MouseEvent& e)
 void SoundplaneTouchGraphView::renderTouchBarGraphs()
 {
 	if (!mpModel) return;
-	if (!isShowing()) return;
     
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
