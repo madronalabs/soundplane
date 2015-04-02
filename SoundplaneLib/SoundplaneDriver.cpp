@@ -602,11 +602,11 @@ void K1_clear_edges(float *pDest)
 	{
 		pDestRow = pDest + kSoundplaneANumCarriers*2*i;
 		const float zl = pDestRow[2];
-		pDestRow[0] = zl;
 		pDestRow[1] = zl;
+		pDestRow[0] = 0;
 		const float zr = pDestRow[kSoundplaneANumCarriers*2 - 3];
-		pDestRow[kSoundplaneANumCarriers*2 - 1] = zr;
 		pDestRow[kSoundplaneANumCarriers*2 - 2] = zr;
+		pDestRow[kSoundplaneANumCarriers*2 - 1] = 0;
 	}
 }
 

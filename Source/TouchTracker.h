@@ -81,6 +81,7 @@ public:
 	float x;
 	float y;
 	float z;
+	float x1, y1, z1;
 	float dz;
 	float xf; // filtered x
 	float yf; // filtered y

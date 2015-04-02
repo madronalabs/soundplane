@@ -785,7 +785,7 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		// from matching release curve over ~ 50 samples. 
 		if (!thresholdTest || (!templateTest && !overrideTest) || (!inhibitTest))
 		{			
-			/* debug
+			/*
 			if(!thresholdTest && (t.releaseCtr == 0))
 			{
 				debug() << refIdx << " REL thresholdFail: " << newZ << " at " << pos << "\n";	
@@ -798,7 +798,8 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			{
 				debug() << refIdx << " REL templateFail: " << t.tDist << " at " << pos << "\n";	
 			}			
-			*/
+			 */
+			
 			if(t.releaseCtr == 0)
 			{
 				t.releaseSlope = t.z / (float)kTouchReleaseFrames;
@@ -825,8 +826,12 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			float b1 = -x;
 			t.dz = newZ - t.z;	
 			
+			t.x1 = t.x;
+			t.y1 = t.y;
+			t.z1 = t.z;
+
 			// these can't be filtered too much or updateTouches will not work
-			// for fast movements.  Revisit when we rewrite the touch tracker.		
+			// for fast movements.  Revisit when we rewrite the touch tracker.					
 			t.x = a0*newX - b1*t.x;
 			t.y = a0*newY - b1*t.y;
 			t.z = newZ;
@@ -845,7 +850,6 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		// remove touch if filtered z is below threshold
 		if(t.zf < 0.)
 		{
-			// debug() << refIdx << " OFF with z:" << t.z << " td:" << t.tDist <<  "\n";	
 			removeTouchAtIndex(refIdx);
 		}
 		
@@ -889,33 +893,36 @@ Vec3 TouchTracker::closestTouch(Vec2 pos)
 	return(Vec3(t.x, t.y, t.z));
 }
 
+const float kInhibitRange = 8;
 // currently, touches inhibit other new touches near them, below
-// a threshold defined by a 1/r curve from the touch.
-// return the greatest inhibit threshold of any touch at the given position.		
+// a conical slope away from the touch position. 
+// return the greatest inhibit threshold of any other touch at the given position.		
 float TouchTracker::getInhibitThreshold(Vec2 a)
 {
-	float inhibitMax = 1.1f;
-	float inhibitRange = 4.f;
 	float maxInhibit = 0.f;
 	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
 		const Touch& u = mTouches[i];
 		if (u.isActive())
 		{
-			Vec2 b(u.x, u.y);				
+			Vec2 b(u.x1, u.y1);		// use previous position		
 			float dab = (a - b).magnitude();			
 			// don't check against touch at input position (same touch)
-			if(dab > 0.01f)
+			if(dab > 0.1f)
 			{
-				float dr = 1.f / (1.f + dab*(1.f/inhibitRange));							
-				float inhibitZ = inhibitMax*u.z*dr;
-				maxInhibit = max(maxInhibit, inhibitZ);
+				if(dab < kInhibitRange)
+				{					
+					float dru = 1.f - (dab / kInhibitRange);	
+					dru = clamp(dru, 0.f, 1.f);
+					float inhibitZ = u.z1*0.9*dru;
+					maxInhibit = max(maxInhibit, inhibitZ);
+				}
 			}
 		}
 	}
 	return maxInhibit;
 }
-	
+
 void TouchTracker::addPeakToKeyState(const MLSignal& in)
 {
 	mTemp.copy(in);
@@ -926,7 +933,7 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 		float z = peak.z();
 		
 		// add peak to key state, or bail
-		if (z > mOnThreshold*0.25f)
+		if (z > mOnThreshold)//*0.25f)
 		{			
 			Vec2 pos = in.correctPeak(peak.x(), peak.y(), 1.0f);	
 			int key = getKeyIndexAtPoint(pos);
@@ -937,8 +944,6 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 				MLRange kdzRange(mOnThreshold, mMaxForce*0.5, 0.001f, 1.f);
 				float iirCoeff = kdzRange.convertAndClip(z);	
 				float dt = mCalibrator.differenceFromTemplateTouch(in, pos);
-                
-                //debug() << "new PEAK dt: " << dt << "\n";
                 
 				keyState.mK = iirCoeff;
 				keyState.zIn = z;
@@ -991,8 +996,6 @@ void TouchTracker::findTouches()
 				{
 					if(!keyIsOccupied(i))
 					{
-						//debug() << "NEW touch at " << pos << " key:" << i << " z:" << z << " dz:" << kdz << " T:" << templateTest << " I:" << inhibitTest << "\n";
-
                         //	Touch t(pos.x(), pos.y(), z, kCoeff);
 						Touch t(pos.x(), pos.y(), z, kdz);
 						t.key = i;
@@ -1012,6 +1015,7 @@ void TouchTracker::findTouches()
 			
 			// set age for key state to inhibit retrigger
 			
+							
 						}
 					}
 
@@ -1083,15 +1087,27 @@ void TouchTracker::process(int)
 	if (!mpIn) return;
 	const MLSignal& in(*mpIn);
 	
+	mFilteredInput.copy(in);
+	
+	// clear edges (should do earlier! TODO)
+	int w = in.getWidth();
+	int h = in.getHeight();
+	for(int j=0; j<h; ++j)
+	{
+		mFilteredInput(0, j) = 0;
+		mFilteredInput(w - 1, j) = 0;
+	}
+	
 	if (mNeedsClear)
 	{
-		mBackground.copy(in);
+		mBackground.copy(mFilteredInput);
 		mBackgroundFilter.clear();
 		mNeedsClear = false;
 		return;
 	}
 		
-	mFilteredInput.copy(in);
+	// filter out any negative values, this shows up from capacitive coupling near front edge
+	mFilteredInput.sigMax(0.);		
 	
 	if (mCalibrator.isCalibrating())
 	{		
@@ -1174,10 +1190,11 @@ void TouchTracker::process(int)
 			}	
 			
 			// to make sum of touches a bit bigger 
-			//mSumOfTouches.scale(1.5f);
-			//mSumOfTouches.convolve3x3r(kc, ke, kk);
+			mSumOfTouches.scale(2.0f);
+			mSumOfTouches.convolve3x3r(kc, ke, kk);
+			mSumOfTouches.convolve3x3r(kc, ke, kk);
+			mSumOfTouches.convolve3x3r(kc, ke, kk);
 
-			//
 			// TODO lots of optimization here in onepole, 2D filter
 			//
 			// TODO the mean of lowpass background can be its own control source that will 
@@ -1209,7 +1226,7 @@ void TouchTracker::process(int)
 		//
 		mInputMinusBackground.copy(mFilteredInput);
 		mInputMinusBackground.subtract(mBackground);
-								
+		
 		// move or remove and filter existing touches
 		//
 		updateTouches(mInputMinusBackground);	
@@ -1909,10 +1926,6 @@ float TouchTracker::Calibrator::differenceFromTemplateTouch(const MLSignal& in, 
 	linearZ = clamp(linearZ, 0.00001f, 1.f);
 	float z1 = 1./linearZ;	
 	const MLSignal& a = getTemplate(pos);
-    
-    // TEST
-    //debug() << "TEMPLATE @ " << pos << ":\n";
-   // a.dump(true);
 	
 	// get normalized input values surrounding touch
 	int tr = kTemplateRadius;
