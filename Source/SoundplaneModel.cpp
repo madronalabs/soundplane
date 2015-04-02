@@ -204,6 +204,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			}
 			else if (p == "max_touches")
 			{
+				debug() << "TOUCHES: " << v << "\n";
 				mTracker.setMaxTouches(v);
 				mMIDIOutput.setMaxTouches(v);
 				mOSCOutput.setMaxTouches(v);

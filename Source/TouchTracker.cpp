@@ -1047,37 +1047,34 @@ void TouchTracker::KeyState::tick()
 
 void TouchTracker::makeFilter(float sxu, float syu)
 {
-	// TEMP
-	
-	float sx = 13.;
-	float sy = 3.;
+	float sx = 4.;
+	float sy = 2.; // smallest to avoid edge wrap
 	int rx = (int)sx;
 	int ry = (int)sy;
 	
-	// build touch kernel - TEST
 	MLSignal k(rx*2 + 1, ry*2 + 1);
-	
+	/*
+	// build touch kernel - TEST
 	k.makeGaussian(rx + 1, ry + 1, sx, sy);
+	k.scale(2.f);
+	mTouchKernel.add2DWithWrap(k, -rx - 1, -ry - 1);
+	*/
 	
-	mTouchKernel.add2DWithWrap(k, -rx, -ry);
+	mTouchKernel.fill(1.f);
+	
+	float m = 1.0f;
+	k.makeGaussian(rx + 1, ry + 1, sx*m, sy*m);
+	k.scale(-1.);
+	mTouchKernel.add2DWithWrap(k, -rx - 1, -ry - 1);
 	
 	
 	// block DC
-	k.makeGaussian(rx + 1, ry + 1, sx*0.5f, sy*0.5f);
-	k.scale(-1.);
-	mTouchKernel.add2DWithWrap(k, -rx, -ry);
-	
-	mTouchKernel(0, 0) = 0.;
-//	mTouchKernel(-1, 0) = 0.;
-//	mTouchKernel(1, 0) = 0.;
-//	mTouchKernel(0, 1) = 0.;
-//	mTouchKernel(0, -1) = 0.;
-	
+	//mTouchKernel.clear();
+	//mTouchKernel.add(1.0f);
+	//mTouchKernel(0, 0) = 1.;
+		
 	mTouchKernel.dump(std::cout, true);
 	
-	
-	
-
 }
 
 #pragma mark process
@@ -1131,22 +1128,12 @@ void TouchTracker::process(int)
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
 		
-		// copy into padded signal for power of two dims FFT
-		// (padding not actually needed for 64x8 sensor)
-		int w = mFilteredInput.getWidth();
-		int h = mFilteredInput.getHeight();
-		int wb = bitsToContain(w);
-		int hb = bitsToContain(h);
-		int ww = 1<<wb;
-		int hh = 1<<hb;
-		int wBorder = (ww - w)/2;
-		int hBorder = (hh - h)/2;
-
+		
+		//
 		
 		// forward FFT -> FFT1
 		mFFT1 = mFilteredInput;		
 		FFT2DReal(mFFT1);
-		
 		
 		// tests
 		mFFT1.multiply(mTouchKernel);
@@ -1155,13 +1142,13 @@ void TouchTracker::process(int)
 		mFFT2 = mFFT1;		
 		FFT2DRealInverse(mFFT2);
 		
-		mTestSignal = mFFT1;
-		mTestSignal.scale(ww*hh);
+	//	mFilteredInput.subtract(mFFT2);
 		
+		mTestSignal = mSumOfTouches;
+		mTestSignal.scale(50.);
 		
-		mTestSignal2 = mFFT2;
-		
-			
+	//	mTestSignal2 = mFFT2;
+	//	mTestSignal2.scale(50.);
 		
 		
 		if(mMaxTouchesPerFrame > 0)
@@ -1258,11 +1245,11 @@ void TouchTracker::process(int)
 
 		// get signals for viewer
 		// TODO optimize: we only have to copy these each time a view is needed
-		mCalibratedSignal.copy(mInputMinusBackground);
-		mCookedSignal.copy(mSumOfTouches);		
-		//mTestSignal.copy(mResidual);		
 		
-		// get subpixel xyz peak from residual
+		mCalibratedSignal.copy(mFilteredInput);		
+		mCookedSignal.copy(mSumOfTouches);		
+		
+		// add subpixel xyz peak from residual to key
 		addPeakToKeyState(mResidual);
 		
 		// update key states 

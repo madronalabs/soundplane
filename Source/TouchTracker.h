@@ -272,6 +272,7 @@ private:
 
 	Vec3 closestTouch(Vec2 pos);
 	float getInhibitThreshold(Vec2 a);
+	float getInhibitThresholdVerbose(Vec2 a);
 	void addPeakToKeyState(const MLSignal& in);
 	void findTouches();
 	void updateTouches(const MLSignal& in);
