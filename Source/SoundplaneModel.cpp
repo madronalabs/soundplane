@@ -1589,6 +1589,8 @@ void SoundplaneModel::endSelectCarriers()
 	MLConsole() << "carrier select done.\n";
 
 	mSelectingCarriers = false;
+	
+	enableOutput(true);	
 }
 
 const MLSignal* SoundplaneModel::getSignalForViewMode(const std::string& m)
