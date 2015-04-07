@@ -123,12 +123,15 @@ public:
 	const MLSignal& getTouchHistory() { return mTouchHistory; }
 	const MLSignal& getRawSignal() { return mRawSignal; }
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; }
+	const MLSignal& getRegionSignal() { return mRegionSignal; }
 	const MLSignal& getCookedSignal() { return mCookedSignal; }
 	const MLSignal& getTestSignal() { return mTestSignal; }
 	const MLSignal& getTrackerCalibrateSignal();
 	Vec3 getTrackerCalibratePeak();
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
+	
+	std::vector<Vec3> getPings() const { return mTracker.getPings(); }
 
 	const MLSignal* getSignalForViewMode(const std::string& m);
 
@@ -209,6 +212,7 @@ private:
 	
 	MLSignal mRawSignal;
 	MLSignal mCalibratedSignal;
+	MLSignal mRegionSignal;
 	MLSignal mCookedSignal;
 	MLSignal mTestSignal;
 	MLSignal mTestSignal2;

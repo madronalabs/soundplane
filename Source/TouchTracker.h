@@ -43,7 +43,6 @@ const int kNormMapSamples = 2048;
 // Soundplane A
 const int kCalibrateWidth = 64;
 const int kCalibrateHeight = 8;
-
 const int kTrackerMaxTouches = 16;
 
 const int kPendingTouchFrames = 10;
@@ -180,33 +179,6 @@ public:
 		int age;
 	};
 	
-	// We keep a vector of KeyStates, one for each key over the surface. 
-	// This allows sensor data to be collected and filtered before it triggers a touch.
-	//
-	class KeyState
-	{
-	public:
-		KeyState() : zIn(0.), dtIn(1.), dtOut(1.), dzIn(0.), dzOut(0.), mK(1.f), age(0) {}
-		~KeyState() {}
-		
-		void tick();
-		
-		float zIn;
-		float zOut;
-		Vec2 posIn;	
-		Vec2 posOut;	
-		Vec2 mKeyCenter;		
-		float dtIn;
-		float dtOut;
-		
-		float dzIn;
-		float dzOut;
-		
-		// coefficient for one pole filters
-		float mK;
-		int age;
-	};	
-
 	TouchTracker(int w, int h);
 	~TouchTracker();
 
@@ -220,7 +192,6 @@ public:
 	Vec2 getKeyCenterByIndex(int i);
 	int touchOccupyingKey(int k);
 	bool keyIsOccupied(int k) { return (touchOccupyingKey(k) >= 0); }
-	int getNeighborFlags(int key);
 	
 	int addTouch(const Touch& t);
 	int getTouchIndexAtKey(const int k);
@@ -245,6 +216,7 @@ public:
 	const MLSignal& getTestSignal() { return mTestSignal; } 
 	const MLSignal& getTestSignal2() { return mTestSignal2; } 
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; } 
+	const MLSignal& getRegionSignal() { return mRegions; } 
 	const MLSignal& getCookedSignal() { return mCookedSignal; } 
 	const MLSignal& getCalibrationProgressSignal() { return mCalibrationProgressSignal; } 
 	const MLSignal& getCalibrateSignal() { return mCalibrator.mVisSignal; }		
@@ -265,6 +237,9 @@ public:
 	void setRotate(bool b);
 	void setUseTestSignal(bool b) { mUseTestSignal = b; }
 	void doNormalize(bool b) { mDoNormalize = b; }
+	
+	// new
+	std::vector<Vec3> getPings() const { const juce::ScopedLock lock(mPingsLock); return mPings; }
 
 private:	
 
@@ -273,10 +248,6 @@ private:
 	Vec3 closestTouch(Vec2 pos);
 	float getInhibitThreshold(Vec2 a);
 	float getInhibitThresholdVerbose(Vec2 a);
-	void addPeakToKeyState(const MLSignal& in);
-	void findTouches();
-	void updateTouches(const MLSignal& in);
-	void filterTouches();
 
 	Vec2 adjustPeak(const MLSignal& in, int x, int y);
 	Vec2 adjustPeakToTemplate(const MLSignal& in, int x, int y);
@@ -341,6 +312,24 @@ private:
 	MLSignal mTemplateMask;	
 	MLSignal mDzSignal;	
 	MLSignal mRetrigTimer;
+	
+	// new
+	void getRegions();
+	void findPings();
+	void filterAndOutputTouches();
+	
+	// new
+	MLSignal mRegions; 
+	MLSignal mRowPeaks; 
+	
+	// a ping is a guess at where a touch is over a particular row.
+	std::vector<Vec3> mPings;
+	juce::CriticalSection mPingsLock;
+	
+	MLSignal mRowExtentStarts;
+	MLSignal mRowExtentEnds;
+	// ? MLSignal mPeaksByKey; // dims: (keys, rows)
+	
 
 	AsymmetricOnepoleMatrix mBackgroundFilter;
 	MLSignal mBackgroundFilterFrequency;
@@ -360,12 +349,11 @@ private:
 	bool mDoNormalize;
 	bool mUseTestSignal;
 	
-	std::vector<Vec3> mPeaks;
+
 	std::vector<Touch> mTouches;
 	std::vector<Touch> mTouchesToSort;
 	
 	int mNumKeys;
-	std::vector<KeyState> mKeyStates;
 
 	int mCount;
 	

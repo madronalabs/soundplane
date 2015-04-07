@@ -200,6 +200,8 @@ void SoundplaneController::setupMenus()
 	mMenuMap["viewmode"] = viewMenu;
 	viewMenu->addItem("raw data");
 	viewMenu->addItem("calibrated");
+	viewMenu->addItem("regions");
+	viewMenu->addItem("pings");
 	viewMenu->addItem("cooked");
 	viewMenu->addItem("xy");
 	viewMenu->addItem("test1");

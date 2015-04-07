@@ -60,6 +60,7 @@ SoundplaneModel::SoundplaneModel() :
 	
 	mRawSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mCalibratedSignal(kSoundplaneWidth, kSoundplaneHeight),
+	mRegionSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTempSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mCookedSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTestSignal(kSoundplaneWidth, kSoundplaneHeight),
@@ -134,6 +135,7 @@ SoundplaneModel::SoundplaneModel() :
 	// set up view modes map
 	mViewModeToSignalMap["raw data"] = &mRawSignal;
 	mViewModeToSignalMap["calibrated"] = &mCalibratedSignal;
+	mViewModeToSignalMap["regions"] = &mRegionSignal;
 	mViewModeToSignalMap["cooked"] = &mCookedSignal;
 	mViewModeToSignalMap["xy"] = &mCalibratedSignal;
 	
@@ -1273,7 +1275,9 @@ void SoundplaneModel::filterAndSendData()
 	mTracker.process(1);
 	
 	// get calibrated and cooked signals for viewing
+	// TODO get rid of these copies
 	mCalibratedSignal = mTracker.getCalibratedSignal();								
+	mRegionSignal = mTracker.getRegionSignal();								
 	mCookedSignal = mTracker.getCookedSignal();
 	mTestSignal = mTracker.getTestSignal();
 	mTestSignal2 = mTracker.getTestSignal2();
