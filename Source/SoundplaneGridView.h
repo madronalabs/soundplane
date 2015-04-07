@@ -29,24 +29,40 @@ public:
 	
 	// MLModelListener implementation
 	void doPropertyChangeAction(MLSymbol , const MLProperty & );
+	
+	void setModel(SoundplaneModel* m);
+	
+private:
  
+	void resizeWidget(const MLRect& b, const int);
+	
 	void renderOpenGL();
+	void setupOrthoView();
+	void drawSurfaceOverlay();
 	void renderXYGrid();
+	void renderRegions();
+	void renderPings();
 	void renderZGrid();
 	void renderBarChart();
 	void renderBarChartRaw();
-
- 	void setModel(SoundplaneModel* m);
  	
-private:
 	Vec2 worldToScreen(const Vec3& world); 
-
-	void drawDot(Vec2 pos);
-	void drawTextAt(float x, float y, float z, const char* ps);
+	
 	void drawInfoBox(Vec3 pos, char* text, int colorIndex);
-	void drawTestVec();
 
 	SoundplaneModel* mpModel;
+	bool mInitialized;
+	bool mResized;
+	
+	MLRange mKeyRangeX, mKeyRangeY;
+	MLRange mSensorRangeX, mSensorRangeY;
+	MLRect mKeyRect, mSensorRect;
+	int mViewWidth, mViewHeight;
+	float mViewScale;
+	int mSensorHeight, mSensorWidth;
+	int mLeftSensor, mRightSensor;
+	int mKeyHeight, mKeyWidth;
+
 };
 
 #endif // __SOUNDPLANE_GRID_VIEW__
