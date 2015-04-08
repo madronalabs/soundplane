@@ -51,7 +51,8 @@ TouchTracker::TouchTracker(int w, int h) :
 	mPrevTouchForRotate(0),
 	mRotate(false),
 	mDoNormalize(true),
-	mUseTestSignal(false)
+	mUseTestSignal(false),
+	mTemplateSamples(0)
 {
 	mTouches.resize(kTrackerMaxTouches);	
 	mTouchesToSort.resize(kTrackerMaxTouches);	
@@ -87,23 +88,39 @@ TouchTracker::TouchTracker(int w, int h) :
 	mBackgroundFilter.setSampleRate(mSampleRate);
 	mTemplateScaled.setDims (kTemplateSize, kTemplateSize);
 	
-	
 	// new
 	mRegions.setDims(w, h); 
 	mRowPeaks.setDims(w, h); 
-	mRowExtentStarts.setDims(w, h);
-	mRowExtentEnds.setDims(w, h);
+
+	//mTemplateSpanSum.setDims(kTemplateSpanWidth);
+	
+//	mTemplateSpan = MLSignal {0.17, 0.52, 0.86, 1.00, 0.86, 0.52, 0.17};// 12
+	mTemplateSpan = MLSignal {0.04, 0.12, 0.69, 1.00, 0.69, 0.12, 0.04}; // 16 frequencies
+	
+	mTemplateSpan.dump(std::cout, true);
 	
 	// allocate max number of possible peaks
-	//mPings.resize(w*h);
+	//mSpans.resize(w*h);
 	
 	// NEW
 	int wb = bitsToContain(w);
 	int hb = bitsToContain(h);
+	
+	// TODO complex signals as 2 z frames?
 	mFFT1.setDims(1 << wb, 1 << hb);
+	mFFT1i.setDims(1 << wb, 1 << hb);
+	
 	mFFT2.setDims(1 << wb, 1 << hb);
+	mTouchFrequencyMask.setDims(1 << wb, 1 << hb);
+	
 	mTouchKernel.setDims(w, h);
-	makeFilter(3., 2.);
+	mTouchKerneli.setDims(w, h);
+	
+	makeFrequencyMask();
+	
+	// set sum dims to match template and clear
+	mTemplateSpanSum = mTemplateSpan;
+	mTemplateSpanSum.clear();
 
 }
 		
@@ -174,7 +191,6 @@ int TouchTracker::getKeyIndexAtPoint(const Vec2 p)
 	}
 	return k;
 }
-
 
 // return the center of the key over the point p.
 //
@@ -476,11 +492,11 @@ float TouchTracker::getInhibitThreshold(Vec2 a)
 	return maxInhibit;
 }
 
-void TouchTracker::makeFilter(float sxu, float syu)
+void TouchTracker::makeFrequencyMask()
 {
-	int h = mTouchKernel.getHeight();
-	int w = mTouchKernel.getWidth();
-	float c = 12.f;
+	int h = mTouchFrequencyMask.getHeight();
+	int w = mTouchFrequencyMask.getWidth();
+	float c = 16;
 	float sum = 0.f;
 	for(int j=0; j<h; ++j)
 	{
@@ -505,15 +521,15 @@ void TouchTracker::makeFilter(float sxu, float syu)
 				f = 0.;
 			}
 			
-			mTouchKernel(i, j) = f;
+			mTouchFrequencyMask(i, j) = f;
 			sum += f;
 		}
 	}
 	
 	// normalize
 	sum /= h;
-	mTouchKernel.scale((float)w/sum);
-	mTouchKernel.dump(std::cout, true);
+	mTouchFrequencyMask.scale((float)w/sum);
+	mTouchFrequencyMask.dump(std::cout, true);
 }
 
 #pragma mark process
@@ -568,18 +584,53 @@ void TouchTracker::process(int)
 		{
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
-		
+			
 		
 		// forward FFT -> FFT1
-		mFFT1 = mFilteredInput;		
-		FFTEachRowReal(mFFT1);
+		mFFT1 = mFilteredInput;	
+		mFFT1i.clear();
+		FFTEachRow(mFFT1, mFFT1i);
 		
-		// tests
-		mFFT1.multiply(mTouchKernel);
+		// make touch kernel duplicated on each row
+		mTouchKernel.clear();
+		mTouchKerneli.clear();
+		for(int j=0; j<h; ++j)
+		{
+			// put template span in kernel row centered at 0 = DC
+			int kw = mTemplateSpan.getWidth();
+			int xOffset = kw/2;
+			for(int i = 0; i < kw; ++i)
+			{
+				mTouchKernel((i - xOffset)%w, j) = mTemplateSpan[i];
+			}		
+		}
+		float kernelRowSum = mTouchKernel.getSum() / h;
+		mTouchKernel.scale(2.f * w / kernelRowSum);
+		// OK
 		
-		// inverse FFT -> FFT2
-		mFFT2 = mFFT1;		
-		FFTEachRowRealInverse(mFFT2);
+		// convert touch kernel to freq. domain
+		FFTEachRow(mTouchKernel, mTouchKerneli);
+		// zero complex components
+		mTouchKerneli.clear();
+		// TODO store
+		
+		// deconvolve, dividing by touch kernel in the freq. domain
+		// question: no imaginary component in freq domain at this point?
+		
+		// remove high freqs. and DC in the freq. domain
+		mFFT1.multiply(mTouchFrequencyMask);
+		mFFT1i.multiply(mTouchFrequencyMask);
+
+		// sharpen
+		// temp? baaaad syntax
+		// could be MLSignal::complexDivide();
+		// divide in frequency domain by touch kernel and put results in (mFFT1, mFFT1i)
+		FFTEachRowDivide(mFFT1, mFFT1i, mTouchKernel, mTouchKerneli);
+		
+		// back to spatial domain
+		FFTEachRowInverse(mFFT1, mFFT1i);
+
+		mFFT2 = mFFT1;
 				
 		mTestSignal = mFilteredInput;
 		mTestSignal.scale(50.);
@@ -593,11 +644,8 @@ void TouchTracker::process(int)
 		
 		if(mMaxTouchesPerFrame > 0)
 		{
-			
-			// getRegions();
-			
-			findPings();
-		
+			findSpans();
+			findPings();		
 		}
 
 		filterAndOutputTouches();
@@ -610,13 +658,14 @@ void TouchTracker::process(int)
 		mCount = 0;
 		//dumpTouches();
 		
-		debug() << "\n PINGS:\n";
-		for(auto it = mPings.begin(); it != mPings.end(); it++)
+		/*
+		debug() << "\n SPANS: \n";
+		for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
 		{
-			debug() << *it << " ";
+			Vec3 s = *it;
+			debug() << s.y() - s.x() << " ";
 		}
-		debug() << "\n\n";
-		
+		 */
 	}
 #endif	
 }
@@ -721,23 +770,27 @@ void TouchTracker::getRegions()
 	out.add2D(r, -1, -1);
 }
 
-void TouchTracker::findPings()
+// find spans where pressure on a given row exceeds kSpanThreshold at the start and end, 
+// end exceeds mOnThreshold at some point during the span.
+void TouchTracker::findSpans()
 {
-	float t = mOnThreshold;
-	assert(t >= 0.f);
+	// constant span start / end pressure, chosen so that span lengths will stay as constant as possible. 
+	const float t = kSpanThreshold;
+	
+	// some point on the span must be over this threshold to be recognized.
+	const float zThresh = mOnThreshold;
 	
 	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
 	int h = in.getHeight();
 
-	const juce::ScopedLock lock(mPingsLock);
-	mPings.clear();
-	
-	mPings.push_back(Vec3(12.0, 13.0, 4)); 
+	const juce::ScopedLock lock(mSpansLock);
+	mSpans.clear();
  
 	for(int j=0; j<h; ++j)
 	{
 		bool spanActive = false;
+		bool spanExceedsThreshold = false;
 		float spanStart, spanEnd;
 		float z1 = 0.f;
 		float z2 = 0.f;
@@ -749,33 +802,133 @@ void TouchTracker::findPings()
 			i2 = i;
 			z1 = z2;
 			z2 = in(i, j);
-			if((z1 < t) && (z2 > t))
+			if((z1 <= t) && (z2 > t))
 			{
 				// get intersection and start a span
 				za = t - z1;
 				zb = z2 - t;
 				a = za/(za + zb);
-				spanStart = i + a;
+				spanStart = i - 1. + a;
 				spanActive = true;
+				if(z2 > zThresh) spanExceedsThreshold = true;
 			}
-			else if((z1 > t) && (z2 < t))
+			else if((z1 > t) && (z2 <= t))
 			{
 				// get intersection and end the span				
 				za = z1 - t;
 				zb = t - z2;
 				a = za/(za + zb);
-				spanEnd = i + a;
+				spanEnd = i - 1. + a;
 				
-				// start and end
-				mPings.push_back(Vec3(spanStart, spanEnd, j)); 
+				if(spanExceedsThreshold)
+				{
+					mSpans.push_back(Vec3(spanStart, spanEnd, j)); 
+				}
 				spanActive = false;
+				spanExceedsThreshold = false;
+			}
+			else if(spanActive)
+			{
+				if(z2 > zThresh) spanExceedsThreshold = true;
 			}
 		}
-		if(spanActive)
+		// end row
+		if(spanActive && spanExceedsThreshold)
 		{
 			spanEnd = w - 1;
-			mPings.push_back(Vec3(spanStart, spanEnd, j)); 
-			spanActive = false;
+			mSpans.push_back(Vec3(spanStart, spanEnd, j)); 
+		}
+	}
+}
+
+
+void TouchTracker::collectTemplate()
+{	
+	const MLSignal& in = mFFT2;
+	int w = in.getWidth();
+	int h = in.getHeight();
+	int kw = mTemplateSpan.getWidth();
+	
+	float spanBuf[w];
+	const juce::ScopedLock lock(mSpansLock);
+	
+	for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
+	{
+		Vec3 s = *mSpans.begin();
+		float a = s.x();
+		float b = s.y();
+		float length = b - a; 
+		int row = s.z();
+		float m = (a + b)/2.;
+		
+		int offset = (float)(kw - 1)/2.f;
+		for(int i = 0; i < kw; ++i)
+		{
+			float x = m - offset + i;
+			mTemplateSpan[i] = in.getInterpolatedLinear(x, row);
+		}		
+		
+		float zMax = mTemplateSpan[kw/2];
+		mTemplateSpan.scale(1.f/zMax);
+		
+		mTemplateSpanSum.add(mTemplateSpan);	
+		mTemplateSamples++;
+	}
+	
+	if(mCount == 0)
+	{
+		debug() << "\nSum: " ;
+		mTemplateSpanSum.dump(std::cout, true);
+		debug() << "\n Samples: " << mTemplateSamples << "\n";
+		MLSignal d(kw);
+		d = mTemplateSpanSum;
+		d.scale(1.f/(float)mTemplateSamples);
+		debug() << "\nTemplate: " ;
+		d.dump(std::cout, true);
+		debug() << "\n\n";
+		
+	}
+}
+
+// from spans, get pings. A ping is a spot where it's likely a touch lies directly over a sensor row.
+void TouchTracker::findPings()
+{	
+	const MLSignal& in = mFFT2;
+	int w = in.getWidth();
+	int h = in.getHeight();
+
+	const juce::ScopedLock lock(mPingsLock);
+	mPings.clear();
+	
+	MLRange zRange(mOnThreshold, mMaxForce, 0., 1.);
+
+
+	for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
+	{
+		Vec3 s = *it;
+		float a = s.x();
+		float b = s.y();
+		int row = s.z();
+		
+		// from ends of span inward, find best fits for touches and remove them.
+		
+		
+		// TEST: best integer guess and distribute
+		// NO - creates glitches
+		float length = b - a; // what to do about surface ends?
+		const float minSpan = 6.f;
+		const float sensorsPerKey = 2.f;
+		float fn;
+		fn = 1.0f + ((length - minSpan) / sensorsPerKey);
+		fn = max(fn, 1.f);
+		fn = roundf(fn);
+		int n = fn;
+		float ends = (length - fn*sensorsPerKey) / 2.f;
+		for(int k = 0; k < n; ++k)
+		{
+			float pingX = a + ends + (k + 0.5f)*sensorsPerKey;
+			float z = in.getInterpolatedLinear(pingX, row);
+			mPings.push_back(Vec3(pingX, row, zRange(z)));
 		}
 	}
 }

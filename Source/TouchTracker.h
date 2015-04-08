@@ -50,6 +50,10 @@ const int kTouchReleaseFrames = 100;
 const int kAttackFrames = 100;
 const int kMaxPeaksPerFrame = 4;
 
+// new constants
+const float kSpanThreshold = 0.002f;
+//const int kTemplateSpanWidth = 9;
+
 typedef enum
 {
 	rectangularA = 0,
@@ -145,7 +149,6 @@ public:
 		Vec2 mVisPeak;
 		float mAvgDistance;
 		
-	private:	
 		void makeDefaultTemplate();
 		float makeNormalizeMap();
 		
@@ -239,6 +242,7 @@ public:
 	void doNormalize(bool b) { mDoNormalize = b; }
 	
 	// new
+	std::vector<Vec3> getSpans() const { const juce::ScopedLock lock(mSpansLock); return mSpans; }
 	std::vector<Vec3> getPings() const { const juce::ScopedLock lock(mPingsLock); return mPings; }
 
 private:	
@@ -255,7 +259,7 @@ private:
 	
 	void dumpTouches();
 	int countActiveTouches();
-	void makeFilter(float sx, float sy);
+	void makeFrequencyMask();
 
 	int mWidth;
 	int mHeight;
@@ -315,21 +319,22 @@ private:
 	
 	// new
 	void getRegions();
+	void findSpans();
+	void collectTemplate();
 	void findPings();
 	void filterAndOutputTouches();
 	
 	// new
 	MLSignal mRegions; 
 	MLSignal mRowPeaks; 
+
 	
+	std::vector<Vec3> mSpans;
+	juce::CriticalSection mSpansLock;
 	// a ping is a guess at where a touch is over a particular row.
 	std::vector<Vec3> mPings;
 	juce::CriticalSection mPingsLock;
-	
-	MLSignal mRowExtentStarts;
-	MLSignal mRowExtentEnds;
-	// ? MLSignal mPeaksByKey; // dims: (keys, rows)
-	
+
 
 	AsymmetricOnepoleMatrix mBackgroundFilter;
 	MLSignal mBackgroundFilterFrequency;
@@ -338,8 +343,15 @@ private:
 	
 	// new
 	MLSignal mFFT1;
+	MLSignal mFFT1i;
 	MLSignal mFFT2;
+	MLSignal mTouchFrequencyMask;
 	MLSignal mTouchKernel;
+	MLSignal mTouchKerneli;
+	
+	MLSignal mTemplateSpan;
+	MLSignal mTemplateSpanSum;
+	int mTemplateSamples;
 	
 	int mRetrigClock;
 	

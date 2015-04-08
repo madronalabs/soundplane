@@ -120,7 +120,7 @@ void SoundplaneGridView::drawSurfaceOverlay()
 	//
 	Vec4 lineColor;
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 0.5f);
-	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
+	Vec4 gray(0.2f, 0.2f, 0.2f, 0.5f);
 	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
 	
@@ -130,7 +130,7 @@ void SoundplaneGridView::drawSurfaceOverlay()
 	glLineWidth(1.0*mViewScale);
 	
 	// draw lines at key grid
-	lineColor = darkBlue;
+	lineColor = gray;
 
 	// horiz lines
 	glColor4fv(&lineColor[0]);
@@ -168,7 +168,6 @@ void SoundplaneGridView::drawSurfaceOverlay()
 		float x = mKeyRangeX.convert(i + 0.5);
 		float y = mKeyRangeY.convert(2.5);
 		int k = i%12;
-		glColor4f(1.0f, 1.0f, 1.0f, 0.75f);
 		if(k == 0)
 		{
 			MLGL::drawDot(Vec2(x, y - dotSize*1.5), dotSize);
@@ -189,7 +188,6 @@ void SoundplaneGridView::setModel(SoundplaneModel* m)
 
 void SoundplaneGridView::renderXYGrid()
 {
-	int state = mpModel->getDeviceState();
 	float fMax = mpModel->getFloatProperty("z_max");
 	
 	const MLSignal* calSignal = mpModel->getSignalForViewMode("calibrated");
@@ -306,14 +304,7 @@ void SoundplaneGridView::renderRegions()
 	const MLSignal* regionSignal = mpModel->getSignalForViewMode("regions");
 	if(!regionSignal) return;
 	
-	// draw stuff in immediate mode. 
-	// TODO don't use fixed function pipeline.
-	//
-	Vec4 lineColor;
-	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
 	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
-	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
-	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
 	
 	// fill regions
 	for(int j=0; j<mSensorHeight; ++j)
@@ -354,57 +345,55 @@ void SoundplaneGridView::renderPings()
 	// draw stuff in immediate mode. 
 	// TODO don't use fixed function pipeline.
 	//
-	Vec4 lineColor;
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
-	Vec4 darkRed(0.5f, 0.3f, 0.3f, 0.5f);
-	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
-	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
-	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
-	
+	Vec4 white(1.f, 1.f, 1.f, 1.f);
+
 	float displayScale = mpModel->getFloatProperty("display_scale");
 
 	// draw spans
-	
-	std::vector<Vec3> pings = mpModel->getPings();
-	if(pings.size() > 0)
+	std::vector<Vec3> spans = mpModel->getSpans();
+	if(spans.size() > 0)
+	for(auto it = spans.begin(); it != spans.end(); it++)
 	{
+		Vec3 p = *it;
+		
+		float ph = 0.4;
+		float x1 = mSensorRangeX.convert(p.x());
+		float x2 = mSensorRangeX.convert(p.y());
+		float y1 = mSensorRangeY.convert(p.z() - ph);	
+		float y2 = mSensorRangeY.convert(p.z() + ph);	
 
-		for(auto it = pings.begin(); it != pings.end(); it++)
-		{
-			Vec3 p = *it;
-			
-			float ph = 0.25;
-			float x1 = mSensorRangeX.convert(p.x());
-			float x2 = mSensorRangeX.convert(p.y());
-			float y1 = mSensorRangeY.convert(p.z() - ph);	
-			float y2 = mSensorRangeY.convert(p.z() + ph);	
-			
-			float z = 0.1f*displayScale;// (*viewSignal)(x, y)*scale + offset;
-			
-			glColor4fv(&darkBlue[0]);
-			//MLGL::drawDot(Vec2(x, y), z);
-			
-			
-			MLRect tr(x1, y1, x2 - x1, y2 - y1);
-			MLGL::strokeRect(tr, 1.0*mViewScale);
-		}	
-	}
+		glColor4fv(&darkBlue[0]);
+		
+		MLRect tr(x1, y1, x2 - x1, y2 - y1);
+		MLGL::strokeRect(tr, 1.0*mViewScale);
+	}	
+
+	// draw pings
+	float dotSize = fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
+	std::vector<Vec3> pings = mpModel->getPings();
+	for(auto it = pings.begin(); it != pings.end(); it++)
+	{
+		Vec3 p = *it;
+		
+		float x = mSensorRangeX.convert(p.x());
+		float y = mSensorRangeY.convert(p.y());
+		float z = p.z();
+
+		Vec4 dotColor = darkBlue;
+		dotColor[3] = z;
+		glColor4fv(&dotColor[0]);
+		
+		// draw dot on surface
+		MLGL::drawDot(Vec2(x, y), dotSize);
+		
+	}	
 }
 
 void SoundplaneGridView::renderZGrid()
 {
 	if (!mpModel) return;
-
-	/*
-    ScopedPointer<LowLevelGraphicsContext> glRenderer
-        (createOpenGLGraphicsContext (*getGLContext(), viewW, viewH));
-    
-	if (!glRenderer) return;
-
-	Graphics g (*glRenderer);
-	
-	g.addTransform (AffineTransform::scale (viewScale));    // draw grid
-	*/
+	bool zeroClip = false;
 	
 	float myAspect = (float)mViewWidth / (float)mViewHeight;
 	float soundplaneAspect = 4.f; // TEMP
@@ -444,12 +433,6 @@ void SoundplaneGridView::renderZGrid()
 		preOffset = -0.1;
 		separateSurfaces = true;
 	}
-	else if(viewMode == "norm map")
-	{
-		// offset = -displayScale;
-		leftEdge += 1;
-		rightEdge -= 1;
-	}
 
 	// draw stuff in immediate mode. TODO vertex buffers and modern GL code in general.
 	//
@@ -484,7 +467,9 @@ void SoundplaneGridView::renderZGrid()
 			{
 				float x = xSensorRange.convert(i);
 				float y = ySensorRange.convert(j);
-				float zMean = ((*viewSignal)(i, j) + preOffset)*gridScale;
+				float z = (*viewSignal)(i, j);
+				if(zeroClip) { z = max(z, 0.f); }
+				float zMean = (z + preOffset)*gridScale;
 				glVertex3f(x, y, -zMean);
 			}
 			glEnd();
@@ -497,12 +482,16 @@ void SoundplaneGridView::renderZGrid()
 				{
 					float x1 = xSensorRange.convert(i);
 					float y1 = ySensorRange.convert(j);
-					float z1 = ((*viewSignal)(i, j) + preOffset)*gridScale;
+					float z = (*viewSignal)(i, j);
+					if(zeroClip) { z = max(z, 0.f); }
+					float z1 = (z + preOffset)*gridScale;
 					glVertex3f(x1, y1, -z1);
 					
 					float x2 = xSensorRange.convert(i + 1);
 					float y2 = ySensorRange.convert(j);
-					float z2 = ((*viewSignal)(i + 1, j) + preOffset)*gridScale;
+					z = (*viewSignal)(i + 1, j);
+					if(zeroClip) { z = max(z, 0.f); }
+					float z2 = (z + preOffset)*gridScale;
 					glVertex3f(x2, y2, -z2);
 				}
 				glEnd();
@@ -524,7 +513,9 @@ void SoundplaneGridView::renderZGrid()
 			{
 				float x = xSensorRange.convert(i);
 				float y = ySensorRange.convert(j);
-				float z = ((*viewSignal)(i, j) + preOffset)*gridScale;
+				float z0 = (*viewSignal)(i, j);
+				if(zeroClip) { z0 = max(z0, 0.f); }
+				float z = (z0 + preOffset)*gridScale;
 				glVertex3f(x, y, -z);
 			}
 			glEnd();
@@ -537,16 +528,13 @@ void SoundplaneGridView::renderZGrid()
 			{
 				float x = xSensorRange.convert(i);
 				float y = ySensorRange.convert(j);
-				float z = ((*viewSignal)(i, j) + preOffset)*gridScale;
+				float z0 = (*viewSignal)(i, j);
+				if(zeroClip) { z0 = max(z0, 0.f); }
+				float z = (z0 + preOffset)*gridScale;
 				glVertex3f(x, y, -z);
 			}
 			glEnd();
 		}
-	}
-	
-	if(state != kDeviceHasIsochSync)
-	{	// TODO draw question mark
-		
 	}
 
 	float dotSize = fabs(mKeyRangeY(0.08f) - mKeyRangeY(0.f));
@@ -595,7 +583,6 @@ void SoundplaneGridView::renderBarChartRaw()
 	
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	float scale = displayScale;
-	float offset = 0.f;
 	
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 0.5f);
 	Vec4 darkRed(0.5f, 0.3f, 0.3f, 0.5f);
@@ -605,10 +592,10 @@ void SoundplaneGridView::renderBarChartRaw()
 	{
 		for(int i=0; i<mSensorWidth; ++i)
 		{
-			float x = mSensorRangeX.convert(i + 0.5);
-			float y = mSensorRangeY.convert(j + 0.5);
+			float x = mSensorRangeX.convert(i);
+			float y = mSensorRangeY.convert(j);
 			
-			float z = (*viewSignal)(i, j)*scale + offset;
+			float z = (*viewSignal)(i, j)*scale;
 			
 			if(z > 0)
 			{
@@ -626,7 +613,6 @@ void SoundplaneGridView::renderBarChartRaw()
 void SoundplaneGridView::resizeWidget(const MLRect& b, const int u)
 {
 	MLWidget::resizeWidget(b, u);
-	debug() << "REsizing\n";	
 
 	mKeyWidth = 30;
 	mKeyHeight = 5;
@@ -647,9 +633,11 @@ void SoundplaneGridView::resizeWidget(const MLRect& b, const int u)
 	mKeyRect = MLRect(0, 0, mKeyWidth, mKeyHeight);
 	mSensorRect = MLRect(1.5, -0.5, 60., 8.);
 	
+	// key drawing scales. an integer key position corresponds to the left edge of a key on the surface. 
 	mKeyRangeX = MLRange (mKeyRect.left(), mKeyRect.left() + mKeyRect.width(), margin, mViewWidth - margin);
 	mKeyRangeY = MLRange (mKeyRect.top(), mKeyRect.top() + mKeyRect.height(), margin, mViewHeight - margin);
 
+	// sensors. an integer position is the middle of a sensor.
 	mSensorRangeX = MLRange (mSensorRect.left(), mSensorRect.left() + mSensorRect.width(), margin, mViewWidth - margin);
 	mSensorRangeY = MLRange (mSensorRect.top(), mSensorRect.top() + mSensorRect.height(), margin, mViewHeight - margin);
 
@@ -662,6 +650,7 @@ void SoundplaneGridView::renderOpenGL()
     jassert (OpenGLHelpers::isContextActive());
     if(!mpModel) return;    
 	if(!mResized) return;
+	int state = mpModel->getDeviceState();
 	
     glEnable(GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
