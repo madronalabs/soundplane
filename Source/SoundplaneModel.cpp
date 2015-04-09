@@ -63,7 +63,8 @@ SoundplaneModel::SoundplaneModel() :
 	mRegionSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTempSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mCookedSignal(kSoundplaneWidth, kSoundplaneHeight),
-	mTestSignal(kSoundplaneWidth, kSoundplaneHeight),
+//	mTestSignal(kSoundplaneWidth, kSoundplaneHeight),
+	mFitTestSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTestSignal2(kSoundplaneWidth, kSoundplaneHeight),
 
 	mCalibrating(false),
@@ -139,7 +140,8 @@ SoundplaneModel::SoundplaneModel() :
 	mViewModeToSignalMap["cooked"] = &mCookedSignal;
 	mViewModeToSignalMap["xy"] = &mCalibratedSignal;
 	
-	mViewModeToSignalMap["test1"] = &mTestSignal;
+	mViewModeToSignalMap["fit test"] = &mFitTestSignal;
+	
 	mViewModeToSignalMap["test2"] = &mTestSignal2;
 	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());
 	
@@ -1279,7 +1281,8 @@ void SoundplaneModel::filterAndSendData()
 	mCalibratedSignal = mTracker.getCalibratedSignal();								
 	mRegionSignal = mTracker.getRegionSignal();								
 	mCookedSignal = mTracker.getCookedSignal();
-	mTestSignal = mTracker.getTestSignal();
+	
+	mFitTestSignal = mTracker.getFitTestSignal();
 	mTestSignal2 = mTracker.getTestSignal2();
 	
 	sendTouchDataToZones();

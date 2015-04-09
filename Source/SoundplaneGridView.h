@@ -42,6 +42,7 @@ private:
 	void renderXYGrid();
 	void renderRegions();
 	void renderPings();
+	void renderFittingTest();
 	void renderZGrid();
 	void renderBarChart();
 	void renderBarChartRaw();

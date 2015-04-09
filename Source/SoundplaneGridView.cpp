@@ -390,6 +390,63 @@ void SoundplaneGridView::renderPings()
 	}	
 }
 
+void SoundplaneGridView::renderFittingTest()
+{
+	if (!mpModel) return;
+	bool zeroClip = false;
+	
+	setupOrthoView();
+	float dotSize = fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	
+	const std::string& viewMode = getStringProperty("viewmode");
+	const MLSignal* viewSignal = mpModel->getSignalForViewMode(viewMode);
+	if(!viewSignal) return;
+	
+	float displayScale = mpModel->getFloatProperty("display_scale");
+	const float zScale = displayScale*10.f;
+	
+	int leftEdge = 0;
+	int rightEdge = mSensorWidth;
+	
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glDisable(GL_LINE_SMOOTH);
+	glLineWidth(1.0*mViewScale);
+
+	for(int j=0; j<4; ++j)
+	{
+		// show stages in fitting from top down
+		float y = mSensorRangeY.convert(mSensorHeight - j*1.5f - 2.f);
+
+		Vec4 lineColor(MLGL::getIndicatorColor(j));
+		glColor4fv(&lineColor[0]);
+		
+		glBegin(GL_LINE_STRIP);
+		for(int i=leftEdge; i<rightEdge; ++i)
+		{
+			float x = mSensorRangeX.convert(i);
+			float z0 = (*viewSignal)(i, j);
+			if(zeroClip) { z0 = max(z0, 0.f); }
+			float z = z0*zScale;
+			glVertex3f(x, y - z, 0);
+		}
+		glEnd();
+		
+		for(int i=leftEdge; i<rightEdge; ++i)
+		{
+			float x = mSensorRangeX.convert(i);
+			float z0 = (*viewSignal)(i, j);
+			if(zeroClip) { z0 = max(z0, 0.f); }
+			float z = z0*zScale;
+			MLGL::drawDot(Vec2(x, y - z), dotSize*0.5f);
+		}
+	}
+
+
+	
+}
+
+
 void SoundplaneGridView::renderZGrid()
 {
 	if (!mpModel) return;
@@ -433,7 +490,7 @@ void SoundplaneGridView::renderZGrid()
 		preOffset = -0.1;
 		separateSurfaces = true;
 	}
-
+	
 	// draw stuff in immediate mode. TODO vertex buffers and modern GL code in general.
 	//
 	Vec4 lineColor;
@@ -536,7 +593,7 @@ void SoundplaneGridView::renderZGrid()
 			glEnd();
 		}
 	}
-
+	
 	float dotSize = fabs(mKeyRangeY(0.08f) - mKeyRangeY(0.f));
 	const int nt = mpModel->getFloatProperty("max_touches");
 	const MLSignal& touches = mpModel->getTouchFrame();
@@ -563,7 +620,7 @@ void SoundplaneGridView::renderZGrid()
 			MLGL::drawDot(Vec2(tx, ty), dotSize*10.0*tz);
 			sprintf(strBuf, "%5.3f", tz);			
 			drawInfoBox(Vec3(tx, ty, 0.), strBuf, t);                
-
+			
 		}
 	}
 }
@@ -672,6 +729,10 @@ void SoundplaneGridView::renderOpenGL()
 	{
 		renderPings();
 		drawSurfaceOverlay();
+	}
+	else if (viewMode == "fit test")
+	{
+		renderFittingTest();
 	}
 	else if (viewMode == "norm map")
 	{

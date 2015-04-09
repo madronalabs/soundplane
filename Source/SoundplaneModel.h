@@ -125,7 +125,7 @@ public:
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; }
 	const MLSignal& getRegionSignal() { return mRegionSignal; }
 	const MLSignal& getCookedSignal() { return mCookedSignal; }
-	const MLSignal& getTestSignal() { return mTestSignal; }
+
 	const MLSignal& getTrackerCalibrateSignal();
 	Vec3 getTrackerCalibratePeak();
 	bool isWithinTrackerCalibrateArea(int i, int j);
@@ -215,7 +215,8 @@ private:
 	MLSignal mCalibratedSignal;
 	MLSignal mRegionSignal;
 	MLSignal mCookedSignal;
-	MLSignal mTestSignal;
+
+	MLSignal mFitTestSignal;
 	MLSignal mTestSignal2;
 	MLSignal mTempSignal;
 	

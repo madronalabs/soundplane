@@ -217,6 +217,7 @@ public:
 	void process(int);
 	
 	const MLSignal& getTestSignal() { return mTestSignal; } 
+	const MLSignal& getFitTestSignal() { return mFitTestSignal; } 
 	const MLSignal& getTestSignal2() { return mTestSignal2; } 
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; } 
 	const MLSignal& getRegionSignal() { return mRegions; } 
@@ -303,6 +304,7 @@ private:
 	MLSignal mTemp;
 	MLSignal mTempWithBorder;
 	MLSignal mTestSignal;
+	MLSignal mFitTestSignal;
 	MLSignal mTestSignal2;
 	MLSignal mCalibratedSignal;
 	MLSignal mCookedSignal;
@@ -321,7 +323,7 @@ private:
 	void getRegions();
 	void findSpans();
 	void collectTemplate();
-	void findPings();
+	void fitCurves();
 	void filterAndOutputTouches();
 	
 	// new

@@ -202,9 +202,9 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("calibrated");
 	viewMenu->addItem("regions");
 	viewMenu->addItem("pings");
+	viewMenu->addItem("fit test");
 	viewMenu->addItem("cooked");
 	viewMenu->addItem("xy");
-	viewMenu->addItem("test1");
 	viewMenu->addItem("test2");
 	viewMenu->addItem("norm map");
 	
