@@ -646,7 +646,10 @@ void TouchTracker::process(int)
 		if(mMaxTouchesPerFrame > 0)
 		{
 			findSpans();
-			fitCurves();		
+			fitCurves();	
+			//collectPings();
+			//matchTouchesToPrevious();
+			
 		}
 
 		filterAndOutputTouches();
@@ -775,10 +778,10 @@ void TouchTracker::getRegions()
 // end exceeds mOnThreshold at some point during the span.
 void TouchTracker::findSpans()
 {
-	// constant span start / end pressure, chosen so that span lengths will stay as constant as possible. 
+	// constant span start / end threshold, chosen so that span lengths will stay as constant as possible. 
 	const float t = kSpanThreshold;
 	
-	// some point on the span must be over this threshold to be recognized.
+	// some point on the span must be over this larger threshold to be recognized.
 	const float zThresh = mOnThreshold;
 	
 	const float minSpanLength = 3.f;
@@ -845,12 +848,13 @@ void TouchTracker::findSpans()
 				{
 					spanEnd = w - 1;
 					pushSpan = true;
-
 				}				
 			}
 			
 			if(pushSpan)
 			{
+				spanStart = clamp(spanStart, 1.f, w - 2.f);
+				spanEnd = clamp(spanEnd, 1.f, w - 2.f);
 				if(spanEnd - spanStart > minSpanLength)
 				{
 					mSpans.push_back(Vec3(spanStart, spanEnd, j)); 				
@@ -872,9 +876,10 @@ void TouchTracker::fitCurves()
 	const juce::ScopedLock lock(mPingsLock);
 	mPings.clear();
 	
-	MLRange zRange(mOnThreshold, mMaxForce, 0., 1.);
+	//MLRange zRange(mOnThreshold, mMaxForce, 0., 1.);
 	
 	mFitTestSignal.clear();
+	MLSignal dz(w);
 	
 	for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
 	{
@@ -883,50 +888,95 @@ void TouchTracker::fitCurves()
 		float b = s.y(); // not really y, rather x2
 		int row = s.z();
 		
+		int ia = floorf(a);
+		int ib = ceilf(b);
+		int kw = mTemplateSpan.getWidth();
+
 		// from ends of span inward, find best fits for touches and remove them.
 		
-		// TEST: best integer guess and distribute
-		// NO - creates glitches
-		float length = b - a; // what to do about surface ends?
-		const float minSpan = 6.f;
-		const float sensorsPerKey = 2.f;
-		float fn;
-		fn = 1.0f + ((length - minSpan) / sensorsPerKey);
-		fn = max(fn, 1.f);
-		fn = roundf(fn);
-		int n = fn;
-		float ends = (length - fn*sensorsPerKey) / 2.f;
-		for(int k = 0; k < n; ++k)
+		// try just left -> right to start.
+		
+		
+		// copy input to temp buffer
+		
+		// fitstart = ia
+		// while fitstart < ib
 		{
-			float pingX = a + ends + (k + 0.5f)*sensorsPerKey;
-			float z = in.getInterpolatedLinear(pingX, row);
-			mPings.push_back(Vec3(pingX, row, zRange(z)));
+			
+			// copy temp buffer to next row of test signal
+			
+
+			
+			// get slope using centered differences
+			const float* inputRow = in.getBuffer() + in.row(row);
+			float za, zb, zc;
+			za = inputRow[ia - 1];
+			zb = inputRow[ia];
+			for(int i=ia; i<=ib; ++i)
+			{
+				zc = inputRow[i + 1];
+				dz[i] = (zc - za)*0.5f; 
+				za = zb;
+				zb = zc;
+			}
+			
+			// find maximum slope over first half of touch
+			float dzMax = 0.;
+			int dzMaxPosInt = ia;
+			for(int i=ia; i<(ia + kw/2); ++i)
+			{
+				if(dz[i] > dzMax)
+				{
+					dzMaxPosInt = i;
+					dzMax = dz[i];
+				}
+			}
+			
+			// parabolic interpolate (TODO put in MLSignal)
+			float alpha, beta, gamma, px;
+			float dzMaxPos;
+			alpha = dz[dzMaxPosInt - 1];
+			beta = dz[dzMaxPosInt];
+			gamma = dz[dzMaxPosInt + 1];
+			px = 0.5f*(alpha - gamma)/(alpha - 2.0f*beta + gamma);
+			// z at px if needed:
+			// zp = beta - 0.25f*(alpha - gamma)*p;
+			dzMaxPos = dzMaxPosInt + px;
+			
+			
+			// also if match is OK
+			
+			if(within(dzMaxPos, a, b))
+			{
+				const float kTouchTemplateShoulder = 1.75f; // ?
+				mPings.push_back(Vec3(dzMaxPos + kTouchTemplateShoulder, row, 1.f));
+				
+				// subtract template from temp buffer
+				
+			}
+			
+			// add touch width to fitstart to begin looking for the next touch
+			
 		}
 		
-		
-		
-		// make test signal to display stages of curve fitting for spans on row 5.
+
+		// make test signal to display stages of curve fitting for spans on row 3.
 		if(row == 3)
 		{
 			int stages = 4;
 			
-			int ia = floorf(a);
-			int ib = ceilf(b);
-			
 			// put successive stages on rows, 0, 1, 2, 3 of test signal
-			for(int c = 0; c<stages; ++c)
+	//		for(int c = 0; c<stages; ++c)
 			{
-				for(int i=ia; i<ib; ++i)
+				for(int i=ia; i<=ib; ++i)
 				{
-					float z = zRange(in(i, row));
+					float z = (in(i, row));
 					
-					mFitTestSignal(i, c) = z; 
+					mFitTestSignal(i, 0) = z; 
+					mFitTestSignal(i, 1) = (dz[i]); 
 				}
-			}
-			
+			}			
 		}
-		
-		
 	}
 }
 

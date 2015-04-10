@@ -403,7 +403,7 @@ void SoundplaneGridView::renderFittingTest()
 	if(!viewSignal) return;
 	
 	float displayScale = mpModel->getFloatProperty("display_scale");
-	const float zScale = displayScale*10.f;
+	const float zScale = displayScale*100.f;
 	
 	int leftEdge = 0;
 	int rightEdge = mSensorWidth;
@@ -415,7 +415,8 @@ void SoundplaneGridView::renderFittingTest()
 
 	for(int j=0; j<4; ++j)
 	{
-		// show stages in fitting from top down
+		// show stages in fitting from top down.
+		// positive z is UP
 		float y = mSensorRangeY.convert(mSensorHeight - j*1.5f - 2.f);
 
 		Vec4 lineColor(MLGL::getIndicatorColor(j));
@@ -428,7 +429,7 @@ void SoundplaneGridView::renderFittingTest()
 			float z0 = (*viewSignal)(i, j);
 			if(zeroClip) { z0 = max(z0, 0.f); }
 			float z = z0*zScale;
-			glVertex3f(x, y - z, 0);
+			glVertex3f(x, y + z, 0);
 		}
 		glEnd();
 		
@@ -438,7 +439,7 @@ void SoundplaneGridView::renderFittingTest()
 			float z0 = (*viewSignal)(i, j);
 			if(zeroClip) { z0 = max(z0, 0.f); }
 			float z = z0*zScale;
-			MLGL::drawDot(Vec2(x, y - z), dotSize*0.5f);
+			MLGL::drawDot(Vec2(x, y + z), dotSize*0.5f);
 		}
 	}
 
