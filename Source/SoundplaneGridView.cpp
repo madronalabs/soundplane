@@ -381,7 +381,7 @@ void SoundplaneGridView::renderPings()
 		float z = p.z();
 
 		Vec4 dotColor = darkBlue;
-		dotColor[3] = z;
+		dotColor[3] = z*60.f;
 		glColor4fv(&dotColor[0]);
 		
 		// draw dot on surface
@@ -403,7 +403,7 @@ void SoundplaneGridView::renderFittingTest()
 	if(!viewSignal) return;
 	
 	float displayScale = mpModel->getFloatProperty("display_scale");
-	const float zScale = displayScale*100.f;
+	const float zScale = displayScale*400.f;
 	
 	int leftEdge = 0;
 	int rightEdge = mSensorWidth;

@@ -97,6 +97,7 @@ TouchTracker::TouchTracker(int w, int h) :
 	
 //	mTemplateSpan = MLSignal {0.17, 0.52, 0.86, 1.00, 0.86, 0.52, 0.17};// 12
 	mTemplateSpan = MLSignal {0.04, 0.12, 0.69, 1.00, 0.69, 0.12, 0.04}; // 16 frequencies
+//	mTemplateSpan = MLSignal {0.125, 0.25, 0.75, 1.00, 0.75, 0.25, 0.125}; // 16 frequencies
 	
 	mTemplateSpan.dump(std::cout, true);
 	
@@ -585,7 +586,10 @@ void TouchTracker::process(int)
 		{
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
-			
+		
+		// TODO filter data in time just a bit, box filter
+		
+		// TODO elastic hysteresis filter
 		
 		// forward FFT -> FFT1
 		mFFT1 = mFilteredInput;	
@@ -626,12 +630,38 @@ void TouchTracker::process(int)
 		// temp? baaaad syntax
 		// could be MLSignal::complexDivide();
 		// divide in frequency domain by touch kernel and put results in (mFFT1, mFFT1i)
-		FFTEachRowDivide(mFFT1, mFFT1i, mTouchKernel, mTouchKerneli);
+//		FFTEachRowDivide(mFFT1, mFFT1i, mTouchKernel, mTouchKerneli);
 		
 		// back to spatial domain
 		FFTEachRowInverse(mFFT1, mFFT1i);
 
 		mFFT2 = mFFT1;
+		
+		// MLTEST
+		// TODO rows only
+		/*
+			const float* inputRow = in.getBuffer() + in.row(row);
+			{
+		 float b1, b2, b3, b4, b5;
+		 float k1 = -0.25;
+		 float k2 = -0;
+		 float k3 = 1;
+		 float k4 = -0;
+		 float k5 = -0.25;
+		 for(int i=ia; i<=ib; ++i)
+		 {
+		 b1 = inputRow[i - 2];
+		 b2 = inputRow[i - 1];
+		 b3 = inputRow[i];
+		 b4 = inputRow[i + 1];
+		 b5 = inputRow[i + 2];
+		 
+		 dz[i] = b1*k1 + b2*k2 + b3*k3 + b4*k4 + b5*k5;
+		 //dz[i] = c;
+		 }
+			}
+			*/
+
 				
 		mTestSignal = mFilteredInput;
 		mTestSignal.scale(50.);
@@ -872,14 +902,26 @@ void TouchTracker::fitCurves()
 	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
 	int h = in.getHeight();
+	
+	// get centered partial diff dzdx
+	MLSignal dzdx(w, h);
+	dzdx = in;
+	dzdx.partialDiffX();
+
+	// get input sharpened along rows so that pressure from a touch will be approximately 0 
+	// at the distance of neighboring touches.
+	MLSignal zSharp(w, h);
+	zSharp = in;
+	zSharp.convolve5x1(-0.5, 0, 1., 0, -0.5);
 
 	const juce::ScopedLock lock(mPingsLock);
 	mPings.clear();
 	
-	//MLRange zRange(mOnThreshold, mMaxForce, 0., 1.);
-	
 	mFitTestSignal.clear();
-	MLSignal dz(w);
+	
+	if(mCount == 0)
+	if(mSpans.size() > 0)
+		debug() << "\npings: ";
 	
 	for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
 	{
@@ -890,75 +932,144 @@ void TouchTracker::fitCurves()
 		
 		int ia = floorf(a);
 		int ib = ceilf(b);
-		int kw = mTemplateSpan.getWidth();
-
-		// from ends of span inward, find best fits for touches and remove them.
 		
-		// try just left -> right to start.
-		
-		
-		// copy input to temp buffer
-		
-		// fitstart = ia
-		// while fitstart < ib
+		// find maximum positive slope over entire span
+		float dzMax = 0.;
+		int dzMaxPosInt = ia;
+		for(int i=ia; i<ib; ++i)
 		{
-			
-			// copy temp buffer to next row of test signal
-			
+			float dzi = dzdx(i, row);
+			if(dzi > dzMax)
+			{
+				dzMaxPosInt = i;
+				dzMax = dzi;
+			}
+		}
+		// find max negative slope to right of max positive slope
+		float dzMin = 0.;
+		int dzMinPosInt = ia;
+		for(int i=dzMaxPosInt; i<ib; ++i)
+		{
+			float dzi = dzdx(i, row);
+			if(dzi < dzMin)
+			{
+				dzMinPosInt = i;
+				dzMin = dzi;
+			}
+		}
+		
+		// parabolic peak interpolate (TODO put in MLSignal)
+		float dzMaxPos;
+		float alpha, beta, gamma, px;
+		alpha = dzdx(dzMaxPosInt - 1, row);
+		beta = dzdx(dzMaxPosInt, row);
+		gamma = dzdx(dzMaxPosInt + 1, row);
+		px = 0.5f*(alpha - gamma)/(alpha - 2.0f*beta + gamma);
+		// z at px if needed:
+		// zp = beta - 0.25f*(alpha - gamma)*p;	
+		dzMaxPos = dzMaxPosInt + px;
+		
+		float dzMinPos;
+		alpha = dzdx(dzMinPosInt - 1, row);
+		beta = dzdx(dzMinPosInt, row);
+		gamma = dzdx(dzMinPosInt + 1, row);
+		px = 0.5f*(alpha - gamma)/(alpha - 2.0f*beta + gamma);
+		// z at px if needed:
+		// zp = beta - 0.25f*(alpha - gamma)*p;	
+		dzMinPos = dzMinPosInt + px;
+				
+		// get guess at int distance of keys spanned by mindz-maxdz region (one key = 0)
+		float spanLength = dzMinPos - dzMaxPos;
+		float minSpanLength = 3.0f;
+		float keyWidth = 2.0f;		
+		int keySpan = (spanLength - minSpanLength)/keyWidth;
+		
+		
+		
+		
+		
+		if(mCount == 0)
+			debug() << " " << keySpan;
+		
+		
 
-			
-			// get slope using centered differences
-			const float* inputRow = in.getBuffer() + in.row(row);
-			float za, zb, zc;
-			za = inputRow[ia - 1];
-			zb = inputRow[ia];
-			for(int i=ia; i<=ib; ++i)
+		
+		// distance of max dz points from center of ideal touch. 
+		// touchy, important, depends on preprocessing
+//		const float kTouchShoulder = 1.6f; 
+//		float touchXOffset = (dzMax > 0.) ? kTouchShoulder : -kTouchShoulder;
+//		dzMaxPos += touchXOffset;
+		
+		// get offset for entire span by centering the key span between mindz-maxdz
+		
+		
+		
+
+		// also if match is OK			
+		
+		if(within(dzMinPos, a, b) && within(dzMaxPos, a, b) && (dzMaxPos < dzMinPos))
+		{
+			if(keySpan == 0)
 			{
-				zc = inputRow[i + 1];
-				dz[i] = (zc - za)*0.5f; 
-				za = zb;
-				zb = zc;
-			}
-			
-			// find maximum slope over first half of touch
-			float dzMax = 0.;
-			int dzMaxPosInt = ia;
-			for(int i=ia; i<(ia + kw/2); ++i)
-			{
-				if(dz[i] > dzMax)
+				float pingX = (dzMinPos + dzMaxPos)/2.;
+				float pingZ = zSharp.getInterpolatedLinear(pingX, row);
+				
+				// let smaller nonzero pings influence touches for smoother results
+				if(pingZ > kSpanThreshold) // or mOnThreshold
 				{
-					dzMaxPosInt = i;
-					dzMax = dz[i];
-				}
+					//float inputZ = in.getInterpolatedLinear(pingX, row);
+					mPings.push_back(Vec3(pingX, row, pingZ));
+				}			
 			}
-			
-			// parabolic interpolate (TODO put in MLSignal)
-			float alpha, beta, gamma, px;
-			float dzMaxPos;
-			alpha = dz[dzMaxPosInt - 1];
-			beta = dz[dzMaxPosInt];
-			gamma = dz[dzMaxPosInt + 1];
-			px = 0.5f*(alpha - gamma)/(alpha - 2.0f*beta + gamma);
-			// z at px if needed:
-			// zp = beta - 0.25f*(alpha - gamma)*p;
-			dzMaxPos = dzMaxPosInt + px;
-			
-			
-			// also if match is OK
-			
-			if(within(dzMaxPos, a, b))
+			else
 			{
-				const float kTouchTemplateShoulder = 1.75f; // ?
-				mPings.push_back(Vec3(dzMaxPos + kTouchTemplateShoulder, row, 1.f));
+				// get pings over key centers, ignoring dz stuff
+				int ik = keyWidth;
+				int firstKeyInt = ia/ik*ik;
+				float firstKeyCenter = firstKeyInt + 0.5f;
 				
-				// subtract template from temp buffer
+				/*
+				// center guess at number of keys in span within span 
+				float firstPingInMaxMinX = dzMaxPos + (spanLength - keyWidth*keySpan)/2.;
+				
+				// get first possible ping using same key offset
+				int keysFromStart = (int)((firstPingInMaxMinX - a) / keyWidth);			
+				float firstPing = firstPingInMaxMinX - keysFromStart*keyWidth;
+				*/
+				
+				// get z at each possible key location with offset and make ping if above threshold
+				int possiblePings = (ib - ia)/ik;			
+				
+				for(int p=0; p<possiblePings; ++p)
+				{
+					float pingX = firstKeyCenter + p*keyWidth;
+					float pingZ = zSharp.getInterpolatedLinear(pingX, row);
+					
+					// let smaller nonzero pings influence touches for smoother results
+					if(pingZ > kSpanThreshold) // or mOnThreshold
+					{
+						//float inputZ = in.getInterpolatedLinear(pingX, row);
+						mPings.push_back(Vec3(pingX, row, pingZ));
+					}
+				}
 				
 			}
-			
-			// add touch width to fitstart to begin looking for the next touch
 			
 		}
 		
+		
+		// special cases for spans of 1 and 2 based on distance between left and right max dz
+		
+		// pingZ: use smoothest data - less noisy - to get z
+	//	float pingZ = in.getInterpolatedLinear(dzMaxPos, row);
+	//	if(pingZ > kSpanThreshold)
+		{
+			
+			
+	//		mPings.push_back(Vec3(dzMaxPos, row, 1.));
+	//		mPings.push_back(Vec3(dzMinPos, row, 1.));
+		}
+
 
 		// make test signal to display stages of curve fitting for spans on row 3.
 		if(row == 3)
@@ -970,14 +1081,20 @@ void TouchTracker::fitCurves()
 			{
 				for(int i=ia; i<=ib; ++i)
 				{
-					float z = (in(i, row));
+					//float z = (in(i, row));
 					
-					mFitTestSignal(i, 0) = z; 
-					mFitTestSignal(i, 1) = (dz[i]); 
+					mFitTestSignal(i, 0) = in(i, row); 
+					mFitTestSignal(i, 1) = dzdx(i, row); 
+					mFitTestSignal(i, 2) = zSharp(i, row);
 				}
 			}			
 		}
 	}
+	
+	
+	if(mCount == 0)
+	if(mSpans.size() > 0)
+		debug() << "\n";
 }
 
 void TouchTracker::filterAndOutputTouches()
