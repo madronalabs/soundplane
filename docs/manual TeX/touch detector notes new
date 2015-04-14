@@ -1,0 +1,7 @@
+
+goals of the touch detector: to be very sensitive, to "play what you mean" whenver possible. To this end, single touch and groupd of touches are treated a little differently. A group of touches is typically made when you want to play a chord with the fingers of one hand. Strictly speaking, it is defined as any number of touches that have no gaps of more than two keys between them.
+
+A single touch can start at any continuous position on the surface, if the quantize mode is not on. This is true of any nnumber of touches, as long as they are not in a group together. So with single touches, the Soundplane acts like a true, continuous, multiple touch surface.
+
+Touches in a group, on the other hand, are always quantized to whole-key intervals *relative to each other.* In other words, the Soundplane takes it as a given that when you put a group of fingers down close together, your intent is to play a group of notes like C - E - G, not C - "E1/4" - G. This not only helps you play chords repeatably without off notes, it makes it possible for the touch detection software to be much more accurate in general. 
+
