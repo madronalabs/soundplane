@@ -248,11 +248,11 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				mMIDIOutput.setActive(bool(v));
 			}
-			else if (p == "midi_multi_chan")
+			else if (p == "midi_mpe")
 			{
 				mMIDIOutput.setMultiChannel(bool(v));
 			}
-			else if (p == "midi_start_chan")
+			else if (p == "midi_channel")
 			{
 				mMIDIOutput.setStartChannel(int(v));
 			}
@@ -428,8 +428,8 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("t_thresh", 0.2);
 	
 	setProperty("midi_active", 0);
-	setProperty("midi_multi_chan", 1);
-	setProperty("midi_start_chan", 1);
+	setProperty("midi_mpe", 1);
+	setProperty("midi_channel", 1);
 	setProperty("data_freq_midi", 250.);
 	
 	setProperty("kyma_poll", 0);

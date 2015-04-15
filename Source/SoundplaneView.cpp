@@ -151,7 +151,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	mSoundplaneDeviceState(-1),
 	mpCurveGraph(0),
 	mpViewModeButton(0),
-	mpMIDIDeviceButton(0)
+	mpMIDIDeviceButton(0), 
+	mpOSCServicesButton(0),
+	mpMidiChannelDial(0)
 {
     setWidgetName("soundplane_view");
 	//pModel->addListener(this);
@@ -292,9 +294,12 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD = page0->addDial("bend range", dialRect.withCenter(9.75, bottomDialsY), "bend_range", c2);
 	pD->setRange(0., 48., 1.);
 	
-	pB = page0->addToggleButton("multi chan", toggleRect.withCenter(8.75, bottomDialsY2), "midi_multi_chan", c2);
-	pD = page0->addDial("start chan", dialRect.withCenter(9.75, bottomDialsY2), "midi_start_chan", c2);
-	pD->setRange(1., 16., 1.);
+	pB = page0->addToggleButton("MPE", toggleRect.withCenter(8.75, bottomDialsY2), "midi_mpe", c2);
+	mpMidiChannelDial = page0->addDial("channel", dialRect.withCenter(9.75, bottomDialsY2), "midi_channel", c2);
+	mpMidiChannelDial->setRange(1., 16., 1.);
+	
+	// 	addWidgetToView(button, r, paramName);
+	// addPropertyView(paramName, button, MLSymbol("value"));
 	
     //	pB = page0->addToggleButton("one / multi", toggleRect.withCenter(6.5, 5.25), "single_multi", c2);
     //	pB->setSplitMode(true);
@@ -317,8 +322,10 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pB = page0->addToggleButton("matrix", toggleRect.withCenter(13.25, bottomDialsY), "osc_send_matrix", c2);
 	
 	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(12.25, 9.), "osc_service_name");
-
 	
+	// additional parameter views allow us to adapt UI based on Model properties.
+	page0->addPropertyView("midi_mpe", this, MLSymbol("mpe")); 	
+
     // --------------------------------------------------------------------------------
 	// page 1 - raw touches
 	//
@@ -334,9 +341,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	MLRect GLRect1(0, 1.f, pageWidth, 3.5);
 	mGridView.setModel(pModel);
 	page1->addWidgetToView (&mGridView, GLRect1, "grid_view");
-	
-	// grid view gets viewmode changes
-	page1->addParamView("viewmode", &mGridView, MLSymbol("viewmode"));
     
 	MLRect GLRect2(0, 4.5, pageWidth, 3.);
 	mTouchView.setModel(pModel);
@@ -397,10 +401,11 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 //	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
 
 	// add parameter views handled directly by this Widget
-	page1->addParamView("viewmode", this, MLSymbol("viewmode"));
+	page1->addPropertyView("viewmode", this, MLSymbol("viewmode"));	
 	
-	//page0->addParamView("protocol", this, MLSymbol("show_protocol"));
-	
+	// grid view gets viewmode changes
+	page1->addPropertyView("viewmode", &mGridView, MLSymbol("viewmode"));
+
 
     // --------------------------------------------------------------------------------
     // page 2 - expert stuff
@@ -460,6 +465,7 @@ SoundplaneView::~SoundplaneView()
 //
 void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
 {
+	debug() << "VIEW got property " << p << "\n";
 	bool handled = false;
 	if(p == "viewmode")
 	{
@@ -480,8 +486,25 @@ void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
 	else if(p == "view_page")
 	{
 		handled = true;
-		float v = val.getFloatValue();
-        goToPage(v);
+		int v = val.getFloatValue();
+		goToPage(v);
+		repaint();
+	}
+	else if(p == "mpe")
+	{
+		int v = val.getFloatValue();
+		if(mpMidiChannelDial)
+		{
+			if(v) // MPE mode on
+			{
+				mpMidiChannelDial->setWidgetEnabled(false);	
+			}
+			else
+			{
+				mpMidiChannelDial->setWidgetEnabled(true);	
+			}
+		}
+		handled = true;
 		repaint();
 	}
 

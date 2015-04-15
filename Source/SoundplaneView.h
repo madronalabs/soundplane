@@ -129,6 +129,7 @@ private:
 	SoundplaneZoneView mGLView3;
 	MLMenuButton* mpMIDIDeviceButton;
 	MLMenuButton* mpOSCServicesButton;
+	MLDial* mpMidiChannelDial;
 
 	// page 2
 	TrackerCalibrateView mTrkCalView;
