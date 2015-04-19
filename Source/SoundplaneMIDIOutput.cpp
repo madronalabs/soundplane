@@ -281,10 +281,14 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
         }
         else if(subtype == offSym)
         {
-            pVoice->mState = kVoiceStateOff;
-            pVoice->age = 0;
-            pVoice->z = 0;
-            mGotNoteChangesThisFrame = true;
+            // TEMP FIX, we are getting 2 offSym for a released touch
+            if(pVoice->mState!=kVoiceStateInactive)
+            {
+                pVoice->mState = kVoiceStateOff;
+                pVoice->age = 0;
+                pVoice->z = 0;
+                mGotNoteChangesThisFrame = true;
+            }
         }
         //debug() << i << " " << note << "\n";
     }
@@ -403,19 +407,21 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                 }
                 else if(pVoice->mState == kVoiceStateOff)
                 {
-                    // send note off
-                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
-                    pVoice->mMIDIVel = 0;
-                    pVoice->mMIDINote = 0;
-                    pVoice->mState = kVoiceStateInactive;
-                    
                     // send pressure off
-                    sendPressure(chan, 0);
+                    if(mPressureActive)
+                    {
+                        sendPressure(chan, 0);
+                    }
                     pVoice->mMIDIPressure = 0;
                     
                     // send z off
                     mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 75, 0));
                     
+                    // send note off
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
+                    pVoice->mMIDIVel = 0;
+                    pVoice->mMIDINote = 0;
+                    pVoice->mState = kVoiceStateInactive;
                     
     //debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                     
