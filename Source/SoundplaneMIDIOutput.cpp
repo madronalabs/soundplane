@@ -178,12 +178,15 @@ void SoundplaneMIDIOutput::setPressureActive(bool v)
 	mPressureActive = v; 
 			
 	if (!mpCurrentDevice) return;
-	for(int c=1; c<=16; ++c)
-	{				
-		int maxPressure = 127;
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(c, maxPressure));
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(c, 11, maxPressure));
-	}
+    if(!mPressureActive)
+    {
+        for(int c=1; c<=16; ++c)
+        {				
+            int maxPressure = 127;
+            mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(c, maxPressure));
+            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(c, 11, maxPressure));
+        }
+    }
 }
 
 void SoundplaneMIDIOutput::setMultiChannel(bool v)
@@ -388,6 +391,10 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     // before note on, first send note off if needed
                     if(pVoice->mMIDINote)
                     {
+                        if(mPressureActive)
+                        {
+                            sendPressure(chan, 0);
+                        }
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
                     }
                     
@@ -415,7 +422,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     pVoice->mMIDIPressure = 0;
                     
                     // send z off
-                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 75, 0));
+                    if(!mMultiChannel)
+                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 75, 0));
                     
                     // send note off
                     mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
@@ -483,7 +491,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                             
                             //debug() << "channel " << chan << ", x = " << ix << "\n";
                             
-                            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 73, ix));
+                            if(!mMultiChannel)
+                                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 73, ix));
                             pVoice->mMIDIXCtrl = ix;
                         }
                         
@@ -497,7 +506,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                         int iz = clamp((int)(pVoice->z*127.f), 0, 127);
                         if(iz != pVoice->mMIDIPressure)
                         {
-                            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 75, iz));
+                            if(!mMultiChannel)
+                                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 75, iz));
                             if(mPressureActive)
                             {
                                 sendPressure(chan, iz);
@@ -533,5 +543,6 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
 void SoundplaneMIDIOutput::sendPressure(int chan, float p)
 {
     mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, p));
-    mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, p));
+    if(!mMultiChannel)
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, p));
 }
