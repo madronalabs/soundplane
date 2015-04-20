@@ -178,14 +178,11 @@ void SoundplaneMIDIOutput::setPressureActive(bool v)
 	mPressureActive = v; 
 			
 	if (!mpCurrentDevice) return;
-    if(!mPressureActive)
-    {
-        for(int c=1; c<=16; ++c)
-        {				
-            int maxPressure = 127;
-            mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(c, maxPressure));
-            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(c, 11, maxPressure));
-        }
+    for(int c=1; c<=16; ++c)
+    {				
+        int p = mPressureActive ? 0 : 127;
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(c, p));
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(c, 11, p));
     }
 }
 
@@ -284,14 +281,10 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
         }
         else if(subtype == offSym)
         {
-            // TEMP FIX, we are getting 2 offSym for a released touch
-            if(pVoice->mState!=kVoiceStateInactive)
-            {
-                pVoice->mState = kVoiceStateOff;
-                pVoice->age = 0;
-                pVoice->z = 0;
-                mGotNoteChangesThisFrame = true;
-            }
+            pVoice->mState = kVoiceStateOff;
+            pVoice->age = 0;
+            pVoice->z = 0;
+            mGotNoteChangesThisFrame = true;
         }
         //debug() << i << " " << note << "\n";
     }
@@ -389,7 +382,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                 if (pVoice->mState == kVoiceStateOn)
                 {
                     // before note on, first send note off if needed
-                    if(pVoice->mMIDINote)
+                    // FIXME pVoice->mMIDINote  == 0, midi note 0 is valid its C-2, use -1, or separate logic perhap MidiVel
+                    if(pVoice->mMIDINote && pVoice->mMIDIVel>0)
                     {
                         if(mPressureActive)
                         {
@@ -412,7 +406,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     
                     pVoice->mState = kVoiceStateActive;
                 }
-                else if(pVoice->mState == kVoiceStateOff)
+                else if(pVoice->mState == kVoiceStateOff && pVoice->mMIDIVel)
                 {
                     // send pressure off
                     if(mPressureActive)
