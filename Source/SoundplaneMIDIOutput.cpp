@@ -442,9 +442,12 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                         pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
                         
                         // retrigger
+                        if(mPressureActive && mMultiChannel ) sendPressure(chan, 0);
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
+                        
                         pVoice->mMIDINote = newMIDINote;
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
+                        if(mPressureActive && mMultiChannel) sendPressure(chan, pVoice->z);
                         
         //debug() << "voice " << i << " RETRIG: Z = " << pVoice->z << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                         
