@@ -8,6 +8,9 @@
 const std::string kSoundplaneMIDIDeviceName("Soundplane IAC out");
 
 #define INVALID_NOTE -1
+
+#define MIDI_MPE_MODE_CC 127
+
 // --------------------------------------------------------------------------------
 #pragma mark MIDIVoice
 
@@ -227,9 +230,23 @@ void SoundplaneMIDIOutput::setMPE(bool v)
         sendPressure(i, INVALID_NOTE,0);
 	}
 
-    // Q: use touch count?
-    //TODO: global channel handling i.e. tell client global channel
-    //TODO: sendpitchbend range
+    //EXT: for split mode globalchannel = 1 or 16
+    int globalChannel=mStartChannel;
+    if(mMPE)
+    {
+        //EXT: touch count, could be soundplane touch count, but little advantage, till we use split mode
+        //     also, it would then have to be synchronised with maxTouches is changed.
+        int maxTouchCount=15;
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, maxTouchCount));
+
+        //pitchbend range
+        sendPitchbendRange(globalChannel,mBendRange);
+    }
+    else
+    {
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, 0));
+        sendPitchbendRange(globalChannel, 2); // MPE spec unclear, what to do when returning? 2 is the default, so lets use that
+    }
 }
 
 
@@ -417,7 +434,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                 
                 // TODO: for MPE the channel will need to take into account global channel
                 //       either 1, or 15 in split mode, in split mode we will need to add a channel offset as it runs 2-N & 15-N,
-                int chan = (mMPEExtended || mMPE ) ? (((mStartChannel + i - 1)&0x0F) + 1) : mStartChannel;
+                // Note: for MPE, start channel is used for global channel, so note channels are 2-N
+                int chan = (mMPEExtended || mMPE ) ? (((mStartChannel + i )&0x0F) + 1) : mStartChannel;
                 if (pVoice->mState == kVoiceStateOn)
                 {
                     // before note on, first send note off if needed
@@ -457,7 +475,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     
     //debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                     
-               }
+                }
                 
                 // if note is on, send pitch bend / controllers.
                 if (pVoice->mMIDIVel > 0)
@@ -608,6 +626,23 @@ void SoundplaneMIDIOutput::sendPitchbend(int chan, float p)
     mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, p));
 }
 
+void SoundplaneMIDIOutput::sendPitchbendRange(int chan, int range)
+{
+    if(mMPE && mpCurrentDevice)
+    {
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 100, 0));
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 101, 0));
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 6, range));
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 38, 0));
+    }
+}
+
+void SoundplaneMIDIOutput::setBendRange(int r)
+{
+    mBendRange = r;
+    // EXT: if MPE splits were enforced this would need to be sent on each change
+    sendPitchbendRange(mStartChannel,mBendRange);
+}
 
 
 

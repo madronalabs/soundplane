@@ -88,7 +88,7 @@ public:
 	void setPressureActive(bool v);
 
 	void setMaxTouches(int t) { mVoices = clamp(t, 0, kMaxMIDIVoices); }
-	void setBendRange(int r) { mBendRange = r; }
+	void setBendRange(int r);
 	void setTranspose(int t) { mTranspose = t; }
 	void setRetrig(int t) { mRetrig = t; }
 	void setAbsRel(int t) { mAbsRel = t; }
@@ -105,7 +105,7 @@ private:
     void sendPitchbend(int chan, float p);
     void sendX(int chan, float p);
     void sendY(int chan, float p);
-    
+    void sendPitchbendRange(int chan,int range);
 
 	int mVoices;
 	
