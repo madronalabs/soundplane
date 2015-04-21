@@ -232,6 +232,9 @@ void SoundplaneMIDIOutput::setMPE(bool v)
 
     //EXT: for split mode globalchannel = 1 or 16
     int globalChannel=mStartChannel;
+    // NOTE: pitchbend range - spec says its on first NOTE channel NOT global channel as might be expected
+    ///      so for splits this will be 2 & 15
+    int bendChannel=globalChannel + 1;
     if(mMPE)
     {
         //EXT: touch count, could be soundplane touch count, but little advantage, till we use split mode
@@ -240,12 +243,12 @@ void SoundplaneMIDIOutput::setMPE(bool v)
         mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, maxTouchCount));
 
         //pitchbend range
-        sendPitchbendRange(globalChannel,mBendRange);
+        sendPitchbendRange(bendChannel,mBendRange);
     }
     else
     {
         mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, 0));
-        sendPitchbendRange(globalChannel, 2); // MPE spec unclear, what to do when returning? 2 is the default, so lets use that
+        sendPitchbendRange(bendChannel, 2); // MPE spec unclear, what to do when returning? 2 is the default, so lets use that
     }
 }
 
@@ -640,8 +643,9 @@ void SoundplaneMIDIOutput::sendPitchbendRange(int chan, int range)
 void SoundplaneMIDIOutput::setBendRange(int r)
 {
     mBendRange = r;
-    // EXT: if MPE splits were enforced this would need to be sent on each change
-    sendPitchbendRange(mStartChannel,mBendRange);
+    // NOTE: spec says its on first NOTE channel NOT global channel as might be expected
+    // EXT: if MPE splits were enforced this would need to be sent on each channel in splits this will be 2 & 15
+    sendPitchbendRange(mStartChannel+1,mBendRange);
 }
 
 
