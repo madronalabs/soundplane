@@ -94,13 +94,18 @@ public:
 	void setAbsRel(int t) { mAbsRel = t; }
 	void setHysteresis(float t) { mHysteresis = t; }
 
-	void setMultiChannel(bool v);
+	void setMPEExtended(bool v);
+	void setMPE(bool v);
 	void setStartChannel(int v);
 	void setKymaPoll(bool v) { mKymaPoll = v; }
 	
 private:
 
-    void sendPressure(int chan, float p);
+    void sendPressure(int chan, int note,float p);
+    void sendPitchbend(int chan, float p);
+    void sendX(int chan, float p);
+    void sendY(int chan, float p);
+    
 
 	int mVoices;
 	
@@ -126,7 +131,8 @@ private:
 	int mAbsRel;
 	float mHysteresis;
 	
-	bool mMultiChannel;
+	bool mMPEExtended;
+    bool mMPE;
 	int mStartChannel;
 	bool mKymaPoll;
 };

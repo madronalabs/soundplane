@@ -250,7 +250,11 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			}
 			else if (p == "midi_mpe")
 			{
-				mMIDIOutput.setMultiChannel(bool(v));
+				mMIDIOutput.setMPE(bool(v));
+			}
+			else if (p == "midi_mpe_extended")
+			{
+				mMIDIOutput.setMPEExtended(bool(v));
 			}
 			else if (p == "midi_channel")
 			{
@@ -429,6 +433,7 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	
 	setProperty("midi_active", 0);
 	setProperty("midi_mpe", 1);
+	setProperty("midi_mpe_extended", 0);
 	setProperty("midi_channel", 1);
 	setProperty("data_freq_midi", 250.);
 	
