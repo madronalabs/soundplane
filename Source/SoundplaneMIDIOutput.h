@@ -87,7 +87,7 @@ public:
 	void setActive(bool v);
 	void setPressureActive(bool v);
 
-	void setMaxTouches(int t) { mVoices = clamp(t, 0, kMaxMIDIVoices); }
+	void setMaxTouches(int t);
 	void setBendRange(int r);
 	void setTranspose(int t) { mTranspose = t; }
 	void setRetrig(int t) { mRetrig = t; }
