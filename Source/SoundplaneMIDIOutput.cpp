@@ -237,10 +237,8 @@ void SoundplaneMIDIOutput::setMPE(bool v)
     int bendChannel=globalChannel + 1;
     if(mMPE)
     {
-        //EXT: touch count, could be soundplane touch count, but little advantage, till we use split mode
-        //     also, it would then have to be synchronised with maxTouches is changed.
-        int maxTouchCount=15;
-        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, maxTouchCount));
+        //EXT: this will need to be updated when split mode is used, as will we need to calc voices to use per split
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, mVoices));
 
         //pitchbend range
         sendPitchbendRange(bendChannel,mBendRange);
@@ -648,5 +646,16 @@ void SoundplaneMIDIOutput::setBendRange(int r)
     sendPitchbendRange(mStartChannel+1,mBendRange);
 }
 
+void SoundplaneMIDIOutput::setMaxTouches(int t)
+{
+    mVoices = clamp(t, 0, kMaxMIDIVoices);
+    if (mMPE && mpCurrentDevice)
+    {
+        //EXT: for split mode globalchannel = 1 or 16
+        int globalChannel=mStartChannel;
+        //EXT: this will need to be updated when split mode is used, as will we need to calc voices to use per split
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, mVoices));
+    }
+}
 
 
