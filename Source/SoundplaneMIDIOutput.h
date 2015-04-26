@@ -19,6 +19,7 @@
 #include "MLTime.h"
 
 const int kMaxMIDIVoices = 16;
+const int kMaxVelSamples = 3;
 
 class MIDIVoice
 {
@@ -31,6 +32,7 @@ public:
 	float y;
 	float z;
 	float dz;
+    float mSamples[kMaxVelSamples];
 	float note;
 	float startX;
 	float startY;

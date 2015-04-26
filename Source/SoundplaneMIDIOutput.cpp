@@ -312,6 +312,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
         z = msg->mData[3];
         dz = msg->mData[4];
         note = msg->mData[5];
+        float v=(z>0.005?z-0.005:0);
         
         MIDIVoice* pVoice = &mMIDIVoices[i];
         pVoice->x = x;
@@ -325,14 +326,26 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
             pVoice->startX = x;
             pVoice->startY = y;
             pVoice->startNote = note;
-            pVoice->mState = kVoiceStateOn;
             pVoice->age = 1;
-            mGotNoteChangesThisFrame = true;
+            pVoice->mSamples[pVoice->age - 1] = v;
         }
         else if(subtype == continueSym)
         {
-            pVoice->mState = kVoiceStateActive;
             pVoice->age++;
+            if(pVoice->age==kMaxVelSamples)
+            {
+                pVoice->mSamples[pVoice->age - 1] = v;
+                pVoice->mState = kVoiceStateOn;
+                mGotNoteChangesThisFrame = true;
+            }
+            else if(pVoice->age<kMaxVelSamples)
+            {
+                pVoice->mSamples[pVoice->age - 1] = v;
+            }
+            else
+            {
+                pVoice->mState = kVoiceStateActive;
+            }
         }
         else if(subtype == offSym)
         {
@@ -450,7 +463,11 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     // get nearest integer note
                     pVoice->mMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
                     
-                    float fVel = pVoice->dz*100.f*128.f;
+                    float v1 = pVoice->mSamples[0];
+                    float v2 = pVoice->mSamples[1];
+                    float v3 = pVoice->mSamples[2];
+                    float fVel = powf(((v1+2*(v2-v1)+4*(v3-v2))*2.0),1.2)*127.0;
+                    //float fVel = pVoice->dz*100.f*128.f;
                     pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
 
       //debug() << "voice " << i << " ON: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
