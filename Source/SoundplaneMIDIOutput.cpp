@@ -230,32 +230,29 @@ void SoundplaneMIDIOutput::setMPE(bool v)
         sendPressure(i, INVALID_NOTE,0);
 	}
 
-    //EXT: for split mode globalchannel = 1 or 16
-    int globalChannel=mStartChannel;
+    int globalChannel = mChannel;
+	
     // NOTE: pitchbend range - spec says its on first NOTE channel NOT global channel as might be expected
-    ///      so for splits this will be 2 & 15
-    int bendChannel=globalChannel + 1;
+    //      so for splits this will be 2 & 15
+    int bendChannel = globalChannel + 1;
     if(mMPE)
     {
         //EXT: this will need to be updated when split mode is used, as will we need to calc voices to use per split
         mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, mVoices));
 
-        //pitchbend range
-        sendPitchbendRange(bendChannel,mBendRange);
+        // pitchbend range
+        sendPitchbendRange(bendChannel, mBendRange);
     }
     else
     {
         mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, 0));
-        sendPitchbendRange(bendChannel, 2); // MPE spec unclear, what to do when returning? 2 is the default, so lets use that
     }
 }
 
-
-
 void SoundplaneMIDIOutput::setStartChannel(int v)
 {
-	if(mStartChannel == v) return;
-	mStartChannel = v;
+	if(mChannel == v) return;
+	mChannel = v;
 	if (!mpCurrentDevice) return;
 	for(int i=1; i<=16; ++i)
 	{
