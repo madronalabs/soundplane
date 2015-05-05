@@ -20,6 +20,8 @@
 
 const int kMaxMIDIVoices = 16;
 
+// define channels used for MPE (Multidimensional Polyphonc Expression)
+
 class MIDIVoice
 {
 public:
@@ -100,13 +102,16 @@ public:
 	void setKymaPoll(bool v) { mKymaPoll = v; }
 	
 private:
+	int getMPEMainChannel();
+	int getMPEVoiceChannel(int voice);
 
     void sendPressure(int chan, int note,float p);
     void sendPitchbend(int chan, float p);
     void sendX(int chan, float p);
     void sendY(int chan, float p);
-    void sendPitchbendRange(int chan,int range);
-
+    void sendPitchbendRange();
+	void sendMPEChannels();
+	
 	int mVoices;
 	
 	MIDIVoice mMIDIVoices[kMaxMIDIVoices];
@@ -132,8 +137,12 @@ private:
 	float mHysteresis;
 	
 	bool mMPEExtended;
-    bool mMPE;
-	int mStartChannel;
+    bool mMPEMode;
+	int mMPEChannels;
+	
+	// channel to be used for single-channel output
+	int mChannel;
+	
 	bool mKymaPoll;
 };
 
