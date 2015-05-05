@@ -147,7 +147,7 @@ private:
     bool mNeedsRedraw;
     float mValue[kZoneValArraySize];
 
-    // touches are stored on [0..1] over the Zone boundary.
+    // touch locations are stored scaled to [0..1] over the Zone boundary.
     // incoming touches 
     ZoneTouch mTouches0[kSoundplaneMaxTouches];
     // touch positions this frame
@@ -158,8 +158,8 @@ private:
     ZoneTouch mStartTouches[kSoundplaneMaxTouches];
     
 	float mSnapFreq;
-	std::vector<Biquad> mNoteFilters;
-	std::vector<Biquad> mVibratoFilters;
+	std::vector<MLBiquad> mNoteFilters;
+	std::vector<MLBiquad> mVibratoFilters;
 
 };
 typedef std::shared_ptr<Zone> ZonePtr;

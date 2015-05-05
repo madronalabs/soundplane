@@ -27,22 +27,22 @@ int Zone::symbolToZoneType(MLSymbol s)
 }
 
 Zone::Zone(const SoundplaneListenerList& l) :
-mZoneID(0),
-mType(-1),
-mBounds(0, 0, 1, 1),
-mStartNote(60),
-mVibrato(0),
-mHysteresis(0),
-mQuantize(0),
-mNoteLock(0),
-mTranspose(0),
-mScaleNoteOffset(0),
-mControllerNum1(1),
-mControllerNum2(2),
-mControllerNum3(3),
-mChannel(1),
-mName("unnamed zone"),
-mListeners(l)
+	mZoneID(0),
+	mType(-1),
+	mBounds(0, 0, 1, 1),
+	mStartNote(60),
+	mVibrato(0),
+	mHysteresis(0),
+	mQuantize(0),
+	mNoteLock(0),
+	mTranspose(0),
+	mScaleNoteOffset(0),
+	mControllerNum1(1),
+	mControllerNum2(2),
+	mControllerNum3(3),
+	mChannel(1),
+	mName("unnamed zone"),
+	mListeners(l)
 {
     mNoteFilters.resize(kSoundplaneMaxTouches);
 	mVibratoFilters.resize(kSoundplaneMaxTouches);
@@ -162,7 +162,6 @@ void Zone::processTouchesNoteRow()
         ZoneTouch tStart = mStartTouches[i];
         bool isActive = t1.isActive();
         bool wasActive = t2.isActive();
-        
         bool releasing = (!isActive && wasActive);
         
         float t1x, t1y;
@@ -180,7 +179,6 @@ void Zone::processTouchesNoteRow()
         float t1z = t1.pos.z();
         float t1dz = t1.pos.w();
         float tStartX = tStart.pos.x();
-        
         float currentXPos = mXRange(t1x) - mBounds.left();
         float startXPos = mXRange(tStartX) - mBounds.left();
         float vibratoX = currentXPos;
@@ -206,25 +204,31 @@ void Zone::processTouchesNoteRow()
         
         // setup filter inputs / outputs
         // TODO use new simpler utility filter classes
+		/*
         mNoteFilters[i].setInput(&scaleNote);
         mNoteFilters[i].setOutput(&scaleNote);
         mVibratoFilters[i].setInput(&vibratoX);
         mVibratoFilters[i].setOutput(&vibratoX);
-        
+        */
+		
         if(isActive && !wasActive)
         {
             // setup filter states for new note and output
             mNoteFilters[i].setState(scaleNote);
-            mNoteFilters[i].process(1);
+ //           mNoteFilters[i].process(1);
             mVibratoFilters[i].setState(vibratoX);
-            mVibratoFilters[i].process(1);            
+ //           mVibratoFilters[i].process(1);    
+			
+
+			
+			
             sendMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
         else if(isActive)
         {
             // filter ongoing note
-            mNoteFilters[i].process(1);
-            mVibratoFilters[i].process(1);
+            scaleNote = mNoteFilters[i].processSample(scaleNote);
+            vibratoX = mVibratoFilters[i].processSample(vibratoX);
             
             // add vibrato to note
             float vibratoHP = (currentXPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;

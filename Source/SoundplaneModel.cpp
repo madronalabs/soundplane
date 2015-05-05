@@ -1155,7 +1155,7 @@ void SoundplaneModel::testCallback()
 	}
 	
 	{		
-		// filter data in time
+		// filter 2D data in time
 		mNotchFilter.setInputSignal(&mSurface);
 		mNotchFilter.setOutputSignal(&mSurface);
 		mNotchFilter.process(1);					
