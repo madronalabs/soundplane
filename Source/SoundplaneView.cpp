@@ -292,7 +292,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setRange(10., 500., 10.);
 	pD->setDefault(250.);
 	pD = page0->addDial("bend range", dialRect.withCenter(9.75, bottomDialsY), "bend_range", c2);
-	pD->setRange(0., 48., 1.);
+	pD->setRange(0., 96., 12.);
 	
 	pB = page0->addToggleButton("MPE", toggleRect.withCenter(8.75, bottomDialsY2), "midi_mpe", c2);
 	mpMidiChannelDial = page0->addDial("channel", dialRect.withCenter(9.75, bottomDialsY2), "midi_channel", c2);
