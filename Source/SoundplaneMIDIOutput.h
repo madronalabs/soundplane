@@ -19,6 +19,7 @@
 #include "MLTime.h"
 
 const int kMaxMIDIVoices = 16;
+const int kMaxVelSamples = 3;
 
 class MIDIVoice
 {
@@ -31,6 +32,7 @@ public:
 	float y;
 	float z;
 	float dz;
+    float mSamples[kMaxVelSamples];
 	float note;
 	float startX;
 	float startY;
@@ -87,20 +89,25 @@ public:
 	void setActive(bool v);
 	void setPressureActive(bool v);
 
-	void setMaxTouches(int t) { mVoices = clamp(t, 0, kMaxMIDIVoices); }
-	void setBendRange(int r) { mBendRange = r; }
+	void setMaxTouches(int t);
+	void setBendRange(int r);
 	void setTranspose(int t) { mTranspose = t; }
 	void setRetrig(int t) { mRetrig = t; }
 	void setAbsRel(int t) { mAbsRel = t; }
 	void setHysteresis(float t) { mHysteresis = t; }
 
-	void setMultiChannel(bool v);
+	void setMPEExtended(bool v);
+	void setMPE(bool v);
 	void setStartChannel(int v);
 	void setKymaPoll(bool v) { mKymaPoll = v; }
 	
 private:
 
-    void sendPressure(int chan, float p);
+    void sendPressure(int chan, int note,float p);
+    void sendPitchbend(int chan, float p);
+    void sendX(int chan, float p);
+    void sendY(int chan, float p);
+    void sendPitchbendRange(int chan,int range);
 
 	int mVoices;
 	
@@ -126,7 +133,8 @@ private:
 	int mAbsRel;
 	float mHysteresis;
 	
-	bool mMultiChannel;
+	bool mMPEExtended;
+    bool mMPE;
 	int mStartChannel;
 	bool mKymaPoll;
 };
