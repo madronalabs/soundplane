@@ -217,8 +217,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	MLRect presetMenuRect(0, 0, presetMenuWidth, presetMenuHeight);
     
  	float dialY = 8.25;	// center line for dials
-	MLRect dialRect (0, 0, 1.25, 1.0);
-	MLRect dialRectSmall (0, 0, 1., 0.75);
+	MLRect dialRect (0, 0, 1.0, 0.875);
+	MLRect dialRectSmall (0, 0, 1.0, 0.625);
 	MLRect buttonRect(0, 0, 1, 0.5);
 	MLRect toggleRect(0, 0, 1, 0.5);
 	MLRect textButtonRect(0, 0, 5.5, 0.4);
@@ -265,13 +265,13 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pB = page0->addToggleButton("note lock", toggleRect.withCenter(5.25, topDialsY), "lock", c2);
 	pB = page0->addToggleButton("glissando", toggleRect.withCenter(6.25, topDialsY), "retrig", c2);
     
-	pD = page0->addDial("portamento", dialRectSmall.withCenter(7.75, topDialsY), "snap", c2);
+	pD = page0->addDial("portamento", dialRect.withCenter(7.75, topDialsY), "snap", c2);
 	pD->setRange(0., 1000., 10);
 	pD->setDefault(250.);
-	pD = page0->addDial("vibrato", dialRectSmall.withCenter(8.75, topDialsY), "vibrato", c2);
+	pD = page0->addDial("vibrato", dialRect.withCenter(8.75, topDialsY), "vibrato", c2);
 	pD->setRange(0., 1., 0.01);
 	pD->setDefault(0.5);
-	pD = page0->addDial("transpose", dialRectSmall.withCenter(9.75, topDialsY), "transpose", c2);
+	pD = page0->addDial("transpose", dialRect.withCenter(9.75, topDialsY), "transpose", c2);
 	pD->setRange(-24, 24., 1.);
 	pD->setDefault(0);
 	
@@ -292,7 +292,15 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setRange(10., 500., 10.);
 	pD->setDefault(250.);
 	pD = page0->addDial("bend range", dialRect.withCenter(9.75, bottomDialsY), "bend_range", c2);
-	pD->setRange(0., 96., 12.);
+	pD->setRange(0., 96., 1.);
+	for(int i=0; i<13; ++i)
+	{
+		pD->addDetent(i);
+	}
+	for(int i=24; i<97; i += 12)
+	{
+		pD->addDetent(i);
+	}
 	
 	pB = page0->addToggleButton("MPE", toggleRect.withCenter(8.75, bottomDialsY2), "midi_mpe", c2);
 	mpMidiChannelDial = page0->addDial("channel", dialRect.withCenter(9.75, bottomDialsY2), "midi_channel", c2);
