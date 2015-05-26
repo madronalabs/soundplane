@@ -201,28 +201,16 @@ void Zone::processTouchesNoteRow()
         {
             scaleNote = mScaleMap.getInterpolatedLinear(touchPos - 0.5f);
         }
-        
-        // setup filter inputs / outputs
-        // TODO use new simpler utility filter classes
-		/*
-        mNoteFilters[i].setInput(&scaleNote);
-        mNoteFilters[i].setOutput(&scaleNote);
-        mVibratoFilters[i].setInput(&vibratoX);
-        mVibratoFilters[i].setOutput(&vibratoX);
-        */
-		
-        if(isActive && !wasActive)
+
+		if(isActive && !wasActive)
         {
             // setup filter states for new note and output
             mNoteFilters[i].setState(scaleNote);
- //           mNoteFilters[i].process(1);
             mVibratoFilters[i].setState(vibratoX);
- //           mVibratoFilters[i].process(1);    
-			
-
-			
-			
-            sendMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
+			// clamp note-on dz for use as velocity later. 
+			// we can get negative velocities here when one touch picks up from another.
+			t1dz = clamp(t1dz, 0.0001f, 1.f);
+			sendMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
         else if(isActive)
         {
@@ -230,25 +218,11 @@ void Zone::processTouchesNoteRow()
             scaleNote = mNoteFilters[i].processSample(scaleNote);
             vibratoX = mVibratoFilters[i].processSample(vibratoX);
             
-            // add vibrato to note
+            // get vibrato amount
             float vibratoHP = (currentXPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;
-            scaleNote += vibratoHP;
-            sendMessage("touch", "continue", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
-        }
-        else if(wasActive)
-        {
-            // on note off, retain last note for release
-            float lastScaleNote;
-            if(mQuantize)
-            {
-                lastScaleNote = scaleNote;
-            }
-            else
-            {
-                float lastX = mXRange(t2.pos.x()) - mBounds.left();
-                lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
-            }
-            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + lastScaleNote);
+//            scaleNote += vibratoHP;
+
+            sendMessage("touch", "continue", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote, vibratoHP);
         }
     }
 }
@@ -274,8 +248,19 @@ void Zone::processTouchesNoteOffs()
         }      
         if(!isActive && wasActive)
         {
-            // on note off, retain last note for release
-            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + scaleNote);
+			// on note off, retain last note for release
+			float lastScaleNote;
+			if(mQuantize)
+			{
+				lastScaleNote = scaleNote;
+			}
+			else
+			{
+				float lastX = mXRange(t2.pos.x()) - mBounds.left();
+				lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
+			}
+			
+			sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + lastScaleNote);
         }
     }
 }
