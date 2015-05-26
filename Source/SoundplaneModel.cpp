@@ -299,9 +299,9 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				mTracker.setUseTestSignal(b);
 				mTesting = b;
 			}
-			else if (p == "retrig")
+			else if (p == "glissando")
 			{
-				mMIDIOutput.setRetrig(bool(v));
+				mMIDIOutput.setGlissando(bool(v));
 				sendParametersToZones();
 			}
 			else if (p == "hysteresis")
@@ -1045,7 +1045,9 @@ void SoundplaneModel::sendTouchDataToZones()
     }
     
     // process touches for each zone
-    for(int i=0; i<zones; ++i)
+//	for(int i=0; i<zones; ++i)
+	
+	for(int i=zones - 1; i >= 0; --i)
 	{
         mZones[i]->processTouches();
     }
