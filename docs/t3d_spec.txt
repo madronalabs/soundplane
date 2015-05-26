@@ -1,0 +1,89 @@
+
+T3d specification
+---------------
+version 1.2
+
+
+I made a very simple format named t3d (for touch-3d) for Soundplane messages in Open Sound Control format. Open Sound Control (OSC) is an open, transport-independent, message-based protocol developed for communication among computers, sound synthesizers, and other multimedia devices. See opensoundcontrol.org for more info.
+
+Specification
+-------------
+
+A source of t3d data transmits t3d frames over OSC. 
+
+Each t3d frame consists of an OSC containing a frame message followed by 0 or more touch messages.
+
+OSC Bundle (time)
+	/t3d/frm 
+	/t3d/tch 
+	/t3d/tch 
+	/t3d/tch 
+	(...)
+End OSC Bundle
+
+--
+
+bundle:
+
+The bundle contains a 64-bit timestamp in microseconds as decsribed in the OSC specification. All touch data within the bundle is defined to have occurred at this time. This information can be used by the receiver to eliminate jitter in a t3d stream.
+
+--
+
+frame message:
+/t3d/frm (int)frameID (int)deviceID
+
+The frame message describes the incoming frame. In the current Soundplane application, frames are sent at a user-controllable data rate, with the exception that when new touches are detected, a new frame message is sent as soon as possible. The data rate is typically from 100-500Hz.
+
+frameID is a counter that increments for each frame of data sent by the Soundplane. Because an extra frame is sent when a touch is detected, it may increment at a varying rate.
+
+deviceID contains a 16-bit instrument model ID followed by a 16 bit serial number.
+
+--
+
+touch:
+t3d/tch[n] (float)x, (float)y, (float)z, (float)note
+
+The touch message describes a single touch currently active. If no touches are active, there will be no touch messages sent in between the frame and alive messages.
+
+n is an integer suffix on the "t3d/tch" string itself. It is the touch number from 1-16.
+
+x is an x location from 0.-1. The precise meaning of x can be configured in the instrument or application sending the data. For example, x can be 0--1 over the current key area, or over the entire playing surface.
+
+y is a y location from 0.-1. As with x, the precise meaning of y may be configurable by the sending instrument or application.
+
+z is the z (force) value from 0.-1. 
+
+note is a floating point value. The Soundplane software has a utility to map from areas on the surface to zones, which may play notes. Soundplane assumes that clients will have ways for the player to select a note to frequency map, or scale. To provide only an equal-tempered A440 scale a fixed mapping can be used where frequency = 440.0 * 2^((note-69.0)/12.) .
+
+Each touch coming from the Soundplane application is guaranteed to send a zero z value for one frame when it becomes inactive. If active touches do not send any updates for a period of time, they can be assumed to be stuck on. Theoretically this could happen in the case of network dropouts, if the zero frame is not received. Over UDP on one machine this has not been an issue. If it becomes an issue, software receiving touches can be configured to notice if an active touch stops reporting data, and clear it.
+
+--
+
+matrix: 
+/t3d/matrix (OSCBlob)data 
+Sent when the matrix toggle in Soundplane app is on, with an OSC blob containing 2048 bytes of raw surface pressure. These bytes are in 32-bit floating point format, 32 bits x 8 rows x 64 columns.
+
+--
+
+Application Notes
+-----------------
+
+If a MIDI-style envelope based on the initial velocity of the touch is desired, the t3d receiver can use the first z value in a touch as the "touch velocity." Typically the sender will be doing some kind of filtering for noise reduction, so the first z value in a touch will be more or less proportional to the initial velocity. 
+
+
+Versions
+--------
+
+1.0: November 2013
+
+1.1: April 2015  
+	added notes and small corrections
+
+1.2: May 2015
+	added concept of sender-configurable x and y
+	clarified z / velocity note
+
+
+
+
+
