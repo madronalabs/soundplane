@@ -20,8 +20,6 @@
 
 const int kMaxMIDIVoices = 16;
 
-// define channels used for MPE (Multidimensional Polyphonc Expression)
-
 class MIDIVoice
 {
 public:
@@ -37,6 +35,7 @@ public:
 	float startX;
 	float startY;
 	float startNote;
+	float vibrato;
 
 	int mMIDINote;
 	int mMIDIVel;	
@@ -92,7 +91,7 @@ public:
 	void setMaxTouches(int t);
 	void setBendRange(int r);
 	void setTranspose(int t) { mTranspose = t; }
-	void setRetrig(int t) { mRetrig = t; }
+	void setGlissando(int t) { mGlissando = t; }
 	void setAbsRel(int t) { mAbsRel = t; }
 	void setHysteresis(float t) { mHysteresis = t; }
 
@@ -105,7 +104,7 @@ private:
 	int getMPEMainChannel();
 	int getMPEVoiceChannel(int voice);
 
-    void sendPressure(int chan, int note,float p);
+    void sendPressure(int chan, int note, float p);
     void sendPitchbend(int chan, float p);
     void sendX(int chan, float p);
     void sendY(int chan, float p);
@@ -132,7 +131,7 @@ private:
 	UInt64 mLastTimeNRPNWasSent;
 	int mBendRange;
 	int mTranspose;
-	int mRetrig;
+	int mGlissando;
 	int mAbsRel;
 	float mHysteresis;
 	
