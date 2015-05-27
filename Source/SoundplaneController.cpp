@@ -213,7 +213,13 @@ void SoundplaneController::setupMenus()
     
  	mMenuMap["touch_preset"] = MLMenuPtr(new MLMenu("touch_preset"));
 	mMenuMap["osc_service_name"] = MLMenuPtr(new MLMenu("osc_service_name"));
-}	
+
+    mMenuMap["midi_mpe"] = MLMenuPtr(new MLMenu("midi_mpe"));
+    mMenuMap["midi_mpe"]->addItem("single");
+    mMenuMap["midi_mpe"]->addItem("mpe");
+    mMenuMap["midi_mpe"]->addItem("classic");
+    mMenuMap["midi_mpe"]->addItem("u-he");
+}
 
 
 MLMenu* SoundplaneController::findMenuByName(MLSymbol menuName)
@@ -302,6 +308,10 @@ void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
 		{
 			doOSCServicesMenu(result);
 		}
+//        else if (menuName == "midi_mpe")
+//        {
+//            mpSoundplaneModel->setProperty("midi_mpe",result);
+//        }
 		else
 		{
 			MLMenu* menu = findMenuByName(menuName);

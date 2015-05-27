@@ -151,6 +151,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	mSoundplaneDeviceState(-1),
 	mpCurveGraph(0),
 	mpViewModeButton(0),
+    mpMIDIModeButton(0),
 	mpMIDIDeviceButton(0), 
 	mpOSCServicesButton(0),
 	mpMidiChannelDial(0)
@@ -287,7 +288,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
     
 	// MIDI
 	pB = page0->addToggleButton("active", toggleRect.withCenter(7.75, bottomDialsY), "midi_active", c2);
-	pB = page0->addToggleButton("pressure", toggleRect.withCenter(7.75, bottomDialsY2), "midi_pressure_active", c2);
+//	pB = page0->addToggleButton("pressure", toggleRect.withCenter(7.75, bottomDialsY2), "midi_pressure_active", c2);
 	pD = page0->addDial("rate", dialRect.withCenter(8.75, bottomDialsY), "data_freq_midi", c2);
 	pD->setRange(10., 500., 10.);
 	pD->setDefault(250.);
@@ -302,7 +303,10 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 		pD->addDetent(i);
 	}
 	
-	pB = page0->addToggleButton("MPE", toggleRect.withCenter(8.75, bottomDialsY2), "midi_mpe", c2);
+    MLRect textMIDIMode(0, 0, 2., 0.4);
+    mpMIDIModeButton=page0->addMenuButton("mode", textMIDIMode.withCenter(8.25, bottomDialsY2), "midi_mpe");
+    
+	//pB = page0->addToggleButton("MPE", toggleRect.withCenter(8.75, bottomDialsY2), "midi_mpe", c2);
 	mpMidiChannelDial = page0->addDial("channel", dialRect.withCenter(9.75, bottomDialsY2), "midi_channel", c2);
 	mpMidiChannelDial->setRange(1., 16., 1.);
 	
@@ -500,10 +504,10 @@ void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
 	}
 	else if(p == "mpe")
 	{
-		int v = val.getFloatValue();
+		const std::string& str = val.getStringValue();
 		if(mpMidiChannelDial)
 		{
-			if(v) // MPE mode on
+			if(str == "mpe") // MPE mode on
 			{
 				mpMidiChannelDial->setWidgetEnabled(false);	
 			}
@@ -605,6 +609,13 @@ void SoundplaneView::makeCarrierTogglesVisible(int v)
 }			
 
 // TODO make this code part of menus!!!
+
+void SoundplaneView::setMIDIModeString(const std::string& str)
+{
+    // TODO auto get button text from menu code
+    if(mpMIDIModeButton)
+        mpMIDIModeButton->setProperty("text", str);
+}
 
 void SoundplaneView::setMIDIDeviceString(const std::string& str)
 {	
