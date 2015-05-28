@@ -288,7 +288,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
     
 	// MIDI
 	pB = page0->addToggleButton("active", toggleRect.withCenter(7.75, bottomDialsY), "midi_active", c2);
-//	pB = page0->addToggleButton("pressure", toggleRect.withCenter(7.75, bottomDialsY2), "midi_pressure_active", c2);
 	pD = page0->addDial("rate", dialRect.withCenter(8.75, bottomDialsY), "data_freq_midi", c2);
 	pD->setRange(10., 500., 10.);
 	pD->setDefault(250.);
@@ -304,9 +303,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	}
 	
     MLRect textMIDIMode(0, 0, 2., 0.4);
-    mpMIDIModeButton=page0->addMenuButton("mode", textMIDIMode.withCenter(8.25, bottomDialsY2), "midi_mpe");
+    mpMIDIModeButton=page0->addMenuButton("mode", textMIDIMode.withCenter(8.25, bottomDialsY2), "midi_mode");
     
-	//pB = page0->addToggleButton("MPE", toggleRect.withCenter(8.75, bottomDialsY2), "midi_mpe", c2);
 	mpMidiChannelDial = page0->addDial("channel", dialRect.withCenter(9.75, bottomDialsY2), "midi_channel", c2);
 	mpMidiChannelDial->setRange(1., 16., 1.);
 	
@@ -336,7 +334,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(12.25, 9.), "osc_service_name");
 	
 	// additional parameter views allow us to adapt UI based on Model properties.
-	page0->addPropertyView("midi_mpe", this, MLSymbol("mpe")); 	
+	page0->addPropertyView("midi_mode", this, MLSymbol("mode"));
 
     // --------------------------------------------------------------------------------
 	// page 1 - raw touches
@@ -502,12 +500,12 @@ void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
 		goToPage(v);
 		repaint();
 	}
-	else if(p == "mpe")
+	else if(p == "mode")
 	{
 		const std::string& str = val.getStringValue();
 		if(mpMidiChannelDial)
 		{
-			if(str == "mpe") // MPE mode on
+			if(str == MM_MPE) // MPE mode on
 			{
 				mpMidiChannelDial->setWidgetEnabled(false);	
 			}

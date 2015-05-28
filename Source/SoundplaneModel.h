@@ -26,6 +26,14 @@
 #include "Zone.h"
 #include "SoundplaneBinaryData.h"
 
+
+#define MM_SINGLE_1 "single-pp"
+#define MM_SINGLE_2 "single-cp"
+#define MM_MPE      "mpe"
+#define MM_MULTI_1  "multi-73,74,11"
+#define MM_MULTI_2  "multi-pb,1,cp"
+
+
 class SoundplaneModel :
 	public SoundplaneDriverListener,
 	public TouchTracker::Listener,

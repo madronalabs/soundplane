@@ -369,23 +369,27 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 					}
 				}
 			}
-            else if (p == "midi_mpe")
+            else if (p == "midi_mode")
             {
-                if(str=="single")
+                if(str == MM_SINGLE_1)
                 {
-                    mMIDIOutput.setMPE(MidiMode::single);
+                    mMIDIOutput.setMode(MidiMode::single_1);
                 }
-                else if (str == "mpe")
+                else if(str == MM_SINGLE_2)
                 {
-                    mMIDIOutput.setMPE(MidiMode::mpe);
+                    mMIDIOutput.setMode(MidiMode::single_2);
                 }
-                else if (str == "classic")
+                else if (str == MM_MPE)
                 {
-                    mMIDIOutput.setMPE(MidiMode::classic);
+                    mMIDIOutput.setMode(MidiMode::mpe);
                 }
-                else if (str == "u-he")
+                else if (str == MM_MULTI_1)
                 {
-                    mMIDIOutput.setMPE(MidiMode::uhe);
+                    mMIDIOutput.setMode(MidiMode::multi_1);
+                }
+                else if (str == MM_MULTI_2)
+                {
+                    mMIDIOutput.setMode(MidiMode::multi_2);
                 }
             }
 		}
@@ -439,8 +443,7 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("t_thresh", 0.2);
 	
 	setProperty("midi_active", 0);
-	setProperty("midi_mpe", "mpe");
-	setProperty("midi_mpe_extended", 0);
+	setProperty("midi_mode", MM_MPE);
 	setProperty("midi_channel", 1);
 	setProperty("data_freq_midi", 250.);
 	

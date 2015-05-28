@@ -68,10 +68,11 @@ typedef std::shared_ptr<MIDIDevice> MIDIDevicePtr;
 
 enum MidiMode
 {
-    single,
+    single_1,
+    single_2,
     mpe,
-    classic,
-    uhe
+    multi_1,
+    multi_2
 };
 
 class SoundplaneMIDIOutput :
@@ -104,7 +105,7 @@ public:
 	void setAbsRel(int t) { mAbsRel = t; }
 	void setHysteresis(float t) { mHysteresis = t; }
 
-	void setMPE(MidiMode v);
+	void setMode(MidiMode v);
 	void setStartChannel(int v);
 	void setKymaPoll(bool v) { mKymaPoll = v; }
 	
@@ -143,7 +144,7 @@ private:
 	int mAbsRel;
 	float mHysteresis;
 	
-    MidiMode mMPEMode;
+    MidiMode mMidiMode;
 	int      mMPEChannels;
 	
 	// channel to be used for single-channel output
