@@ -334,9 +334,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	MLRect GLRect1(0, 1.f, pageWidth, 3.5);
 	mGridView.setModel(pModel);
 	page1->addWidgetToView (&mGridView, GLRect1, "grid_view");
-	
-	// grid view gets viewmode changes
-	page1->addParamView("viewmode", &mGridView, MLSymbol("viewmode"));
     
 	MLRect GLRect2(0, 4.5, pageWidth, 3.);
 	mTouchView.setModel(pModel);
@@ -397,7 +394,11 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 //	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
 
 	// add parameter views handled directly by this Widget
-	page1->addParamView("viewmode", this, MLSymbol("viewmode"));
+	page1->addPropertyView("viewmode", this, MLSymbol("viewmode"));
+	
+	// grid view gets viewmode changes
+	page1->addPropertyView("viewmode", &mGridView, MLSymbol("viewmode"));
+	
 	
 	//page0->addParamView("protocol", this, MLSymbol("show_protocol"));
 	

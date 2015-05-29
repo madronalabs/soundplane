@@ -814,7 +814,7 @@ void TouchTracker::fitCurves()
 	zSharp = in;
 	zSharp.convolve5x1(-0.5, 0, 1., 0, -0.5);
 
-	const juce::ScopedLock lock(mPingsLock);
+	const juce::ScopedLock lock(mPingsLock); //TODO temp
 	mPings.clear();
 	
 	mFitTestSignal.clear();
