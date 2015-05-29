@@ -16,7 +16,7 @@ const std::string kSoundplaneMIDIDeviceName("Soundplane IAC out");
 MIDIVoice::MIDIVoice() :
 	age(0), x(0), y(0), z(0), note(0),
 	startX(0), startY(0), startNote(0), vibrato(0),
-    mMIDINote(0), mMIDIVel(0), mMIDIBend(0), mMIDIXCtrl(0), mMIDIYCtrl(0), mMIDIPressure(0),
+    mMIDINote(-1), mMIDIVel(0), mMIDIBend(0), mMIDIXCtrl(0), mMIDIYCtrl(0), mMIDIPressure(0),
     mState(kVoiceStateInactive)
 {
 }
@@ -443,8 +443,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                 if (pVoice->mState == kVoiceStateOn)
                 {
                     // before note on, first send note off if needed
-                    // FIXME pVoice->mMIDINote  == 0, midi note 0 is valid its C-2, use -1, or separate logic perhap MidiVel
-                    if(pVoice->mMIDINote && pVoice->mMIDIVel>0)
+                    if((pVoice->mMIDINote >= 0) && (pVoice->mMIDIVel > 0))
                     {
                         sendPressure(chan, pVoice->mMIDINote, 0);
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
