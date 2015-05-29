@@ -815,6 +815,8 @@ void TouchTracker::updateTouches(const MLSignal& in)
 			float b1 = -x;
 			t.dz = newZ - t.z;	
 			
+			// MLTEST
+			
 			t.x1 = t.x;
 			t.y1 = t.y;
 			t.z1 = t.z;
