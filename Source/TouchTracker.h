@@ -320,7 +320,6 @@ private:
 	MLSignal mRetrigTimer;
 	
 	// new
-	void getRegions();
 	void findSpans();
 	void collectTemplate();
 	void fitCurves();
