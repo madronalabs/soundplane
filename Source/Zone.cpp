@@ -114,25 +114,22 @@ void Zone::addTouchToFrame(int i, float x, float y, int kx, int ky, float z, flo
 
 // after all touches or a frame have been sent using addTouchToFrame, generate
 // any needed messages about the frame and prepare for the next frame. 
-void Zone::processTouches()
+void Zone::processTouches(const std::vector<bool>& freedTouches)
 {
-    // store previous touches and clear incoming for next frame
-    for(int i=0; i<kSoundplaneMaxTouches; ++i)
-    {
-        mTouches2[i] = mTouches1[i];
-        mTouches1[i] = mTouches0[i];
-        mTouches0[i].clear();
-        
-        // store start of touch
-        if (mTouches1[i].isActive() && !(mTouches2[i].isActive()))
-        {
-            mStartTouches[i] = mTouches1[i];
-        }
-    }
+	// store previous touches and clear incoming for next frame
+	for(int i=0; i<kSoundplaneMaxTouches; ++i)
+	{		
+		// store start of touch
+		if (mTouches0[i].isActive() && !(mTouches1[i].isActive()))
+		{
+			mStartTouches[i] = mTouches0[i];
+		}
+	}
+	
     switch(mType)
     {
         case kNoteRow:
-            processTouchesNoteRow();
+            processTouchesNoteRow(freedTouches);
             break;
         case kControllerX:
             processTouchesControllerX();
@@ -150,15 +147,22 @@ void Zone::processTouches()
             processTouchesControllerPressure();
             break;
     }
+	
+	// store previous touches and clear incoming for next frame
+	for(int i=0; i<kSoundplaneMaxTouches; ++i)
+	{
+		mTouches1[i] = mTouches0[i];
+		mTouches0[i].clear();
+	}
 }
 
-void Zone::processTouchesNoteRow()
+void Zone::processTouchesNoteRow(const std::vector<bool>& freedTouches)
 {
     // for each possible touch, send any active touch or touch off messages to listeners
     for(int i=0; i<kSoundplaneMaxTouches; ++i)
     {
-        ZoneTouch t1 = mTouches1[i];
-        ZoneTouch t2 = mTouches2[i];
+		ZoneTouch t1 = mTouches0[i];
+        ZoneTouch t2 = mTouches1[i];
         ZoneTouch tStart = mStartTouches[i];
         bool isActive = t1.isActive();
         bool wasActive = t2.isActive();
@@ -201,28 +205,30 @@ void Zone::processTouchesNoteRow()
         {
             scaleNote = mScaleMap.getInterpolatedLinear(touchPos - 0.5f);
         }
-        
-        // setup filter inputs / outputs
-        // TODO use new simpler utility filter classes
-		/*
-        mNoteFilters[i].setInput(&scaleNote);
-        mNoteFilters[i].setOutput(&scaleNote);
-        mVibratoFilters[i].setInput(&vibratoX);
-        mVibratoFilters[i].setOutput(&vibratoX);
-        */
-		
-        if(isActive && !wasActive)
-        {
-            // setup filter states for new note and output
-            mNoteFilters[i].setState(scaleNote);
- //           mNoteFilters[i].process(1);
-            mVibratoFilters[i].setState(vibratoX);
- //           mVibratoFilters[i].process(1);    
-			
 
+		if(isActive && !wasActive)
+        {			
+			// if touch i was freed on the frame preceding this one, it moved
+			// from zone to zone. 
+			bool retrig = (freedTouches[i]);
+
+			// setup filter states for new note and output
+            mNoteFilters[i].setState(scaleNote);
+            mVibratoFilters[i].setState(vibratoX);
 			
+			if(retrig)
+			{
+				// get retrigger velocity from current z
+				t1dz = clamp(t1z * 0.01f, 0.0001f, 1.f);
+			}
+			else
+			{
+				// clamp note-on dz for use as velocity later. 
+				t1dz = clamp(t1dz, 0.0001f, 1.f);
+			}
 			
-            sendMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
+			debug() << "RETRIG " << retrig << ", dz = " << t1dz << "\n";
+			sendMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
         else if(isActive)
         {
@@ -230,38 +236,24 @@ void Zone::processTouchesNoteRow()
             scaleNote = mNoteFilters[i].processSample(scaleNote);
             vibratoX = mVibratoFilters[i].processSample(vibratoX);
             
-            // add vibrato to note
+            // get vibrato amount
             float vibratoHP = (currentXPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;
-            scaleNote += vibratoHP;
-            sendMessage("touch", "continue", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
-        }
-        else if(wasActive)
-        {
-            // on note off, retain last note for release
-            float lastScaleNote;
-            if(mQuantize)
-            {
-                lastScaleNote = scaleNote;
-            }
-            else
-            {
-                float lastX = mXRange(t2.pos.x()) - mBounds.left();
-                lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
-            }
-            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + lastScaleNote);
+			
+			// send continue touch message
+            sendMessage("touch", "continue", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote, vibratoHP);
         }
     }
 }
 
 // process any note offs. called by the model for all zones before processTouches() so that any new
 // touches with the same index as an expiring one will have a chance to get started.
-void Zone::processTouchesNoteOffs()
+void Zone::processTouchesNoteOffs(std::vector<bool>& freedTouches)
 {
     // for each possible touch, send any active touch or touch off messages to listeners
     for(int i=0; i<kSoundplaneMaxTouches; ++i)
     {
-        ZoneTouch t1 = mTouches1[i];
-        ZoneTouch t2 = mTouches2[i];
+        ZoneTouch t1 = mTouches0[i];
+        ZoneTouch t2 = mTouches1[i];
         bool isActive = t1.isActive();
         bool wasActive = t2.isActive();
         
@@ -274,8 +266,19 @@ void Zone::processTouchesNoteOffs()
         }      
         if(!isActive && wasActive)
         {
-            // on note off, retain last note for release
-            sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + scaleNote);
+			// on note off, retain last note for release
+			float lastScaleNote;
+			if(mQuantize)
+			{
+				lastScaleNote = scaleNote;
+			}
+			else
+			{
+				float lastX = mXRange(t2.pos.x()) - mBounds.left();
+				lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
+			}
+			freedTouches[i] = true;
+			sendMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + lastScaleNote);
         }
     }
 }
@@ -285,7 +288,7 @@ int Zone::getNumberOfActiveTouches() const
     int activeTouches = 0;
     for(int i=0; i<kSoundplaneMaxTouches; ++i)
     {
-        ZoneTouch t = mTouches1[i];
+        ZoneTouch t = mTouches0[i];
         if(t.isActive())
         {
             activeTouches++;
@@ -299,8 +302,8 @@ int Zone::getNumberOfNewTouches() const
     int newTouches = 0;
     for(int i=0; i<kSoundplaneMaxTouches; ++i)
     {
-        ZoneTouch t1 = mTouches1[i];
-        ZoneTouch t2 = mTouches2[i];
+        ZoneTouch t1 = mTouches0[i];
+        ZoneTouch t2 = mTouches1[i];
         if(t1.isActive() && (!t2.isActive()))
         {
             newTouches++;
@@ -315,7 +318,7 @@ Vec3 Zone::getAveragePositionOfActiveTouches() const
     int activeTouches = 0;
     for(int i=0; i<kSoundplaneMaxTouches; ++i)
     {
-        ZoneTouch t = mTouches1[i];
+        ZoneTouch t = mTouches0[i];
         if(t.isActive())
         {
             avg += t.pos;
@@ -335,7 +338,7 @@ float Zone::getMaxZOfActiveTouches() const
     float maxZ = 0.f;
     for(int i=0; i<kSoundplaneMaxTouches; ++i)
     {
-        ZoneTouch t = mTouches1[i];
+        ZoneTouch t = mTouches0[i];
         if(t.isActive())
         {
             float z = t.pos.z();

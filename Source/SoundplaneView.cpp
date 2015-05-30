@@ -264,7 +264,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
     
 	pB = page0->addToggleButton("quantize", toggleRect.withCenter(4.25, topDialsY), "quantize", c2);
 	pB = page0->addToggleButton("note lock", toggleRect.withCenter(5.25, topDialsY), "lock", c2);
-	pB = page0->addToggleButton("glissando", toggleRect.withCenter(6.25, topDialsY), "retrig", c2);
+	pB = page0->addToggleButton("glissando", toggleRect.withCenter(6.25, topDialsY), "glissando", c2);
     
 	pD = page0->addDial("portamento", dialRect.withCenter(7.75, topDialsY), "snap", c2);
 	pD->setRange(0., 1000., 10);

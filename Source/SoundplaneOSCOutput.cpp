@@ -13,7 +13,6 @@ OSCVoice::OSCVoice() :
     x(0),
     y(0),
     z(0),
-    z1(0),
     note(0),
     mState(kVoiceStateInactive)
 {
@@ -152,7 +151,7 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
     MLSymbol subtype = msg->mSubtype;
     
     int i;
-	float x, y, z, dz, note;
+	float x, y, z, dz, note, vibrato;
     
     if(type == startFrameSym)
     {
@@ -178,18 +177,25 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
         y = msg->mData[2];
         z = msg->mData[3];
         dz = msg->mData[4];
-        note = msg->mData[5];
+		note = msg->mData[5];
+		vibrato = msg->mData[6];
         OSCVoice* pVoice = &mOSCVoices[i];        
         pVoice->x = x;
         pVoice->y = y;
-        pVoice->z1 = pVoice->z;
         pVoice->z = z;
-        pVoice->note = note;
+        pVoice->note = note + vibrato;
         
         if(subtype == onSym)
         {
             pVoice->startX = x;
             pVoice->startY = y;
+			
+			// send dz (velocity) as first z value
+			pVoice->z = dz;
+			
+			// MLTEST
+			debug() << "SoundplaneOSCOutput: ON vel " << dz << "\n";
+			
             pVoice->mState = kVoiceStateOn;
             mGotNoteChangesThisFrame = true;
         }
@@ -285,7 +291,7 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
                     mMessagesByZone[i].mType = nullSym;
                 }
             }
-            // send notes, either in Kyma mode, or not
+            // send touches, either in Kyma mode, or not
             if (!mKymaMode)
             {
                 // send 1 message for each live touch: /t3d/tch[touchID] x y z note
@@ -312,7 +318,6 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
                         pVoice->mState = kVoiceStateInactive;
                     }
                 }
-               
             }
             else // kyma
             {

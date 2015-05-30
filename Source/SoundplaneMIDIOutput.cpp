@@ -15,8 +15,8 @@ const std::string kSoundplaneMIDIDeviceName("Soundplane IAC out");
 
 MIDIVoice::MIDIVoice() :
 	age(0), x(0), y(0), z(0), note(0),
-	startX(0), startY(0), startNote(0),
-    mMIDINote(0), mMIDIVel(0), mMIDIBend(0), mMIDIXCtrl(0), mMIDIYCtrl(0), mMIDIPressure(0),
+	startX(0), startY(0), startNote(0), vibrato(0),
+    mMIDINote(-1), mMIDIVel(0), mMIDIBend(0), mMIDIXCtrl(0), mMIDIYCtrl(0), mMIDIPressure(0),
     mState(kVoiceStateInactive)
 {
 }
@@ -252,7 +252,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
     MLSymbol subtype = msg->mSubtype;
     
     int i;
-	float x, y, z, dz, note;
+	float x, y, z, dz, note, vibrato;
     
     if(type == startFrameSym)
     {
@@ -277,14 +277,16 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
         y = msg->mData[2];
         z = msg->mData[3];
         dz = msg->mData[4];
-        note = msg->mData[5];
+		note = msg->mData[5];
+		vibrato = msg->mData[6];
         
         MIDIVoice* pVoice = &mMIDIVoices[i];
         pVoice->x = x;
         pVoice->y = y;
         pVoice->z = z;
         pVoice->dz = dz;
-        pVoice->note = note;
+		pVoice->note = note;
+		pVoice->vibrato = vibrato;
                
         if(subtype == onSym)
         {
@@ -402,8 +404,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                 if (pVoice->mState == kVoiceStateOn)
                 {
                     // before note on, first send note off if needed
-                    // FIXME pVoice->mMIDINote  == 0, midi note 0 is valid its C-2, use -1, or separate logic perhap MidiVel
-                    if(pVoice->mMIDINote && pVoice->mMIDIVel>0)
+                    if((pVoice->mMIDINote >= 0) && (pVoice->mMIDIVel > 0))
                     {
                         sendPressure(chan, pVoice->mMIDINote, 0);
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
@@ -415,7 +416,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     float fVel = pVoice->dz*100.f*128.f;
                     pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
 
-debug() << "voice " << i << " ON: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
+					// debug() << "voice " << i << " ON: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                     
                     // reset pitch at note on!
                     sendPitchbend(chan, 8192);
@@ -435,7 +436,7 @@ debug() << "voice " << i << " ON: DZ = " << pVoice->dz << " P: " << pVoice->mMID
                     pVoice->mMIDINote = 0;
                     pVoice->mState = kVoiceStateInactive;
                     
-debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";                    
+					//debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";                    
                 }
                 
                 // if note is on, send pitch bend / controllers.
@@ -444,7 +445,7 @@ debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMI
                     int newMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
                     
                     // retrigger notes for glissando mode when sliding from key to key
-                    if ((newMIDINote != pVoice->mMIDINote) && mRetrig)
+                    if ((newMIDINote != pVoice->mMIDINote) && mGlissando)
                     {
                         // get retrigger velocity from current z
                         float fVel = pVoice->z*128.f;
@@ -457,7 +458,7 @@ debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMI
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
                         sendPressure(chan, pVoice->mMIDINote, pVoice->z);
                         
-debug() << "voice " << i << " RETRIG: Z = " << pVoice->z << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
+						//debug() << "voice " << i << " RETRIG: Z = " << pVoice->z << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                         
                     }
                     
@@ -466,19 +467,29 @@ debug() << "voice " << i << " RETRIG: Z = " << pVoice->z << " P: " << pVoice->mM
                     {
                         // get pitch bend for note difference
                         //
-                        float fp = pVoice->note - pVoice->startNote;
+//						float fp = mGlissando ? 0 : (pVoice->note - pVoice->startNote);
+						float bendAmount;
+						if(mGlissando)
+						{
+							bendAmount = pVoice->vibrato;
+						}
+						else
+						{
+							bendAmount = pVoice->note - pVoice->startNote + pVoice->vibrato;	
+						}
+						
                         if (mBendRange > 0)
                         {
-                            fp *= 8192.f;
-                            fp /= (float)mBendRange;
+                            bendAmount *= 8192.f;
+                            bendAmount /= (float)mBendRange;
                         }
                         else 
                         {
-                            fp = 0.;
+                            bendAmount = 0.;
                         }
-                        fp += 8192.f;
+                        bendAmount += 8192.f;
                         
-                        int ip = fp;
+                        int ip = bendAmount;
                         ip = clamp(ip, 0, 16383);
                         if(ip != pVoice->mMIDIBend)
                         {                            

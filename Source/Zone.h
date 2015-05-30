@@ -67,7 +67,7 @@ public:
 
     void clearTouches();
     void addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz);
-    void processTouches();
+    void processTouches(const std::vector<bool>& freedTouches);
     
     const ZoneTouch touchToKeyPos(const ZoneTouch& t) const
     {
@@ -130,8 +130,8 @@ protected:
     SoundplaneDataMessage mMessage;
     
 private:
-    void processTouchesNoteRow();
-    void processTouchesNoteOffs();
+    void processTouchesNoteRow(const std::vector<bool>& freedTouches);
+	void processTouchesNoteOffs(std::vector<bool>& freedTouches);
     int getNumberOfActiveTouches() const;
     int getNumberOfNewTouches() const;
     Vec3 getAveragePositionOfActiveTouches() const;
@@ -152,8 +152,6 @@ private:
     ZoneTouch mTouches0[kSoundplaneMaxTouches];
     // touch positions this frame
     ZoneTouch mTouches1[kSoundplaneMaxTouches];
-    // touch positions previous frame
-    ZoneTouch mTouches2[kSoundplaneMaxTouches];
     // touch positions saved at touch onsets
     ZoneTouch mStartTouches[kSoundplaneMaxTouches];
     

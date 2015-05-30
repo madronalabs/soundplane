@@ -41,7 +41,6 @@ public:
     float x;
     float y;
     float z;
-    float z1;
     float note;
 	VoiceState mState;
 };

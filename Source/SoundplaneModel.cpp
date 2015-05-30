@@ -287,9 +287,9 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				mTracker.setUseTestSignal(b);
 				mTesting = b;
 			}
-			else if (p == "retrig")
+			else if (p == "glissando")
 			{
-				mMIDIOutput.setRetrig(bool(v));
+				mMIDIOutput.setGlissando(bool(v));
 				sendParametersToZones();
 			}
 			else if (p == "hysteresis")
@@ -1048,16 +1048,20 @@ void SoundplaneModel::sendTouchDataToZones()
 	sendMessageToListeners();
     
     // process note offs for each zone
+	// this happens before processTouches() to allow voices to be freed
     int zones = mZones.size();
+	std::vector<bool> freedTouches;
+	freedTouches.resize(kSoundplaneMaxTouches);
+	
     for(int i=0; i<zones; ++i)
 	{
-        mZones[i]->processTouchesNoteOffs();
+        mZones[i]->processTouchesNoteOffs(freedTouches);
     }
-    
+
     // process touches for each zone
-    for(int i=0; i<zones; ++i)
+	for(int i=0; i<zones; ++i)
 	{
-        mZones[i]->processTouches();
+        mZones[i]->processTouches(freedTouches);
     }
     
     // send optional calibrated matrix
