@@ -140,6 +140,7 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
     static const MLSymbol xSym("x");
     static const MLSymbol ySym("y");
     static const MLSymbol xySym("xy");
+    static const MLSymbol xyzSym("xyz");
     static const MLSymbol zSym("z");
     static const MLSymbol toggleSym("toggle");
     static const MLSymbol endFrameSym("end_frame");
@@ -275,6 +276,10 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
                     else if (pMsg->mSubtype == xySym)
                     {
                         p << x << y;
+                    }
+                    else if (pMsg->mSubtype == xyzSym)
+                    {
+                        p << x << y << z;
                     }
                     else if (pMsg->mSubtype == zSym)
                     {
