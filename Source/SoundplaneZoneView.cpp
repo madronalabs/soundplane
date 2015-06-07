@@ -160,7 +160,7 @@ void SoundplaneZoneView::renderZones()
         MLGL::drawTextAt(zoneRectInView.left() + lineWidth, zoneRectInView.top() + lineWidth, 0.f, 0.1f, viewScale, name);
         
         // draw any zone-specific things
-        float x, y;
+        float x, y, z;
         int toggle;
         switch(t)
         {
@@ -209,7 +209,20 @@ void SoundplaneZoneView::renderZones()
                 glColor4fv(&dotFill[0]);
                 MLGL::drawDot(Vec2(x, y), smallDotSize*0.25f);
                 break;
-                                
+                
+            case kControllerXYZ:
+                x = xRange(zone.getXKeyPos());
+                y = yRange(zone.getYKeyPos());
+                z = zone.getValue(2);
+                glColor4fv(&zoneStroke[0]);
+                glLineWidth(thinLineWidth);
+                // cross-hairs centered on dot
+                MLGL::strokeRect(MLRect(x, zoneRectInView.top(), 0., zoneRectInView.height()), viewScale);
+                MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.), viewScale);
+                glColor4fv(&dotFill[0]);
+                MLGL::drawDot(Vec2(x, y), z*smallDotSize);
+                break;
+                
             case kControllerZ:
                 y = yRange(zone.mYRange(zone.getValue(0))); // look at z value over y range
                 glColor4fv(&zoneStroke[0]);

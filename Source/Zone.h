@@ -33,6 +33,7 @@ enum ZoneType
     kControllerX,
     kControllerY,
     kControllerXY,
+    kControllerXYZ,
     kControllerZ,
     kToggle,
     kZoneTypes
@@ -139,6 +140,7 @@ private:
     void processTouchesControllerX();
     void processTouchesControllerY();
     void processTouchesControllerXY();
+    void processTouchesControllerXYZ();
     void processTouchesControllerToggle();
     void processTouchesControllerPressure();
     void sendMessage(MLSymbol type, MLSymbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);

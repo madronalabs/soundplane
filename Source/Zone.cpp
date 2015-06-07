@@ -8,7 +8,7 @@
 
 #include "Zone.h"
 
-static const MLSymbol zoneTypes[kZoneTypes] = {"note_row", "x", "y", "xy", "z", "toggle"};
+static const MLSymbol zoneTypes[kZoneTypes] = {"note_row", "x", "y", "xy", "xyz", "z", "toggle"};
 static const float kVibratoFilterFreq = 12.0f;
 
 // turn zone type name into enum type. names above must match ZoneType enum.
@@ -113,7 +113,7 @@ void Zone::addTouchToFrame(int i, float x, float y, int kx, int ky, float z, flo
 }
 
 // after all touches or a frame have been sent using addTouchToFrame, generate
-// any needed messages about the frame and prepare for the next frame. 
+// any needed messages about the frame and prepare for the next frame.
 void Zone::processTouches(const std::vector<bool>& freedTouches)
 {
 	// store previous touches and clear incoming for next frame
@@ -139,6 +139,9 @@ void Zone::processTouches(const std::vector<bool>& freedTouches)
             break;
         case kControllerXY:
             processTouchesControllerXY();
+            break;
+        case kControllerXYZ:
+            processTouchesControllerXYZ();
             break;
         case kToggle:
             processTouchesControllerToggle();
@@ -383,6 +386,20 @@ void Zone::processTouchesControllerXY()
     }
 }
 
+void Zone::processTouchesControllerXYZ()
+{
+    if(getNumberOfActiveTouches() > 0)
+    {
+        Vec3 avgPos = getAveragePositionOfActiveTouches();
+        float z = getMaxZOfActiveTouches();
+        mValue[0] = clamp(avgPos.x(), 0.f, 1.f);
+        mValue[1] = clamp(avgPos.y(), 0.f, 1.f);
+        mValue[2] = clamp(z, 0.f, 1.f);
+        sendMessage("controller", "xyz", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], mValue[1], mValue[2]);
+    }
+}
+
+
 void Zone::processTouchesControllerToggle()
 {
     bool touchOn = getNumberOfNewTouches() > 0;
@@ -400,8 +417,12 @@ void Zone::processTouchesControllerPressure()
     {
         z = getMaxZOfActiveTouches();
     }
-    mValue[0] = clamp(z, 0.f, 1.f);
-    sendMessage("controller", "z", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, 0, 0, mValue[0]);
+    z = clamp(z, 0.f, 1.f);
+    if(mValue[0] != z)
+    {
+        mValue[0] = z;
+        sendMessage("controller", "z", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, 0, 0, mValue[0]);
+    }
 }
 
 void Zone::sendMessage(MLSymbol type, MLSymbol type2, float a, float b, float c, float d, float e, float f, float g, float h)
