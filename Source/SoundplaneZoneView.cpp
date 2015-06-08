@@ -181,7 +181,11 @@ void SoundplaneZoneView::renderZones()
                         MLGL::drawDot(Vec2(dx, dy), dotSz);
                         if(!zone.isQuantized())
                         {
-                            float diff = zone.getQuantizeAmt(uTouch);
+//                            better, but 'expensive'
+//                            float diff = zone.getQuantizeAmt(uTouch);
+//                            float ex = sinf(diff*3.14) * dotSz;
+//                            float ey = cosf(diff*3.14) * dotSz;
+                            float diff = zone.getQuantizeAmt(uTouch) * 2.0;
                             float ex = diff * dotSz;
                             float ey = (1.0-std::abs(diff)) * dotSz;
                             glColor4fv(&quantColor[0]);
