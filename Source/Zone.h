@@ -73,6 +73,7 @@ public:
     {
         return ZoneTouch(mXRange(t.pos.x()), mYRange(t.pos.y()), t.kx, t.ky, t.pos.z(), t.pos.w());
     }
+    float getQuantizeAmt(const ZoneTouch& t) const;
     
     // getters
     int setZoneID() const { return mZoneID; }
@@ -81,7 +82,8 @@ public:
     const std::string& getName() const { return mName; }
     MLRect getBounds() const { return mBounds; }
     int getType() const { return mType; }
-
+    bool isQuantized() const { return mQuantize; }
+    
     // return values on [0..1]
     float getValue(int i) const { return mValue[clamp(i, 0, kZoneValArraySize - 1)]; }
     float getXValue() const { return getValue(0); }
