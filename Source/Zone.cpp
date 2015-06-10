@@ -227,7 +227,8 @@ void Zone::processTouchesNoteRow(const std::vector<bool>& freedTouches)
 				t1dz = clamp(t1dz, 0.0001f, 1.f);
 			}
 			
-			debug() << "RETRIG " << retrig << ", dz = " << t1dz << "\n";
+			// MLTSET
+			//debug() << "RETRIG " << retrig << ", dz = " << t1dz << "\n";
 			sendMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
         else if(isActive)
