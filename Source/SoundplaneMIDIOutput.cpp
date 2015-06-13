@@ -268,6 +268,34 @@ int SoundplaneMIDIOutput::getMPEVoiceChannel(int voice)
 	return 2 + clamp(voice, 0, 14);
 }
 
+int SoundplaneMIDIOutput::getMIDIPitchBend(MIDIVoice* pVoice)
+{
+	int ip = 8192;
+	float bendAmount;
+	if(mGlissando)
+	{
+		bendAmount = pVoice->vibrato;
+	}
+	else
+	{
+		bendAmount = pVoice->note - pVoice->startNote + pVoice->vibrato;	
+	}
+	
+	if (mBendRange > 0)
+	{
+		bendAmount *= 8192.f;
+		bendAmount /= (float)mBendRange;
+	}
+	else 
+	{
+		bendAmount = 0.;
+	}
+	bendAmount += 8192.f;
+	ip = bendAmount;
+	ip = clamp(ip, 0, 16383);
+	return ip;
+}
+
 void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage* msg)
 {
     static const MLSymbol startFrameSym("start_frame");
@@ -455,7 +483,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     float fVel = pVoice->dz*100.f*128.f;
                     pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
 
-					// debug() << "voice " << i << " ON: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
+	debug() << "voice " << i << " ON: CHAN = " << chan << " DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                     
                     // reset pitch at note on!
                     sendPitchbend(chan, 8192);
@@ -468,6 +496,12 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     // send pressure off
                     sendPressure(chan, pVoice->mMIDINote, 0);
                     pVoice->mMIDIPressure = 0;
+
+					// send quantized pitch on note off
+					pVoice->note = (int)lround(pVoice->note);
+					int ip = getMIDIPitchBend(pVoice);						
+					sendPitchbend(chan, ip);
+
                     
                     // send note off
                     mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
@@ -475,11 +509,11 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     pVoice->mMIDINote = 0;
                     pVoice->mState = kVoiceStateInactive;
                     
-					//debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";                    
+	debug() << "voice " << i << " OFF: CHAN = " << chan << "DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";                    
                 }
                 
-                // if note is on, send pitch bend / controllers.
-                if (pVoice->mMIDIVel > 0)
+                // if note is continuing, send pitch bend / controllers.
+                else if (pVoice->mMIDIVel > 0)
                 {
                     int newMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
                     
@@ -504,36 +538,11 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     // send controllers etc. if in MPE mode, or if this is the youngest voice.
                     if((newestVoiceIdx == i) || mMPEMode)
                     {
-                        // get pitch bend for note difference
-                        //
-//						float fp = mGlissando ? 0 : (pVoice->note - pVoice->startNote);
-						float bendAmount;
-						if(mGlissando)
-						{
-							bendAmount = pVoice->vibrato;
-						}
-						else
-						{
-							bendAmount = pVoice->note - pVoice->startNote + pVoice->vibrato;	
-						}
-						
-                        if (mBendRange > 0)
-                        {
-                            bendAmount *= 8192.f;
-                            bendAmount /= (float)mBendRange;
-                        }
-                        else 
-                        {
-                            bendAmount = 0.;
-                        }
-                        bendAmount += 8192.f;
-                        
-                        int ip = bendAmount;
-                        ip = clamp(ip, 0, 16383);
+                        int ip = getMIDIPitchBend(pVoice);						
                         if(ip != pVoice->mMIDIBend)
                         {                            
       //  debug() << "voice " << i << " BEND = " << ip << "\n";                            
-                            sendPitchbend(chan,ip);
+                            sendPitchbend(chan, ip);
                             pVoice->mMIDIBend = ip;
                         }
                         
@@ -556,6 +565,9 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                         int iz = clamp((int)(pVoice->z*127.f), 0, 127);
                         if(iz != pVoice->mMIDIPressure)
                         {  
+							
+			debug() << "voice " << i << " MIDI PRESSURE: " << iz << "\n";
+							
                             sendPressure(chan, pVoice->mMIDINote,  iz);
                             pVoice->mMIDIPressure = iz;
                         }
