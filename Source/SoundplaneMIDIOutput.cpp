@@ -206,14 +206,10 @@ void SoundplaneMIDIOutput::setPressureActive(bool v)
     }
 }
 
+// set MPE extended mode for compatibility with some synths. Not in the regular UI. Note that
+// MPE mode must also be enabled for extended mode to work.
 void SoundplaneMIDIOutput::setMPEExtended(bool v)
 {
-	// if setMPEExtended is set, we can count on being in MPE mode
-	if(!mMPEMode)
-	{
-		setMPE(true);
-	}
-	
 	mMPEExtended = v;
 	
     if (!mpCurrentDevice) return;
@@ -294,6 +290,23 @@ int SoundplaneMIDIOutput::getMIDIPitchBend(MIDIVoice* pVoice)
 	ip = bendAmount;
 	ip = clamp(ip, 0, 16383);
 	return ip;
+}
+
+int SoundplaneMIDIOutput::getMIDIVelocity(MIDIVoice* pVoice)
+{
+	float fVel = pVoice->dz*100.f;
+	fVel *= fVel;
+	fVel *= 128.f;
+	return clamp((int)fVel, 10, 127);
+}
+
+int SoundplaneMIDIOutput::getRetriggerVelocity(MIDIVoice* pVoice)
+{
+	// get retrigger velocity from current z
+	float fVel = pVoice->z*100.f;
+	fVel *= fVel;
+	fVel *= 128.f;
+	return clamp((int)fVel, 10, 127);
 }
 
 void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage* msg)
@@ -390,7 +403,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
     }
     else if(type == endFrameSym)
     {
-        // get most recent active voice played
+        // get active voice played most recently
         unsigned int minAge = (unsigned int)-1;
         int newestVoiceIdx = -1;
         for(int i=0; i<mVoices; ++i)
@@ -406,6 +419,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                 }
             }
         }
+		if(newestVoiceIdx >= 0)
+			debug() << "\n newest: " << newestVoiceIdx << "\n";
         
         if(mGotNoteChangesThisFrame || mTimeToSendNewFrame)
         {            
@@ -479,9 +494,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     
                     // get nearest integer note
                     pVoice->mMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
-                    
-                    float fVel = pVoice->dz*100.f*128.f;
-                    pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
+
+					pVoice->mMIDIVel = getMIDIVelocity(pVoice);
 
 	debug() << "voice " << i << " ON: CHAN = " << chan << " DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
                     
@@ -520,10 +534,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     // retrigger notes for glissando mode when sliding from key to key
                     if ((newMIDINote != pVoice->mMIDINote) && mGlissando)
                     {
-                        // get retrigger velocity from current z
-                        float fVel = pVoice->z*128.f;
-                        pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
-                        
+						pVoice->mMIDIVel = getRetriggerVelocity(pVoice);
+						
                         // retrigger
                         sendPressure(chan, pVoice->mMIDINote, 0);
                         mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
@@ -541,7 +553,8 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                         int ip = getMIDIPitchBend(pVoice);						
                         if(ip != pVoice->mMIDIBend)
                         {                            
-      //  debug() << "voice " << i << " BEND = " << ip << "\n";                            
+		debug() << "MPE:" << mMPEMode << "\n";
+		debug() << "voice " << i << " BEND = " << ip << "\n";                            
                             sendPitchbend(chan, ip);
                             pVoice->mMIDIBend = ip;
                         }

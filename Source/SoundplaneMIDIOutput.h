@@ -104,6 +104,8 @@ private:
 	int getMPEMainChannel();
 	int getMPEVoiceChannel(int voice);
 	int getMIDIPitchBend(MIDIVoice* pVoice);
+	int getMIDIVelocity(MIDIVoice* pVoice);
+	int getRetriggerVelocity(MIDIVoice* pVoice);
 
     void sendPressure(int chan, int note, float p);
     void sendPitchbend(int chan, float p);
