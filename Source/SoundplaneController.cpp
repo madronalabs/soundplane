@@ -213,7 +213,14 @@ void SoundplaneController::setupMenus()
     
  	mMenuMap["touch_preset"] = MLMenuPtr(new MLMenu("touch_preset"));
 	mMenuMap["osc_service_name"] = MLMenuPtr(new MLMenu("osc_service_name"));
-}	
+
+    mMenuMap["midi_mode"] = MLMenuPtr(new MLMenu("midi_modemidi_mode"));
+    mMenuMap["midi_mode"]->addItem(MM_SINGLE_1);
+    mMenuMap["midi_mode"]->addItem(MM_SINGLE_2);
+    mMenuMap["midi_mode"]->addItem(MM_MPE);
+    mMenuMap["midi_mode"]->addItem(MM_MULTI_1);
+    mMenuMap["midi_mode"]->addItem(MM_MULTI_2);
+}
 
 
 MLMenu* SoundplaneController::findMenuByName(MLSymbol menuName)

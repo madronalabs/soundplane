@@ -99,6 +99,7 @@ public:
     int getCurrentPage();
 	
 	// to go away
+    void setMIDIModeString(const std::string& str);
 	void setMIDIDeviceString(const std::string& str);
 	void setOSCServicesString(const std::string& str);
 	
@@ -127,6 +128,7 @@ private:
 	
 	// page 1
 	SoundplaneZoneView mGLView3;
+    MLMenuButton* mpMIDIModeButton;
 	MLMenuButton* mpMIDIDeviceButton;
 	MLMenuButton* mpOSCServicesButton;
 	MLDial* mpMidiChannelDial;

@@ -72,6 +72,14 @@ juce::MidiOutput* MIDIDevice::getDevice()
 // --------------------------------------------------------------------------------
 #pragma mark SoundplaneMIDIOutput
 
+inline bool is_single(MidiMode m)
+{
+    return m == MidiMode::single_1 || m == MidiMode::single_2;
+}
+
+
+
+
 SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mpCurrentDevice(0),
 	mPressureActive(false),
@@ -82,8 +90,7 @@ SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mBendRange(36),
 	mTranspose(0),
 	mHysteresis(0.5f),
-	mMPEExtended(false),
-	mMPEMode(true),
+    mMidiMode(MidiMode::mpe),
 	mMPEChannels(0),
 	mChannel(1),
 	mKymaPoll(true)
@@ -179,58 +186,13 @@ void SoundplaneMIDIOutput::setActive(bool v)
 	mActive = v; 
 }
 
-void SoundplaneMIDIOutput::setPressureActive(bool v) 
-{ 
-    if(mMPEMode) return; // not used for MPE mode
-    if(mPressureActive==v) return;
-    
-	// when turning pressure off, first send maximum values
-	// so sounds don't get stuck off
-    if( mpCurrentDevice && mPressureActive)
-    {
-        for(int c=1; c<=16; ++c)
-        {
-            sendPressure(c, INVALID_NOTE, 127);
-        }
-    }
-    
-	mPressureActive = v;
 
-    // when activating pressure, initialise to zero
-    if( mpCurrentDevice && mPressureActive)
-    {
-        for(int c=1; c<=16; ++c)
-        {
-            sendPressure(c, INVALID_NOTE, 0);
-        }
-    }
-}
-
-void SoundplaneMIDIOutput::setMPEExtended(bool v)
+void SoundplaneMIDIOutput::setMode(MidiMode v)
 {
-	// if setMPEExtended is set, we can count on being in MPE mode
-	if(!mMPEMode)
-	{
-		setMPE(true);
-	}
-	
-	mMPEExtended = v;
-	
-    if (!mpCurrentDevice) return;
-    
-	for(int i=1; i<=16; ++i)
-	{
-        // just in case something is using 11/75
-		sendPressure(i, INVALID_NOTE, 0);
-	}
-}
-
-void SoundplaneMIDIOutput::setMPE(bool v)
-{
-	mMPEMode = v;
+	mMidiMode = v;
 	
 	// channels is always 15 now if we are in MPE mode. If we introduce splits or more complex MPE options this may change.
-	mMPEChannels = mMPEMode ? 15 : 0;
+	mMPEChannels = mMidiMode ? 15 : 0;
 	
     if (!mpCurrentDevice) return;
 
@@ -240,9 +202,8 @@ void SoundplaneMIDIOutput::setMPE(bool v)
         sendPressure(i, INVALID_NOTE,0);
 	}
 	
-	sendMPEChannels();
-	sendPitchbendRange();
-
+    sendMPEChannels();
+    sendPitchbendRange();
 }
 
 void SoundplaneMIDIOutput::setStartChannel(int v)
@@ -260,7 +221,7 @@ void SoundplaneMIDIOutput::setStartChannel(int v)
 // for the main channel, and 2 upwards for the individual voices.
 int SoundplaneMIDIOutput::getMPEMainChannel()
 {
-	return 1;
+    return 1;
 }
 
 int SoundplaneMIDIOutput::getMPEVoiceChannel(int voice)
@@ -466,7 +427,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
             for(int i=0; i < mVoices; ++i)
             {
                 MIDIVoice* pVoice = &mMIDIVoices[i];
-                int chan = (mMPEMode) ? (getMPEVoiceChannel(i)) : mChannel;
+                int chan = (mMidiMode==MidiMode::mpe) ? (getMPEVoiceChannel(i)) : (is_single(mMidiMode) ? mChannel : ( ((mChannel + i - 1 ) & 0x0F) + 1));
 				
                 if (pVoice->mState == kVoiceStateOn)
                 {
@@ -536,7 +497,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
                     }
                     
                     // send controllers etc. if in MPE mode, or if this is the youngest voice.
-                    if((newestVoiceIdx == i) || mMPEMode)
+                    if((newestVoiceIdx == i) || !is_single(mMidiMode))
                     {
                         int ip = getMIDIPitchBend(pVoice);						
                         if(ip != pVoice->mMIDIBend)
@@ -599,48 +560,71 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
 
 void SoundplaneMIDIOutput::sendPressure(int chan, int note, float p)
 {
-    //NOTE note -1 = undefined
-    if(mMPEMode)
+    switch(mMidiMode)
     {
-        if(!mMPEExtended)
-        {
+        case single_1:
+            if(note>=0) mpCurrentDevice->sendMessageNow(juce::MidiMessage::aftertouchChange(chan, note, p));
+            break;
+        case mpe:
+        case multi_2:
+        case single_2:
             mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, p));
-            return;
-        }
-        else
-        {
-            // multi channel, extensions
-            if(mPressureActive) mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, p));
+            break;
+        case multi_1:
             mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, p));
-            //mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 75, p));
-        }
+            break;
     }
-    else  // single channel, poly aftertouch
-    {
-        if(mPressureActive&& note>=0) mpCurrentDevice->sendMessageNow(juce::MidiMessage::aftertouchChange(chan, note, p));
-    }
-    
 }
 
 void SoundplaneMIDIOutput::sendX(int chan, float p)
 {
-    if(mMPEExtended)
+    switch(mMidiMode)
     {
-        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 73, p));
+        case single_1:
+        case single_2:
+        case mpe:
+        case multi_2:
+            break;
+        case multi_1:
+            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 73, p));
+            break;
+        default:
+            break;
     }
 }
 
 void SoundplaneMIDIOutput::sendY(int chan, float p)
 {
-    if (mMPEMode)
+    switch(mMidiMode)
     {
-        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 74, p));
+        case single_1:
+        case single_2:
+        case mpe:
+            break;
+        case multi_2:
+            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 1, p));
+            break;
+        case multi_1:
+            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 74, p));
+            break;
+        default:
+            break;
     }
 }
 
 void SoundplaneMIDIOutput::sendPitchbend(int chan, float p)
 {
-    mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, p));
+    switch(mMidiMode)
+    {
+        case single_1:
+        case single_2:
+        case mpe:
+        case multi_2:
+        case multi_1:
+        default:
+            mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, p));
+            break;
+    }
 }
 
 void SoundplaneMIDIOutput::setBendRange(int r)
@@ -652,7 +636,7 @@ void SoundplaneMIDIOutput::setBendRange(int r)
 void SoundplaneMIDIOutput::setMaxTouches(int t)
 {
     mVoices = clamp(t, 0, kMaxMIDIVoices);
-    if (mMPEMode && mpCurrentDevice)
+    if (mMidiMode==MidiMode::mpe && mpCurrentDevice)
     {
         int globalChannel=mChannel;
         mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, mVoices));
@@ -671,18 +655,19 @@ void SoundplaneMIDIOutput::sendPitchbendRange()
 	int chan = mChannel;
 	int quantizedRange = mBendRange;
 	
-	if(mMPEMode)
+	if(mMidiMode==MidiMode::mpe)
 	{
 		chan = getMPEVoiceChannel(0);
 		
 		// MPE spec requires a multiple of 12
 		quantizedRange = (quantizedRange/12)*12;
+
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 100, 0));
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 101, 0));
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 6, quantizedRange));
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 38, 0));
 	}
 
-	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 100, 0));
-	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 101, 0));
-	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 6, quantizedRange));
-	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 38, 0));
 }
 
 

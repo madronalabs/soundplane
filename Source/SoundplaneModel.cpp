@@ -248,21 +248,9 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				mMIDIOutput.setActive(bool(v));
 			}
-			else if (p == "midi_mpe")
-			{
-				mMIDIOutput.setMPE(bool(v));
-			}
-			else if (p == "midi_mpe_extended")
-			{
-				mMIDIOutput.setMPEExtended(bool(v));
-			}
 			else if (p == "midi_channel")
 			{
 				mMIDIOutput.setStartChannel(int(v));
-			}
-			else if (p == "midi_pressure_active")
-			{
-				mMIDIOutput.setPressureActive(bool(v));
 			}
 			else if (p == "osc_active")
 			{
@@ -381,6 +369,29 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 					}
 				}
 			}
+            else if (p == "midi_mode")
+            {
+                if(str == MM_SINGLE_1)
+                {
+                    mMIDIOutput.setMode(MidiMode::single_1);
+                }
+                else if(str == MM_SINGLE_2)
+                {
+                    mMIDIOutput.setMode(MidiMode::single_2);
+                }
+                else if (str == MM_MPE)
+                {
+                    mMIDIOutput.setMode(MidiMode::mpe);
+                }
+                else if (str == MM_MULTI_1)
+                {
+                    mMIDIOutput.setMode(MidiMode::multi_1);
+                }
+                else if (str == MM_MULTI_2)
+                {
+                    mMIDIOutput.setMode(MidiMode::multi_2);
+                }
+            }
 		}
 			break;
 		case MLProperty::kSignalProperty:
@@ -432,8 +443,7 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("t_thresh", 0.2);
 	
 	setProperty("midi_active", 0);
-	setProperty("midi_mpe", 1);
-	setProperty("midi_mpe_extended", 0);
+	setProperty("midi_mode", MM_MPE);
 	setProperty("midi_channel", 1);
 	setProperty("data_freq_midi", 250.);
 	
