@@ -226,9 +226,6 @@ void Zone::processTouchesNoteRow(const std::vector<bool>& freedTouches)
 				// clamp note-on dz for use as velocity later. 
 				t1dz = clamp(t1dz, 0.0001f, 1.f);
 			}
-			
-			// MLTSET
-			//debug() << "RETRIG " << retrig << ", dz = " << t1dz << "\n";
 			sendMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
         else if(isActive)
