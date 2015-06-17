@@ -587,11 +587,11 @@ void SoundplaneMIDIOutput::sendY(int chan, float p)
     {
         case single_1:
         case single_2:
-        case mpe:
             break;
         case multi_2:
             mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 1, p));
             break;
+        case mpe:
         case multi_1:
             mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 74, p));
             break;
