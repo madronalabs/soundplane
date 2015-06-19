@@ -281,6 +281,18 @@ void Zone::processTouchesNoteOffs(std::vector<bool>& freedTouches)
     }
 }
 
+float Zone::getQuantizeAmt(const ZoneTouch& t) const
+{
+    if (mQuantize) return 0.0;
+    
+    float x = t.pos.x();
+    float xPos = mXRange(x) - mBounds.left();
+    float scaleNote  = mScaleMap.getInterpolatedLinear(xPos - 0.5f);
+    float scaleNoteQ = mScaleMap[(int)xPos];
+    return scaleNote - scaleNoteQ;
+}
+
+
 int Zone::getNumberOfActiveTouches() const
 {
     int activeTouches = 0;

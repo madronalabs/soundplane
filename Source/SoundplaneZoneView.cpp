@@ -95,6 +95,7 @@ void SoundplaneZoneView::renderGrid()
 	}
 }
 
+
 void SoundplaneZoneView::renderZones()
 {
 	if (!mpModel) return;
@@ -119,7 +120,8 @@ void SoundplaneZoneView::renderZones()
 
 	Vec4 lineColor;
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
-	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
+	Vec4 quantColor(0.9f, 0.9f, 0.9f, 1.f);
+    Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
 	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
     float smallDotSize = xRange(1.f);
@@ -171,11 +173,28 @@ void SoundplaneZoneView::renderZones()
                     const ZoneTouch& touch = zone.touchToKeyPos(uTouch);
                     if(touch.isActive())
                     {
-                        glColor4fv(&dotFill[0]);
                         float dx = xRange(touch.pos.x());
                         float dy = yRange(touch.pos.y());
                         float dz = touch.pos.z();
-                        MLGL::drawDot(Vec2(dx, dy), dz*smallDotSize);
+                        glColor4fv(&dotFill[0]);
+                        float dotSz = dz*smallDotSize;
+                        MLGL::drawDot(Vec2(dx, dy), dotSz);
+                        if(!zone.isQuantized())
+                        {
+//                            better, but 'expensive'
+//                            float diff = zone.getQuantizeAmt(uTouch);
+//                            float ex = sinf(diff*3.14) * dotSz;
+//                            float ey = cosf(diff*3.14) * dotSz;
+                            float diff = zone.getQuantizeAmt(uTouch) * 2.0;
+                            float ex = diff * dotSz;
+                            float ey = (1.0-std::abs(diff)) * dotSz;
+                            glColor4fv(&quantColor[0]);
+                            glBegin(GL_LINE_STRIP);
+                            glVertex2f(dx, dy);
+                            glVertex2f(dx+ex, dy+ey);
+                            glEnd();
+
+                        }
                     }
                 }
                 break;
