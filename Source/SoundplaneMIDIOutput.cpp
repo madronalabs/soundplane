@@ -423,14 +423,6 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
 			pVoice->startNote = note;
 			pVoice->mState = kVoiceStateOn;
 			pVoice->age = 1;
-
-			/*
-			// before note on, first send note off and pressure to 0 if needed
-			if((pVoice->mMIDIVel >= 0) && (pVoice->mPreviousMIDINote >= 0))
-			{
-				pVoice->mSendNoteOff = true;
-			}
-			*/
 			
 			// get nearest integer note
 			pVoice->mMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
@@ -575,7 +567,6 @@ void SoundplaneMIDIOutput::sendMIDIVoiceMessages()
 		if(pVoice->mSendNoteOff)
 		{
 			mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mPreviousMIDINote));
-			//mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, 0));
 		}
 
 		if(pVoice->mSendNoteOn)
@@ -771,7 +762,6 @@ void SoundplaneMIDIOutput::sendPitchbendRange()
 	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 6, quantizedRange));
 	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 38, 0));
 }
-
 
 void SoundplaneMIDIOutput::dumpVoices()
 {

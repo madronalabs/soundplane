@@ -440,7 +440,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 
 	// console
 	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));
-	MLConsole().sendOutputToListener(pDebug);
+	
+	// MLTEST MLConsole().sendOutputToListener(pDebug);
 	
 	// MLTEST temp
 	//debug().sendOutputToListener(pDebug);
@@ -473,7 +474,6 @@ SoundplaneView::~SoundplaneView()
 //
 void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
 {
-	debug() << "VIEW got property " << p << "\n";
 	bool handled = false;
 	if(p == "viewmode")
 	{
