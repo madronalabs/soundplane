@@ -194,7 +194,7 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
 			pVoice->z = dz;
 			
 			// MLTEST
-			debug() << "SoundplaneOSCOutput: ON vel " << dz << "\n";
+			//debug() << "SoundplaneOSCOutput: ON vel " << dz << "\n";
 			
             pVoice->mState = kVoiceStateOn;
             mGotNoteChangesThisFrame = true;

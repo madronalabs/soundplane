@@ -25,11 +25,13 @@ class MIDIVoice
 public:
 	MIDIVoice();
 	~MIDIVoice();
+	
 
-    int age;
+	int age;
 	float x;
 	float y;
 	float z;
+	
 	float dz;
 	float note;
 	float startX;
@@ -38,13 +40,23 @@ public:
 	float vibrato;
 
 	int mMIDINote;
+	int mPreviousMIDINote;
 	int mMIDIVel;	
 	int mMIDIBend;
 	int mMIDIXCtrl;
 	int mMIDIYCtrl;
 	int mMIDIPressure;
+	int mMIDIChannel;
+	
+	bool mSendNoteOff;
+	bool mSendNoteOn;
+	bool mSendPressure;
+	bool mSendPitchBend;
+	bool mSendXCtrl;
+	bool mSendYCtrl;
 	
     VoiceState mState;
+
 };
 
 class MIDIDevice
@@ -111,13 +123,28 @@ public:
 private:
 	int getMPEMainChannel();
 	int getMPEVoiceChannel(int voice);
+	int getVoiceChannel(int voice);
+	int getMIDIPitchBend(MIDIVoice* pVoice);
+	int getMIDIVelocity(MIDIVoice* pVoice);
+	int getRetriggerVelocity(MIDIVoice* pVoice);
+	int getMostRecentVoice();
 
-    void sendPressure(int chan, int note, float p);
-    void sendPitchbend(int chan, float p);
-    void sendX(int chan, float p);
-    void sendY(int chan, float p);
-    void sendPitchbendRange();
+	int getMIDIPressure(MIDIVoice* pVoice);
+
+	void sendMIDIChannelPressure(int chan, int p);
+	void sendAllMIDIChannelPressures(int p);
+	void sendAllMIDINotesOff();
+	
 	void sendMPEChannels();
+    void sendPitchbendRange();
+
+	void setupVoiceChannels();
+	void updateVoiceStates();
+	void sendMIDIVoiceMessages();
+	void sendMIDIControllerMessages();
+	void pollKyma();
+	void dumpVoices();
+
 	
 	int mVoices;
 	
@@ -132,11 +159,11 @@ private:
     UInt64 mCurrFrameStartTime;
 	UInt64 mLastFrameStartTime;
     bool mTimeToSendNewFrame;
-    bool mGotNoteChangesThisFrame;
+	bool mGotControllerChanges;
     
 	bool mPressureActive;
-	UInt64 mLastTimeDataWasSent;
 	UInt64 mLastTimeNRPNWasSent;
+
 	int mBendRange;
 	int mTranspose;
 	int mGlissando;
@@ -150,6 +177,8 @@ private:
 	int mChannel;
 	
 	bool mKymaPoll;
+	bool mVerbose;
+	UInt64 mLastTimeVerbosePrint;
 };
 
 

@@ -7,8 +7,7 @@
 
 const std::string kSoundplaneMIDIDeviceName("Soundplane IAC out");
 
-#define INVALID_NOTE -1
-#define MIDI_MPE_MODE_CC 127
+static const int kMPE_MIDI_CC = 127;
 
 // --------------------------------------------------------------------------------
 #pragma mark MIDIVoice
@@ -16,8 +15,17 @@ const std::string kSoundplaneMIDIDeviceName("Soundplane IAC out");
 MIDIVoice::MIDIVoice() :
 	age(0), x(0), y(0), z(0), note(0),
 	startX(0), startY(0), startNote(0), vibrato(0),
-    mMIDINote(-1), mMIDIVel(0), mMIDIBend(0), mMIDIXCtrl(0), mMIDIYCtrl(0), mMIDIPressure(0),
-    mState(kVoiceStateInactive)
+    mMIDINote(-1), 
+	mPreviousMIDINote(-1),
+	mMIDIVel(0), mMIDIBend(0), mMIDIXCtrl(0), mMIDIYCtrl(0), mMIDIPressure(0),
+	mMIDIChannel(0),
+	mSendNoteOff(false),
+	mSendNoteOn(false),
+	mSendPressure(false),
+	mSendPitchBend(false),
+	mSendXCtrl(false),
+	mSendYCtrl(false),
+	mState(kVoiceStateInactive)
 {
 }
 
@@ -68,33 +76,27 @@ juce::MidiOutput* MIDIDevice::getDevice()
 	return ret;
 }
 
-
 // --------------------------------------------------------------------------------
 #pragma mark SoundplaneMIDIOutput
 
-inline bool is_single(MidiMode m)
-{
-    return m == MidiMode::single_1 || m == MidiMode::single_2;
-}
-
-
-
-
 SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mpCurrentDevice(0),
-	mPressureActive(false),
+	mPressureActive(true),
 	mDataFreq(250.),
-	mLastTimeDataWasSent(0),
 	mLastTimeNRPNWasSent(0),
-    mGotNoteChangesThisFrame(false),
+	mLastTimeVerbosePrint(0),
+	mGotControllerChanges(false),
 	mBendRange(36),
 	mTranspose(0),
 	mHysteresis(0.5f),
-    mMidiMode(MidiMode::mpe),
 	mMPEChannels(0),
 	mChannel(1),
-	mKymaPoll(true)
+	mKymaPoll(true),
+	mVerbose(false)
 {
+#ifdef DEBUG
+	mVerbose = true;
+#endif
 	findMIDIDevices();
 }
 
@@ -186,24 +188,74 @@ void SoundplaneMIDIOutput::setActive(bool v)
 	mActive = v; 
 }
 
+void SoundplaneMIDIOutput::sendMIDIChannelPressure(int chan, int p) 
+{
+    switch(mMidiMode)
+    {
+        case single_1:
+//            if(note>=0) mpCurrentDevice->sendMessageNow(juce::MidiMessage::aftertouchChange(chan, note, p));
+            break;
+        case mpe:
+        case multi_2:
+        case single_2:
+            mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, p));
+            break;
+        case multi_1:
+            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, p));
+            break;
+    }
+}
+
+void SoundplaneMIDIOutput::sendAllMIDIChannelPressures(int p)
+{
+	for(int c=1; c<=kMaxMIDIVoices; ++c)
+	{
+		sendMIDIChannelPressure(c, p);
+	}
+}
+
+
+void SoundplaneMIDIOutput::sendAllMIDINotesOff() 
+{
+	for(int c=1; c<=kMaxMIDIVoices; ++c)
+	{
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::allNotesOff(c));
+	}
+}
+
+void SoundplaneMIDIOutput::setPressureActive(bool v) 
+{ 
+//	if(!mpCurrentDevice) return;
+//	
+//	// when turning pressure off, first send maximum values
+//	// so sounds don't get stuck off
+//    if(!v && mPressureActive)
+//    {
+//		sendAllMIDIChannelPressures(127);
+//    }
+//
+//    // when activating pressure, initialise to zero
+//    else if(v && !mPressureActive)
+//    {
+//        sendAllMIDIChannelPressures(0);
+//    }
+//	
+//	mPressureActive = v;
+}
+
 
 void SoundplaneMIDIOutput::setMode(MidiMode v)
 {
 	mMidiMode = v;
 	
 	// channels is always 15 now if we are in MPE mode. If we introduce splits or more complex MPE options this may change.
-	mMPEChannels = mMidiMode ? 15 : 0;
+    mMPEChannels = mMidiMode == MidiMode::mpe ? 15 : 0;
 	
     if (!mpCurrentDevice) return;
-
-	for(int i=1; i<=16; ++i)
-	{
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::allNotesOff(i));
-        sendPressure(i, INVALID_NOTE,0);
-	}
-	
-    sendMPEChannels();
-    sendPitchbendRange();
+	sendAllMIDINotesOff();
+	sendAllMIDIChannelPressures(0);
+	sendMPEChannels();
+	sendPitchbendRange();
 }
 
 void SoundplaneMIDIOutput::setStartChannel(int v)
@@ -211,17 +263,14 @@ void SoundplaneMIDIOutput::setStartChannel(int v)
 	if(mChannel == v) return;
 	mChannel = v;
 	if (!mpCurrentDevice) return;
-	for(int i=1; i<=16; ++i)
-	{
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::allNotesOff(i));
-	}
+	sendAllMIDINotesOff();
 }
 
 // MPE spec defines a split mode using main channels 1 and 16. We ignore this for now and use only channel 1
 // for the main channel, and 2 upwards for the individual voices.
 int SoundplaneMIDIOutput::getMPEMainChannel()
 {
-    return 1;
+	return 1;
 }
 
 int SoundplaneMIDIOutput::getMPEVoiceChannel(int voice)
@@ -229,10 +278,82 @@ int SoundplaneMIDIOutput::getMPEVoiceChannel(int voice)
 	return 2 + clamp(voice, 0, 14);
 }
 
+int SoundplaneMIDIOutput::getVoiceChannel(int v)
+{
+    return (mMidiMode==MidiMode::mpe || mMidiMode==MidiMode::multi_1 || mMidiMode==MidiMode::multi_2) ? (getMPEVoiceChannel(v)) : mChannel;
+}
+
+int SoundplaneMIDIOutput::getMIDIPitchBend(MIDIVoice* pVoice)
+{
+	int ip = 8192;
+	float bendAmount;
+	if(mGlissando)
+	{
+		bendAmount = pVoice->vibrato;
+	}
+	else
+	{
+		bendAmount = pVoice->note - pVoice->startNote + pVoice->vibrato;	
+	}
+	
+	if (mBendRange > 0)
+	{
+		bendAmount *= 8192.f;
+		bendAmount /= (float)mBendRange;
+	}
+	else 
+	{
+		bendAmount = 0.;
+	}
+	bendAmount += 8192.f;
+	ip = bendAmount;
+	ip = clamp(ip, 0, 16383);
+	return ip;
+}
+
+int SoundplaneMIDIOutput::getMIDIVelocity(MIDIVoice* pVoice)
+{
+	float fVel = pVoice->dz*100.f;
+	fVel *= fVel;
+	fVel *= 128.f;
+	return clamp((int)fVel, 10, 127);
+}
+
+int SoundplaneMIDIOutput::getRetriggerVelocity(MIDIVoice* pVoice)
+{
+	// get retrigger velocity from current z
+	float fVel = pVoice->z;
+	fVel *= fVel;
+	fVel *= 128.f;
+	return clamp((int)fVel, 10, 127);
+}
+
+int SoundplaneMIDIOutput::getMostRecentVoice()
+{        
+	// get active voice played most recently
+	unsigned int minAge = (unsigned int)-1;
+	int newestVoiceIdx = -1;
+	for(int i=0; i<mVoices; ++i)
+	{
+		MIDIVoice* pVoice = &mMIDIVoices[i];
+		int a = pVoice->age;
+		if(a > 0)
+		{
+			if(a < minAge)
+			{
+				minAge = a;
+				newestVoiceIdx = i;
+			}
+		}
+	}
+	return newestVoiceIdx;
+}
+
 void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage* msg)
 {
     static const MLSymbol startFrameSym("start_frame");
     static const MLSymbol touchSym("touch");
+	static const MLSymbol retrigSym("retrig");
     static const MLSymbol onSym("on");
     static const MLSymbol continueSym("continue");
     static const MLSymbol offSym("off");
@@ -256,6 +377,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
     
     if(type == startFrameSym)
     {
+		setupVoiceChannels();
         const UInt64 dataPeriodMicrosecs = 1000*1000 / mDataFreq;
         mCurrFrameStartTime = getMicroseconds();
         if (mCurrFrameStartTime > mLastFrameStartTime + (UInt64)dataPeriodMicrosecs)
@@ -267,7 +389,6 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
         {
             mTimeToSendNewFrame = false;
         }
-        mGotNoteChangesThisFrame = false;
     }
     else if(type == touchSym)
     {
@@ -288,34 +409,123 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
 		pVoice->note = note;
 		pVoice->vibrato = vibrato;
                
-        if(subtype == onSym)
-        {
-            pVoice->startX = x;
-            pVoice->startY = y;
-            pVoice->startNote = note;
-            pVoice->mState = kVoiceStateOn;
-            pVoice->age = 1;
-            mGotNoteChangesThisFrame = true;
-        }
+		if(subtype == onSym)
+		{
+			pVoice->startX = x;
+			pVoice->startY = y;
+			pVoice->startNote = note;
+			pVoice->mState = kVoiceStateOn;
+			pVoice->age = 1;
+
+			/*
+			// before note on, first send note off and pressure to 0 if needed
+			if((pVoice->mMIDIVel >= 0) && (pVoice->mPreviousMIDINote >= 0))
+			{
+				pVoice->mSendNoteOff = true;
+			}
+			*/
+			
+			// get nearest integer note
+			pVoice->mMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
+			pVoice->mMIDIVel = getMIDIVelocity(pVoice);
+			pVoice->mSendNoteOn = true;
+			
+			// send pressure right away at note on
+			if(mPressureActive)
+			{
+				int newPressure = clamp((int)(pVoice->z*128.f), 0, 127);
+				if(newPressure != pVoice->mMIDIPressure)
+				{
+					pVoice->mMIDIPressure = newPressure;
+					pVoice->mSendPressure = true;
+				}	
+			}
+		}
         else if(subtype == continueSym)
-        {
-            pVoice->mState = kVoiceStateActive;
+        {			
+			// retrigger notes for glissando mode when sliding from key to key within a zone.
+			if(mGlissando)
+			{
+				int newMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
+				if(newMIDINote != pVoice->mMIDINote)
+				{
+					pVoice->mMIDINote = newMIDINote;
+					pVoice->mMIDIVel = getRetriggerVelocity(pVoice);
+					pVoice->mSendNoteOff = true;
+					pVoice->mSendNoteOn = true;
+				}
+			}
+			
+			// whether in MPE mode or not, we may send pressure.
+			// get the new MIDI pressure from the z value of the voice
+			if(mPressureActive)
+			{
+				int newPressure = clamp((int)(pVoice->z*128.f), 0, 127);
+				if(newPressure != pVoice->mMIDIPressure)
+				{
+					pVoice->mMIDIPressure = newPressure;
+					pVoice->mSendPressure = true;
+				}	
+			}
+			
+			// if in MPE mode, or if this is the youngest voice, we may send pitch bend and xy controller data.
+            if((getMostRecentVoice() == i) || mMidiMode==MidiMode::mpe || mMidiMode==MidiMode::multi_1 || mMidiMode==MidiMode::multi_2  )
+			{
+				int ip = getMIDIPitchBend(pVoice);	
+				if(ip != pVoice->mMIDIBend)
+				{
+					pVoice->mMIDIBend = ip;
+					pVoice->mSendPitchBend = true;
+				}			
+				
+				int ix = clamp((int)(pVoice->x*128.f), 0, 127);
+				if(ix != pVoice->mMIDIXCtrl)
+				{                    
+					pVoice->mMIDIXCtrl = ix;
+					pVoice->mSendXCtrl = true;
+				}
+				
+				int iy = clamp((int)(pVoice->y*128.f), 0, 127);
+				if(iy != pVoice->mMIDIYCtrl)
+				{
+					pVoice->mMIDIYCtrl = iy;
+					pVoice->mSendYCtrl = true;
+				}
+			}
+						
             pVoice->age++;
         }
         else if(subtype == offSym)
         {
-            pVoice->mState = kVoiceStateOff;
+			pVoice->mState = kVoiceStateOff;
             pVoice->age = 0;
             pVoice->z = 0;
-            mGotNoteChangesThisFrame = true;
+			
+			// send quantized pitch on note off
+			pVoice->note = (int)lround(pVoice->note);
+			int ip = getMIDIPitchBend(pVoice);	
+			if(ip != pVoice->mMIDIBend)
+			{
+				pVoice->mMIDIBend = ip;
+				pVoice->mSendPitchBend = true;
+			}
+			
+			pVoice->mSendNoteOff = true;
+			
+			// send pressure off
+			if(mPressureActive)
+			{
+				pVoice->mMIDIPressure = 0;
+				pVoice->mSendPressure = true;
+			}
         }
-        //debug() << i << " " << note << "\n";
     }
     else if(type == controllerSym)
     {
         // when a controller message comes in, make a local copy of the message and store by zone ID.
         int zoneID = msg->mData[0];
         mMessagesByZone[zoneID] = *msg;
+		mGotControllerChanges = true;
     }
     else if(type == matrixSym)
     {
@@ -323,296 +533,231 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
     }
     else if(type == endFrameSym)
     {
-        // get most recent active voice played
-        unsigned int minAge = (unsigned int)-1;
-        int newestVoiceIdx = -1;
-        for(int i=0; i<mVoices; ++i)
-        {
-            MIDIVoice* pVoice = &mMIDIVoices[i];
-            int a = pVoice->age;
-            if(a > 0)
-            {
-                if(a < minAge)
-                {
-                    minAge = a;
-                    newestVoiceIdx = i;
-                }
-            }
-        }
-        
-        if(mGotNoteChangesThisFrame || mTimeToSendNewFrame)
-        {            
-            // for each zone, send and clear any controller messages received since last frame
-            for(int i=0; i<kSoundplaneAMaxZones; ++i)
-            {
-                SoundplaneDataMessage* pMsg = &(mMessagesByZone[i]);
-                if(pMsg->mType == controllerSym)
-                {
-                    // message data:
-                    // mZoneID, mChannel, mControllerNumber, mControllerNumber2, mControllerNumber3, x, y, z
-                    //
-                    int zoneChan = pMsg->mData[1];
-                    int ctrlNum1 = pMsg->mData[2];
-                    int ctrlNum2 = pMsg->mData[3];
-                    // int ctrlNum3 = pMsg->mData[4];
-                    x = pMsg->mData[5];
-                    y = pMsg->mData[6];
-                    z = pMsg->mData[7];
-                    
-                    int ix = clamp((int)(x*128.f), 0, 127);
-                    int iy = clamp((int)(y*128.f), 0, 127);
-                    int iz = clamp((int)(z*128.f), 0, 127);
-                    
-                    // use channel from zone, or default to channel dial setting.
-                    int channel = (zoneChan > 0) ? (zoneChan) : (mChannel);
-                    
-                    // get control data by type and send controller message
-                    if(pMsg->mSubtype == xSym)
-                    {
-                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
-                    }
-                    else if(pMsg->mSubtype == ySym)
-                    {
-                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, iy));
-                    }
-                    else if (pMsg->mSubtype == xySym)
-                    {
-                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
-                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum2, iy));
-                    }
-                    else if (pMsg->mSubtype == zSym)
-                    {
-                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, iz));
-                    }
-                    else if (pMsg->mSubtype == toggleSym)
-                    {
-                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
-                    }
-                    
-                    // clear controller message
-                    mMessagesByZone[i].mType = nullSym;
-                }
-            }
-
-            // send MIDI notes and controllers for each live touch.
-            // attempt to translate the notes into MIDI notes + pitch bend.
-            for(int i=0; i < mVoices; ++i)
-            {
-                MIDIVoice* pVoice = &mMIDIVoices[i];
-                int chan = (mMidiMode==MidiMode::mpe) ? (getMPEVoiceChannel(i)) : (is_single(mMidiMode) ? mChannel : ( ((mChannel + i - 1 ) & 0x0F) + 1));
-				
-                if (pVoice->mState == kVoiceStateOn)
-                {
-                    // before note on, first send note off if needed
-                    if((pVoice->mMIDINote >= 0) && (pVoice->mMIDIVel > 0))
-                    {
-                        sendPressure(chan, pVoice->mMIDINote, 0);
-                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
-                    }
-                    
-                    // get nearest integer note
-                    pVoice->mMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
-                    
-                    float fVel = pVoice->dz*100.f*128.f;
-                    pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
-
-					// debug() << "voice " << i << " ON: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
-                    
-                    // reset pitch at note on!
-                    sendPitchbend(chan, 8192);
-                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
-                    
-                    pVoice->mState = kVoiceStateActive;
-                }
-                else if(pVoice->mState == kVoiceStateOff && pVoice->mMIDIVel)
-                {
-                    // send pressure off
-                    sendPressure(chan, pVoice->mMIDINote, 0);
-                    pVoice->mMIDIPressure = 0;
-                    
-                    // send note off
-                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
-                    pVoice->mMIDIVel = 0;
-                    pVoice->mMIDINote = 0;
-                    pVoice->mState = kVoiceStateInactive;
-                    
-					//debug() << "voice " << i << " OFF: DZ = " << pVoice->dz << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";                    
-                }
-                
-                // if note is on, send pitch bend / controllers.
-                if (pVoice->mMIDIVel > 0)
-                {
-                    int newMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
-                    
-                    // retrigger notes for glissando mode when sliding from key to key
-                    if ((newMIDINote != pVoice->mMIDINote) && mGlissando)
-                    {
-                        // get retrigger velocity from current z
-                        float fVel = pVoice->z*128.f;
-                        pVoice->mMIDIVel = clamp((int)fVel, 16, 127);
-                        
-                        // retrigger
-                        sendPressure(chan, pVoice->mMIDINote, 0);
-                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mMIDINote));
-                        pVoice->mMIDINote = newMIDINote;
-                        mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
-                        sendPressure(chan, pVoice->mMIDINote, pVoice->z);
-                        
-						//debug() << "voice " << i << " RETRIG: Z = " << pVoice->z << " P: " << pVoice->mMIDINote << ", V " << pVoice->mMIDIVel << "\n";
-                        
-                    }
-                    
-                    // send controllers etc. if in MPE mode, or if this is the youngest voice.
-                    if((newestVoiceIdx == i) || !is_single(mMidiMode))
-                    {
-                        // get pitch bend for note difference
-                        //
-//						float fp = mGlissando ? 0 : (pVoice->note - pVoice->startNote);
-						float bendAmount;
-						if(mGlissando)
-						{
-							bendAmount = pVoice->vibrato;
-						}
-						else
-						{
-							bendAmount = pVoice->note - pVoice->startNote + pVoice->vibrato;	
-						}
-						
-                        if (mBendRange > 0)
-                        {
-                            bendAmount *= 8192.f;
-                            bendAmount /= (float)mBendRange;
-                        }
-                        else 
-                        {
-                            bendAmount = 0.;
-                        }
-                        bendAmount += 8192.f;
-                        
-                        int ip = bendAmount;
-                        ip = clamp(ip, 0, 16383);
-                        if(ip != pVoice->mMIDIBend)
-                        {                            
-      //  debug() << "voice " << i << " BEND = " << ip << "\n";                            
-                            sendPitchbend(chan,ip);
-                            pVoice->mMIDIBend = ip;
-                        }
-                        
-                        // send voice absolute x, y, z values to controllers 73, 74, 75
-                        int ix = clamp((int)(pVoice->x*127.f), 0, 127);
-                        if(ix != pVoice->mMIDIXCtrl)
-                        {                            
-                            //debug() << "channel " << chan << ", x = " << ix << "\n";
-                            sendX(chan,ix);
-                            pVoice->mMIDIXCtrl = ix;
-                        }
-                        
-                        int iy = clamp((int)(pVoice->y*127.f), 0, 127);
-                        if(iy != pVoice->mMIDIYCtrl)
-                        {
-                            sendY(chan,iy);
-                            pVoice->mMIDIYCtrl = iy;
-                        }
-                        
-                        int iz = clamp((int)(pVoice->z*127.f), 0, 127);
-                        if(iz != pVoice->mMIDIPressure)
-                        {  
-                            sendPressure(chan, pVoice->mMIDINote,  iz);
-                            pVoice->mMIDIPressure = iz;
-                        }
-                    }
-                }		
-            }
-        }
-        if(mKymaPoll)
-        {
-            // send NRPN with Soundplane identifier every few secs. for Kyma.
-            const UInt64 nrpnPeriodMicrosecs = 1000*1000*4;
-            if (mCurrFrameStartTime > mLastTimeNRPNWasSent + nrpnPeriodMicrosecs)
-            {
-                mLastTimeNRPNWasSent = mCurrFrameStartTime;
-                // set NRPN
-                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0x53));
-                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0x50));
-                
-                // data entry -- send # of voices for Kyma
-                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 6, mVoices));
-                
-                // null NRPN
-                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0xFF));
-                mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0xFF));                
-            }
-        }
+        sendMIDIVoiceMessages();
+		if(mGotControllerChanges && mTimeToSendNewFrame) sendMIDIControllerMessages();
+		if(mKymaPoll) pollKyma();
+		if(mVerbose) dumpVoices();
+		updateVoiceStates();
     }
 }
 
-void SoundplaneMIDIOutput::sendPressure(int chan, int note, float p)
+void SoundplaneMIDIOutput::setupVoiceChannels()
 {
-    switch(mMidiMode)
-    {
-        case single_1:
-            if(note>=0) mpCurrentDevice->sendMessageNow(juce::MidiMessage::aftertouchChange(chan, note, p));
-            break;
-        case mpe:
-        case multi_2:
-        case single_2:
-            mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, p));
-            break;
-        case multi_1:
-            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, p));
-            break;
-    }
+	for(int i=0; i < mVoices; ++i)
+	{
+		MIDIVoice* pVoice = &mMIDIVoices[i];
+		int chan = getVoiceChannel(i);	
+		pVoice->mMIDIChannel = chan;
+	}
 }
 
-void SoundplaneMIDIOutput::sendX(int chan, float p)
-{
-    switch(mMidiMode)
-    {
-        case single_1:
-        case single_2:
-        case mpe:
-        case multi_2:
-            break;
-        case multi_1:
-            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 73, p));
-            break;
-        default:
-            break;
-    }
+void SoundplaneMIDIOutput::sendMIDIVoiceMessages()
+{	
+	// send MIDI notes and controllers for each live touch.
+	// attempt to translate the notes into MIDI notes + pitch bend.
+	for(int i=0; i < mVoices; ++i)
+	{
+		MIDIVoice* pVoice = &mMIDIVoices[i];
+		int chan = pVoice->mMIDIChannel;
+		
+		if(pVoice->mSendPitchBend)
+		{
+            int p = pVoice->mMIDIBend;
+            switch(mMidiMode)
+            {
+                case single_1:
+                case single_2:
+                case mpe:
+                case multi_2:
+                case multi_1:
+                default:
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, p));
+                    break;
+            }
+
+			mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, pVoice->mMIDIBend));
+		}
+		
+		if(pVoice->mSendNoteOff)
+		{
+			mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mPreviousMIDINote));
+			//mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, 0));
+		}
+
+		if(pVoice->mSendNoteOn)
+		{
+			mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
+		}
+		
+		if(pVoice->mSendPressure)
+		{
+			int p = pVoice->mMIDIPressure;
+            switch(mMidiMode)
+            {
+                case single_1:
+                    if(pVoice->mMIDINote>=0) mpCurrentDevice->sendMessageNow(juce::MidiMessage::aftertouchChange(chan, pVoice->mMIDINote, p));
+                    break;
+                case mpe:
+                case multi_2:
+                case single_2:
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::channelPressureChange(chan, p));
+                    break;
+                case multi_1:
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 11, p));
+                    break;
+            }
+		}
+		
+		if(pVoice->mSendXCtrl)
+		{
+            int p = pVoice->mMIDIXCtrl;
+            switch(mMidiMode)
+            {
+                case single_1:
+                case single_2:
+                case mpe:
+                case multi_2:
+                    break;
+                case multi_1:
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 73, p));
+                    break;
+                default:
+                    break;
+            }
+		}
+		
+		if(pVoice->mSendYCtrl)
+		{
+            int p = pVoice->mMIDIYCtrl;
+            switch(mMidiMode)
+            {
+                case single_1:
+                case single_2:
+                case multi_2:
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 1, p));
+                    break;
+                case mpe:
+                case multi_1:
+                    mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 74, p));
+                    break;
+                default:
+                    break;
+            }
+
+		}
+	}
 }
 
-void SoundplaneMIDIOutput::sendY(int chan, float p)
+void SoundplaneMIDIOutput::sendMIDIControllerMessages()
 {
-    switch(mMidiMode)
-    {
-        case single_1:
-        case single_2:
-            break;
-        case multi_2:
-            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 1, p));
-            break;
-        case mpe:
-        case multi_1:
-            mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 74, p));
-            break;
-        default:
-            break;
-    }
+	static const MLSymbol controllerSym("controller");
+	static const MLSymbol xSym("x");
+	static const MLSymbol ySym("y");
+	static const MLSymbol xySym("xy");
+	static const MLSymbol zSym("z");
+	static const MLSymbol toggleSym("toggle");
+	static const MLSymbol nullSym("");
+	
+	// for each zone, send and clear any controller messages received since last frame
+	for(int i=0; i<kSoundplaneAMaxZones; ++i)
+	{
+		SoundplaneDataMessage* pMsg = &(mMessagesByZone[i]);
+		if(pMsg->mType == controllerSym)
+		{
+			// controller message data:
+			// mZoneID, mChannel, mControllerNumber, mControllerNumber2, mControllerNumber3, x, y, z
+			//
+			int zoneChan = pMsg->mData[1];
+			int ctrlNum1 = pMsg->mData[2];
+			int ctrlNum2 = pMsg->mData[3];
+			// int ctrlNum3 = pMsg->mData[4];
+			float x = pMsg->mData[5];
+			float y = pMsg->mData[6];
+			float z = pMsg->mData[7];
+			
+			int ix = clamp((int)(x*128.f), 0, 127);
+			int iy = clamp((int)(y*128.f), 0, 127);
+			int iz = clamp((int)(z*128.f), 0, 127);
+			
+			// use channel from zone, or default to channel dial setting.
+			int channel = (zoneChan > 0) ? (zoneChan) : (mChannel);
+			
+			// get control data by type and send controller message
+			if(pMsg->mSubtype == xSym)
+			{
+				mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
+			}
+			else if(pMsg->mSubtype == ySym)
+			{
+				mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, iy));
+			}
+			else if (pMsg->mSubtype == xySym)
+			{
+				mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
+				mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum2, iy));
+			}
+			else if (pMsg->mSubtype == zSym)
+			{
+				mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, iz));
+			}
+			else if (pMsg->mSubtype == toggleSym)
+			{
+				mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(channel, ctrlNum1, ix));
+			}
+			
+			// clear controller message
+			mMessagesByZone[i].mType = nullSym;
+		}
+	}
+	
+	mGotControllerChanges = false;
 }
 
-void SoundplaneMIDIOutput::sendPitchbend(int chan, float p)
+void SoundplaneMIDIOutput::pollKyma()
 {
-    switch(mMidiMode)
-    {
-        case single_1:
-        case single_2:
-        case mpe:
-        case multi_2:
-        case multi_1:
-        default:
-            mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, p));
-            break;
-    }
+	// send NRPN with Soundplane identifier every few secs. for Kyma.
+	const UInt64 nrpnPeriodMicrosecs = 1000*1000*4;
+	if (mCurrFrameStartTime > mLastTimeNRPNWasSent + nrpnPeriodMicrosecs)
+	{
+		mLastTimeNRPNWasSent = mCurrFrameStartTime;
+		// set NRPN
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0x53));
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0x50));
+		
+		// data entry -- send # of voices for Kyma
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 6, mVoices));
+		
+		// null NRPN
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0xFF));
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0xFF));                
+	}
+}
+
+void SoundplaneMIDIOutput::updateVoiceStates()
+{
+	for(int i=0; i < mVoices; ++i)
+	{
+		MIDIVoice* pVoice = &mMIDIVoices[i];
+		if (pVoice->mState == kVoiceStateOn)
+		{
+			pVoice->mState = kVoiceStateActive;
+		}
+		else if(pVoice->mState == kVoiceStateOff)
+		{
+			pVoice->mMIDIVel = 0;
+			pVoice->mMIDINote = 0;
+			pVoice->mState = kVoiceStateInactive;
+		}
+		
+		// defaults for next frame: don't send any data
+		pVoice->mSendNoteOff = false;
+		pVoice->mSendNoteOn = false;
+		pVoice->mSendPressure = false;
+		pVoice->mSendPitchBend = false;
+		pVoice->mSendXCtrl = false;
+		pVoice->mSendYCtrl = false;
+		pVoice->mPreviousMIDINote = pVoice->mMIDINote;
+	}
 }
 
 void SoundplaneMIDIOutput::setBendRange(int r)
@@ -627,14 +772,14 @@ void SoundplaneMIDIOutput::setMaxTouches(int t)
     if (mMidiMode==MidiMode::mpe && mpCurrentDevice)
     {
         int globalChannel=mChannel;
-        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, MIDI_MPE_MODE_CC, mVoices));
+        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(globalChannel, kMPE_MIDI_CC, mVoices));
     }
 }
 
 void SoundplaneMIDIOutput::sendMPEChannels()
 {
 	int chan = getMPEMainChannel();
-	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, MIDI_MPE_MODE_CC, mMPEChannels));
+	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, kMPE_MIDI_CC, mMPEChannels));
 }
 
 void SoundplaneMIDIOutput::sendPitchbendRange()
@@ -643,20 +788,42 @@ void SoundplaneMIDIOutput::sendPitchbendRange()
 	int chan = mChannel;
 	int quantizedRange = mBendRange;
 	
-	if(mMidiMode==MidiMode::mpe)
+    if(mMidiMode==MidiMode::mpe)
 	{
 		chan = getMPEVoiceChannel(0);
 		
 		// MPE spec requires a multiple of 12
 		quantizedRange = (quantizedRange/12)*12;
-
-        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 100, 0));
-        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 101, 0));
-        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 6, quantizedRange));
-        mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 38, 0));
 	}
 
+	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 100, 0));
+	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 101, 0));
+	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 6, quantizedRange));
+	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 38, 0));
 }
 
 
+void SoundplaneMIDIOutput::dumpVoices()
+{
+	const UInt64 verbosePeriodMicrosecs = 1000*1000*1;
+	if (mCurrFrameStartTime > mLastTimeVerbosePrint + verbosePeriodMicrosecs)
+	{
+		// dump voices
+		debug() << "----------------------\n";
+		int newestVoiceIdx = getMostRecentVoice();
+		if(newestVoiceIdx >= 0)
+			debug() << "newest: " << newestVoiceIdx << "\n";
+			
+		for(int i=0; i<mVoices; ++i)
+		{
+			MIDIVoice* pVoice = &mMIDIVoices[i];					
+			
+			int ip = getMIDIPitchBend(pVoice);						
+			int iz = clamp((int)(pVoice->z*128.f), 0, 127);
+			
+			debug() << "v" << i << ": CHAN=" << getVoiceChannel(i) << " BEND = " << ip << " Z = " << iz << "\n";
+		}
+		mLastTimeVerbosePrint = mCurrFrameStartTime;
+	}
+}
 
