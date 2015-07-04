@@ -441,7 +441,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	// console
 	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));
 	
-	// MLTEST MLConsole().sendOutputToListener(pDebug);
+	MLConsole().sendOutputToListener(pDebug);
 	
 	// MLTEST temp
 	//debug().sendOutputToListener(pDebug);
