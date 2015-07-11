@@ -193,9 +193,6 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
 			// send dz (velocity) as first z value
 			pVoice->z = dz;
 			
-			// MLTEST
-			//debug() << "SoundplaneOSCOutput: ON vel " << dz << "\n";
-			
             pVoice->mState = kVoiceStateOn;
             mGotNoteChangesThisFrame = true;
         }
