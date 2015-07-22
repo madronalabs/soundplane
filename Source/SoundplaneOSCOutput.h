@@ -25,8 +25,11 @@ extern const char* kDefaultHostnameString;
 // default port for t3d plugin communication. Plugins may be receiving on different ports.
 const int kDefaultUDPPort = 3123;
 
+// maximum number of ports from kDefaultUDPPort to (kDefaultUDPPort + kNumUDPPorts - 1)
+const int kNumUDPPorts = 16;
+
 // Soundplane app input port for Kyma and other config messages
-const int kDefaultUDPReceivePort = 3124;
+const int kDefaultUDPReceivePort = 3122;
 
 const int kUDPOutputBufferSize = 4096;
 
@@ -43,6 +46,8 @@ public:
     float z;
     float note;
 	VoiceState mState;
+	int portOffset;
+	int portOffset1;
 };
 
 class SoundplaneOSCOutput :
@@ -51,7 +56,6 @@ class SoundplaneOSCOutput :
 public:
 	SoundplaneOSCOutput();
 	~SoundplaneOSCOutput();
-	void initialize();
 	
 	void connect(const char* name, int port);
 	int getKymaMode();
@@ -71,6 +75,10 @@ public:
 	void doInfrequentTasks();
 
 private:	
+	
+	int initializePort(int portOffset);
+	osc::OutboundPacketStream& getPacketStreamForPort(int offset);
+	UdpTransmitSocket& getTransmitSocketForPort(int portOffset);
 
 	int mMaxTouches;	
 	OSCVoice mOSCVoices[kSoundplaneMaxTouches];
@@ -81,8 +89,13 @@ private:
 	UInt64 mLastFrameStartTime;
     bool mTimeToSendNewFrame;
 
-	UdpTransmitSocket* mpUDPSocket;		
-    char* mpOSCBuf;
+	//UdpTransmitSocket* mpUDPSocket;	
+	//char* mpOSCBuf;	
+	std::vector< std::vector < char > > mUDPBuffers;
+	std::vector< std::unique_ptr< osc::OutboundPacketStream > > mUDPPacketStreams;
+	std::vector< std::unique_ptr< UdpTransmitSocket > > mUDPSockets;
+	std::vector< bool > mPortInitialized;
+	
 	osc::int32 mFrameId;
 	int mSerialNumber;
 	

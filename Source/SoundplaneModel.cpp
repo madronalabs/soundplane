@@ -565,7 +565,6 @@ void SoundplaneModel::initialize()
 	mMIDIOutput.initialize();
 	addListener(&mMIDIOutput);
 	
-	mOSCOutput.initialize();
 	addListener(&mOSCOutput);
 	
 	mpDriver = new SoundplaneDriver();
@@ -898,7 +897,7 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
             
             pz->mName = getJSONString(pNode, "name");
             pz->mStartNote = getJSONInt(pNode, "note");
-            pz->mChannel = getJSONInt(pNode, "channel");
+            pz->mOffset = getJSONInt(pNode, "offset");
             pz->mControllerNum1 = getJSONInt(pNode, "ctrl1");
             pz->mControllerNum2 = getJSONInt(pNode, "ctrl2");
             pz->mControllerNum3 = getJSONInt(pNode, "ctrl3");

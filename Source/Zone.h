@@ -124,7 +124,7 @@ protected:
     int mControllerNum1;
     int mControllerNum2;
     int mControllerNum3;
-    int mChannel;
+    int mOffset;
     std::string mName;
     const SoundplaneListenerList& mListeners;
     SoundplaneDataMessage mMessage;
