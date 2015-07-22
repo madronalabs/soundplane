@@ -211,8 +211,6 @@ void Zone::processTouchesNoteRow(const std::vector<bool>& freedTouches)
 			// if touch i was freed on the frame preceding this one, it moved
 			// from zone to zone. 
 			bool retrig = (freedTouches[i]);
-			
-			debug() << "RETRIG\n";
 
 			// setup filter states for new note and output
             mNoteFilters[i].setState(scaleNote);

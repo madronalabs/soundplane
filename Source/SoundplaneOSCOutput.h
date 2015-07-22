@@ -46,8 +46,6 @@ public:
     float z;
     float note;
 	VoiceState mState;
-	int portOffset;
-	int portOffset1;
 };
 
 class SoundplaneOSCOutput :
@@ -79,9 +77,15 @@ private:
 	int initializePort(int portOffset);
 	osc::OutboundPacketStream& getPacketStreamForPort(int offset);
 	UdpTransmitSocket& getTransmitSocketForPort(int portOffset);
+	void sendFrame();
 
 	int mMaxTouches;	
-	OSCVoice mOSCVoices[kSoundplaneMaxTouches];
+	
+	//OSCVoice mOSCVoices[kSoundplaneMaxTouches];
+	std::vector< std::vector<OSCVoice> > mOSCVoices;
+	int mPortOffsetsByTouch[kSoundplaneMaxTouches];
+	int mPrevPortOffsetsByTouch[kSoundplaneMaxTouches];
+	
     SoundplaneDataMessage mMessagesByZone[kSoundplaneAMaxZones];
     
 	float mDataFreq;

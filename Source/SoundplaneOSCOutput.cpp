@@ -14,9 +14,7 @@ OSCVoice::OSCVoice() :
     y(0),
     z(0),
     note(0),
-    mState(kVoiceStateInactive),
-	portOffset(0),
-	portOffset1(0)
+    mState(kVoiceStateInactive)
 {
 }
 
@@ -48,6 +46,13 @@ SoundplaneOSCOutput::SoundplaneOSCOutput() :
 	mUDPSockets.resize(kNumUDPPorts);
 	mPortInitialized.resize(kNumUDPPorts);
 	mPortInitialized = {false};
+	
+	// create a vector of voices for each possible port offset
+	mOSCVoices.resize(kNumUDPPorts);
+	for(int i=0; i<kNumUDPPorts; ++i)
+	{
+		mOSCVoices[i].resize(kSoundplaneMaxTouches);
+	}
 }
 
 SoundplaneOSCOutput::~SoundplaneOSCOutput()
@@ -185,7 +190,7 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
     MLSymbol type = msg->mType;
     MLSymbol subtype = msg->mSubtype;
     
-    int i;
+    int voiceIdx, offset;
 	float x, y, z, dz, note, vibrato;
     
     if(type == startFrameSym)
@@ -203,47 +208,68 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
         }        
         mGotNoteChangesThisFrame = false;
         mGotMatrixThisFrame = false;
+		
+		for(int i=0; i < kSoundplaneMaxTouches; ++i)
+		{
+			mPrevPortOffsetsByTouch[i] = mPortOffsetsByTouch[i];
+		}
+		
+		// update all voice states
+		for(int offset=0; offset < kNumUDPPorts; ++offset)
+		{
+			for(int voiceIdx=0; voiceIdx < kSoundplaneMaxTouches; ++voiceIdx)
+			{
+				OSCVoice& v = mOSCVoices[offset][voiceIdx];        
+				if (v.mState == kVoiceStateOff)
+				{
+					v.mState = kVoiceStateInactive;
+				}
+			}
+		}
+		
     }
     else if(type == touchSym)
     {
-        // get touch data
-        i = msg->mData[0];
+        // get incoming touch data from message
+        voiceIdx = msg->mData[0];
         x = msg->mData[1];
         y = msg->mData[2];
         z = msg->mData[3];
         dz = msg->mData[4];
 		note = msg->mData[5];
 		vibrato = msg->mData[6];
+		offset = msg->mOffset;
 		
-        OSCVoice* pVoice = &mOSCVoices[i];        
-        pVoice->x = x;
-        pVoice->y = y;
-        pVoice->z = z;
-        pVoice->note = note + vibrato;
-		pVoice->portOffset1 = pVoice->portOffset;
-		pVoice->portOffset = msg->mOffset;
+		mPortOffsetsByTouch[voiceIdx] = offset;
+		
+		// update new voice state for incoming touch
+        OSCVoice& v = mOSCVoices[offset][voiceIdx];        
+        v.x = x;
+        v.y = y;
+        v.z = z;
+        v.note = note + vibrato;
 		
         if(subtype == onSym)
         {
-            pVoice->startX = x;
-            pVoice->startY = y;
+            v.startX = x;
+            v.startY = y;
 			
 			// send dz (velocity) as first z value
-			pVoice->z = dz;
+			v.z = dz;
 			
-            pVoice->mState = kVoiceStateOn;
+            v.mState = kVoiceStateOn;
             mGotNoteChangesThisFrame = true;
         }
         if(subtype == continueSym)
         {
-            pVoice->mState = kVoiceStateActive;
+            v.mState = kVoiceStateActive;
         }
         if(subtype == offSym)
         {
-            if((pVoice->mState == kVoiceStateActive) || (pVoice->mState == kVoiceStateOn))
+            if((v.mState == kVoiceStateActive) || (v.mState == kVoiceStateOn))
             {
-                pVoice->mState = kVoiceStateOff;
-                pVoice->z = 0;
+                v.mState = kVoiceStateOff;
+                v.z = 0;
                 mGotNoteChangesThisFrame = true;
             }
         }
@@ -264,178 +290,146 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
     {
         if(mGotNoteChangesThisFrame || mTimeToSendNewFrame)
         {
-            // for each zone, send and clear any controller messages received since last frame
-			// to the output port for that zone. controller messages are not sent in bundles.
-            for(int i=0; i<kSoundplaneAMaxZones; ++i)
-            {
-                SoundplaneDataMessage* pMsg = &(mMessagesByZone[i]);
-				int portOffset = pMsg->mOffset;
-				
-                if(pMsg->mType == controllerSym)
-                {
-                    // send controller message: /t3d/[zoneName] val1 (val2) on port (3123 + offset).
-					osc::OutboundPacketStream& p = getPacketStreamForPort(portOffset);
-					UdpTransmitSocket& socket = getTransmitSocketForPort(portOffset);
-
-					// int channel = pMsg->mData[1];
-                    // int ctrlNum1 = pMsg->mData[2];
-                    // int ctrlNum2 = pMsg->mData[3];
-                    // int ctrlNum3 = pMsg->mData[4];
-                    x = pMsg->mData[5];
-                    y = pMsg->mData[6];
-                    z = pMsg->mData[7];
-                    std::string ctrlStr("/");
-                    ctrlStr += (pMsg->mZoneName);
-                    
-                    p << osc::BeginMessage( ctrlStr.c_str() );
-                    
-                    // get control data by type and add to message
-                    if(pMsg->mSubtype == xSym)
-                    {
-                        p << x;
-                    }
-                    else if(pMsg->mSubtype == ySym)
-                    {
-                        p << y;
-                    }
-                    else if (pMsg->mSubtype == xySym)
-                    {
-                        p << x << y;
-                    }
-                    else if (pMsg->mSubtype == zSym)
-                    {
-                        p << z;
-                    }
-                    else if (pMsg->mSubtype == toggleSym)
-                    {
-                        int t = (x > 0.5f);
-                        p << t;
-                    }
-                    p << osc::EndMessage;
-                    
-                    // clear
-                    mMessagesByZone[i].mType = nullSym;
-
-					socket.Send( p.Data(), p.Size() );
-                }
-            }
-						
-			// gather active voices by port offset. 
-			std::vector< std::vector<int> > activeVoicesByPortOffset;
-			activeVoicesByPortOffset.resize(kNumUDPPorts);
-			for(int i=0; i<mMaxTouches; ++i)
-			{
-				OSCVoice* pVoice = &mOSCVoices[i];
-				
-				// send any active voices to their port offset group
-				if(pVoice->mState != kVoiceStateInactive)
-				{
-					activeVoicesByPortOffset[pVoice->portOffset].push_back(i);
-				}
-				// send voices that changed port offset to the group of the previous offset
-				// so they can be turned off
-				if(pVoice->portOffset1 != pVoice->portOffset)
-				{
-					activeVoicesByPortOffset[pVoice->portOffset1].push_back(i);
-				}
-			}		
-			
-			// for each port, send an OSC bundle containing any touches.
-			for(int portOffset=0; portOffset<kNumUDPPorts; ++portOffset)
-			{
-				if(activeVoicesByPortOffset[portOffset].size() > 0)
-				{
-					// begin OSC bundle for this frame
-					// timestamp is now stored in the bundle, synchronizing all info for this frame.
-					osc::OutboundPacketStream& p = getPacketStreamForPort(portOffset);					 
-					UdpTransmitSocket& socket = getTransmitSocketForPort(portOffset);
-
-					// begin bundle
-					p << osc::BeginBundle(mCurrFrameStartTime);
-					
-					// send frame start message
-					p << osc::BeginMessage( "/t3d/frm" );
-					p << mFrameId++ << mSerialNumber;
-					p << osc::EndMessage;
-						
-					for(int voiceIdx : activeVoicesByPortOffset[portOffset])
-					{
-						OSCVoice* pVoice = &mOSCVoices[voiceIdx];
-						if (!mKymaMode)
-						{
-							osc::int32 touchID = voiceIdx + 1; // 1-based for OSC
-
-							// see if the voice is in this port offset group. if not, we know it moved out of this group, so turn it off.
-							float zOut;
-							if(portOffset != pVoice->portOffset1)
-							{
-								zOut = 0.;
-							}
-							else
-							{
-								zOut = pVoice->z;
-							}
-							
-							std::string address("/t3d/tch" + std::to_string(touchID));
-							p << osc::BeginMessage( address.c_str() );
-							p << pVoice->x << pVoice->y << zOut << pVoice->note;
-							p << osc::EndMessage;						
-							
-							
-							if (pVoice->mState == kVoiceStateOn)
-							{
-								debug() << "ON: " << portOffset << "\n";
-							}
-							
-							if (pVoice->mState == kVoiceStateOff)
-							{
-								debug() << "OFF: " << portOffset << "\n";
-								pVoice->mState = kVoiceStateInactive;
-							}
-							
-						}
-						else
-						{		
-							osc::int32 offOn = 1;
-							if(pVoice->mState == kVoiceStateOn)
-							{
-								offOn = -1;
-							}
-							else if (pVoice->mState == kVoiceStateOff)
-							{
-								offOn = 0; // TODO periodically turn off silent voices 
-							}
-							if(pVoice->mState != kVoiceStateInactive)
-							{
-								p << osc::BeginMessage( "/key" );	
-								p << voiceIdx << offOn << pVoice->note << pVoice->z << pVoice->y;
-								p << osc::EndMessage;
-							}						
-						}
-					}
-					
-					// end bundle
-					p << osc::EndBundle;
-					
-					// send it
-					socket.Send( p.Data(), p.Size() );
-					
-				}
-			}
-			            
-            // format and send matrix in OSC blob if we got one.
-			// matrix is always sent to the default port. 
-            if(mGotMatrixThisFrame)
-            {
-				osc::OutboundPacketStream& p = getPacketStreamForPort(0);					 
-				UdpTransmitSocket& socket = getTransmitSocketForPort(0);
-                p << osc::BeginMessage( "/t3d/matrix" );
-                p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
-                p << osc::EndMessage;
-                mGotMatrixThisFrame = false;
-				socket.Send( p.Data(), p.Size() );
-            }
-        }
+			sendFrame();
+		}
+		
+		// format and send matrix in OSC blob if we got one.
+		// matrix is always sent to the default port. 
+		if(mGotMatrixThisFrame)
+		{
+			osc::OutboundPacketStream& p = getPacketStreamForPort(0);					 
+			UdpTransmitSocket& socket = getTransmitSocketForPort(0);
+			p << osc::BeginMessage( "/t3d/matrix" );
+			p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
+			p << osc::EndMessage;
+			mGotMatrixThisFrame = false;
+			socket.Send( p.Data(), p.Size() );
+		}
     }
+}
+
+void SoundplaneOSCOutput::sendFrame()
+{
+	static const MLSymbol controllerSym("controller");
+	static const MLSymbol xSym("x");
+	static const MLSymbol ySym("y");
+	static const MLSymbol xySym("xy");
+	static const MLSymbol zSym("z");
+	static const MLSymbol toggleSym("toggle");
+	static const MLSymbol nullSym;	
+
+	float x, y, z;
+	
+	// for each zone, send and clear any controller messages received since last frame
+	// to the output port for that zone. controller messages are not sent in bundles.
+	for(int i=0; i<kSoundplaneAMaxZones; ++i)
+	{
+		SoundplaneDataMessage* pMsg = &(mMessagesByZone[i]);
+		int portOffset = pMsg->mOffset;
+		
+		if(pMsg->mType == controllerSym)
+		{
+			// send controller message: /t3d/[zoneName] val1 (val2) on port (3123 + offset).
+			osc::OutboundPacketStream& p = getPacketStreamForPort(portOffset);
+			UdpTransmitSocket& socket = getTransmitSocketForPort(portOffset);
+			
+			// int channel = pMsg->mData[1];
+			// int ctrlNum1 = pMsg->mData[2];
+			// int ctrlNum2 = pMsg->mData[3];
+			// int ctrlNum3 = pMsg->mData[4];
+			x = pMsg->mData[5];
+			y = pMsg->mData[6];
+			z = pMsg->mData[7];
+			std::string ctrlStr("/");
+			ctrlStr += (pMsg->mZoneName);
+			
+			p << osc::BeginMessage( ctrlStr.c_str() );
+			
+			// get control data by type and add to message
+			if(pMsg->mSubtype == xSym)
+			{
+				p << x;
+			}
+			else if(pMsg->mSubtype == ySym)
+			{
+				p << y;
+			}
+			else if (pMsg->mSubtype == xySym)
+			{
+				p << x << y;
+			}
+			else if (pMsg->mSubtype == zSym)
+			{
+				p << z;
+			}
+			else if (pMsg->mSubtype == toggleSym)
+			{
+				int t = (x > 0.5f);
+				p << t;
+			}
+			p << osc::EndMessage;
+			
+			// clear
+			mMessagesByZone[i].mType = nullSym;
+			
+			socket.Send( p.Data(), p.Size() );
+		}
+	}
+	
+	// for each port, send an OSC bundle containing any touches.
+	for(int portOffset=0; portOffset<kNumUDPPorts; ++portOffset)
+	{
+		// begin OSC bundle for this frame
+		// timestamp is now stored in the bundle, synchronizing all info for this frame.
+		osc::OutboundPacketStream& p = getPacketStreamForPort(portOffset);					 
+		UdpTransmitSocket& socket = getTransmitSocketForPort(portOffset);
+		
+		// begin bundle
+		p << osc::BeginBundle(mCurrFrameStartTime);
+		
+		// send frame start message
+		p << osc::BeginMessage( "/t3d/frm" );
+		p << mFrameId++ << mSerialNumber;
+		p << osc::EndMessage;
+		
+		for(int voiceIdx=0; voiceIdx < kSoundplaneMaxTouches; ++voiceIdx)
+		{					
+			OSCVoice& v = mOSCVoices[portOffset][voiceIdx];
+			if (!mKymaMode)
+			{
+				osc::int32 touchID = voiceIdx + 1; // 1-based for OSC
+				
+				std::string address("/t3d/tch" + std::to_string(touchID));
+				p << osc::BeginMessage( address.c_str() );
+				p << v.x << v.y << v.z << v.note;
+				p << osc::EndMessage;						
+			}
+			else
+			{		
+				osc::int32 offOn = 1;
+				if(v.mState == kVoiceStateOn)
+				{
+					offOn = -1;
+				}
+				else if (v.mState == kVoiceStateOff)
+				{
+					offOn = 0; // TODO periodically turn off silent voices 
+				}
+				if(v.mState != kVoiceStateInactive)
+				{
+					p << osc::BeginMessage( "/key" );	
+					p << voiceIdx << offOn << v.note << v.z << v.y;
+					p << osc::EndMessage;
+				}						
+			}
+		}
+		
+		// end bundle
+		p << osc::EndBundle;
+		
+		// send it
+		socket.Send( p.Data(), p.Size() );
+		
+	}
 }
 
