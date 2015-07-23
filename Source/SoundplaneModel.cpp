@@ -526,7 +526,6 @@ void SoundplaneModel::didResolveAddress(NetService *pNetService)
 	static const char* kymaStr = "beslime";
 	int len = strlen(kymaStr);
 	bool isProbablyKyma = !strncmp(serviceName.c_str(), kymaStr, len);
-	debug() << "kyma mode " << isProbablyKyma << "\n";
 	setKymaMode(isProbablyKyma);
 }
 

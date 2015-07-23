@@ -389,7 +389,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setRange(0., 0.025, 0.001);	
 	pD->setDefault(0.01);	
 	
-	pD = page1->addDial("max force", dialRect.withCenter(3.5, dialY), "z_max", c2);
+	pD = page1->addDial("z scale", dialRect.withCenter(3.5, dialY), "z_max", c2);
 	pD->setRange(0.01, 0.1, 0.001);	
 	pD->setDefault(0.05);
 	
@@ -403,7 +403,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	
 	pB = page1->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
 	
-//	page1->addToggleButton("show frets", toggleRect.withCenter(10, dialY - 0.25), "frets", c2);
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 
 //	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
@@ -446,15 +445,15 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	// MLTEST temp
 	//debug().sendOutputToListener(pDebug);
 
-	pD = page2->addDial("bg filter", dialRect.withCenter(2, dialY), "bg_filter", c2);
+	pD = page2->addDial("bg filter", dialRect.withCenter(0.5, dialY), "bg_filter", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.05);
 	
-	pD = page2->addDial("hysteresis", dialRect.withCenter(4, dialY), "hysteresis", c2);
+	pD = page2->addDial("hysteresis", dialRect.withCenter(2, dialY), "hysteresis", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.5);
 	
-	pD = page2->addDial("template", dialRect.withCenter(6, dialY), "t_thresh", c2);
+	pD = page2->addDial("template", dialRect.withCenter(3.5, dialY), "t_thresh", c2);
 	pD->setRange(0., 1., 0.001);	
 	pD->setDefault(0.2);
     
