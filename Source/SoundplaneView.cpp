@@ -386,12 +386,12 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setDefault(4);	
 
 	pD = page1->addDial("thresh", dialRect.withCenter(2.0, dialY), "z_thresh", c2);
-	pD->setRange(0., 0.025, 0.001);	
+	pD->setRange(0., 0.05, 0.001);	
 	pD->setDefault(0.01);	
 	
-	pD = page1->addDial("z scale", dialRect.withCenter(3.5, dialY), "z_max", c2);
-	pD->setRange(0.01, 0.1, 0.001);	
-	pD->setDefault(0.05);
+	pD = page1->addDial("z scale", dialRect.withCenter(3.5, dialY), "z_scale", c2);
+	pD->setRange(0.01, 5.0, 0.01);	
+	pD->setDefault(1.0);
 	
 	pD = page1->addDial("z curve", dialRect.withCenter(5.0, dialY), "z_curve", c2);
 	pD->setRange(0., 1., 0.01);	
