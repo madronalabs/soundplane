@@ -34,7 +34,8 @@ SoundplaneOSCOutput::SoundplaneOSCOutput() :
 	lastInfrequentTaskTime(0),
 	mKymaMode(false),
     mGotNoteChangesThisFrame(false),
-    mGotMatrixThisFrame(false)
+    mGotMatrixThisFrame(false),
+	mCurrentBaseUDPPort(kDefaultUDPPort)
 {
 	// create buffers for UDP packet streams
 	mUDPBuffers.resize(kNumUDPPorts);
@@ -43,9 +44,8 @@ SoundplaneOSCOutput::SoundplaneOSCOutput() :
 		mUDPBuffers[i].resize(kUDPOutputBufferSize);
 	}
 	mUDPPacketStreams.resize(kNumUDPPorts);
-	mUDPSockets.resize(kNumUDPPorts);
-	mPortInitialized.resize(kNumUDPPorts);
-	mPortInitialized = {false};
+	
+	resetAllSockets();
 	
 	// create a vector of voices for each possible port offset
 	mOSCVoices.resize(kNumUDPPorts);
@@ -60,26 +60,26 @@ SoundplaneOSCOutput::~SoundplaneOSCOutput()
 }
 
 void SoundplaneOSCOutput::connect(const char* name, int port)
-{
- //   if(mpUDPSocket)
-	/*
+{	
+	mCurrentBaseUDPPort = port;
+	resetAllSockets();
+	try
 	{
-		debug() << "connect: " << port << "\n";
-		
-		//TODO check port change? 
-		try
-		{
-//			mpUDPSocket->Connect(IpEndpointName(name, port));
-		}
-		catch(std::runtime_error err)
-		{
-			debug() << "SoundplaneOSCOutput: error connecting to " << name << ", port " << port << "\n";
-			debug() << "        " << err.what() << "\n";
-			return;
-		}
+		UdpTransmitSocket& socket = getTransmitSocketForOffset(0);
+		osc::OutboundPacketStream& p = getPacketStreamForOffset(0);
+		p << osc::BeginBundleImmediate;
+		p << osc::BeginMessage( "/t3d/dr" );	
+		p << (osc::int32)mDataFreq;
+		p << osc::EndMessage;
+		p << osc::EndBundle;
+		socket.Send( p.Data(), p.Size() );
 		debug() << "SoundplaneOSCOutput:connected to " << name << ", port " << port << "\n";
 	}
-	 */
+	catch(std::runtime_error err)
+	{
+		debug() << "SoundplaneOSCOutput::connect error: " << err.what() << "\n";
+		mCurrentBaseUDPPort = kDefaultUDPPort;
+	}
 }
 
 int SoundplaneOSCOutput::getKymaMode()
@@ -105,10 +105,10 @@ void SoundplaneOSCOutput::doInfrequentTasks()
 	// for each possible offset: if a socket has been created at that offset, send data rate and notifications 
 	for(int portOffset = 0; portOffset < kNumUDPPorts; portOffset++)
 	{
-		if(mPortInitialized[portOffset])	
+		if(mSocketInitialized[portOffset])	
 		{
-			osc::OutboundPacketStream& p = getPacketStreamForPort(portOffset);
-			UdpTransmitSocket& socket = getTransmitSocketForPort(portOffset);
+			osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);
+			UdpTransmitSocket& socket = getTransmitSocketForOffset(portOffset);
 
 			if(mKymaMode)
 			{
@@ -135,36 +135,39 @@ void SoundplaneOSCOutput::doInfrequentTasks()
 	}
 }
 
-int SoundplaneOSCOutput::initializePort(int portOffset)
+void SoundplaneOSCOutput::resetAllSockets()
 {
-	if(	mPortInitialized[portOffset] ) return true;
-	
-	mUDPPacketStreams[portOffset] = std::unique_ptr< osc::OutboundPacketStream >
-		(new osc::OutboundPacketStream( mUDPBuffers[portOffset].data(), kUDPOutputBufferSize ));
-	
-	mUDPSockets[portOffset] = std::unique_ptr< UdpTransmitSocket >
-	(new UdpTransmitSocket(IpEndpointName(kDefaultHostnameString, kDefaultUDPPort + portOffset)));
-	
-	mPortInitialized[portOffset] = true;
-	return true;
+	mUDPSockets.clear();
+	mUDPSockets.resize(kNumUDPPorts);
+	mSocketInitialized.resize(kNumUDPPorts);
+	mSocketInitialized = {false};
 }
 
-osc::OutboundPacketStream& SoundplaneOSCOutput::getPacketStreamForPort(int portOffset)
+void SoundplaneOSCOutput::initializeSocket(int portOffset)
 {
-	if(!mPortInitialized[portOffset])
+	mUDPPacketStreams[portOffset] = std::unique_ptr< osc::OutboundPacketStream >
+		(new osc::OutboundPacketStream( mUDPBuffers[portOffset].data(), kUDPOutputBufferSize ));
+	mUDPSockets[portOffset] = std::unique_ptr< UdpTransmitSocket >
+		(new UdpTransmitSocket(IpEndpointName(kDefaultHostnameString, mCurrentBaseUDPPort + portOffset)));
+	mSocketInitialized[portOffset] = true;
+}
+
+osc::OutboundPacketStream& SoundplaneOSCOutput::getPacketStreamForOffset(int portOffset)
+{
+	if(!mSocketInitialized[portOffset])
 	{
-		initializePort(portOffset);
+		initializeSocket(portOffset);
 	}
 	osc::OutboundPacketStream& p (*mUDPPacketStreams[portOffset]);
 	p.Clear();
 	return p;
 }
 
-UdpTransmitSocket& SoundplaneOSCOutput::getTransmitSocketForPort(int portOffset)
+UdpTransmitSocket& SoundplaneOSCOutput::getTransmitSocketForOffset(int portOffset)
 {
-	if(!mPortInitialized[portOffset])
+	if(!mSocketInitialized[portOffset])
 	{
-		initializePort(portOffset);
+		initializeSocket(portOffset);
 	}
 	return *mUDPSockets[portOffset];
 }
@@ -297,8 +300,8 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
 		// matrix is always sent to the default port. 
 		if(mGotMatrixThisFrame)
 		{
-			osc::OutboundPacketStream& p = getPacketStreamForPort(0);					 
-			UdpTransmitSocket& socket = getTransmitSocketForPort(0);
+			osc::OutboundPacketStream& p = getPacketStreamForOffset(0);					 
+			UdpTransmitSocket& socket = getTransmitSocketForOffset(0);
 			p << osc::BeginMessage( "/t3d/matrix" );
 			p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
 			p << osc::EndMessage;
@@ -330,8 +333,8 @@ void SoundplaneOSCOutput::sendFrame()
 		if(pMsg->mType == controllerSym)
 		{
 			// send controller message: /t3d/[zoneName] val1 (val2) on port (3123 + offset).
-			osc::OutboundPacketStream& p = getPacketStreamForPort(portOffset);
-			UdpTransmitSocket& socket = getTransmitSocketForPort(portOffset);
+			osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);
+			UdpTransmitSocket& socket = getTransmitSocketForOffset(portOffset);
 			
 			// int channel = pMsg->mData[1];
 			// int ctrlNum1 = pMsg->mData[2];
@@ -381,8 +384,8 @@ void SoundplaneOSCOutput::sendFrame()
 	{
 		// begin OSC bundle for this frame
 		// timestamp is now stored in the bundle, synchronizing all info for this frame.
-		osc::OutboundPacketStream& p = getPacketStreamForPort(portOffset);					 
-		UdpTransmitSocket& socket = getTransmitSocketForPort(portOffset);
+		osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);					 
+		UdpTransmitSocket& socket = getTransmitSocketForOffset(portOffset);
 		
 		// begin bundle
 		p << osc::BeginBundle(mCurrFrameStartTime);

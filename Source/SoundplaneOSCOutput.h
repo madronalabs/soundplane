@@ -74,9 +74,10 @@ public:
 
 private:	
 	
-	int initializePort(int portOffset);
-	osc::OutboundPacketStream& getPacketStreamForPort(int offset);
-	UdpTransmitSocket& getTransmitSocketForPort(int portOffset);
+	void resetAllSockets();
+	void initializeSocket(int portOffset);
+	osc::OutboundPacketStream& getPacketStreamForOffset(int offset);
+	UdpTransmitSocket& getTransmitSocketForOffset(int portOffset);
 	void sendFrame();
 
 	int mMaxTouches;	
@@ -93,13 +94,12 @@ private:
 	UInt64 mLastFrameStartTime;
     bool mTimeToSendNewFrame;
 
-	//UdpTransmitSocket* mpUDPSocket;	
-	//char* mpOSCBuf;	
 	std::vector< std::vector < char > > mUDPBuffers;
 	std::vector< std::unique_ptr< osc::OutboundPacketStream > > mUDPPacketStreams;
 	std::vector< std::unique_ptr< UdpTransmitSocket > > mUDPSockets;
-	std::vector< bool > mPortInitialized;
+	std::vector< bool > mSocketInitialized;
 	
+	int mCurrentBaseUDPPort;
 	osc::int32 mFrameId;
 	int mSerialNumber;
 	
