@@ -118,7 +118,11 @@ void SoundplaneDriver::shutdown()
 
 	setDeviceState(kDeviceIsTerminating);
 	
-	IONotificationPortDestroy(notifyPort);
+	if(notifyPort)
+	{
+		IONotificationPortDestroy(notifyPort);
+	}
+	
 	if (matchedIter) 
 	{
         IOObjectRelease(matchedIter);
