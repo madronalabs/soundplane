@@ -22,8 +22,8 @@ int main(int argc, const char * argv[])
 	SoundplaneDriver driver;
 	
 	std::cout << "Hello, Soundplane?\n";	
-	driver.init();
 	
+	driver.init();	
 	while(driverState != kDeviceHasIsochSync)
 	{
 		driverState = driver.getDeviceState();
@@ -34,19 +34,19 @@ int main(int argc, const char * argv[])
 	// read a single frame as calibration snapshot
 	driver.readSurface(mCalibration.getBuffer());
 	
-	int frameCounter = 0;
+	int framesRead, frameCounter = 0;
 	while(1)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		
 		// read all available frames from driver
-		int framesRead = 1;
-		while(framesRead)
+		do
 		{
 			framesRead = driver.readSurface(mSurface.getBuffer());
 			frameCounter += framesRead;
 		}
-		
+		while(framesRead);
+			
 		// print snapshot of latest frame, minus calibration
 		if(frameCounter > 1000)
 		{
