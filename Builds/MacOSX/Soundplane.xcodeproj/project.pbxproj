@@ -16,7 +16,6 @@
 		9EA4F1C0E2356AB5C07CE95E /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E6809DE026C8BEAB082B3DEB /* QuartzCore.framework */; };
 		A9F87921F5EF364874BF8D08 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 38D39096CD656A18BC6E6D85 /* WebKit.framework */; };
 		B50301CC17C69FD2003A4458 /* MLChangeList.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B50300DA17C69FD2003A4458 /* MLChangeList.cpp */; };
-		B50301CD17C69FD2003A4458 /* MLDSP.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B50300DC17C69FD2003A4458 /* MLDSP.cpp */; };
 		B50301CE17C69FD2003A4458 /* MLDSPContext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B50300DE17C69FD2003A4458 /* MLDSPContext.cpp */; };
 		B50301CF17C69FD2003A4458 /* MLDSPEngine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B50300E017C69FD2003A4458 /* MLDSPEngine.cpp */; };
 		B50301D017C69FD2003A4458 /* MLMultProxy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B50300E217C69FD2003A4458 /* MLMultProxy.cpp */; };
@@ -71,8 +70,6 @@
 		B503020117C69FD2003A4458 /* MLRatio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503011D17C69FD2003A4458 /* MLRatio.cpp */; };
 		B503020217C69FD2003A4458 /* MLRingBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503011F17C69FD2003A4458 /* MLRingBuffer.cpp */; };
 		B503020317C69FD2003A4458 /* MLScale.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503012117C69FD2003A4458 /* MLScale.cpp */; };
-		B503020417C69FD2003A4458 /* MLSignal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503012317C69FD2003A4458 /* MLSignal.cpp */; };
-		B503020517C69FD2003A4458 /* MLVector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503012517C69FD2003A4458 /* MLVector.cpp */; };
 		B503020617C69FD2003A4458 /* MLButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503012817C69FD2003A4458 /* MLButton.cpp */; };
 		B503020717C69FD2003A4458 /* MLDebugDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503012A17C69FD2003A4458 /* MLDebugDisplay.cpp */; };
 		B503020817C69FD2003A4458 /* MLDial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B503012C17C69FD2003A4458 /* MLDial.cpp */; };
@@ -117,10 +114,13 @@
 		B5087F7F16F4E39E00783F89 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B5087F7E16F4E39E00783F89 /* Accelerate.framework */; };
 		B5087FF916F4E47800783F89 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B5087FF816F4E47800783F89 /* AudioToolbox.framework */; };
 		B508804D14635BB20039D144 /* Filters2D.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B508804C14635BB20039D144 /* Filters2D.cpp */; };
+		B51A18361B62B612006D6AE0 /* MLDSP.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B51A182E1B62B612006D6AE0 /* MLDSP.cpp */; };
+		B51A18371B62B612006D6AE0 /* MLSignal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B51A18301B62B612006D6AE0 /* MLSignal.cpp */; };
+		B51A18381B62B612006D6AE0 /* MLSymbol.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B51A18321B62B612006D6AE0 /* MLSymbol.cpp */; };
+		B51A18391B62B612006D6AE0 /* MLVector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B51A18341B62B612006D6AE0 /* MLVector.cpp */; };
 		B52365F118ABE93B00ACF69E /* MLDSPUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B52365EF18ABE93B00ACF69E /* MLDSPUtils.cpp */; };
 		B524E63F1811CD5F00A94518 /* Zone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B524E63D1811CD5F00A94518 /* Zone.cpp */; };
 		B52E304213FDFE7F005650CB /* SoundplaneController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B52E304113FDFE7F005650CB /* SoundplaneController.cpp */; };
-		B5422D9D1B444E3D00D24771 /* MLSymbol.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5422D9B1B444E3D00D24771 /* MLSymbol.cpp */; };
 		B5422DA81B444F1900D24771 /* cJSON.c in Sources */ = {isa = PBXBuildFile; fileRef = B5422DA61B444F1900D24771 /* cJSON.c */; };
 		B5422DD01B444F4900D24771 /* IpEndpointName.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5422DAB1B444F4900D24771 /* IpEndpointName.cpp */; };
 		B5422DD11B444F4900D24771 /* NetworkingUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B5422DB01B444F4900D24771 /* NetworkingUtils.cpp */; };
@@ -183,8 +183,6 @@
 		AE08A72CF4EA4703C698EB57 /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = System/Library/Frameworks/CoreMIDI.framework; sourceTree = SDKROOT; };
 		B50300DA17C69FD2003A4458 /* MLChangeList.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLChangeList.cpp; sourceTree = "<group>"; };
 		B50300DB17C69FD2003A4458 /* MLChangeList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLChangeList.h; sourceTree = "<group>"; };
-		B50300DC17C69FD2003A4458 /* MLDSP.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLDSP.cpp; sourceTree = "<group>"; };
-		B50300DD17C69FD2003A4458 /* MLDSP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLDSP.h; sourceTree = "<group>"; };
 		B50300DE17C69FD2003A4458 /* MLDSPContext.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLDSPContext.cpp; sourceTree = "<group>"; };
 		B50300DF17C69FD2003A4458 /* MLDSPContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLDSPContext.h; sourceTree = "<group>"; };
 		B50300E017C69FD2003A4458 /* MLDSPEngine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLDSPEngine.cpp; sourceTree = "<group>"; };
@@ -254,10 +252,6 @@
 		B503012017C69FD2003A4458 /* MLRingBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLRingBuffer.h; sourceTree = "<group>"; };
 		B503012117C69FD2003A4458 /* MLScale.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLScale.cpp; sourceTree = "<group>"; };
 		B503012217C69FD2003A4458 /* MLScale.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLScale.h; sourceTree = "<group>"; };
-		B503012317C69FD2003A4458 /* MLSignal.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLSignal.cpp; sourceTree = "<group>"; };
-		B503012417C69FD2003A4458 /* MLSignal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLSignal.h; sourceTree = "<group>"; };
-		B503012517C69FD2003A4458 /* MLVector.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLVector.cpp; sourceTree = "<group>"; };
-		B503012617C69FD2003A4458 /* MLVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLVector.h; sourceTree = "<group>"; };
 		B503012817C69FD2003A4458 /* MLButton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLButton.cpp; sourceTree = "<group>"; };
 		B503012917C69FD2003A4458 /* MLButton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLButton.h; sourceTree = "<group>"; };
 		B503012A17C69FD2003A4458 /* MLDebugDisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLDebugDisplay.cpp; sourceTree = "<group>"; };
@@ -349,6 +343,14 @@
 		B5087FF816F4E47800783F89 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = /System/Library/Frameworks/AudioToolbox.framework; sourceTree = "<absolute>"; };
 		B508804B14635BB20039D144 /* Filters2D.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Filters2D.h; sourceTree = "<group>"; };
 		B508804C14635BB20039D144 /* Filters2D.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Filters2D.cpp; sourceTree = "<group>"; };
+		B51A182E1B62B612006D6AE0 /* MLDSP.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLDSP.cpp; path = ../source/core/MLDSP.cpp; sourceTree = "<group>"; };
+		B51A182F1B62B612006D6AE0 /* MLDSP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLDSP.h; path = ../source/core/MLDSP.h; sourceTree = "<group>"; };
+		B51A18301B62B612006D6AE0 /* MLSignal.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLSignal.cpp; path = ../source/core/MLSignal.cpp; sourceTree = "<group>"; };
+		B51A18311B62B612006D6AE0 /* MLSignal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLSignal.h; path = ../source/core/MLSignal.h; sourceTree = "<group>"; };
+		B51A18321B62B612006D6AE0 /* MLSymbol.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLSymbol.cpp; path = ../source/core/MLSymbol.cpp; sourceTree = "<group>"; };
+		B51A18331B62B612006D6AE0 /* MLSymbol.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLSymbol.h; path = ../source/core/MLSymbol.h; sourceTree = "<group>"; };
+		B51A18341B62B612006D6AE0 /* MLVector.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLVector.cpp; path = ../source/core/MLVector.cpp; sourceTree = "<group>"; };
+		B51A18351B62B612006D6AE0 /* MLVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLVector.h; path = ../source/core/MLVector.h; sourceTree = "<group>"; };
 		B52365EF18ABE93B00ACF69E /* MLDSPUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MLDSPUtils.cpp; sourceTree = "<group>"; };
 		B52365F018ABE93B00ACF69E /* MLDSPUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MLDSPUtils.h; sourceTree = "<group>"; };
 		B524E63D1811CD5F00A94518 /* Zone.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Zone.cpp; sourceTree = "<group>"; };
@@ -356,8 +358,6 @@
 		B524E6401811CF5200A94518 /* SoundplaneModelA.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SoundplaneModelA.h; sourceTree = "<group>"; };
 		B52E304013FDFE7F005650CB /* SoundplaneController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoundplaneController.h; sourceTree = "<group>"; };
 		B52E304113FDFE7F005650CB /* SoundplaneController.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SoundplaneController.cpp; sourceTree = "<group>"; };
-		B5422D9B1B444E3D00D24771 /* MLSymbol.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MLSymbol.cpp; path = ../source/core/MLSymbol.cpp; sourceTree = "<group>"; };
-		B5422D9C1B444E3D00D24771 /* MLSymbol.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MLSymbol.h; path = ../source/core/MLSymbol.h; sourceTree = "<group>"; };
 		B5422DA61B444F1900D24771 /* cJSON.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = cJSON.c; sourceTree = "<group>"; };
 		B5422DA71B444F1900D24771 /* cJSON.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cJSON.h; sourceTree = "<group>"; };
 		B5422DAB1B444F4900D24771 /* IpEndpointName.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = IpEndpointName.cpp; sourceTree = "<group>"; };
@@ -529,8 +529,6 @@
 				B50300DB17C69FD2003A4458 /* MLChangeList.h */,
 				B5E3C7521971CA9B00966A56 /* MLControlEvent.cpp */,
 				B5E3C7531971CA9B00966A56 /* MLControlEvent.h */,
-				B50300DC17C69FD2003A4458 /* MLDSP.cpp */,
-				B50300DD17C69FD2003A4458 /* MLDSP.h */,
 				B50300DE17C69FD2003A4458 /* MLDSPContext.cpp */,
 				B50300DF17C69FD2003A4458 /* MLDSPContext.h */,
 				B50300E017C69FD2003A4458 /* MLDSPEngine.cpp */,
@@ -606,10 +604,6 @@
 				B503012017C69FD2003A4458 /* MLRingBuffer.h */,
 				B503012117C69FD2003A4458 /* MLScale.cpp */,
 				B503012217C69FD2003A4458 /* MLScale.h */,
-				B503012317C69FD2003A4458 /* MLSignal.cpp */,
-				B503012417C69FD2003A4458 /* MLSignal.h */,
-				B503012517C69FD2003A4458 /* MLVector.cpp */,
-				B503012617C69FD2003A4458 /* MLVector.h */,
 			);
 			path = DSP;
 			sourceTree = "<group>";
@@ -734,8 +728,14 @@
 		B5422D9A1B444E2E00D24771 /* core */ = {
 			isa = PBXGroup;
 			children = (
-				B5422D9B1B444E3D00D24771 /* MLSymbol.cpp */,
-				B5422D9C1B444E3D00D24771 /* MLSymbol.h */,
+				B51A182E1B62B612006D6AE0 /* MLDSP.cpp */,
+				B51A182F1B62B612006D6AE0 /* MLDSP.h */,
+				B51A18301B62B612006D6AE0 /* MLSignal.cpp */,
+				B51A18311B62B612006D6AE0 /* MLSignal.h */,
+				B51A18321B62B612006D6AE0 /* MLSymbol.cpp */,
+				B51A18331B62B612006D6AE0 /* MLSymbol.h */,
+				B51A18341B62B612006D6AE0 /* MLVector.cpp */,
+				B51A18351B62B612006D6AE0 /* MLVector.h */,
 			);
 			name = core;
 			sourceTree = "<group>";
@@ -1049,7 +1049,6 @@
 				B5422DD41B444F4900D24771 /* UdpSocket.cpp in Sources */,
 				B592C69316F36A5E001B578F /* juce_opengl.mm in Sources */,
 				B50301CC17C69FD2003A4458 /* MLChangeList.cpp in Sources */,
-				B50301CD17C69FD2003A4458 /* MLDSP.cpp in Sources */,
 				B50301CE17C69FD2003A4458 /* MLDSPContext.cpp in Sources */,
 				B50301CF17C69FD2003A4458 /* MLDSPEngine.cpp in Sources */,
 				B50301D017C69FD2003A4458 /* MLMultProxy.cpp in Sources */,
@@ -1060,6 +1059,7 @@
 				B50301D417C69FD2003A4458 /* MLProcAdd.cpp in Sources */,
 				B50301D517C69FD2003A4458 /* MLProcAllpass.cpp in Sources */,
 				B50301D617C69FD2003A4458 /* MLProcBiquad.cpp in Sources */,
+				B51A18391B62B612006D6AE0 /* MLVector.cpp in Sources */,
 				B50301D717C69FD2003A4458 /* MLProcClamp.cpp in Sources */,
 				B50301D817C69FD2003A4458 /* MLProcClampSignal.cpp in Sources */,
 				B50301D917C69FD2003A4458 /* MLProcContainer.cpp in Sources */,
@@ -1085,17 +1085,18 @@
 				B50301E917C69FD2003A4458 /* MLProcInputToSignals.cpp in Sources */,
 				B50301EA17C69FD2003A4458 /* MLProcMatrix.cpp in Sources */,
 				B50301EB17C69FD2003A4458 /* MLProcMultiple.cpp in Sources */,
+				B51A18361B62B612006D6AE0 /* MLDSP.cpp in Sources */,
 				B50301EC17C69FD2003A4458 /* MLProcMultiply.cpp in Sources */,
 				B50301ED17C69FD2003A4458 /* MLProcMultiplyAdd.cpp in Sources */,
 				B50301EE17C69FD2003A4458 /* MLProcNoise.cpp in Sources */,
 				B50301EF17C69FD2003A4458 /* MLProcOnepole.cpp in Sources */,
-				B5422D9D1B444E3D00D24771 /* MLSymbol.cpp in Sources */,
 				B50301F017C69FD2003A4458 /* MLProcPan.cpp in Sources */,
 				B5422DD81B444F4900D24771 /* OscTypes.cpp in Sources */,
 				B50301F117C69FD2003A4458 /* MLProcParamToSignal.cpp in Sources */,
 				B50301F217C69FD2003A4458 /* MLProcPeak.cpp in Sources */,
 				B50301F317C69FD2003A4458 /* MLProcPhasor.cpp in Sources */,
 				B5E3C7541971CA9B00966A56 /* MLControlEvent.cpp in Sources */,
+				B51A18381B62B612006D6AE0 /* MLSymbol.cpp in Sources */,
 				B50301F417C69FD2003A4458 /* MLProcPow.cpp in Sources */,
 				B50301F517C69FD2003A4458 /* MLProcQuantize.cpp in Sources */,
 				B50301F617C69FD2003A4458 /* MLProcRate.cpp in Sources */,
@@ -1107,6 +1108,7 @@
 				B5422DD11B444F4900D24771 /* NetworkingUtils.cpp in Sources */,
 				B50301FB17C69FD2003A4458 /* MLProcSineOsc.cpp in Sources */,
 				B50301FC17C69FD2003A4458 /* MLProcSinePhase.cpp in Sources */,
+				B51A18371B62B612006D6AE0 /* MLSignal.cpp in Sources */,
 				B50301FD17C69FD2003A4458 /* MLProcSubtract.cpp in Sources */,
 				B50301FE17C69FD2003A4458 /* MLProcSum.cpp in Sources */,
 				B50301FF17C69FD2003A4458 /* MLProcSVF.cpp in Sources */,
@@ -1114,8 +1116,6 @@
 				B503020117C69FD2003A4458 /* MLRatio.cpp in Sources */,
 				B503020217C69FD2003A4458 /* MLRingBuffer.cpp in Sources */,
 				B503020317C69FD2003A4458 /* MLScale.cpp in Sources */,
-				B503020417C69FD2003A4458 /* MLSignal.cpp in Sources */,
-				B503020517C69FD2003A4458 /* MLVector.cpp in Sources */,
 				B503020617C69FD2003A4458 /* MLButton.cpp in Sources */,
 				B503020717C69FD2003A4458 /* MLDebugDisplay.cpp in Sources */,
 				B503020817C69FD2003A4458 /* MLDial.cpp in Sources */,

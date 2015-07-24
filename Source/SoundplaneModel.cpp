@@ -607,6 +607,7 @@ int SoundplaneModel::getDeviceState(void)
 	PaUtil_ReadMemoryBarrier(); 
 	return mDeviceState;
 }
+
 void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 {
 	unsigned long instrumentModel = 1; // Soundplane A
