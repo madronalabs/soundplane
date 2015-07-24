@@ -5,8 +5,6 @@
 
 #include "TouchTracker.h"
 
-const float kThreshScale = 0.25f;
-
 std::ostream& operator<< (std::ostream& out, const Touch & t)
 {
 	out << std::setprecision(4);
@@ -410,7 +408,7 @@ void TouchTracker::clear()
 void TouchTracker::setThresh(float f) 
 { 
 	const float kHysteresis = 0.002f;
-	mOffThreshold = f*kThreshScale; 
+	mOffThreshold = f; 
 	mOnThreshold = mOffThreshold + kHysteresis; 
 	mOverrideThresh = mOnThreshold*5.f;
 	mCalibrator.setThreshold(mOnThreshold);
@@ -806,8 +804,9 @@ void TouchTracker::updateTouches(const MLSignal& in)
 
 		{
 			// filter position so that light touches do not wander in pitch much due to noise. 			
-			float xyCutoff = newZ*newZ*newZ*2000000.f;
-			xyCutoff = clamp(xyCutoff, 5.f, 100.f);
+			float xyCutoff = newZ*newZ*200000.f;
+			xyCutoff = clamp(xyCutoff, 10.f, 100.f);
+			
 			float x = powf(e, -kMLTwoPi * xyCutoff / (float)mSampleRate);
 			float a0 = 1.f - x;
 			float b1 = -x;
@@ -928,8 +927,7 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 			{
 				// send peak energy to key under peak.
 				KeyState& keyState = mKeyStates[key];
-				MLRange kdzRange(mOnThreshold, 1.f/mZScale, 0.001f, 1.f);
-				
+				MLRange kdzRange(mOffThreshold, mOnThreshold*2., 0.001f, 1.f);
 				float iirCoeff = kdzRange.convertAndClip(z);	
 				float dt = mCalibrator.differenceFromTemplateTouch(in, pos);
                 
