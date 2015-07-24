@@ -11,6 +11,7 @@
 #define GLX 1   // OpenGL blitting
 
 //==============================================================================
+#define JUCE_STANDALONE_APPLICATION ML_BUILD_STANDALONE
 #define JUCE_MODULE_AVAILABLE_juce_audio_basics          1
 #define JUCE_MODULE_AVAILABLE_juce_audio_devices         1
 #define JUCE_MODULE_AVAILABLE_juce_audio_formats         1
