@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.2.1)
 project(soundplane)
 
+set(SOUNDPLANE_VERSION 1.3)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 if (CMAKE_BUILD_TYPE EQUAL "Release")
@@ -13,7 +15,7 @@ else()
   )
 endif()
 
-set(soundplane_sources
+set(SOUNDPLANE_SOURCES
   Data/SoundplaneBinaryData/SoundplaneBinaryData.cpp
   Data/SoundplaneBinaryData/SoundplaneBinaryData.h
   SoundplaneLib/SoundplaneDriver.cpp
@@ -51,6 +53,13 @@ set(soundplane_sources
   Source/Zone.h
 )
 
+set(ICON_FULL_PATH "Data/soundplane.icns")
+set(PLIST_FULL_PATH "Data/Info.plist.in")
+set(SOUNDPLANE_DATA
+  ${ICON_FULL_PATH}
+  ${PLIST_FULL_PATH}
+  )
+
 set(ML_JUCE_HEADER_PATH "${CMAKE_SOURCE_DIR}/Source")
 
 if(NOT ML_MADRONALIB_DIR)
@@ -59,9 +68,22 @@ endif()
 
 add_subdirectory(${ML_MADRONALIB_DIR})
 
-add_executable(soundplane ${soundplane_sources})
-target_link_libraries(soundplane madronalib)
-target_link_libraries(soundplane "-framework IOKit")
-target_include_directories(soundplane PRIVATE "${ML_JUCE_DIR}")
-target_include_directories(soundplane PRIVATE SoundplaneLib)
-target_include_directories(soundplane PRIVATE Data/SoundplaneBinaryData)
+add_executable(
+  Soundplane
+  MACOSX_BUNDLE
+  ${SOUNDPLANE_DATA}
+  ${SOUNDPLANE_SOURCES})
+set_source_files_properties(${ICON_FULL_PATH} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+set_target_properties(Soundplane
+  PROPERTIES
+  MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/${PLIST_FULL_PATH}"
+  MACOSX_BUNDLE_ICON_FILE soundplane.icns
+  MACOSX_BUNDLE_GUI_IDENTIFIER "com.madronalabs.soundplane"
+  MACOSX_BUNDLE_SHORT_VERSION_STRING "${SOUNDPLANE_VERSION}"
+  MACOSX_BUNDLE_BUNDLE_NAME "Soundplane"
+  )
+target_link_libraries(Soundplane madronalib)
+target_link_libraries(Soundplane "-framework IOKit")
+target_include_directories(Soundplane PRIVATE "${ML_JUCE_DIR}")
+target_include_directories(Soundplane PRIVATE SoundplaneLib)
+target_include_directories(Soundplane PRIVATE Data/SoundplaneBinaryData)
