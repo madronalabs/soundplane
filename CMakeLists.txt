@@ -5,11 +5,7 @@ set(SP_VERSION 1.3)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-if (CMAKE_BUILD_TYPE EQUAL "Release")
-  add_definitions(
-    -DNDEBUG
-  )
-else()
+if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
   add_definitions(
     -DDEBUG
   )
