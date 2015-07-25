@@ -107,9 +107,7 @@ void SoundplaneGridView::renderXYGrid()
 {
 	int sensorWidth = mpModel->getWidth();
 	int sensorHeight = mpModel->getHeight();
-
 	int state = mpModel->getDeviceState();
-	//float zScale = mpModel->getFloatProperty("z_scale");
     
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
@@ -592,5 +590,3 @@ void SoundplaneGridView::renderOpenGL()
         renderZGrid();
     }
 }
-
-
