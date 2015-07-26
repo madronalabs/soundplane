@@ -101,8 +101,12 @@ void SoundplaneDriver::shutdown()
 
 	setDeviceState(kDeviceIsTerminating);
 
-	IONotificationPortDestroy(notifyPort);
-	if (matchedIter)
+	if(notifyPort)
+	{
+		IONotificationPortDestroy(notifyPort);
+	}
+
+	if (matchedIter) 
 	{
         IOObjectRelease(matchedIter);
         matchedIter = 0;
@@ -1531,9 +1535,6 @@ void *soundplaneProcessThread(void *arg)
 						}
 
 						std::copy(pWorkingFrame.begin(), pWorkingFrame.end(), pPrevFrame.begin());
-
-						// TODO if there is a small constant difference like an offset across the surface,
-						// store it and correct.
 					}
 				}
 

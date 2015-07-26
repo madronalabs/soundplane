@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>6C268C16-CE97-4536-9DF6-BEE036C9A89F</string>
+	<key>IDESourceControlProjectName</key>
+	<string>T3DExample</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>CFB2ED0CE041856555549A2E30B4752E8671332F</key>
+		<string>https://github.com/madronalabs/madronalib.git</string>
+		<key>D22556B959AE20B18993D3E4AE6397DE1BEA1E33</key>
+		<string>https://github.com/madronalabs/soundplane.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>Developer extras/T3DExample/T3DExample.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>CFB2ED0CE041856555549A2E30B4752E8671332F</key>
+		<string>../../../../../madronalib</string>
+		<key>D22556B959AE20B18993D3E4AE6397DE1BEA1E33</key>
+		<string>../../../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>https://github.com/madronalabs/soundplane.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>D22556B959AE20B18993D3E4AE6397DE1BEA1E33</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>CFB2ED0CE041856555549A2E30B4752E8671332F</string>
+			<key>IDESourceControlWCCName</key>
+			<string>madronalib</string>
+		</dict>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>D22556B959AE20B18993D3E4AE6397DE1BEA1E33</string>
+			<key>IDESourceControlWCCName</key>
+			<string>soundplane</string>
+		</dict>
+	</array>
+</dict>
+</plist>

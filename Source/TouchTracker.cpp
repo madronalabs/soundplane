@@ -409,7 +409,7 @@ void TouchTracker::setThresh(float f)
 { 
 	const float kHysteresis = 0.002f;
 	mOffThreshold = f; 
-	mOnThreshold = f + kHysteresis; 
+	mOnThreshold = mOffThreshold + kHysteresis; 
 	mOverrideThresh = mOnThreshold*5.f;
 	mCalibrator.setThreshold(mOnThreshold);
 }
@@ -803,19 +803,14 @@ void TouchTracker::updateTouches(const MLSignal& in)
 		}
 
 		{
-			// filter position and assign new touch values
-			float xyCutoff = (newZ - mOnThreshold) / (mMaxForce*0.25);
-			xyCutoff = clamp(xyCutoff, 0.f, 1.f);
-			xyCutoff *= xyCutoff;
-			xyCutoff *= xyCutoff;
-			xyCutoff = xyCutoff*100.;
-			xyCutoff = clamp(xyCutoff, 1.f, 100.f);
+			// filter position so that light touches do not wander in pitch much due to noise. 			
+			float xyCutoff = newZ*newZ*200000.f;
+			xyCutoff = clamp(xyCutoff, 10.f, 100.f);
+			
 			float x = powf(e, -kMLTwoPi * xyCutoff / (float)mSampleRate);
 			float a0 = 1.f - x;
 			float b1 = -x;
 			t.dz = newZ - t.z;	
-			
-			// MLTEST
 			
 			t.x1 = t.x;
 			t.y1 = t.y;
@@ -924,7 +919,7 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 		float z = peak.z();
 		
 		// add peak to key state, or bail
-		if (z > mOnThreshold)//*0.25f)
+		if (z > mOnThreshold)
 		{			
 			Vec2 pos = in.correctPeak(peak.x(), peak.y(), 1.0f);	
 			int key = getKeyIndexAtPoint(pos);
@@ -932,7 +927,7 @@ void TouchTracker::addPeakToKeyState(const MLSignal& in)
 			{
 				// send peak energy to key under peak.
 				KeyState& keyState = mKeyStates[key];
-				MLRange kdzRange(mOnThreshold, mMaxForce*0.5, 0.001f, 1.f);
+				MLRange kdzRange(mOffThreshold, mOnThreshold*2., 0.001f, 1.f);
 				float iirCoeff = kdzRange.convertAndClip(z);	
 				float dt = mCalibrator.differenceFromTemplateTouch(in, pos);
                 

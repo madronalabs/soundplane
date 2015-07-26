@@ -1,4 +1,4 @@
-
+//
 // Part of the Soundplane client software by Madrona Labs.
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
@@ -386,12 +386,12 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setDefault(4);	
 
 	pD = page1->addDial("thresh", dialRect.withCenter(2.0, dialY), "z_thresh", c2);
-	pD->setRange(0., 0.025, 0.001);	
+	pD->setRange(0., 0.05, 0.001);	
 	pD->setDefault(0.01);	
 	
-	pD = page1->addDial("max force", dialRect.withCenter(3.5, dialY), "z_max", c2);
-	pD->setRange(0.01, 0.1, 0.001);	
-	pD->setDefault(0.05);
+	pD = page1->addDial("z scale", dialRect.withCenter(3.5, dialY), "z_scale", c2);
+	pD->setRange(0.25, 5.0, 0.01);	
+	pD->setDefault(1.0);
 	
 	pD = page1->addDial("z curve", dialRect.withCenter(5.0, dialY), "z_curve", c2);
 	pD->setRange(0., 1., 0.01);	
@@ -403,7 +403,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	
 	pB = page1->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
 	
-//	page1->addToggleButton("show frets", toggleRect.withCenter(10, dialY - 0.25), "frets", c2);
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 
 //	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
@@ -413,7 +412,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	
 	// grid view gets viewmode changes
 	page1->addPropertyView("viewmode", &mGridView, MLSymbol("viewmode"));
-
 
     // --------------------------------------------------------------------------------
     // page 2 - expert stuff
@@ -446,15 +444,15 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	// MLTEST temp
 	//debug().sendOutputToListener(pDebug);
 
-	pD = page2->addDial("bg filter", dialRect.withCenter(2, dialY), "bg_filter", c2);
+	pD = page2->addDial("bg filter", dialRect.withCenter(0.5, dialY), "bg_filter", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.05);
 	
-	pD = page2->addDial("hysteresis", dialRect.withCenter(4, dialY), "hysteresis", c2);
+	pD = page2->addDial("hysteresis", dialRect.withCenter(2, dialY), "hysteresis", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.5);
 	
-	pD = page2->addDial("template", dialRect.withCenter(6, dialY), "t_thresh", c2);
+	pD = page2->addDial("template", dialRect.withCenter(3.5, dialY), "t_thresh", c2);
 	pD->setRange(0., 1., 0.001);	
 	pD->setDefault(0.2);
     
@@ -657,6 +655,3 @@ void SoundplaneView::nextPage()
 		goToPage(page + 1);
 	}
 }
-
-
-

@@ -80,7 +80,8 @@ public:
     bool needsRedraw() const { return mNeedsRedraw; }
     const std::string& getName() const { return mName; }
     MLRect getBounds() const { return mBounds; }
-    int getType() const { return mType; }
+	int getType() const { return mType; }
+	int getOffset() const { return mOffset; }
 
     // return values on [0..1]
     float getValue(int i) const { return mValue[clamp(i, 0, kZoneValArraySize - 1)]; }
@@ -124,7 +125,7 @@ protected:
     int mControllerNum1;
     int mControllerNum2;
     int mControllerNum3;
-    int mChannel;
+    int mOffset;
     std::string mName;
     const SoundplaneListenerList& mListeners;
     SoundplaneDataMessage mMessage;

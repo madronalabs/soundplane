@@ -107,9 +107,7 @@ void SoundplaneGridView::renderXYGrid()
 {
 	int sensorWidth = mpModel->getWidth();
 	int sensorHeight = mpModel->getHeight();
-
 	int state = mpModel->getDeviceState();
-	float fMax = mpModel->getFloatProperty("z_max");
     
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
@@ -151,7 +149,7 @@ void SoundplaneGridView::renderXYGrid()
 		// Soundplane A-specific
 		for(int i=2; i<sensorWidth - 2; ++i)
 		{
-			float mix = (*calSignal)(i, j) / fMax;
+			float mix = (*calSignal)(i, j);// * zScale;
 			mix *= displayScale;
 			Vec4 dataColor = vlerp(gray, lightGray, mix);
 			glColor4fv(&dataColor[0]);
@@ -592,5 +590,3 @@ void SoundplaneGridView::renderOpenGL()
         renderZGrid();
     }
 }
-
-

@@ -256,9 +256,7 @@ private:
 	std::map<std::string, MLSignal*> mViewModeToSignalMap;
 
 	// OSC services
-
 	std::vector<std::string> mServiceNames;
-
 };
 
 // JSON utilities (to go where?)

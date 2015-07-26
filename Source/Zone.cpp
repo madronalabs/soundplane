@@ -40,7 +40,7 @@ Zone::Zone(const SoundplaneListenerList& l) :
 	mControllerNum1(1),
 	mControllerNum2(2),
 	mControllerNum3(3),
-	mChannel(1),
+	mOffset(0),
 	mName("unnamed zone"),
 	mListeners(l)
 {
@@ -356,7 +356,7 @@ void Zone::processTouchesControllerX()
         Vec3 avgPos = getAveragePositionOfActiveTouches();
         mValue[0] = clamp(avgPos.x(), 0.f, 1.f);
         // TODO add zone attribute to scale value to full range
-        sendMessage("controller", "x", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], 0, 0);
+        sendMessage("controller", "x", mZoneID, 0, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], 0, 0);
     }
 }
 
@@ -366,7 +366,7 @@ void Zone::processTouchesControllerY()
     {
         Vec3 avgPos = getAveragePositionOfActiveTouches();
         mValue[1] = clamp(avgPos.y(), 0.f, 1.f);
-        sendMessage("controller", "y", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, 0, mValue[1], 0);
+        sendMessage("controller", "y", mZoneID, 0, mControllerNum1, mControllerNum2, mControllerNum3, 0, mValue[1], 0);
     }    
 }
 
@@ -377,7 +377,7 @@ void Zone::processTouchesControllerXY()
         Vec3 avgPos = getAveragePositionOfActiveTouches();
         mValue[0] = clamp(avgPos.x(), 0.f, 1.f);
         mValue[1] = clamp(avgPos.y(), 0.f, 1.f);
-        sendMessage("controller", "xy", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], mValue[1], 0);
+        sendMessage("controller", "xy", mZoneID, 0, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], mValue[1], 0);
     }
 }
 
@@ -387,7 +387,7 @@ void Zone::processTouchesControllerToggle()
     if(touchOn)
     {
         mValue[0] = !getToggleValue();
-        sendMessage("controller", "toggle", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], 0, 0);
+        sendMessage("controller", "toggle", mZoneID, 0, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], 0, 0);
     }
 }
 
@@ -399,13 +399,15 @@ void Zone::processTouchesControllerPressure()
         z = getMaxZOfActiveTouches();
     }
     mValue[0] = clamp(z, 0.f, 1.f);
-    sendMessage("controller", "z", mZoneID, mChannel, mControllerNum1, mControllerNum2, mControllerNum3, 0, 0, mValue[0]);
+    sendMessage("controller", "z", mZoneID, 0, mControllerNum1, mControllerNum2, mControllerNum3, 0, 0, mValue[0]);
 }
 
-void Zone::sendMessage(MLSymbol type, MLSymbol type2, float a, float b, float c, float d, float e, float f, float g, float h)
+void Zone::sendMessage(MLSymbol type, MLSymbol subtype, float a, float b, float c, float d, float e, float f, float g, float h)
 {
     mMessage.mType = type;
-    mMessage.mSubtype = type2;
+    mMessage.mSubtype = subtype;
+	mMessage.mOffset = mOffset;			// send port offset of this zone 
+	mMessage.mZoneName = mName;
     mMessage.mData[0] = a;
     mMessage.mData[1] = b;
     mMessage.mData[2] = c;
@@ -414,7 +416,6 @@ void Zone::sendMessage(MLSymbol type, MLSymbol type2, float a, float b, float c,
     mMessage.mData[5] = f;
     mMessage.mData[6] = g;
     mMessage.mData[7] = h;
-    mMessage.mZoneName = mName;
     sendMessageToListeners();
 }
 
