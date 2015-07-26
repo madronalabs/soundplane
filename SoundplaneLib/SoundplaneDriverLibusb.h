@@ -38,15 +38,125 @@ public:
 
 private:
 	/**
+	 * A RAII helper for libusb device handles. It closes the device handle on
+	 * destruction.
+	 */
+	class LibusbDevice
+	{
+	public:
+		LibusbDevice() {}
+
+		/**
+		 * Handle may be nullptr.
+		 */
+		explicit LibusbDevice(libusb_device_handle* handle) :
+			mHandle(handle) {}
+
+		LibusbDevice(const LibusbDevice &) = delete;
+		LibusbDevice& operator=(const LibusbDevice &) = delete;
+
+		LibusbDevice(LibusbDevice &&other)
+		{
+			*this = std::move(other);
+		}
+
+		LibusbDevice& operator=(LibusbDevice &&other)
+		{
+			std::swap(mHandle, other.mHandle);
+			return *this;
+		}
+
+		~LibusbDevice()
+		{
+			if (mHandle)
+			{
+				libusb_close(mHandle);
+			}
+		}
+
+		libusb_device_handle* get() const
+		{
+			return mHandle;
+		}
+
+	private:
+		libusb_device_handle* mHandle = nullptr;
+	};
+
+	/**
+	 * A RAII helper for claiming libusb device interfaces.
+	 */
+	class LibusbClaimedDevice
+	{
+	public:
+		LibusbClaimedDevice() {}
+
+		/**
+		 * This constructor assumes ownership of an underlying LibusbDevice
+		 * and attempts to claim the specified interface number. If that fails,
+		 * the LibusbDevice is released and the created LibusbClaimedDevice
+		 * is an empty one.
+		 *
+		 * handle may be an empty handle.
+		 */
+		LibusbClaimedDevice(LibusbDevice &&handle, int interfaceNumber) :
+			mHandle(std::move(handle)),
+			mInterfaceNumber(interfaceNumber) {
+			// Attempt to claim the specified interface
+			if (libusb_claim_interface(mHandle.get(), interfaceNumber) < 0) {
+				// Claim failed. Reset underlying handle
+				LibusbDevice empty;
+				std::swap(empty, mHandle);
+			}
+		}
+
+		~LibusbClaimedDevice() {
+			if (mHandle.get() != nullptr) {
+				libusb_release_interface(mHandle.get(), mInterfaceNumber);
+			}
+		}
+
+		LibusbClaimedDevice(const LibusbDevice &) = delete;
+		LibusbClaimedDevice& operator=(const LibusbDevice &) = delete;
+
+		LibusbClaimedDevice(LibusbClaimedDevice &&other)
+		{
+			*this = std::move(other);
+		}
+
+		LibusbClaimedDevice& operator=(LibusbClaimedDevice &&other)
+		{
+			std::swap(mHandle, other.mHandle);
+			std::swap(mInterfaceNumber, other.mInterfaceNumber);
+			return *this;
+		}
+
+		libusb_device_handle* get() const
+		{
+			return mHandle.get();
+		}
+
+		explicit operator bool() const
+		{
+			return mHandle.get() != nullptr;
+		}
+
+	private:
+		LibusbDevice mHandle;
+		int mInterfaceNumber = 0;
+	};
+
+	/**
 	 * Returns true if the process thread should quit.
 	 *
 	 * May spuriously wait for a shorter than the specified time.
 	 */
 	bool processThreadWait(int ms);
 	/**
-	 * Returns nullptr if the process thread should quit.
+	 * Returns true if the process thread should quit.
 	 */
-	libusb_device_handle* processThreadOpenDevice();
+	bool processThreadOpenDevice(LibusbClaimedDevice &outDevice);
+	void processThreadCloseDevice();
 	void processThread();
 
 	bool mQuitting = false;

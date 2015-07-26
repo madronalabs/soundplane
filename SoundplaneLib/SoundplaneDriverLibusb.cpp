@@ -90,19 +90,21 @@ bool SoundplaneDriverLibusb::processThreadWait(int ms)
 	return mQuitting;
 }
 
-libusb_device_handle* SoundplaneDriverLibusb::processThreadOpenDevice()
+bool SoundplaneDriverLibusb::processThreadOpenDevice(LibusbClaimedDevice &outDevice)
 {
 	for (;;)
 	{
 		libusb_device_handle* handle = libusb_open_device_with_vid_pid(
 			mLibusbContext, kSoundplaneUSBVendor, kSoundplaneUSBProduct);
-		if (handle)
+		LibusbClaimedDevice result(LibusbDevice(handle), 0);
+		if (result)
 		{
-			return handle;
+			std::swap(result, outDevice);
+			return false;
 		}
 		if (processThreadWait(1000))
 		{
-			return nullptr;
+			return true;
 		}
 	}
 }
@@ -110,10 +112,10 @@ libusb_device_handle* SoundplaneDriverLibusb::processThreadOpenDevice()
 void SoundplaneDriverLibusb::processThread() {
 	for (;;)
 	{
-		libusb_device_handle *handle = processThreadOpenDevice();
-		if (!handle) return;
+		LibusbClaimedDevice handle;
+		if (processThreadOpenDevice(handle)) return;
 
-		printf("Handle: %p\n", handle);
+		printf("Handle: %p\n", handle.get());
 		sleep(1);
 	}
 }
