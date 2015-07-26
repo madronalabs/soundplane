@@ -254,7 +254,7 @@ void SoundplaneDriver::setDeviceState(MLSoundplaneState n)
 	mState = n;
 	for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
 	{
-		(*it)->deviceStateChanged(mState);
+		(*it)->deviceStateChanged(n);
 	}
 }
 
