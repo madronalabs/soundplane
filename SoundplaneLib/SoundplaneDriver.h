@@ -223,7 +223,7 @@ private:
 	char mDescStr[256]; // max descriptor length.
 	char mSerialString[64]; // scratch string
 	unsigned char mCurrentCarriers[kSoundplaneSensorWidth];
-	float * mpOutputData;
+	float mpOutputData[kSoundplaneWidth * kSoundplaneHeight * kSoundplaneOutputBufFrames];
 	PaUtilRingBuffer mOutputBuf;
 	std::list<SoundplaneDriverListener*> mListeners;
 };

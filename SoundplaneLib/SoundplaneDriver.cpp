@@ -46,7 +46,6 @@ SoundplaneDriver::SoundplaneDriver() :
 	clientRef(0),
 	dev(0),
 	intf(0),
-	mpOutputData(0),
 	mTransactionsInFlight(0),
 	mState(kNoDevice),
 	startupCtr(0)
@@ -60,17 +59,7 @@ SoundplaneDriver::SoundplaneDriver() :
 
 	bzero(transactionData, sizeof(transactionData));
 
-	size_t outputFrameSize = kSoundplaneWidth * kSoundplaneHeight * sizeof(float);
-	size_t outputBufSize = kSoundplaneOutputBufFrames * outputFrameSize;
-	mpOutputData = (float *)malloc(outputBufSize);
-	if (mpOutputData)
-	{
-		PaUtil_InitializeRingBuffer(&mOutputBuf, outputFrameSize, kSoundplaneOutputBufFrames, mpOutputData);
-	}
-	else
-	{
-		fprintf(stderr, "Soundplane driver: couldn't create output buffer!\n");
-	}
+	PaUtil_InitializeRingBuffer(&mOutputBuf, sizeof(mpOutputData) / kSoundplaneOutputBufFrames, kSoundplaneOutputBufFrames, mpOutputData);
 
 	for(int i=0; i < kSoundplaneSensorWidth; ++i)
 	{
@@ -82,7 +71,6 @@ SoundplaneDriver::~SoundplaneDriver()
 {
 	printf("SoundplaneDriver shutting down...\n");
 	shutdown();
-	if (mpOutputData) free(mpOutputData);
 }
 
 void SoundplaneDriver::init()
