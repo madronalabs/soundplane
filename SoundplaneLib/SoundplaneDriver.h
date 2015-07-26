@@ -179,6 +179,9 @@ typedef struct
 class SoundplaneDriver
 {
 public:
+	/**
+	 * listener may be nullptr
+	 */
 	SoundplaneDriver(SoundplaneDriverListener* listener);
 	~SoundplaneDriver();
 
@@ -251,6 +254,7 @@ private:
 	float mpOutputData[kSoundplaneWidth * kSoundplaneHeight * kSoundplaneOutputBufFrames];
 	PaUtilRingBuffer mOutputBuf;
 
+	// mListener may be nullptr
 	SoundplaneDriverListener* mListener;
 };
 

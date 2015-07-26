@@ -106,7 +106,7 @@ void SoundplaneDriver::shutdown()
 		IONotificationPortDestroy(notifyPort);
 	}
 
-	if (matchedIter) 
+	if (matchedIter)
 	{
         IOObjectRelease(matchedIter);
         matchedIter = 0;
@@ -261,17 +261,23 @@ MLSoundplaneState SoundplaneDriver::getDeviceState()
 void SoundplaneDriver::setDeviceState(MLSoundplaneState n)
 {
 	mState.store(n, std::memory_order_release);
-	mListener->deviceStateChanged(n);
+	if (mListener) {
+		mListener->deviceStateChanged(n);
+	}
 }
 
 void SoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
 {
-	mListener->handleDeviceError(errCode, d1, d2, df1, df2);
+	if (mListener) {
+		mListener->handleDeviceError(errCode, d1, d2, df1, df2);
+	}
 }
 
 void SoundplaneDriver::dumpDeviceData(float* pData, int size)
 {
-	mListener->handleDeviceDataDump(pData, size);
+	if (mListener) {
+		mListener->handleDeviceDataDump(pData, size);
+	}
 }
 
 // add a positive or negative offset to the current (buffer, frame) position.
