@@ -13,20 +13,20 @@ void *soundplaneModelProcessThreadStart(void *arg);
 
 const int kModelDefaultCarriersSize = 40;
 const unsigned char kModelDefaultCarriers[kModelDefaultCarriersSize] =
-{	
+{
 	// 40 default carriers.  avoiding 16, 32 (always bad)
-	6, 7, 8, 9, 
-	10, 11, 12, 13, 14, 
-	15, 17, 18, 19, 20, 
-	21, 22, 23, 24, 25, 
-	26, 27, 28, 29, 30, 
+	6, 7, 8, 9,
+	10, 11, 12, 13, 14,
+	15, 17, 18, 19, 20,
+	21, 22, 23, 24, 25,
+	26, 27, 28, 29, 30,
 	31, 33, 34, 35, 36,
-	37, 38, 39, 40, 41, 
+	37, 38, 39, 40, 41,
 	42, 43, 44, 45, 46,
 	47
 };
 
-// make one of the possible standard carrier sets, skipping a range of carriers out of the 
+// make one of the possible standard carrier sets, skipping a range of carriers out of the
 // middle of the 40 defaults.
 //
 static const int kStandardCarrierSets = 8;
@@ -57,7 +57,7 @@ SoundplaneModel::SoundplaneModel() :
 	mSurface(kSoundplaneWidth, kSoundplaneHeight),
 
 	mpDriver(0),
-	
+
 	mRawSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mCalibratedSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTempSignal(kSoundplaneWidth, kSoundplaneHeight),
@@ -104,31 +104,31 @@ SoundplaneModel::SoundplaneModel() :
 	// setup fixed notch
 	mNotchFilter.setSampleRate(kSoundplaneSampleRate);
 	mNotchFilter.setNotch(300., 0.1);
-	
+
 	// setup fixed lopass.
 	mLopassFilter.setSampleRate(kSoundplaneSampleRate);
 	mLopassFilter.setLopass(50, 0.707);
-	
+
 	for(int i=0; i<kSoundplaneMaxTouches; ++i)
 	{
 		mCurrentKeyX[i] = -1;
 		mCurrentKeyY[i] = -1;
 	}
-	
-	mTracker.setSampleRate(kSoundplaneSampleRate);	
-	
+
+	mTracker.setSampleRate(kSoundplaneSampleRate);
+
 	// setup default carriers in case there are no saved carriers
 	for (int car=0; car<kSoundplaneSensorWidth; ++car)
 	{
 		mCarriers[car] = kModelDefaultCarriers[car];
-	}			
-	
+	}
+
     clearZones();
 
 	setAllPropertiesToDefaults();
 
 	mTracker.setListener(this);
-	
+
 	// set up view modes map
 	mViewModeToSignalMap["raw data"] = &mRawSignal;
 	mViewModeToSignalMap["calibrated"] = &mCalibratedSignal;
@@ -137,10 +137,10 @@ SoundplaneModel::SoundplaneModel() :
 	mViewModeToSignalMap["test1"] = &mTestSignal;
 	mViewModeToSignalMap["test2"] = &(mTracker.getNormalizeMap());
 	mViewModeToSignalMap["norm. map"] = &(mTracker.getNormalizeMap());
-	
+
 	// setup OSC default
 	setProperty("osc_service_name", kOSCDefaultStr);
-	
+
 	// start Browsing OSC services
 	mServiceNames.clear();
 	mServices.clear();
@@ -153,20 +153,20 @@ SoundplaneModel::SoundplaneModel() :
 SoundplaneModel::~SoundplaneModel()
 {
 	notifyListeners(0);
-		
+
 	// delete driver -- this will cause process thread to terminate.
-	//  
-	if (mpDriver) 
-	{ 
-		delete mpDriver; 
-		mpDriver = 0; 
+	//
+	if (mpDriver)
+	{
+		delete mpDriver;
+		mpDriver = 0;
 	}
 }
 
 void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newVal)
 {
 	// debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
-	
+
 	int propertyType = newVal.getType();
 	switch(propertyType)
 	{
@@ -183,11 +183,11 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 					bool on = (int)(getFloatProperty(tSym));
 					mask = mask | (on << i);
 				}
-				
+
 				mCarriersMask = mask;
 				mCarrierMaskDirty = true; // trigger carriers set in a second or so
 			}
-			
+
 			else if (p == "all_toggle")
 			{
 				bool on = (bool)(v);
@@ -209,7 +209,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				mTracker.setLopass(v);
 			}
-			
+
 			else if (p == "z_thresh")
 			{
 				mTracker.setThresh(v);
@@ -338,8 +338,8 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				}
 				else
 				{
-					// resolve service for named port				
-					Resolve(kLocalDotDomain, kUDPType, str.c_str());					
+					// resolve service for named port
+					Resolve(kLocalDotDomain, kUDPType, str.c_str());
 				}
 			}
 			if (p == "viewmode")
@@ -356,7 +356,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			}
 			else if (p == "zone_preset")
 			{
-				// look for built in zone map names. 
+				// look for built in zone map names.
 				if(str == "chromatic")
 				{
 					setProperty("zone_JSON", std::string(SoundplaneBinaryData::chromatic_json));
@@ -417,54 +417,54 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	// parameter defaults and creation
 	setProperty("max_touches", 4);
 	setProperty("lopass", 100.);
-	
+
 	setProperty("z_thresh", 0.01);
 	setProperty("z_max", 0.05);
 	setProperty("z_curve", 0.25);
 	setProperty("display_scale", 1.);
-	
+
 	setProperty("quantize", 1.);
 	setProperty("lock", 0.);
 	setProperty("abs_rel", 0.);
 	setProperty("snap", 250.);
 	setProperty("vibrato", 0.5);
-		
+
 	setProperty("t_thresh", 0.2);
-	
+
 	setProperty("midi_active", 0);
 	setProperty("midi_mpe", 1);
 	setProperty("midi_mpe_extended", 0);
 	setProperty("midi_channel", 1);
 	setProperty("data_freq_midi", 250.);
-	
+
 	setProperty("kyma_poll", 0);
-	
+
 	setProperty("osc_active", 1);
 	setProperty("osc_raw", 0);
 	setProperty("data_freq_osc", 250.);
-	
+
 	setProperty("bend_range", 48);
 	setProperty("transpose", 0);
 	setProperty("bg_filter", 0.05);
-	
+
 	setProperty("hysteresis", 0.5);
-	
+
 	// menu param defaults
 	setProperty("viewmode", "calibrated");
-    
+
     // preset menu defaults (TODO use first choices?)
 	setProperty("zone_preset", "rows in fourths");
 	setProperty("touch_preset", "touch default");
-    
+
 	setProperty("view_page", 0);
-    
+
 	for(int i=0; i<32; ++i)
 	{
-		setProperty(MLSymbol("carrier_toggle").withFinalNumber(i), 1);		
+		setProperty(MLSymbol("carrier_toggle").withFinalNumber(i), 1);
 	}
 }
 
-// Process incoming OSC.  Used for Kyma communication. 
+// Process incoming OSC.  Used for Kyma communication.
 //
 void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndpointName& remoteEndpoint)
 {
@@ -480,15 +480,15 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 			{
 				mKymaIsConnected = true;
 			}
-		} 
-		else if (std::strcmp( m.AddressPattern(), "/osc/notify/midi/Soundplane" ) == 0 )  
-		{	
+		}
+		else if (std::strcmp( m.AddressPattern(), "/osc/notify/midi/Soundplane" ) == 0 )
+		{
 			args >> a1 >> osc::EndMessage;
 			// set voice count to a1
 			int newTouches = clamp((int)a1, 0, kSoundplaneMaxTouches);
 			if(mKymaIsConnected)
 			{
-				// Kyma is sending 0 sometimes, which there is probably 
+				// Kyma is sending 0 sometimes, which there is probably
 				// no reason to respond to
 				if(newTouches > 0)
 				{
@@ -506,7 +506,7 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 
 void SoundplaneModel::ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint)
 {
-	
+
 }
 
 // called asynchronously after Resolve() when host and port are found by the resolver.
@@ -518,10 +518,10 @@ void SoundplaneModel::didResolveAddress(NetService *pNetService)
 	const std::string& hostName = pNetService->getHostName();
 	const char* hostNameStr = hostName.c_str();
 	int port = pNetService->getPort();
-	
+
 	debug() << "SoundplaneModel::didResolveAddress: RESOLVED net service to " << hostName << ", port " << port << "\n";
 	mOSCOutput.connect(hostNameStr, port);
-	
+
 	// if we are talking to a kyma, set kyma mode
 	static const char* kymaStr = "beslime";
 	int len = strlen(kymaStr);
@@ -564,23 +564,23 @@ void SoundplaneModel::initialize()
 {
 	mMIDIOutput.initialize();
 	addListener(&mMIDIOutput);
-	
+
 	mOSCOutput.initialize();
 	addListener(&mOSCOutput);
-	
+
 	mpDriver = new SoundplaneDriver();
 	mpDriver->addListener(this);
 	mpDriver->init();
-	
-	// TODO mem err handling	
+
+	// TODO mem err handling
 	if (!mCalibrateData.setDims(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneCalibrateSize))
 	{
 		MLConsole() << "SoundplaneModel: out of memory!\n";
 	}
-	
+
 	mTouchFrame.setDims(kTouchWidth, kSoundplaneMaxTouches);
 	mTouchHistory.setDims(kTouchWidth, kSoundplaneMaxTouches, kSoundplaneHistorySize);
-	
+
 	// create process thread
 	OSErr err;
 	pthread_attr_t attr;
@@ -589,9 +589,9 @@ void SoundplaneModel::initialize()
 	err = pthread_create(&mProcessThread, &attr, soundplaneModelProcessThreadStart, this);
 	assert(!err);
 	setThreadPriority(mProcessThread, 96, true);
-	
+
 	// make zone presets collection
-	File zoneDir = getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets");	
+	File zoneDir = getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets");
 	debug() << "LOOKING for zones in " << zoneDir.getFileName() << "\n";
 	mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", zoneDir, "json"));
 	mZonePresets->processFilesImmediate();
@@ -600,20 +600,20 @@ void SoundplaneModel::initialize()
 
 int SoundplaneModel::getClientState(void)
 {
-	PaUtil_ReadMemoryBarrier(); 
+	PaUtil_ReadMemoryBarrier();
 	return mKymaIsConnected;
 }
 
 int SoundplaneModel::getDeviceState(void)
 {
-	PaUtil_ReadMemoryBarrier(); 
+	PaUtil_ReadMemoryBarrier();
 	return mDeviceState;
 }
 void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 {
 	unsigned long instrumentModel = 1; // Soundplane A
 	unsigned long serial = mpDriver->getSerialNumber();
-	
+
 	PaUtil_WriteMemoryBarrier();
 
 	mDeviceState = s;
@@ -622,25 +622,25 @@ void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 		case kNoDevice:
 		break;
 		case kDeviceConnected:
-			// connected but not calibrated -- disable output. 
+			// connected but not calibrated -- disable output.
 			enableOutput(false);
 		break;
 		case kDeviceHasIsochSync:
 			// get serial number and auto calibrate noise on sync detect
 			mOSCOutput.setSerialNumber((instrumentModel << 16) | serial);
 			mNeedsCarriersSet = true;
-			// output will be enabled at end of calibration. 
-			mNeedsCalibrate = true;						
+			// output will be enabled at end of calibration.
+			mNeedsCalibrate = true;
 		break;
 		case kDeviceIsTerminating:
 			// shutdown processing
 			if (mProcessThread)
 			{
 				int exitResult = pthread_join(mProcessThread, NULL); // TODO this can hang here
-				printf("SoundplaneModel:: process thread terminated.  Returned %d \n", exitResult);			
+				printf("SoundplaneModel:: process thread terminated.  Returned %d \n", exitResult);
 				mProcessThread = 0;
 			}
-			
+
 		break;
 		case kDeviceSuspend:
 		break;
@@ -679,7 +679,7 @@ void SoundplaneModel::handleDeviceDataDump(float* pData, int size)
 	int w = getWidth();
 	int row = 0;
 	debug() << std::setprecision(2);
-	
+
 	debug() << "[0] ";
 	for(int i=0; i<size; ++i)
 	{
@@ -690,7 +690,7 @@ void SoundplaneModel::handleDeviceDataDump(float* pData, int size)
 			debug() << "\n";
 			c = 0;
 			if (i < (size - 1))
-			{				
+			{
 				debug() << "[" << ++row << "] ";
 			}
 		}
@@ -704,20 +704,20 @@ void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& nor
 {
 	if(avgDistance > 0.f)
 	{
-		setProperty("tracker_calibration", cal);	
-		setProperty("tracker_normalize", norm);	
+		setProperty("tracker_calibration", cal);
+		setProperty("tracker_normalize", norm);
 		float thresh = avgDistance * 1.75f;
 		MLConsole() << "SoundplaneModel::hasNewCalibration: calculated template threshold: " << thresh << "\n";
-		setProperty("t_thresh", thresh);	
+		setProperty("t_thresh", thresh);
 	}
 	else
 	{
 		// set default calibration
-		setProperty("tracker_calibration", cal);	
-		setProperty("tracker_normalize", norm);	
+		setProperty("tracker_calibration", cal);
+		setProperty("tracker_normalize", norm);
 		float thresh = 0.2f;
 		MLConsole() << "SoundplaneModel::hasNewCalibration: default template threshold: " << thresh << "\n";
-		setProperty("t_thresh", thresh);	
+		setProperty("t_thresh", thresh);
 	}
 }
 
@@ -735,14 +735,14 @@ const char* SoundplaneModel::getHardwareStr()
 			break;
 		case kDeviceConnected:
 		case kDeviceHasIsochSync:
-		
+
 			len = mpDriver->getSerialNumberString(serial, 64);
-			
+
 			v = mpDriver->getFirmwareVersion();
 			a = v >> 8 & 0x0F;
-			b = v >> 4 & 0x0F, 
+			b = v >> 4 & 0x0F,
 			c = v & 0x0F;
-	
+
 			snprintf(mHardwareStr, miscStrSize, "%s #%s, firmware %d.%d.%d", kSoundplaneAName, serial, a, b, c);
 			break;
 
@@ -761,15 +761,15 @@ const char* SoundplaneModel::getStatusStr()
 		case kNoDevice:
 			snprintf(mStatusStr, miscStrSize, "waiting for Soundplane...");
 			break;
-			
+
 		case kDeviceConnected:
 			snprintf(mStatusStr, miscStrSize, "waiting for isochronous data...");
 			break;
-			
+
 		case kDeviceHasIsochSync:
 			snprintf(mStatusStr, miscStrSize, "synchronized");
 			break;
-			
+
 		default:
 			snprintf(mStatusStr, miscStrSize, "unknown status.");
 			break;
@@ -783,14 +783,14 @@ const char* SoundplaneModel::getClientStr()
 {
 	switch(mKymaIsConnected)
 	{
-		case 0: 
+		case 0:
 			snprintf(mClientStr, miscStrSize, "");
 			break;
-			
+
 		case 1:
 			snprintf(mClientStr, miscStrSize, "connected to Kyma");
 			break;
-			
+
 		default:
 			snprintf(mClientStr, miscStrSize, "?");
 			break;
@@ -821,7 +821,7 @@ void SoundplaneModel::addZone(ZonePtr pz)
         int y = b.y();
         int w = b.width();
         int h = b.height();
-        
+
         for(int j=y; j < y + h; ++j)
         {
             for(int i=x; i < x + w; ++i)
@@ -849,7 +849,7 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
     }
     cJSON* pNode = root->child;
     while(pNode)
-    {        
+    {
         if(!strcmp(pNode->string, "zone"))
         {
             Zone* pz = new Zone(mListeners);
@@ -872,7 +872,7 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
             {
                 MLConsole() << "No type for zone!\n";
             }
-            
+
             // get zone rect
             cJSON* pZoneRect = cJSON_GetObjectItem(pNode, "rect");
             if(pZoneRect)
@@ -895,7 +895,7 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
             {
                 MLConsole() << "No rect for zone\n";
             }
-            
+
             pz->mName = getJSONString(pNode, "name");
             pz->mStartNote = getJSONInt(pNode, "note");
             pz->mChannel = getJSONInt(pNode, "channel");
@@ -918,12 +918,12 @@ Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy)
 	MLRange xRange(4.5f, 60.5f);
 	xRange.convertTo(MLRange(1.5f, 29.5f));
 	float kx = clamp(xRange(xy.x()), 0.f, (float)kSoundplaneAKeyWidth);
-    
+
 	MLRange yRange(1., 6.);  // Soundplane A as measured with kNormalizeThresh = .125
 	yRange.convertTo(MLRange(1.f, 4.f));
     float scaledY = yRange(xy.y());
 	float ky = clamp(scaledY, 0.f, (float)kSoundplaneAKeyHeight);
-    
+
 	return Vec2(kx, ky);
 }
 
@@ -932,14 +932,14 @@ void SoundplaneModel::clearTouchData()
 	const int maxTouches = getFloatProperty("max_touches");
 	for(int i=0; i<maxTouches; ++i)
 	{
-		mTouchFrame(xColumn, i) = 0;		
-		mTouchFrame(yColumn, i) = 0;	
-		mTouchFrame(zColumn, i) = 0;	
-		mTouchFrame(dzColumn, i) = 0;	
-		mTouchFrame(ageColumn, i) = 0;	
-		mTouchFrame(dtColumn, i) = 1.;	
-		mTouchFrame(noteColumn, i) = -1; 		
-		mTouchFrame(reservedColumn, i) = 0; 		
+		mTouchFrame(xColumn, i) = 0;
+		mTouchFrame(yColumn, i) = 0;
+		mTouchFrame(zColumn, i) = 0;
+		mTouchFrame(dzColumn, i) = 0;
+		mTouchFrame(ageColumn, i) = 0;
+		mTouchFrame(dtColumn, i) = 1.;
+		mTouchFrame(noteColumn, i) = -1;
+		mTouchFrame(reservedColumn, i) = 0;
 	}
 }
 
@@ -954,7 +954,7 @@ void SoundplaneModel::sendParametersToZones()
     bool nl = getFloatProperty("lock");
     int t = getFloatProperty("transpose");
     float sf = getFloatProperty("snap");
-    
+
     for(int i=0; i<zones; ++i)
 	{
         mZones[i]->mVibrato = v;
@@ -971,12 +971,12 @@ void SoundplaneModel::sendTouchDataToZones()
 {
 	float x, y, z, dz;
 	int age;
-    
+
 	const float zmax = getFloatProperty("z_max");
 	const float zcurve = getFloatProperty("z_curve");
 	const int maxTouches = getFloatProperty("max_touches");
 	const float hysteresis = getFloatProperty("hysteresis");
-    
+
 	MLRange yRange(0.05, 0.8);
 	yRange.convertTo(MLRange(0., 1.));
 
@@ -988,22 +988,22 @@ void SoundplaneModel::sendTouchDataToZones()
         z = mTouchFrame(zColumn, i);
         dz = mTouchFrame(dzColumn, i);
 		if(age > 0)
-		{            
+		{
  			// apply adjustable force curve for z over [z_thresh, z_max] and clamp
 			z /= zmax;
-			z = (1.f - zcurve)*z + zcurve*z*z*z;		
+			z = (1.f - zcurve)*z + zcurve*z*z*z;
 			z = clamp(z, 0.f, 1.f);
 			mTouchFrame(zColumn, i) = z;
-						
+
 			// get fractional key grid position (Soundplane A)
 			Vec2 keyXY = xyToKeyGrid(Vec2(x, y));
             float kgx = keyXY.x();
             float kgy = keyXY.y();
- 
+
             // get integer key
             int ix = (int)(keyXY.x());
             int iy = (int)(keyXY.y());
-            
+
             // apply hysteresis to raw position to get current key
             // hysteresis: make it harder to move out of current key
             if(age == 1)
@@ -1020,29 +1020,29 @@ void SoundplaneModel::sendTouchDataToZones()
                 {
                     mCurrentKeyX[i] = ix;
                     mCurrentKeyY[i] = iy;
-                }		
+                }
             }
-            
+
             // send index, xyz to zone
             int zoneIdx = mZoneMap(mCurrentKeyX[i], mCurrentKeyY[i]);
             if(zoneIdx >= 0)
             {
                 ZonePtr zone = mZones[zoneIdx];
                 zone->addTouchToFrame(i, kgx, kgy, mCurrentKeyX[i], mCurrentKeyY[i], z, dz);
-            }           
+            }
         }
 	}
-    
+
     // tell listeners we are starting this frame.
     mMessage.mType = MLSymbol("start_frame");
 	sendMessageToListeners();
-    
+
     // process note offs for each zone
 	// this happens before processTouches() to allow voices to be freed
     int zones = mZones.size();
 	std::vector<bool> freedTouches;
 	freedTouches.resize(kSoundplaneMaxTouches);
-	
+
     for(int i=0; i<zones; ++i)
 	{
         mZones[i]->processTouchesNoteOffs(freedTouches);
@@ -1053,7 +1053,7 @@ void SoundplaneModel::sendTouchDataToZones()
 	{
         mZones[i]->processTouches(freedTouches);
     }
-    
+
     // send optional calibrated matrix
     if(mSendMatrixData)
     {
@@ -1064,11 +1064,11 @@ void SoundplaneModel::sendTouchDataToZones()
             {
                 mMessage.mMatrix[j*kSoundplaneWidth + i] = mCalibratedSignal(i, j);
             }
-        }        
+        }
         sendMessageToListeners();
     }
-        
-    // tell listeners we are done with this frame. 
+
+    // tell listeners we are done with this frame.
     mMessage.mType = MLSymbol("end_frame");
 	sendMessageToListeners();
 }
@@ -1096,19 +1096,19 @@ void *soundplaneModelProcessThreadStart(void *arg)
 {
 	SoundplaneModel* m = static_cast<SoundplaneModel*>(arg);
 	int waitTimeMicrosecs;
-	
+
 	// wait for data
 	while((m->getDeviceState() != kDeviceHasIsochSync) && (m->getDeviceState() != kDeviceIsTerminating))
 	{
-		waitTimeMicrosecs = 1000; 
+		waitTimeMicrosecs = 1000;
 		usleep(waitTimeMicrosecs);
 		if(m->isTesting())
 		{
 			m->testCallback();
 		}
 	}
-	
-	while(m->getDeviceState() != kDeviceIsTerminating) 
+
+	while(m->getDeviceState() != kDeviceIsTerminating)
 	{
 		if(m->isTesting())
 		{
@@ -1118,7 +1118,7 @@ void *soundplaneModelProcessThreadStart(void *arg)
 		{
 			m->processCallback();
 		}
-		waitTimeMicrosecs = 250; 
+		waitTimeMicrosecs = 250;
 		usleep(waitTimeMicrosecs);
 	}
 	return 0;
@@ -1143,7 +1143,7 @@ void SoundplaneModel::setKymaMode(bool m)
 #pragma mark -
 
 void SoundplaneModel::testCallback()
-{	
+{
 	// make test surface (placeholder!)
 	{
 		int h = mSurface.getWidth();
@@ -1157,32 +1157,32 @@ void SoundplaneModel::testCallback()
 			}
 		}
 	}
-	
-	{		
+
+	{
 		// filter 2D data in time
 		mNotchFilter.setInputSignal(&mSurface);
 		mNotchFilter.setOutputSignal(&mSurface);
-		mNotchFilter.process(1);					
+		mNotchFilter.process(1);
 		mLopassFilter.setInputSignal(&mSurface);
 		mLopassFilter.setOutputSignal(&mSurface);
-		mLopassFilter.process(1);	
-		
+		mLopassFilter.process(1);
+
 		// send filtered data to touch tracker.
-		mTracker.setInputSignal(&mSurface);					
+		mTracker.setInputSignal(&mSurface);
 		mTracker.setOutputSignal(&mTouchFrame);
 		mTracker.process(1);
-		
+
 		// get calibrated and cooked signals for viewing
-		mCalibratedSignal = mTracker.getCalibratedSignal();								
+		mCalibratedSignal = mTracker.getCalibratedSignal();
 		mCookedSignal = mTracker.getCookedSignal();
 		mTestSignal = mTracker.getTestSignal();
-		
+
 		sendTouchDataToZones();
-		
+
 		mHistoryCtr++;
 		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
-		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);			
-	}	
+		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
+	}
 }
 
 // called by the process thread in a tight loop to receive data from the driver.
@@ -1190,7 +1190,7 @@ void SoundplaneModel::testCallback()
 void SoundplaneModel::processCallback()
 {
 	if (!mpDriver) return;
-	
+
 	UInt64 now = getMicroseconds();
     // once per second
 	if(now - mLastInfrequentTaskTime > 1000*1000)
@@ -1201,16 +1201,16 @@ void SoundplaneModel::processCallback()
 
 	// make sure driver is set up
 	if (mpDriver->getDeviceState() != kDeviceHasIsochSync) return;
-	
+
 	// read from driver's ring buffer to incoming surface
 	MLSample* pSurfaceData = mSurface.getBuffer();
 	if(mpDriver->readSurface(pSurfaceData) != 1) return;
-	
+
 	// store surface for raw output
 	mRawSignal.copy(mSurface);
-	
+
 	if (mCalibrating)
-	{		
+	{
 		// copy surface to a frame of 3D calibration buffer
 		mCalibrateData.setFrame(mCalibrateCount++, mSurface);
 		if (mCalibrateCount >= kSoundplaneCalibrateSize)
@@ -1219,7 +1219,7 @@ void SoundplaneModel::processCallback()
 		}
 	}
 	else if (mSelectingCarriers)
-	{		
+	{
 		// copy surface to a frame of 3D calibration buffer
 		mCalibrateData.setFrame(mCalibrateCount++, mSurface);
 		if (mCalibrateCount >= kSoundplaneCalibrateSize)
@@ -1242,46 +1242,46 @@ void SoundplaneModel::processCallback()
 					in = mSurface(i, j);
 					cmean = mCalibrateMean(i, j);
 					cout = (1.f - ((cmean + epsilon) / (in + epsilon)));
-					mSurface(i, j) = cout;					
+					mSurface(i, j) = cout;
 				}
 			}
 		}
-		
+
 		// filter data in time
 		mNotchFilter.setInputSignal(&mSurface);
 		mNotchFilter.setOutputSignal(&mSurface);
-		mNotchFilter.process(1);					
+		mNotchFilter.process(1);
 		mLopassFilter.setInputSignal(&mSurface);
 		mLopassFilter.setOutputSignal(&mSurface);
-		mLopassFilter.process(1);	
-		
+		mLopassFilter.process(1);
+
 		// send filtered data to touch tracker.
-		mTracker.setInputSignal(&mSurface);					
+		mTracker.setInputSignal(&mSurface);
 		mTracker.setOutputSignal(&mTouchFrame);
 		mTracker.process(1);
-		
+
 		// get calibrated and cooked signals for viewing
-		mCalibratedSignal = mTracker.getCalibratedSignal();								
+		mCalibratedSignal = mTracker.getCalibratedSignal();
 		mCookedSignal = mTracker.getCookedSignal();
 		mTestSignal = mTracker.getTestSignal();
 
  		sendTouchDataToZones();
-   		
+
 		mHistoryCtr++;
 		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
-		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);			
-	}	
+		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
+	}
 }
 
 void SoundplaneModel::doInfrequentTasks()
 {
 	PollNetServices();
     mOSCOutput.doInfrequentTasks();
-	
+
 	if (mCarrierMaskDirty)
 	{
 		enableCarriers(mCarriersMask);
-	}	
+	}
 	else if (mpDriver && mNeedsCarriersSet)
 	{
 		mNeedsCarriersSet = false;
@@ -1304,7 +1304,7 @@ void SoundplaneModel::setDefaultCarriers()
 		for (int car=0; car<kSoundplaneSensorWidth; ++car)
 		{
 			cSig[car] = kModelDefaultCarriers[car];
-		}		
+		}
 		setProperty("carriers", cSig);
 	}
 }
@@ -1358,7 +1358,7 @@ void SoundplaneModel::clear()
 // --------------------------------------------------------------------------------
 #pragma mark surface calibration
 
-// using the current carriers, calibrate the surface by collecting data and 
+// using the current carriers, calibrate the surface by collecting data and
 // calculating the mean and std. deviation for each taxel.
 //
 void SoundplaneModel::beginCalibrate()
@@ -1366,7 +1366,7 @@ void SoundplaneModel::beginCalibrate()
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
 	{
 		clear();
-		
+
 		clearTouchData();
 		sendTouchDataToZones();
 
@@ -1375,18 +1375,18 @@ void SoundplaneModel::beginCalibrate()
 	}
 }
 
-// called by process routine when enough samples have been collected. 
+// called by process routine when enough samples have been collected.
 //
 void SoundplaneModel::endCalibrate()
 {
 	// skip frames after commands to allow noise to settle.
 	int skipFrames = 100;
-	int startFrame = skipFrames; 
-	int endFrame = kSoundplaneCalibrateSize - skipFrames; 
+	int startFrame = skipFrames;
+	int endFrame = kSoundplaneCalibrateSize - skipFrames;
 	float calibrateFrames = endFrame - startFrame + 1;
 
 	MLSignal calibrateSum(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal calibrateStdDev(kSoundplaneWidth, kSoundplaneHeight);	
+	MLSignal calibrateStdDev(kSoundplaneWidth, kSoundplaneHeight);
 	MLSignal dSum(kSoundplaneWidth, kSoundplaneHeight);
 	MLSignal dMean(kSoundplaneWidth, kSoundplaneHeight);
 	MLSignal mean(kSoundplaneWidth, kSoundplaneHeight);
@@ -1394,7 +1394,7 @@ void SoundplaneModel::endCalibrate()
 	// get mean
 	for(int i=startFrame; i<=endFrame; ++i)
 	{
-		// read frame from calibrate data. 
+		// read frame from calibrate data.
 		calibrateSum.add(mCalibrateData.getFrame(i));
 	}
 	mean = calibrateSum;
@@ -1416,18 +1416,18 @@ void SoundplaneModel::endCalibrate()
 	mCalibrateStdDev = calibrateStdDev;
 
 	mCalibrating = false;
-	mHasCalibration = true;	
-	
-	mNotchFilter.clear();	
+	mHasCalibration = true;
+
+	mNotchFilter.clear();
 	mLopassFilter.clear();
-		
-	enableOutput(true);	
-}	
+
+	enableOutput(true);
+}
 
 float SoundplaneModel::getCalibrateProgress()
 {
 	return mCalibrateCount / (float)kSoundplaneCalibrateSize;
-}	
+}
 
 // --------------------------------------------------------------------------------
 #pragma mark carrier selection
@@ -1435,11 +1435,11 @@ float SoundplaneModel::getCalibrateProgress()
 void SoundplaneModel::beginSelectCarriers()
 {
 	// each possible group of carrier frequencies is tested to see which
-	// has the lowest overall noise. 
+	// has the lowest overall noise.
 	// each step collects kSoundplaneCalibrateSize frames of data.
 	//
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
-	{		
+	{
 		mSelectCarriersStep = 0;
 		mCalibrateCount = 0;
 		mSelectingCarriers = true;
@@ -1448,8 +1448,8 @@ void SoundplaneModel::beginSelectCarriers()
 		mMaxNoiseByCarrierSet.clear();
 		mMaxNoiseFreqByCarrierSet.resize(kStandardCarrierSets);
 		mMaxNoiseFreqByCarrierSet.clear();
-		
-		// setup first set of carrier frequencies 
+
+		// setup first set of carrier frequencies
 		MLConsole() << "testing carriers set " << mSelectCarriersStep << "...\n";
 		makeStandardCarrierSet(mCarriers, mSelectCarriersStep);
 		setCarriers(mCarriers);
@@ -1475,15 +1475,15 @@ void SoundplaneModel::nextSelectCarriersStep()
 	// clear data
 	mCalibrateSum.clear();
 	mCalibrateCount = 0;
-	
+
 	// analyze calibration data just collected.
-	// it's necessary to skip around 100 frames at start and end to get good data, not sure why yet. 
+	// it's necessary to skip around 100 frames at start and end to get good data, not sure why yet.
 	int skipFrames = 100;
-	int startFrame = skipFrames; 
-	int endFrame = kSoundplaneCalibrateSize - skipFrames; 
+	int startFrame = skipFrames;
+	int endFrame = kSoundplaneCalibrateSize - skipFrames;
 	float calibrateFrames = endFrame - startFrame + 1;
 	MLSignal calibrateSum(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal calibrateStdDev(kSoundplaneWidth, kSoundplaneHeight);	
+	MLSignal calibrateStdDev(kSoundplaneWidth, kSoundplaneHeight);
 	MLSignal dSum(kSoundplaneWidth, kSoundplaneHeight);
 	MLSignal dMean(kSoundplaneWidth, kSoundplaneHeight);
 	MLSignal mean(kSoundplaneWidth, kSoundplaneHeight);
@@ -1492,7 +1492,7 @@ void SoundplaneModel::nextSelectCarriersStep()
 	// get mean
 	for(int i=startFrame; i<=endFrame; ++i)
 	{
-		// read frame from calibrate data. 
+		// read frame from calibrate data.
 		calibrateSum.add(mCalibrateData.getFrame(i));
 	}
 	mean = calibrateSum;
@@ -1511,11 +1511,11 @@ void SoundplaneModel::nextSelectCarriersStep()
 	dSum.scale(1.f / calibrateFrames);
 	calibrateStdDev = dSum;
 	calibrateStdDev.sqrt();
-	
+
 	noise = calibrateStdDev;
-	
+
 	// find maximum noise in any column for this set.  This is the "badness" value
-	// we use to compare carrier sets. 
+	// we use to compare carrier sets.
 	float maxNoise = 0;
 	float maxNoiseFreq = 0;
 	float noiseSum;
@@ -1525,39 +1525,39 @@ void SoundplaneModel::nextSelectCarriersStep()
 		noiseSum = 0;
 		int carrier = mCarriers[col];
 		float cFreq = mpDriver->carrierToFrequency(carrier);
-		
+
 		for(int row=0; row<kSoundplaneHeight; ++row)
 		{
 			noiseSum += noise(col, row);
 		}
 //		debug() << "noise sum col " << col << " = " << noiseSum << " carrier " << carrier << " freq " << cFreq << "\n";
-	
+
 		if(noiseSum > maxNoise)
 		{
 			maxNoise = noiseSum;
 			maxNoiseFreq = cFreq;
 		}
-	}	
-	
+	}
+
 	mMaxNoiseByCarrierSet[mSelectCarriersStep] = maxNoise;
 	mMaxNoiseFreqByCarrierSet[mSelectCarriersStep] = maxNoiseFreq;
-	
+
 	MLConsole() << "max noise for set " << mSelectCarriersStep << ": " << maxNoise << "(" << maxNoiseFreq << " Hz) \n";
-	
+
 	// set up next step.
-	mSelectCarriersStep++;		
+	mSelectCarriersStep++;
 	if (mSelectCarriersStep < kStandardCarrierSets)
-	{		
+	{
 		// set next carrier frequencies to calibrate.
 		MLConsole() << "testing carriers set " << mSelectCarriersStep << "...\n";
 		makeStandardCarrierSet(mCarriers, mSelectCarriersStep);
 		setCarriers(mCarriers);
 	}
-	else 
+	else
 	{
 		endSelectCarriers();
 	}
-	
+
 	mpDriver->flushOutputBuffer();
 }
 
@@ -1577,7 +1577,7 @@ void SoundplaneModel::endSelectCarriers()
 		{
 			minNoise = n;
 			minIdx = i;
-		} 
+		}
 	}
 
 	// set that carrier group
@@ -1592,14 +1592,14 @@ void SoundplaneModel::endSelectCarriers()
 		for (int car=0; car<kSoundplaneSensorWidth; ++car)
 		{
 			cSig[car] = mCarriers[car];
-		}		
+		}
 		setProperty("carriers", cSig);
 	}
 	MLConsole() << "carrier select done.\n";
 
 	mSelectingCarriers = false;
-	
-	enableOutput(true);	
+
+	enableOutput(true);
 }
 
 const MLSignal* SoundplaneModel::getSignalForViewMode(const std::string& m)
@@ -1638,7 +1638,7 @@ bool SoundplaneModel::isWithinTrackerCalibrateArea(int i, int j)
 void SoundplaneModel::beginNormalize()
 {
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
-	{	
+	{
 		mTracker.beginCalibrate();
 	}
 }
@@ -1646,7 +1646,7 @@ void SoundplaneModel::beginNormalize()
 void SoundplaneModel::cancelNormalize()
 {
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
-	{	
+	{
 		mTracker.cancelCalibrate();
 	}
 }
@@ -1655,7 +1655,7 @@ bool SoundplaneModel::trackerIsCalibrating()
 {
 	int r = 0;
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
-	{	
+	{
 		r = mTracker.isCalibrating();
 	}
 	return r;
@@ -1665,7 +1665,7 @@ bool SoundplaneModel::trackerIsCollectingMap()
 {
 	int r = 0;
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
-	{	
+	{
 		r = mTracker.isCollectingNormalizeMap();
 	}
 	return r;
@@ -1674,7 +1674,7 @@ bool SoundplaneModel::trackerIsCollectingMap()
 void SoundplaneModel::setDefaultNormalize()
 {
 	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
-	{	
+	{
 		mTracker.setDefaultNormalizeMap();
 	}
 }
