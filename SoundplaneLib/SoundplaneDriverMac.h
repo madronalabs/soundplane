@@ -44,7 +44,6 @@ public:
 	virtual const unsigned char *getCarriers() const override;
 	virtual int setCarriers(const unsigned char *carriers) override;
 	virtual int enableCarriers(unsigned long mask) override;
-	virtual void setDefaultCarriers() override;
 
 private:
 	struct K1IsocTransaction

@@ -323,16 +323,6 @@ int SoundplaneDriverMac::enableCarriers(unsigned long mask)
 	return (*dev)->DeviceRequest(dev, &request);
 }
 
-void SoundplaneDriverMac::setDefaultCarriers()
-{
-	startupCtr = 0;
-	for(int i=0; i < kSoundplaneSensorWidth; ++i)
-	{
-		mCurrentCarriers[i] = kDefaultCarriers[i];
-	}
-	setCarriers(mCurrentCarriers);
-}
-
 
 // --------------------------------------------------------------------------------
 #pragma mark K1IsocTransaction
@@ -1208,7 +1198,7 @@ void SoundplaneDriverMac::processThread()
 
 							// finally, we have sync.
 							//
-							setDefaultCarriers();
+							setCarriers(kDefaultCarriers);
 							setDeviceState(kDeviceHasIsochSync);
 							lost = false;
 						}

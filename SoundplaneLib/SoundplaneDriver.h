@@ -73,7 +73,6 @@ public:
 	virtual const unsigned char *getCarriers() const = 0;
 	virtual int setCarriers(const unsigned char *carriers) = 0;
 	virtual int enableCarriers(unsigned long mask) = 0;
-	virtual void setDefaultCarriers() = 0;
 
 	/**
 	 * Helper function for getting the serial number as a number rather than
