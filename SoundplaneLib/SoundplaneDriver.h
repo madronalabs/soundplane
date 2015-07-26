@@ -6,6 +6,8 @@
 #ifndef __SOUNDPLANE_DRIVER__
 #define __SOUNDPLANE_DRIVER__
 
+#include <vector>
+
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/usb/USB.h>
 #include <IOKit/IOKitLib.h>

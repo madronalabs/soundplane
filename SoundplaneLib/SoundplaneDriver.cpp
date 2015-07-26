@@ -1374,8 +1374,8 @@ void *soundplaneProcessThread(void *arg)
 	unsigned char* pPayload1 = 0;
 	UInt16 curBytes0, curBytes1;
 	UInt16 nextBytes0, nextBytes1;
-	float * pWorkingFrame;
-	float * pPrevFrame;
+	std::vector<float> pWorkingFrame;
+	std::vector<float> pPrevFrame;
 
 	// transaction data buffer index, 0 to kSoundplaneABuffers-1
 	int bufferIndex = 0;
@@ -1398,17 +1398,9 @@ void *soundplaneProcessThread(void *arg)
 	const float kMaxFrameDiff = 8.0f;
 
 	// init
-	size_t outputFrameSize = kSoundplaneWidth * kSoundplaneHeight * sizeof(float);
-	pWorkingFrame = (float *)malloc(outputFrameSize);
-	if (!pWorkingFrame)
-	{
-		fprintf(stderr, "soundplaneProcessThread: couldn't create working frame!\n");
-	}
-	pPrevFrame = (float *)malloc(outputFrameSize);
-	if (!pPrevFrame)
-	{
-		fprintf(stderr, "soundplaneProcessThread: couldn't create frame!\n");
-	}
+	size_t outputFrameLength = kSoundplaneWidth * kSoundplaneHeight;
+	pWorkingFrame.resize(outputFrameLength);
+	pPrevFrame.resize(outputFrameLength);
 
 	while(k1->getDeviceState() != kDeviceIsTerminating)
 	{
@@ -1633,22 +1625,22 @@ void *soundplaneProcessThread(void *arg)
 
 					if (pPayload0 && pPayload1)
 					{
-						K1_unpack_float2(pPayload0, pPayload1, pWorkingFrame);
-						K1_clear_edges(pWorkingFrame);
+						K1_unpack_float2(pPayload0, pPayload1, pWorkingFrame.data());
+						K1_clear_edges(pWorkingFrame.data());
 						if(k1->startupCtr > kSoundplaneStartupFrames)
 						{
-							float df = frameDiff(pPrevFrame, pWorkingFrame, kSoundplaneWidth * kSoundplaneHeight);
+							float df = frameDiff(pPrevFrame.data(), pWorkingFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
 							if (df < kMaxFrameDiff)
 							{
 								// we are OK, the data gets out normally
-								k1->reclockFrameToBuffer(pWorkingFrame);
+								k1->reclockFrameToBuffer(pWorkingFrame.data());
 							}
 							else
 							{
 								// possible sensor glitch.  also occurs when changing carriers.
 								k1->reportDeviceError(kDevDataDiffTooLarge, k1->startupCtr, 0, df, 0.);
-								k1->dumpDeviceData(pPrevFrame, kSoundplaneWidth * kSoundplaneHeight);
-								k1->dumpDeviceData(pWorkingFrame, kSoundplaneWidth * kSoundplaneHeight);
+								k1->dumpDeviceData(pPrevFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
+								k1->dumpDeviceData(pWorkingFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
 								k1->startupCtr = 0;
 							}
 						}
@@ -1658,7 +1650,7 @@ void *soundplaneProcessThread(void *arg)
 							k1->startupCtr++;
 						}
 
-						memcpy(pPrevFrame, pWorkingFrame, outputFrameSize);
+						std::copy(pWorkingFrame.begin(), pWorkingFrame.end(), pPrevFrame.begin());
 
 						// TODO if there is a small constant difference like an offset across the surface,
 						// store it and correct.
