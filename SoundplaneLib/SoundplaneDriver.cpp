@@ -20,8 +20,6 @@
 //#define SHOW_BUS_FRAME_NUMBER
 //#define SHOW_ALL_SEQUENCE_NUMBERS
 
-#define printBCD(bcd) printf("%hhx.%hhx.%hhx\n", bcd >> 8, 0x0f & bcd >> 4, 0x0f & bcd)
-
 namespace {
 
 UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f)
@@ -119,24 +117,7 @@ SoundplaneDriver::SoundplaneDriver(SoundplaneDriverListener* listener) :
 SoundplaneDriver::~SoundplaneDriver()
 {
 	printf("SoundplaneDriver shutting down...\n");
-	shutdown();
-}
 
-void SoundplaneDriver::init()
-{
-	// create device grab thread
-	mGrabThread = std::thread(&SoundplaneDriver::grabThread, this);
-	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
-
-	// create isochronous read and process thread
-	mProcessThread = std::thread(&SoundplaneDriver::processThread, this);
-
-	// set thread to real time priority
-	setThreadPriority(mProcessThread.native_handle(), 96, true);
-}
-
-void SoundplaneDriver::shutdown()
-{
 	kern_return_t	kr;
 
 	setDeviceState(kDeviceIsTerminating);
@@ -218,51 +199,19 @@ void SoundplaneDriver::shutdown()
 		}
 		kr = (*intf)->Release(intf);
 		intf = NULL;
-	}
-}
+	}}
 
-
-void SoundplaneDriver::removeDevice()
+void SoundplaneDriver::init()
 {
-	IOReturn err;
-	kern_return_t	kr;
-	setDeviceState(kNoDevice);
+	// create device grab thread
+	mGrabThread = std::thread(&SoundplaneDriver::grabThread, this);
+	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
 
-	printf("Soundplane A removed.\n");
+	// create isochronous read and process thread
+	mProcessThread = std::thread(&SoundplaneDriver::processThread, this);
 
-	if (intf)
-	{
-		unsigned i, n;
-
-		for (n = 0; n < kSoundplaneANumEndpoints; n++)
-		{
-			for (i = 0; i < kSoundplaneABuffers; i++)
-			{
-				K1IsocTransaction* t = getTransactionData(n, i);
-				if (t->payloads)
-				{
-					err = (*intf)->LowLatencyDestroyBuffer(intf, t->payloads);
-					t->payloads = NULL;
-				}
-				if (t->isocFrames)
-				{
-					err = (*intf)->LowLatencyDestroyBuffer(intf, t->isocFrames);
-					t->isocFrames = NULL;
-				}
-			}
-		}
-		kr = (*intf)->Release(intf);
-		intf = NULL;
-	}
-
-	if (dev)
-	{
-		printf("closing device.\n");
-		kr = (*dev)->USBDeviceClose(dev);
-		kr = (*dev)->Release(dev);
-		dev = NULL;
-	}
-	kr = IOObjectRelease(notification);
+	// set thread to real time priority
+	setThreadPriority(mProcessThread.native_handle(), 96, true);
 }
 
 // Called by client to put one frame of data from the ring buffer into memory at pDest.
@@ -283,150 +232,9 @@ void SoundplaneDriver::flushOutputBuffer()
 	PaUtil_FlushRingBuffer(&mOutputBuf);
 }
 
-// write frame to buffer, reconstructing a constant clock from the data.
-// this may involve interpolating frames.
-//
-void SoundplaneDriver::reclockFrameToBuffer(float* pFrame)
-{
-	// currently, clock is ignored and we simply ship out data as quickly as possible.
-	// TODO timestamps that will allow reconstituting the data with lower jitter.
-	PaUtil_WriteRingBuffer(&mOutputBuf, pFrame, 1);
-}
-
 MLSoundplaneState SoundplaneDriver::getDeviceState()
 {
 	return mState.load(std::memory_order_acquire);
-}
-
-void SoundplaneDriver::setDeviceState(MLSoundplaneState n)
-{
-	mState.store(n, std::memory_order_release);
-	if (mListener) {
-		mListener->deviceStateChanged(n);
-	}
-}
-
-void SoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
-{
-	if (mListener) {
-		mListener->handleDeviceError(errCode, d1, d2, df1, df2);
-	}
-}
-
-void SoundplaneDriver::dumpDeviceData(float* pData, int size)
-{
-	if (mListener) {
-		mListener->handleDeviceDataDump(pData, size);
-	}
-}
-
-// add a positive or negative offset to the current (buffer, frame) position.
-//
-void SoundplaneDriver::addOffset(int& buffer, int& frame, int offset)
-{
-	// add offset to (buffer, frame) position
-	if(!offset) return;
-	int totalFrames = buffer*kSoundplaneANumIsochFrames + frame + offset;
-	int remainder = totalFrames % kSoundplaneANumIsochFrames;
-	if (remainder < 0)
-	{
-		remainder += kSoundplaneANumIsochFrames;
-		totalFrames -= kSoundplaneANumIsochFrames;
-	}
-	frame = remainder;
-	buffer = (totalFrames / kSoundplaneANumIsochFrames) % kSoundplaneABuffers;
-	if (buffer < 0)
-	{
-		buffer += kSoundplaneABuffers;
-	}
-}
-
-UInt16 SoundplaneDriver::getTransferBytesRequested(int endpoint, int buffer, int frame, int offset)
-{
-	if(getDeviceState() < kDeviceConnected) return 0;
-	UInt16 b = 0;
-	addOffset(buffer, frame, offset);
-	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-
-	if (t)
-	{
-		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
-		b = pf->frReqCount;
-	}
-	return b;
-}
-
-UInt16 SoundplaneDriver::getTransferBytesReceived(int endpoint, int buffer, int frame, int offset)
-{
-	if(getDeviceState() < kDeviceConnected) return 0;
-	UInt16 b = 0;
-	addOffset(buffer, frame, offset);
-	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-
-	if (t)
-	{
-		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
-		b = pf->frActCount;
-	}
-	return b;
-}
-
-AbsoluteTime SoundplaneDriver::getTransferTimeStamp(int endpoint, int buffer, int frame, int offset)
-{
-	if(getDeviceState() < kDeviceConnected) return AbsoluteTime();
-	AbsoluteTime b;
-	addOffset(buffer, frame, offset);
-	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-
-	if (t)
-	{
-		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
-		b = pf->frTimeStamp;
-	}
-	return b;
-}
-
-IOReturn SoundplaneDriver::getTransferStatus(int endpoint, int buffer, int frame, int offset)
-{
-	if(getDeviceState() < kDeviceConnected) return kIOReturnNoDevice;
-	IOReturn b = kIOReturnSuccess;
-	addOffset(buffer, frame, offset);
-	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-
-	if (t)
-	{
-		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
-		b = pf->frStatus;
-	}
-	return b;
-}
-
-UInt16 SoundplaneDriver::getSequenceNumber(int endpoint, int buffer, int frame, int offset)
-{
-	if(getDeviceState() < kDeviceConnected) return 0;
-	UInt16 s = 0;
-	addOffset(buffer, frame, offset);
-	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-
-	if (t && t->payloads)
-	{
-		SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
-		s = p[frame].seqNum;
-	}
-	return s;
-}
-
-unsigned char* SoundplaneDriver::getPayloadPtr(int endpoint, int buffer, int frame, int offset)
-{
-	if(getDeviceState() < kDeviceConnected) return 0;
-	unsigned char* p = 0;
-	addOffset(buffer, frame, offset);
-	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-	if (t && t->payloads)
-	{
-		p = t->payloads + frame*sizeof(SoundplaneADataPacket);
-	}
-	return p;
 }
 
 UInt16 SoundplaneDriver::getFirmwareVersion()
@@ -444,31 +252,6 @@ UInt16 SoundplaneDriver::getFirmwareVersion()
 		}
 	}
 	return r;
-}
-
-int SoundplaneDriver::getSerialNumberString(char* destStr, int maxLen)
-{
-	if(getDeviceState() < kDeviceConnected) return 0;
-	UInt8 idx;
-	int r = 0;
-	IOReturn err;
-	if (dev)
-	{
-		err = (*dev)->USBGetSerialNumberStringIndex(dev, &idx);
-		if (err == kIOReturnSuccess)
-		{
-			r = GetStringDescriptor(dev, idx, destStr, maxLen, 0);
-		}
-
-		// exctract returned string from wchars.
-		for(int i=0; i < r - 2; ++i)
-		{
-			destStr[i] = destStr[i*2 + 2];
-		}
-
-		return r;
-	}
-	return 0;
 }
 
 int SoundplaneDriver::getSerialNumber()
@@ -491,6 +274,31 @@ int SoundplaneDriver::getSerialNumber()
 			break;
 	}
 	return ret;
+}
+
+int SoundplaneDriver::getSerialNumberString(char* destStr, int maxLen)
+{
+	if(getDeviceState() < kDeviceConnected) return 0;
+	UInt8 idx;
+	int r = 0;
+	IOReturn err;
+	if (dev)
+	{
+		err = (*dev)->USBGetSerialNumberStringIndex(dev, &idx);
+		if (err == kIOReturnSuccess)
+		{
+			r = getStringDescriptor(dev, idx, destStr, maxLen, 0);
+		}
+
+		// exctract returned string from wchars.
+		for(int i=0; i < r - 2; ++i)
+		{
+			destStr[i] = destStr[i*2 + 2];
+		}
+
+		return r;
+	}
+	return 0;
 }
 
 // -------------------------------------------------------------------------------
@@ -693,8 +501,123 @@ void SoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg0)
 	err = k1->scheduleIsoch(pNextTransactionBuffer);
 }
 
+
+// --------------------------------------------------------------------------------
+#pragma mark transfer utilities
+
+// add a positive or negative offset to the current (buffer, frame) position.
+//
+void SoundplaneDriver::addOffset(int& buffer, int& frame, int offset)
+{
+	// add offset to (buffer, frame) position
+	if(!offset) return;
+	int totalFrames = buffer*kSoundplaneANumIsochFrames + frame + offset;
+	int remainder = totalFrames % kSoundplaneANumIsochFrames;
+	if (remainder < 0)
+	{
+		remainder += kSoundplaneANumIsochFrames;
+		totalFrames -= kSoundplaneANumIsochFrames;
+	}
+	frame = remainder;
+	buffer = (totalFrames / kSoundplaneANumIsochFrames) % kSoundplaneABuffers;
+	if (buffer < 0)
+	{
+		buffer += kSoundplaneABuffers;
+	}
+}
+
+UInt16 SoundplaneDriver::getTransferBytesRequested(int endpoint, int buffer, int frame, int offset)
+{
+	if(getDeviceState() < kDeviceConnected) return 0;
+	UInt16 b = 0;
+	addOffset(buffer, frame, offset);
+	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
+
+	if (t)
+	{
+		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
+		b = pf->frReqCount;
+	}
+	return b;
+}
+
+UInt16 SoundplaneDriver::getTransferBytesReceived(int endpoint, int buffer, int frame, int offset)
+{
+	if(getDeviceState() < kDeviceConnected) return 0;
+	UInt16 b = 0;
+	addOffset(buffer, frame, offset);
+	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
+
+	if (t)
+	{
+		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
+		b = pf->frActCount;
+	}
+	return b;
+}
+
+AbsoluteTime SoundplaneDriver::getTransferTimeStamp(int endpoint, int buffer, int frame, int offset)
+{
+	if(getDeviceState() < kDeviceConnected) return AbsoluteTime();
+	AbsoluteTime b;
+	addOffset(buffer, frame, offset);
+	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
+
+	if (t)
+	{
+		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
+		b = pf->frTimeStamp;
+	}
+	return b;
+}
+
+IOReturn SoundplaneDriver::getTransferStatus(int endpoint, int buffer, int frame, int offset)
+{
+	if(getDeviceState() < kDeviceConnected) return kIOReturnNoDevice;
+	IOReturn b = kIOReturnSuccess;
+	addOffset(buffer, frame, offset);
+	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
+
+	if (t)
+	{
+		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
+		b = pf->frStatus;
+	}
+	return b;
+}
+
+UInt16 SoundplaneDriver::getSequenceNumber(int endpoint, int buffer, int frame, int offset)
+{
+	if(getDeviceState() < kDeviceConnected) return 0;
+	UInt16 s = 0;
+	addOffset(buffer, frame, offset);
+	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
+
+	if (t && t->payloads)
+	{
+		SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
+		s = p[frame].seqNum;
+	}
+	return s;
+}
+
+unsigned char* SoundplaneDriver::getPayloadPtr(int endpoint, int buffer, int frame, int offset)
+{
+	if(getDeviceState() < kDeviceConnected) return 0;
+	unsigned char* p = 0;
+	addOffset(buffer, frame, offset);
+	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
+	if (t && t->payloads)
+	{
+		p = t->payloads + frame*sizeof(SoundplaneADataPacket);
+	}
+	return p;
+}
+
 // --------------------------------------------------------------------------------
 #pragma mark device utilities
+
+namespace {
 
 IOReturn ConfigureDevice(IOUSBDeviceInterface187 **dev)
 {
@@ -778,6 +701,8 @@ IOReturn SelectIsochronousInterface(IOUSBInterfaceInterface192 **intf, int n)
 	return kIOReturnSuccess;
 }
 
+}
+
 IOReturn SoundplaneDriver::setBusFrameNumber()
 {
 	IOReturn err;
@@ -794,6 +719,49 @@ IOReturn SoundplaneDriver::setBusFrameNumber()
 	return kIOReturnSuccess;
 }
 
+
+void SoundplaneDriver::removeDevice()
+{
+	IOReturn err;
+	kern_return_t	kr;
+	setDeviceState(kNoDevice);
+
+	printf("Soundplane A removed.\n");
+
+	if (intf)
+	{
+		unsigned i, n;
+
+		for (n = 0; n < kSoundplaneANumEndpoints; n++)
+		{
+			for (i = 0; i < kSoundplaneABuffers; i++)
+			{
+				K1IsocTransaction* t = getTransactionData(n, i);
+				if (t->payloads)
+				{
+					err = (*intf)->LowLatencyDestroyBuffer(intf, t->payloads);
+					t->payloads = NULL;
+				}
+				if (t->isocFrames)
+				{
+					err = (*intf)->LowLatencyDestroyBuffer(intf, t->isocFrames);
+					t->isocFrames = NULL;
+				}
+			}
+		}
+		kr = (*intf)->Release(intf);
+		intf = NULL;
+	}
+
+	if (dev)
+	{
+		printf("closing device.\n");
+		kr = (*dev)->USBDeviceClose(dev);
+		kr = (*dev)->Release(dev);
+		dev = NULL;
+	}
+	kr = IOObjectRelease(notification);
+}
 
 // deviceAdded() is called by the callback set up in the grab thread when a new Soundplane device is found.
 //
@@ -857,7 +825,7 @@ void SoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
         err = (*dev)->GetDeviceProduct(dev, &product);
         err = (*dev)->GetDeviceReleaseNumber(dev, &release);
 		printf("Vendor:%04X Product:%04X Release Number:", vendor, product);
-		// printBCD(release);
+		// printf("%hhx.%hhx.%hhx\n", release >> 8, 0x0f & release >> 4, 0x0f & release)
 		// NOTE: GetLocationID might be helpful
 #endif
 
@@ -1093,65 +1061,6 @@ void SoundplaneDriver::deviceNotifyGeneral(void *refCon, io_service_t service, n
 	if (kIOMessageServiceIsTerminated == messageType)
 	{
 		k1->removeDevice();
-	}
-}
-
-// -------------------------------------------------------------------------------
-#pragma mark thread utilities
-
-void setThreadPriority(pthread_t inThread, UInt32 inPriority, Boolean inIsFixed)
-{
-	if (inPriority == 96)
-	{
-        // REAL-TIME / TIME-CONSTRAINT THREAD
-        thread_time_constraint_policy_data_t		theTCPolicy;
-
-		theTCPolicy.period = 1000 * 1000;
-		theTCPolicy.computation = 50 * 1000;
-		theTCPolicy.constraint = 1000 * 1000;
-		theTCPolicy.preemptible = true;
-		thread_policy_set (pthread_mach_thread_np(inThread), THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t)&theTCPolicy, THREAD_TIME_CONSTRAINT_POLICY_COUNT);
-	}
-	else
-	{
-        // OTHER THREADS
-		thread_extended_policy_data_t		theFixedPolicy;
-        thread_precedence_policy_data_t		thePrecedencePolicy;
-        SInt32								relativePriority;
-
-		// [1] SET FIXED / NOT FIXED
-        theFixedPolicy.timeshare = !inIsFixed;
-        thread_policy_set (pthread_mach_thread_np(inThread), THREAD_EXTENDED_POLICY, (thread_policy_t)&theFixedPolicy, THREAD_EXTENDED_POLICY_COUNT);
-
-		// [2] SET PRECEDENCE
-        relativePriority = inPriority;
-        thePrecedencePolicy.importance = relativePriority;
-        thread_policy_set (pthread_mach_thread_np(inThread), THREAD_PRECEDENCE_POLICY, (thread_policy_t)&thePrecedencePolicy, THREAD_PRECEDENCE_POLICY_COUNT);
-	}
-}
-
-float frameDiff(float * p1, float * p2, int frameSize);
-float frameDiff(float * p1, float * p2, int frameSize)
-{
-	float sum = 0.f;
-	for(int i=0; i<frameSize; ++i)
-	{
-		sum += fabs(p2[i] - p1[i]);
-	}
-	return sum;
-}
-
-void dumpFrame(float* frame);
-void dumpFrame(float* frame)
-{
-	for(int j=0; j<kSoundplaneHeight; ++j)
-	{
-		printf("row %d: ", j);
-		for(int i=0; i<kSoundplaneWidth; ++i)
-		{
-			printf("%f ", frame[j*kSoundplaneWidth + i]);
-		}
-		printf("\n");
 	}
 }
 
@@ -1566,10 +1475,42 @@ void SoundplaneDriver::processThread()
 	}
 }
 
+// write frame to buffer, reconstructing a constant clock from the data.
+// this may involve interpolating frames.
+//
+void SoundplaneDriver::reclockFrameToBuffer(float* pFrame)
+{
+	// currently, clock is ignored and we simply ship out data as quickly as possible.
+	// TODO timestamps that will allow reconstituting the data with lower jitter.
+	PaUtil_WriteRingBuffer(&mOutputBuf, pFrame, 1);
+}
+
+void SoundplaneDriver::setDeviceState(MLSoundplaneState n)
+{
+	mState.store(n, std::memory_order_release);
+	if (mListener) {
+		mListener->deviceStateChanged(n);
+	}
+}
+
+void SoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
+{
+	if (mListener) {
+		mListener->handleDeviceError(errCode, d1, d2, df1, df2);
+	}
+}
+
+void SoundplaneDriver::dumpDeviceData(float* pData, int size)
+{
+	if (mListener) {
+		mListener->handleDeviceDataDump(pData, size);
+	}
+}
+
 // -------------------------------------------------------------------------------
 #pragma mark transfer utilities
 
-int SoundplaneDriver::GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang)
+int SoundplaneDriver::getStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang)
 {
     IOUSBDevRequest req;
     UInt8 		desc[256]; // Max possible descriptor length
@@ -1654,5 +1595,39 @@ void SoundplaneDriver::dumpTransactions(int bufferIndex, int frameIndex)
 			}
 		}
 		printf("\n");
+	}
+}
+
+// -------------------------------------------------------------------------------
+#pragma mark thread utilities
+
+void setThreadPriority(pthread_t inThread, UInt32 inPriority, Boolean inIsFixed)
+{
+	if (inPriority == 96)
+	{
+        // REAL-TIME / TIME-CONSTRAINT THREAD
+        thread_time_constraint_policy_data_t		theTCPolicy;
+
+		theTCPolicy.period = 1000 * 1000;
+		theTCPolicy.computation = 50 * 1000;
+		theTCPolicy.constraint = 1000 * 1000;
+		theTCPolicy.preemptible = true;
+		thread_policy_set (pthread_mach_thread_np(inThread), THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t)&theTCPolicy, THREAD_TIME_CONSTRAINT_POLICY_COUNT);
+	}
+	else
+	{
+        // OTHER THREADS
+		thread_extended_policy_data_t		theFixedPolicy;
+        thread_precedence_policy_data_t		thePrecedencePolicy;
+        SInt32								relativePriority;
+
+		// [1] SET FIXED / NOT FIXED
+        theFixedPolicy.timeshare = !inIsFixed;
+        thread_policy_set (pthread_mach_thread_np(inThread), THREAD_EXTENDED_POLICY, (thread_policy_t)&theFixedPolicy, THREAD_EXTENDED_POLICY_COUNT);
+
+		// [2] SET PRECEDENCE
+        relativePriority = inPriority;
+        thePrecedencePolicy.importance = relativePriority;
+        thread_policy_set (pthread_mach_thread_np(inThread), THREAD_PRECEDENCE_POLICY, (thread_policy_t)&thePrecedencePolicy, THREAD_PRECEDENCE_POLICY_COUNT);
 	}
 }

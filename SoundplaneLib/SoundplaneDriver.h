@@ -83,34 +83,21 @@ public:
 
 	void init();
 
-	int getSerialNumber();
 	int readSurface(float* pDest);
 	void flushOutputBuffer();
+	MLSoundplaneState getDeviceState();
+	UInt16 getFirmwareVersion();
+	int getSerialNumber();
+	int getSerialNumberString(char* destStr, int maxLen);
+
 	static float carrierToFrequency(int carrier);
+	void dumpCarriers();
 	int setCarriers(const unsigned char *carriers);
 	int enableCarriers(unsigned long mask);
 	void setDefaultCarriers();
-	void dumpCarriers();
-	UInt16 getFirmwareVersion();
-	int getSerialNumberString(char* destStr, int maxLen);
-
-	MLSoundplaneState getDeviceState();
 
 private:
-	void shutdown();
-
-	K1IsocTransaction* getTransactionData(int endpoint, int buf) { return transactionData + kSoundplaneABuffers*endpoint + buf; }
-
-	void grabThread();
-	void processThread();
-
-	IOReturn setBusFrameNumber();
 	IOReturn scheduleIsoch(K1IsocTransaction *t);
-
-	// these fns in global namespace need to set the device state.
-	//
-	static void deviceAdded(void *refCon, io_iterator_t iterator);
-	static void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
 	static void isochComplete(void *refCon, IOReturn result, void *arg0);
 
 	void addOffset(int& buffer, int& frame, int offset);
@@ -121,14 +108,22 @@ private:
 	UInt16 getSequenceNumber(int endpoint, int buf, int frame, int offset = 0);
 	unsigned char* getPayloadPtr(int endpoint, int buf, int frame, int offset = 0);
 
+	IOReturn setBusFrameNumber();
+	void removeDevice();
+	static void deviceAdded(void *refCon, io_iterator_t iterator);
+	static void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
+
+	void grabThread();
+	void processThread();
+
 	void reclockFrameToBuffer(float* pSurface);
 	void setDeviceState(MLSoundplaneState n);
 	void reportDeviceError(int errCode, int d1, int d2, float df1, float df2);
 	void dumpDeviceData(float* pData, int size);
-	void removeDevice();
 
-	static int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
+	static int getStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
 	void dumpTransactions(int bufferIndex, int frameIndex);
+	K1IsocTransaction* getTransactionData(int endpoint, int buf) { return transactionData + kSoundplaneABuffers*endpoint + buf; }
 
 	int mTransactionsInFlight;
 	int startupCtr;

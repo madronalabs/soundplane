@@ -82,3 +82,26 @@ void K1_clear_edges(float *pDest)
     pDestRow[kSoundplaneANumCarriers*2 - 1] = 0;
   }
 }
+
+float frameDiff(float * p1, float * p2, int frameSize)
+{
+  float sum = 0.f;
+  for(int i=0; i<frameSize; ++i)
+  {
+    sum += fabs(p2[i] - p1[i]);
+  }
+  return sum;
+}
+
+void dumpFrame(float* frame)
+{
+  for(int j=0; j<kSoundplaneHeight; ++j)
+  {
+    printf("row %d: ", j);
+    for(int i=0; i<kSoundplaneWidth; ++i)
+    {
+      printf("%f ", frame[j*kSoundplaneWidth + i]);
+    }
+    printf("\n");
+  }
+}

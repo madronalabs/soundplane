@@ -110,5 +110,7 @@ typedef enum
 
 void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest);
 void K1_clear_edges(float *pDest);
+float frameDiff(float * p1, float * p2, int frameSize);
+void dumpFrame(float* frame);
 
 #endif // __SOUNDPLANE_DRIVER_DATA__
