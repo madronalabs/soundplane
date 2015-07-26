@@ -250,21 +250,21 @@ MLSoundplaneState SoundplaneDriver::getDeviceState()
 void SoundplaneDriver::setDeviceState(MLSoundplaneState n)
 {
 	mState.store(n, std::memory_order_release);
-	forEachListener([=](SoundplaneDriverListener* listener) {
+	mListeners.forEach([=](SoundplaneDriverListener* listener) {
 		listener->deviceStateChanged(n);
 	});
 }
 
 void SoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
 {
-	forEachListener([=](SoundplaneDriverListener* listener) {
+	mListeners.forEach([=](SoundplaneDriverListener* listener) {
 		listener->handleDeviceError(errCode, d1, d2, df1, df2);
 	});
 }
 
 void SoundplaneDriver::dumpDeviceData(float* pData, int size)
 {
-	forEachListener([=](SoundplaneDriverListener* listener) {
+	mListeners.forEach([=](SoundplaneDriverListener* listener) {
 		listener->handleDeviceDataDump(pData, size);
 	});
 }

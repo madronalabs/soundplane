@@ -220,21 +220,11 @@ public:
 
 	MLSoundplaneState getDeviceState();
 
-	void addListener(SoundplaneDriverListener* pL) { mListeners.push_back(pL); }
+	void addListener(SoundplaneDriverListener* pL) { mListeners.add(pL); }
 	int mTransactionsInFlight;
 	int startupCtr;
 
 private:
-	template<typename Block>
-	void forEachListener(Block block) {
-		// It is necessary for this method to be lock-free because it is
-		// sometimes called within an interrupt context.
-		for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
-		{
-			block(*it);
-		}
-	}
-
 	// these fns in global namespace need to set the device state.
 	//
 	friend void * ::soundplaneProcessThread(void *arg);
@@ -262,7 +252,56 @@ private:
 	unsigned char mCurrentCarriers[kSoundplaneSensorWidth];
 	float mpOutputData[kSoundplaneWidth * kSoundplaneHeight * kSoundplaneOutputBufFrames];
 	PaUtilRingBuffer mOutputBuf;
-	std::list<SoundplaneDriverListener*> mListeners;
+
+	/**
+	 * A primitive lock free linked list that only supports iteration and
+	 * pushing an element to the front. No removal is supported (to avoid having
+	 * to deal with resource management, ABA etc).
+	 *
+	 * The operations of this class are thread safe in the sense that all
+	 * operations are linearizable.
+	 */
+	template<typename T>
+	class LockfreeList {
+	public:
+		~LockfreeList() {
+			auto *node = head.load(std::memory_order_acquire);
+			while (node) {
+				auto *next = node->next;
+				delete node;
+				node = next;
+			}
+		}
+
+		void add(T value) {
+			Node *new_node = new Node(std::move(value), head.load(std::memory_order_acquire));
+			while (!std::atomic_compare_exchange_weak(&head, &new_node->next, new_node)) {}
+		}
+
+		template<typename Block>
+		void forEach(Block block) {
+			// It is necessary for this method to be lock-free because it is
+			// sometimes called within an interrupt context.
+			auto *node = head.load(std::memory_order_acquire);
+			while (node) {
+				auto *next = node->next;
+				block(node->value);
+				node = next;
+			}
+		}
+	private:
+		struct Node {
+			Node(T &&value, Node *next) :
+				value(std::move(value)),
+				next(next) {}
+
+			T value;
+			Node *next;
+		};
+
+		std::atomic<Node*> head;
+	};
+	LockfreeList<SoundplaneDriverListener*> mListeners;
 };
 
 inline UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f)
