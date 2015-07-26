@@ -88,11 +88,11 @@ std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListe
 }
 
 SoundplaneDriverMac::SoundplaneDriverMac(SoundplaneDriverListener* listener) :
+	mTransactionsInFlight(0),
+	startupCtr(0),
 	dev(0),
 	intf(0),
-	mTransactionsInFlight(0),
 	mState(kNoDevice),
-	startupCtr(0),
 	mListener(listener)
 {
 	for(int i=0; i<kSoundplaneANumEndpoints; ++i)
