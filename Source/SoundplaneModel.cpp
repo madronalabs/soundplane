@@ -52,7 +52,6 @@ static void makeStandardCarrierSet(unsigned char pC[kSoundplaneSensorWidth], int
 #pragma mark SoundplaneModel
 
 SoundplaneModel::SoundplaneModel() :
-	mDeviceState(kNoDevice),
 	mOutputEnabled(false),
 	mSurface(kSoundplaneWidth, kSoundplaneHeight),
 
@@ -606,8 +605,7 @@ int SoundplaneModel::getClientState(void)
 
 int SoundplaneModel::getDeviceState(void)
 {
-	PaUtil_ReadMemoryBarrier();
-	return mDeviceState;
+	return mpDriver->getDeviceState();
 }
 void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 {
@@ -616,7 +614,6 @@ void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 
 	PaUtil_WriteMemoryBarrier();
 
-	mDeviceState = s;
 	switch(s)
 	{
 		case kNoDevice:
@@ -728,7 +725,7 @@ const char* SoundplaneModel::getHardwareStr()
 	unsigned char a, b, c;
 	char serial[64] = {0};
 	int len;
-	switch(mDeviceState)
+	switch(getDeviceState())
 	{
 		case kNoDevice:
 			snprintf(mHardwareStr, miscStrSize, "no device");
@@ -756,7 +753,7 @@ const char* SoundplaneModel::getHardwareStr()
 // get the string to report general connection status.
 const char* SoundplaneModel::getStatusStr()
 {
-	switch(mDeviceState)
+	switch(getDeviceState())
 	{
 		case kNoDevice:
 			snprintf(mStatusStr, miscStrSize, "waiting for Soundplane...");
@@ -1719,6 +1716,3 @@ int getJSONInt(cJSON* pNode, const char* name)
     }
     return 0;
 }
-
-
-

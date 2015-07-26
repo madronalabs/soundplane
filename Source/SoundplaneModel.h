@@ -164,7 +164,6 @@ private:
     std::vector<ZonePtr> mZones;
     MLSignal mZoneMap;
 
-	MLSoundplaneState mDeviceState;
 	bool mOutputEnabled;
 
 	static const int miscStrSize = 256;
