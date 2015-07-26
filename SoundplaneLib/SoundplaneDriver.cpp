@@ -26,7 +26,6 @@ const int kSoundplaneAlternateSetting = 1;
 
 #define printBCD(bcd) printf("%hhx.%hhx.%hhx\n", bcd >> 8, 0x0f & bcd >> 4, 0x0f & bcd)
 
-void dumpTransactions(void *arg, int bufferIndex, int frameIndex);
 int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
 void show_io_err(const char *msg, IOReturn err);
 void show_kern_err(const char *msg, kern_return_t kr);
@@ -1562,7 +1561,7 @@ void SoundplaneDriver::processThread()
 		//			AbsoluteTime atTime;
 		//			UInt64 bf;
 		//			OSErr err = (*dev)->GetBusFrameNumber(dev, &bf, &atTime);
-		//			dumpTransactions(k1, bufferIndex, frameIndex);
+		//			k1->dumpTransactions(bufferIndex, frameIndex);
 
 					printf("current seq num: %d / %d\n", curSeqNum0, curSeqNum1);
 		//			printf("now: %u:%u\n", (int)atTime.hi, (int)atTime.lo);
@@ -1639,13 +1638,12 @@ int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *de
     return destLen;
 }
 
-void dumpTransactions(void *arg, int bufferIndex, int frameIndex)
+void SoundplaneDriver::dumpTransactions(int bufferIndex, int frameIndex)
 {
-	SoundplaneDriver* k1 = static_cast<SoundplaneDriver*>(arg);
 	for (int j=0; j<kSoundplaneABuffers; ++j)
 	{
-		K1IsocTransaction* t0 = k1->getTransactionData(0, j);
-		K1IsocTransaction* t1 = k1->getTransactionData(1, j);
+		K1IsocTransaction* t0 = getTransactionData(0, j);
+		K1IsocTransaction* t1 = getTransactionData(1, j);
 		UInt64 b0 = t0->busFrameNumber;
 		UInt64 b1 = t1->busFrameNumber;
 		printf("\n%d: frame %09llu/%09llu", j, b0, b1);

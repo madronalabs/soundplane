@@ -211,13 +211,13 @@ private:
 	IOUSBDeviceInterface187		**dev;
 	IOUSBInterfaceInterface192	**intf;
 
-public:
 	UInt64						busFrameNumber[kSoundplaneANumEndpoints];
 	K1IsocTransaction			transactionData[kSoundplaneANumEndpoints * kSoundplaneABuffers];
 	UInt8						payloadIndex[kSoundplaneANumEndpoints];
 
 	K1IsocTransaction* getTransactionData(int endpoint, int buf) { return transactionData + kSoundplaneABuffers*endpoint + buf; }
 
+public:
 	UInt16 getFirmwareVersion();
 	int getSerialNumberString(char* destStr, int maxLen);
 
@@ -232,6 +232,7 @@ private:
 
 	IOReturn setBusFrameNumber();
 	IOReturn scheduleIsoch(K1IsocTransaction *t);
+	void dumpTransactions(int bufferIndex, int frameIndex);
 
 	// these fns in global namespace need to set the device state.
 	//
