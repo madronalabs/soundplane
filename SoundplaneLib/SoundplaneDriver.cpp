@@ -22,19 +22,6 @@
 
 namespace {
 
-UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f)
-{
-	if (!t->payloads) return 0;
-	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
-	return p[f].seqNum;
-}
-
-void setSequenceNumber(K1IsocTransaction* t, int f, UInt16 s)
-{
-	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
-	p[f].seqNum = s;
-}
-
 // --------------------------------------------------------------------------------
 #pragma mark error handling
 
@@ -370,6 +357,24 @@ void SoundplaneDriver::setDefaultCarriers()
 	setCarriers(mCurrentCarriers);
 }
 
+
+// --------------------------------------------------------------------------------
+#pragma mark K1IsocTransaction
+
+UInt16 SoundplaneDriver::K1IsocTransaction::getTransactionSequenceNumber(int f)
+{
+	if (!payloads) return 0;
+	SoundplaneADataPacket* p = (SoundplaneADataPacket*)payloads;
+	return p[f].seqNum;
+}
+
+void SoundplaneDriver::K1IsocTransaction::setSequenceNumber(int f, UInt16 s)
+{
+	SoundplaneADataPacket* p = (SoundplaneADataPacket*)payloads;
+	p[f].seqNum = s;
+}
+
+
 /*
 
 notes on isoch scheduling:
@@ -428,7 +433,7 @@ IOReturn SoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
 		t->isocFrames[k].frActCount = 0;
 		t->isocFrames[k].frTimeStamp.hi = 0;
 		t->isocFrames[k].frTimeStamp.lo = 0;
-		setSequenceNumber(t, k, 0);
+		t->setSequenceNumber(k, 0);
 	}
 
 	size_t payloadSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
@@ -1579,8 +1584,8 @@ void SoundplaneDriver::dumpTransactions(int bufferIndex, int frameIndex)
 			frame0 = &(t0->isocFrames[f]);
 			frame1 = &(t1->isocFrames[f]);
 
-			seq0 = getTransactionSequenceNumber(t0, f);
-			seq1 = getTransactionSequenceNumber(t1, f);
+			seq0 = t0->getTransactionSequenceNumber(f);
+			seq1 = t1->getTransactionSequenceNumber(f);
 
 			if (f % 4 == 0) printf("\n");
 			printf("%05d:%d:%d/", (int)seq0, (frame0->frReqCount), (frame0->frActCount));

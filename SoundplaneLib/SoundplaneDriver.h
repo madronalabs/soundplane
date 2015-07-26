@@ -59,19 +59,6 @@ public:
 	virtual void handleDeviceDataDump(float* pData, int size) = 0;
 };
 
-class SoundplaneDriver;
-
-typedef struct
-{
-	UInt64						busFrameNumber;
-	SoundplaneDriver			*parent;
-	IOUSBLowLatencyIsocFrame	*isocFrames;
-	unsigned char				*payloads;
-	UInt8						endpointNum;
-	UInt8						endpointIndex;
-	UInt8						bufIndex;
-} K1IsocTransaction;
-
 class SoundplaneDriver
 {
 public:
@@ -97,6 +84,20 @@ public:
 	void setDefaultCarriers();
 
 private:
+	struct K1IsocTransaction
+	{
+		UInt64						busFrameNumber;
+		SoundplaneDriver			*parent;
+		IOUSBLowLatencyIsocFrame	*isocFrames;
+		unsigned char				*payloads;
+		UInt8						endpointNum;
+		UInt8						endpointIndex;
+		UInt8						bufIndex;
+
+		UInt16 getTransactionSequenceNumber(int f);
+		void setSequenceNumber(int f, UInt16 s);
+	};
+
 	IOReturn scheduleIsoch(K1IsocTransaction *t);
 	static void isochComplete(void *refCon, IOReturn result, void *arg0);
 
