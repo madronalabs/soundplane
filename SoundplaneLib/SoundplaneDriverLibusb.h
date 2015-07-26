@@ -154,6 +154,7 @@ private:
 	template<int Packets>
 	class Transfer
 	{
+		static constexpr int kBufferSize = sizeof(SoundplaneADataPacket) * Packets;
 	public:
 		Transfer()
 		{
@@ -165,13 +166,29 @@ private:
 			libusb_free_transfer(mTransfer);
 		}
 
-		libusb_transfer* get() const
+		libusb_transfer* libusb_transfer() const
 		{
 			return mTransfer;
 		}
 
+		unsigned char* buffer()
+		{
+			return mBuffer;
+		}
+
+		static constexpr int bufferSize()
+		{
+			return sizeof(mBuffer);
+		}
+
+		static constexpr int numPackets()
+		{
+			return Packets;
+		}
+
 	private:
-		libusb_transfer* mTransfer;
+		struct libusb_transfer* mTransfer;
+		unsigned char mBuffer[kBufferSize];
 	};
 
 	using Transfers = std::array<std::array<Transfer<kSoundplaneANumIsochFrames>, kSoundplaneABuffers>, kSoundplaneANumEndpoints>;
@@ -211,8 +228,9 @@ private:
 	 */
 	bool processThreadSelectIsochronousInterface(libusb_device_handle *device) const;
 	void processThreadScheduleInitialTransfers(
-		const Transfers &transfers,
+		Transfers &transfers,
 		libusb_device_handle *device) const;
+	static void processThreadTransferCallback(struct libusb_transfer *xfr);
 	void processThread();
 
 	/**
