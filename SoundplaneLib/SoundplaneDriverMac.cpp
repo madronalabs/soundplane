@@ -100,8 +100,6 @@ SoundplaneDriverMac::SoundplaneDriverMac(SoundplaneDriverListener* listener) :
 		busFrameNumber[i] = 0;
 	}
 
-	bzero(transactionData, sizeof(transactionData));
-
 	PaUtil_InitializeRingBuffer(&mOutputBuf, sizeof(mpOutputData) / kSoundplaneOutputBufFrames, kSoundplaneOutputBufFrames, mpOutputData);
 
 	for(int i=0; i < kSoundplaneSensorWidth; ++i)

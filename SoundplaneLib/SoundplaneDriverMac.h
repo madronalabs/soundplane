@@ -48,13 +48,13 @@ public:
 private:
 	struct K1IsocTransaction
 	{
-		UInt64						busFrameNumber;
-		SoundplaneDriverMac			*parent;
-		IOUSBLowLatencyIsocFrame	*isocFrames;
-		unsigned char				*payloads;
-		UInt8						endpointNum;
-		UInt8						endpointIndex;
-		UInt8						bufIndex;
+		UInt64						busFrameNumber = 0;
+		SoundplaneDriverMac			*parent = 0;
+		IOUSBLowLatencyIsocFrame	*isocFrames = nullptr;
+		unsigned char				*payloads = nullptr;
+		UInt8						endpointNum = 0;
+		UInt8						endpointIndex = 0;
+		UInt8						bufIndex = 0;
 
 		UInt16 getTransactionSequenceNumber(int f);
 		void setSequenceNumber(int f, UInt16 s);
