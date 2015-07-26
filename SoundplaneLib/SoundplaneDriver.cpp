@@ -44,7 +44,7 @@ const unsigned char kDefaultCarriers[kSoundplaneSensorWidth] =
 // -------------------------------------------------------------------------------
 #pragma mark SoundplaneDriver
 
-SoundplaneDriver::SoundplaneDriver() :
+SoundplaneDriver::SoundplaneDriver(SoundplaneDriverListener* listener) :
 	clientRef(0),
 	dev(0),
 	intf(0),
@@ -67,6 +67,8 @@ SoundplaneDriver::SoundplaneDriver() :
 	{
 		mCurrentCarriers[i] = kDefaultCarriers[i];
 	}
+
+	mListener = listener;
 }
 
 SoundplaneDriver::~SoundplaneDriver()
@@ -250,23 +252,17 @@ MLSoundplaneState SoundplaneDriver::getDeviceState()
 void SoundplaneDriver::setDeviceState(MLSoundplaneState n)
 {
 	mState.store(n, std::memory_order_release);
-	mListeners.forEach([=](SoundplaneDriverListener* listener) {
-		listener->deviceStateChanged(n);
-	});
+	mListener->deviceStateChanged(n);
 }
 
 void SoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
 {
-	mListeners.forEach([=](SoundplaneDriverListener* listener) {
-		listener->handleDeviceError(errCode, d1, d2, df1, df2);
-	});
+	mListener->handleDeviceError(errCode, d1, d2, df1, df2);
 }
 
 void SoundplaneDriver::dumpDeviceData(float* pData, int size)
 {
-	mListeners.forEach([=](SoundplaneDriverListener* listener) {
-		listener->handleDeviceDataDump(pData, size);
-	});
+	mListener->handleDeviceDataDump(pData, size);
 }
 
 // add a positive or negative offset to the current (buffer, frame) position.

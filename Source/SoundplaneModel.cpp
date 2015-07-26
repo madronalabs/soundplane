@@ -569,8 +569,7 @@ void SoundplaneModel::initialize()
 	mOSCOutput.initialize();
 	addListener(&mOSCOutput);
 
-	mpDriver = new SoundplaneDriver();
-	mpDriver->addListener(this);
+	mpDriver = new SoundplaneDriver(this);
 	mpDriver->init();
 
 	// TODO mem err handling
