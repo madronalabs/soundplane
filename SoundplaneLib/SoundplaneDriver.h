@@ -83,10 +83,6 @@ public:
 
 	void init();
 
-private:
-	void shutdown();
-
-public:
 	int getSerialNumber();
 	int readSurface(float* pDest);
 	void flushOutputBuffer();
@@ -95,33 +91,15 @@ public:
 	int enableCarriers(unsigned long mask);
 	void setDefaultCarriers();
 	void dumpCarriers();
-
-private:
-	std::thread					mGrabThread;
-	std::thread					mProcessThread;
-
-	IONotificationPortRef		notifyPort;
-	io_iterator_t				matchedIter;
-	io_object_t					notification;
-
-	IOUSBDeviceInterface187		**dev;
-	IOUSBInterfaceInterface192	**intf;
-
-	UInt64						busFrameNumber[kSoundplaneANumEndpoints];
-	K1IsocTransaction			transactionData[kSoundplaneANumEndpoints * kSoundplaneABuffers];
-	UInt8						payloadIndex[kSoundplaneANumEndpoints];
-
-	K1IsocTransaction* getTransactionData(int endpoint, int buf) { return transactionData + kSoundplaneABuffers*endpoint + buf; }
-
-public:
 	UInt16 getFirmwareVersion();
 	int getSerialNumberString(char* destStr, int maxLen);
 
 	MLSoundplaneState getDeviceState();
 
 private:
-	int mTransactionsInFlight;
-	int startupCtr;
+	void shutdown();
+
+	K1IsocTransaction* getTransactionData(int endpoint, int buf) { return transactionData + kSoundplaneABuffers*endpoint + buf; }
 
 	void grabThread();
 	void processThread();
@@ -151,6 +129,23 @@ private:
 
 	static int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
 	void dumpTransactions(int bufferIndex, int frameIndex);
+
+	int mTransactionsInFlight;
+	int startupCtr;
+
+	std::thread					mGrabThread;
+	std::thread					mProcessThread;
+
+	IONotificationPortRef		notifyPort;
+	io_iterator_t				matchedIter;
+	io_object_t					notification;
+
+	IOUSBDeviceInterface187		**dev;
+	IOUSBInterfaceInterface192	**intf;
+
+	UInt64						busFrameNumber[kSoundplaneANumEndpoints];
+	K1IsocTransaction			transactionData[kSoundplaneANumEndpoints * kSoundplaneABuffers];
+	UInt8						payloadIndex[kSoundplaneANumEndpoints];
 
 	std::atomic<MLSoundplaneState> mState;
 	char mDescStr[256]; // max descriptor length.
