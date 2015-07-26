@@ -200,6 +200,7 @@ public:
 	void setDefaultCarriers();
 	void dumpCarriers();
 
+private:
 	std::thread					mGrabThread;
 	std::thread					mProcessThread;
 
@@ -210,6 +211,7 @@ public:
 	IOUSBDeviceInterface187		**dev;
 	IOUSBInterfaceInterface192	**intf;
 
+public:
 	UInt64						busFrameNumber[kSoundplaneANumEndpoints];
 	K1IsocTransaction			transactionData[kSoundplaneANumEndpoints * kSoundplaneABuffers];
 	UInt8						payloadIndex[kSoundplaneANumEndpoints];
@@ -227,6 +229,9 @@ public:
 private:
 	void grabThread();
 	void processThread();
+
+	IOReturn setBusFrameNumber();
+	IOReturn scheduleIsoch(K1IsocTransaction *t);
 
 	// these fns in global namespace need to set the device state.
 	//

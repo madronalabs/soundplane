@@ -621,18 +621,18 @@ void isochComplete(void *refCon, IOReturn result, void *arg0);
 // LowLatencyCreateBuffer() to manage communication with the kernel.
 // These are made in deviceAdded() when a Soundplane is connected.
 //
-IOReturn scheduleIsoch(SoundplaneDriver *k1, K1IsocTransaction *t)
+IOReturn SoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
 {
-	if (!k1->dev) return kIOReturnNoDevice;
-	MLSoundplaneState state = k1->getDeviceState();
+	if (!dev) return kIOReturnNoDevice;
+	MLSoundplaneState state = getDeviceState();
 	if (state == kNoDevice) return kIOReturnNotReady;
 	if (state == kDeviceIsTerminating) return kIOReturnNotReady;
 
 	IOReturn err;
 	assert(t);
 
-	t->parent = k1;
-	t->busFrameNumber = k1->busFrameNumber[t->endpointIndex];
+	t->parent = this;
+	t->busFrameNumber = busFrameNumber[t->endpointIndex];
 
 	for (int k = 0; k < kSoundplaneANumIsochFrames; k++)
 	{
@@ -650,11 +650,11 @@ IOReturn scheduleIsoch(SoundplaneDriver *k1, K1IsocTransaction *t)
 #ifdef SHOW_BUS_FRAME_NUMBER
 	fprintf(stderr, "read(%d, %p, %llu, %p, %p)\n", t->endpointNum, t->payloads, t->busFrameNumber, t->isocFrames, t);
 #endif
-	err = (*k1->intf)->LowLatencyReadIsochPipeAsync(k1->intf, t->endpointNum, t->payloads,
+	err = (*intf)->LowLatencyReadIsochPipeAsync(intf, t->endpointNum, t->payloads,
 		t->busFrameNumber, kSoundplaneANumIsochFrames, kSoundplaneAUpdateFrequency, t->isocFrames, isochComplete, t);
 
-	k1->busFrameNumber[t->endpointIndex] += kSoundplaneANumIsochFrames;
-	k1->mTransactionsInFlight++;
+	busFrameNumber[t->endpointIndex] += kSoundplaneANumIsochFrames;
+	mTransactionsInFlight++;
 
 	return err;
 }
@@ -711,7 +711,7 @@ void isochComplete(void *refCon, IOReturn result, void *arg0)
 	}
 #endif
 
-	err = scheduleIsoch(k1, pNextTransactionBuffer);
+	err = k1->scheduleIsoch(pNextTransactionBuffer);
 }
 
 // --------------------------------------------------------------------------------
@@ -799,19 +799,19 @@ IOReturn SelectIsochronousInterface(IOUSBInterfaceInterface192 **intf, int n)
 	return kIOReturnSuccess;
 }
 
-IOReturn SetBusFrameNumber(SoundplaneDriver *k1)
+IOReturn SoundplaneDriver::setBusFrameNumber()
 {
 	IOReturn err;
 	AbsoluteTime atTime;
 
-	err = (*k1->dev)->GetBusFrameNumber(k1->dev, &k1->busFrameNumber[0], &atTime);
+	err = (*dev)->GetBusFrameNumber(dev, &busFrameNumber[0], &atTime);
 	if (kIOReturnSuccess != err)
 		return err;
 #ifdef VERBOSE
-	printf("Bus Frame Number: %llu @ %X%08X\n", k1->busFrameNumber[0], (int)atTime.hi, (int)atTime.lo);
+	printf("Bus Frame Number: %llu @ %X%08X\n", busFrameNumber[0], (int)atTime.hi, (int)atTime.lo);
 #endif
-	k1->busFrameNumber[0] += 50;	// schedule 50 ms into the future
-	k1->busFrameNumber[1] = k1->busFrameNumber[0];
+	busFrameNumber[0] += 50;	// schedule 50 ms into the future
+	busFrameNumber[1] = busFrameNumber[0];
 	return kIOReturnSuccess;
 }
 
@@ -1052,7 +1052,7 @@ void deviceAdded(void *refCon, io_iterator_t iterator)
 
 					// set initial state before isoch schedule
 					k1->setDeviceState(kDeviceConnected);
-					err = SetBusFrameNumber(k1);
+					err = k1->setBusFrameNumber();
 					assert(!err);
 
 					// for each endpoint, schedule first transaction and
@@ -1061,7 +1061,7 @@ void deviceAdded(void *refCon, io_iterator_t iterator)
 					{
 						for (i = 0; i < kSoundplaneANumEndpoints; i++)
 						{
-							err = scheduleIsoch(k1, k1->getTransactionData(i, j));
+							err = k1->scheduleIsoch(k1->getTransactionData(i, j));
 							if (kIOReturnSuccess != err)
 							{
 								show_io_err("scheduleIsoch", err);
