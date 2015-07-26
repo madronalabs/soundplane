@@ -6,7 +6,7 @@
 #ifndef __SOUNDPLANE_DRIVER__
 #define __SOUNDPLANE_DRIVER__
 
-#include <vector>
+#include <thread>
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/usb/USB.h>
@@ -172,8 +172,8 @@ public:
 	void dumpCarriers();
 
 	void						*clientRef;
-	pthread_t					mGrabThread;
-	pthread_t					mProcessThread;
+	std::thread					mGrabThread;
+	std::thread					mProcessThread;
 
 	IONotificationPortRef		notifyPort;
 	io_iterator_t				matchedIter;

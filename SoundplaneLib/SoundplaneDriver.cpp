@@ -12,6 +12,8 @@
 
 #include "SoundplaneDriver.h"
 
+#include <vector>
+
 #if DEBUG
 	#define VERBOSE
 #endif
@@ -76,21 +78,14 @@ SoundplaneDriver::~SoundplaneDriver()
 void SoundplaneDriver::init()
 {
 	// create device grab thread
-	OSErr err;
-	pthread_attr_t attr;
-	err = pthread_attr_init(&attr);
-	assert(!err);
-	err = pthread_create(&mGrabThread, &attr, soundplaneGrabThread, this);
-	assert(!err);
+	mGrabThread = std::thread(soundplaneGrabThread, this);
+	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
 
 	// create isochronous read and process thread
-	err = pthread_attr_init(&attr);
-	assert(!err);
-	err = pthread_create(&mProcessThread, &attr, soundplaneProcessThread, this);
-	assert(!err);
+	mProcessThread = std::thread(soundplaneProcessThread, this);
 
 	// set thread to real time priority
-	setThreadPriority(mProcessThread, 96, true);
+	setThreadPriority(mProcessThread.native_handle(), 96, true);
 }
 
 void SoundplaneDriver::shutdown()
@@ -128,13 +123,10 @@ void SoundplaneDriver::shutdown()
 
 	// wait for process thread to terminate
 	//
-	if (mProcessThread)
+	if (mProcessThread.joinable())
 	{
-		int exitResult = pthread_join(mProcessThread, NULL); // pthread_cancel()?
-
-		printf("process thread terminated.  Returned %d \n", exitResult);
-
-		mProcessThread = 0;
+		mProcessThread.join();
+		printf("process thread terminated.\n");
 	}
 
 	// wait some more
