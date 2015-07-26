@@ -11,6 +11,8 @@
 
 #include "SoundplaneDriverLibusb.h"
 
+#include <unistd.h>
+
 std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListener *listener)
 {
     auto *driver = new SoundplaneDriverLibusb(listener);
@@ -34,6 +36,10 @@ void SoundplaneDriverLibusb::init()
 	if (libusb_init(&mLibusbContext) < 0) {
 		throw new std::runtime_error("Failed to initialize libusb");
 	}
+
+	// create device grab thread
+	mGrabThread = std::thread(&SoundplaneDriverLibusb::grabThread, this);
+	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
 }
 
 int SoundplaneDriverLibusb::readSurface(float* pDest)
@@ -70,4 +76,15 @@ int SoundplaneDriverLibusb::setCarriers(const unsigned char *carriers) {
 
 int SoundplaneDriverLibusb::enableCarriers(unsigned long mask) {
 	return 0;
+}
+
+void SoundplaneDriverLibusb::grabThread() {
+	for (;;)
+	{
+		libusb_device_handle *handle = libusb_open_device_with_vid_pid(
+			mLibusbContext, kSoundplaneUSBVendor, kSoundplaneUSBProduct);
+
+		printf("Handle: %p\n", handle);
+		sleep(1);
+	}
 }

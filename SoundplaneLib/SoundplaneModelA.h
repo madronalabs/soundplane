@@ -42,6 +42,8 @@ const int kSoundplaneAKeyHeight = 5;
 const int kSoundplaneAMaxZones = 150;
 
 // Soundplane A hardware
+const UInt16 kSoundplaneUSBVendor = 0x0451;
+const UInt16 kSoundplaneUSBProduct = 0x5100;
 const int kSoundplaneASampleRate = 125000;
 const int kSoundplaneAFFTSize = 128;
 const int kSoundplaneANumCarriers = 32;

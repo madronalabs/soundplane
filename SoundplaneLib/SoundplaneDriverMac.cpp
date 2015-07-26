@@ -1045,8 +1045,8 @@ void SoundplaneDriverMac::grabThread()
 	CFMutableDictionaryRef		matchingDict;
 	CFRunLoopSourceRef			runLoopSource;
 	CFNumberRef					numberRef;
-	SInt32						usbVendor = 0x0451;
-	SInt32						usbProduct = 0x5100;
+	SInt32						usbVendor = kSoundplaneUSBVendor;
+	SInt32						usbProduct = kSoundplaneUSBProduct;
 
 	matchingDict = IOServiceMatching(kIOUSBDeviceClassName);
 	if (!matchingDict)

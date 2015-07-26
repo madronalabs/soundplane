@@ -6,6 +6,8 @@
 #ifndef __SOUNDPLANE_DRIVER_LIBUSB__
 #define __SOUNDPLANE_DRIVER_LIBUSB__
 
+#include <thread>
+
 #include <libusb.h>
 
 #include "SoundplaneDriver.h"
@@ -33,9 +35,13 @@ public:
 	virtual int enableCarriers(unsigned long mask) override;
 
 private:
-	libusb_context *mLibusbContext;
-	SoundplaneDriverListener *mListener;
-	unsigned char mCurrentCarriers[kSoundplaneSensorWidth];
+	void grabThread();
+
+	libusb_context				*mLibusbContext = nullptr;
+	SoundplaneDriverListener	*mListener;
+	unsigned char				mCurrentCarriers[kSoundplaneSensorWidth];
+
+	std::thread					mGrabThread;
 };
 
 #endif // __SOUNDPLANE_DRIVER_LIBUSB__
