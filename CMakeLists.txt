@@ -17,16 +17,7 @@ if(NOT SP_MADRONALIB_DIR)
 endif()
 
 add_subdirectory(${SP_MADRONALIB_DIR})
-
-set(SP_DRIVER_SOURCES
-  SoundplaneLib/SoundplaneDriver.cpp
-  SoundplaneLib/SoundplaneDriver.h
-  SoundplaneLib/SoundplaneModelA.h
-  )
-add_library(soundplane_driver ${SP_DRIVER_SOURCES})
-target_link_libraries(soundplane_driver portaudio)
-target_link_libraries(soundplane_driver "-framework IOKit")
-target_include_directories(soundplane_driver PUBLIC SoundplaneLib)
+add_subdirectory(SoundplaneLib)
 
 set(SP_SOURCES
   Data/SoundplaneBinaryData/SoundplaneBinaryData.cpp
@@ -88,7 +79,7 @@ set_target_properties(Soundplane
   MACOSX_BUNDLE_BUNDLE_NAME "Soundplane"
   )
 target_link_libraries(Soundplane madronalib)
-target_link_libraries(Soundplane soundplane_driver)
+target_link_libraries(Soundplane soundplanelib)
 target_include_directories(Soundplane PRIVATE "${ML_JUCE_DIR}")
 target_include_directories(Soundplane PRIVATE Data/SoundplaneBinaryData)
 
