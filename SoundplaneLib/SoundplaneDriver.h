@@ -7,6 +7,7 @@
 #define __SOUNDPLANE_DRIVER__
 
 #include <memory>
+#include <string>
 
 #include <CoreFoundation/CoreFoundation.h>
 
@@ -60,6 +61,9 @@ class SoundplaneDriver
 public:
 	virtual ~SoundplaneDriver() = default;
 
+	/**
+	 * Returns the number of elements read.
+	 */
 	virtual int readSurface(float* pDest) = 0;
 	virtual void flushOutputBuffer() = 0;
 	virtual MLSoundplaneState getDeviceState() const = 0;
@@ -88,6 +92,8 @@ public:
 	/**
 	 * Create a SoundplaneDriver object that is appropriate for the current
 	 * platform.
+   *
+   * listener may be nullptr.
 	 */
 	static std::unique_ptr<SoundplaneDriver> create(SoundplaneDriverListener *listener);
 

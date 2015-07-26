@@ -1,4 +1,3 @@
-
 // SoundplaneDriver.cpp
 //
 // Returns raw data frames from the Soundplane.  The frames are reclocked if needed (TODO)
