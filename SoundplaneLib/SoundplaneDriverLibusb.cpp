@@ -65,12 +65,13 @@ MLSoundplaneState SoundplaneDriverLibusb::getDeviceState() const
 
 UInt16 SoundplaneDriverLibusb::getFirmwareVersion() const
 {
-	return 0;
+	return mFirmwareVersion.load(std::memory_order_acquire);
 }
 
 std::string SoundplaneDriverLibusb::getSerialNumberString() const
 {
-	return "";
+	const std::array<unsigned char, 64> serialNumber = mSerialNumber.load();
+	return std::string(reinterpret_cast<const char *>(serialNumber.data()));
 }
 
 const unsigned char *SoundplaneDriverLibusb::getCarriers() const {
@@ -85,14 +86,14 @@ int SoundplaneDriverLibusb::enableCarriers(unsigned long mask) {
 	return 0;
 }
 
-bool SoundplaneDriverLibusb::processThreadWait(int ms)
+bool SoundplaneDriverLibusb::processThreadWait(int ms) const
 {
 	std::unique_lock<std::mutex> lock(mMutex);
 	mCondition.wait_for(lock, std::chrono::milliseconds(ms));
 	return mQuitting.load(std::memory_order_acquire);
 }
 
-bool SoundplaneDriverLibusb::processThreadOpenDevice(LibusbClaimedDevice &outDevice)
+bool SoundplaneDriverLibusb::processThreadOpenDevice(LibusbClaimedDevice &outDevice) const
 {
 	for (;;)
 	{
@@ -111,13 +112,41 @@ bool SoundplaneDriverLibusb::processThreadOpenDevice(LibusbClaimedDevice &outDev
 	}
 }
 
+bool SoundplaneDriverLibusb::processThreadGetDeviceInfo(libusb_device_handle *device)
+{
+	libusb_device_descriptor descriptor;
+	if (libusb_get_device_descriptor(libusb_get_device(device), &descriptor) < 0) {
+		fprintf(stderr, "Failed to get the device descriptor\n");
+		return false;
+	}
+
+	std::array<unsigned char, 64> buffer;
+	int len = libusb_get_string_descriptor_ascii(device, descriptor.iSerialNumber, buffer.data(), buffer.size());
+	if (len < 0) {
+		fprintf(stderr, "Failed to get the device serial number\n");
+		return false;
+	}
+	buffer[len] = 0;
+
+	mFirmwareVersion.store(descriptor.bcdDevice, std::memory_order_release);
+	mSerialNumber = buffer;
+
+	return true;
+}
+
 void SoundplaneDriverLibusb::processThread() {
 	// Each iteration of this loop is one cycle of finding a Soundplane device,
 	// using it, and the device going away.
-	for (;;)
+	while (!mQuitting.load(std::memory_order_acquire))
 	{
+		/// Open and claim the device
 		LibusbClaimedDevice handle;
 		if (processThreadOpenDevice(handle)) return;
+
+		/// Retrieve firmware version and serial number
+		if (!processThreadGetDeviceInfo(handle.get())) {
+			continue;
+		}
 
 		printf("Handle: %p\n", handle.get());
 		mState.store(kDeviceConnected, std::memory_order_release);

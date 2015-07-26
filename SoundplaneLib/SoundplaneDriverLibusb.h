@@ -6,6 +6,7 @@
 #ifndef __SOUNDPLANE_DRIVER_LIBUSB__
 #define __SOUNDPLANE_DRIVER_LIBUSB__
 
+#include <array>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -151,12 +152,18 @@ private:
 	 *
 	 * May spuriously wait for a shorter than the specified time.
 	 */
-	bool processThreadWait(int ms);
+	bool processThreadWait(int ms) const;
 	/**
 	 * Returns true if the process thread should quit.
 	 */
-	bool processThreadOpenDevice(LibusbClaimedDevice &outDevice);
-	void processThreadCloseDevice();
+	bool processThreadOpenDevice(LibusbClaimedDevice &outDevice) const;
+	/**
+	 * Sets mFirmwareVersion and mSerialNumber as a side effect, but only
+	 * if the whole operation succeeds.
+	 *
+	 * Returns false if getting the device info failed.
+	 */
+	bool processThreadGetDeviceInfo(libusb_device_handle *device);
 	void processThread();
 
 	/**
@@ -166,13 +173,16 @@ private:
 	 */
 	std::atomic<MLSoundplaneState> mState;
 	/**
-	 * mQuitting can be set to true by anyone, and is read by the processing
+	 * mQuitting is set to true by the destructor, and is read by the processing
 	 * thread and getDeviceState in order to know if the driver is quitting.
 	 */
 	std::atomic<bool> mQuitting;
 
-	std::mutex mMutex;  // Used with mCondition
-	std::condition_variable mCondition;  // Used to wake up the process thread
+	std::atomic<UInt16> mFirmwareVersion;
+	std::atomic<std::array<unsigned char, 64>> mSerialNumber;
+
+	mutable std::mutex mMutex;  // Used with mCondition
+	mutable std::condition_variable mCondition;  // Used to wake up the process thread
 
 	libusb_context				*mLibusbContext = nullptr;
 	SoundplaneDriverListener	*mListener;

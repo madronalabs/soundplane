@@ -69,14 +69,14 @@ public:
 	virtual MLSoundplaneState getDeviceState() const = 0;
 
 	/**
-	 * Returns the firmware version of the connected Soundplane device. Returns 0
-	 * if getDeviceState() == kNoDevice
+	 * Returns the firmware version of the connected Soundplane device. The
+	 * return value is undefined if getDeviceState() == kNoDevice
 	 */
 	virtual UInt16 getFirmwareVersion() const = 0;
 
 	/**
-	 * Returns the serial number of the connected Soundplane device. Returns 0
-	 * if getDeviceState() == kNoDevice
+	 * Returns the serial number of the connected Soundplane device. The return
+	 * value is undefined if getDeviceState() == kNoDevice
 	 */
 	virtual std::string getSerialNumberString() const = 0;
 
