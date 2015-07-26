@@ -22,11 +22,6 @@
 
 #define printBCD(bcd) printf("%hhx.%hhx.%hhx\n", bcd >> 8, 0x0f & bcd >> 4, 0x0f & bcd)
 
-int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
-void show_io_err(const char *msg, IOReturn err);
-void show_kern_err(const char *msg, kern_return_t kr);
-const char *io_err_string(IOReturn err);
-
 namespace {
 
 UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f)
@@ -40,6 +35,57 @@ void setSequenceNumber(K1IsocTransaction* t, int f, UInt16 s)
 {
 	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
 	p[f].seqNum = s;
+}
+
+// --------------------------------------------------------------------------------
+#pragma mark error handling
+
+// REVIEW: IOKit has documentation on handling errors
+const char *io_err_string(IOReturn err)
+{
+	static char other[32];
+
+	switch (err)
+	{
+		case kIOReturnSuccess:
+			break;
+		case KERN_INVALID_ADDRESS:
+			return "Specified address is not currently valid";
+		case KERN_PROTECTION_FAILURE:
+			return "Specified memory is valid, but does not permit the required forms of access";
+		case kIOReturnNoDevice:
+			return "no such device";
+		case kIOReturnAborted:
+			return "operation aborted";
+		case kIOReturnUnderrun:
+			return "data underrun";
+		case kIOReturnNoBandwidth:
+			return "No Bandwidth: bus bandwidth would be exceeded";
+		case kIOReturnIsoTooOld:
+			return "isochronous I/O request for distant past!";
+		case kIOUSBNotSent2Err:
+			return "USB: Transaction not sent";
+		case kIOUSBTransactionTimeout:
+			return "USB: Transaction timed out";
+		case kIOUSBPipeStalled:
+			return "Pipe has stalled, error needs to be cleared";
+		case kIOUSBLowLatencyFrameListNotPreviouslyAllocated:
+			return "Attempted to use user land low latency isoc calls w/out calling PrepareBuffer (on the frame list) first";
+		default:
+			sprintf(other, "result %#x", err);
+			return other;
+	}
+	return NULL;
+}
+
+void show_io_err(const char *msg, IOReturn err)
+{
+	fprintf(stderr, "%s (%08x) %s\n", msg, err, io_err_string(err));
+}
+
+void show_kern_err(const char *msg, kern_return_t kr)
+{
+	fprintf(stderr, "%s (%08x)\n", msg, kr);
 }
 
 }
@@ -1523,7 +1569,7 @@ void SoundplaneDriver::processThread()
 // -------------------------------------------------------------------------------
 #pragma mark transfer utilities
 
-int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang)
+int SoundplaneDriver::GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang)
 {
     IOUSBDevRequest req;
     UInt8 		desc[256]; // Max possible descriptor length
@@ -1610,55 +1656,3 @@ void SoundplaneDriver::dumpTransactions(int bufferIndex, int frameIndex)
 		printf("\n");
 	}
 }
-
-// --------------------------------------------------------------------------------
-#pragma mark error handling
-
-// REVIEW: IOKit has documentation on handling errors
-const char *io_err_string(IOReturn err)
-{
-	static char other[32];
-
-	switch (err)
-	{
-		case kIOReturnSuccess:
-			break;
-		case KERN_INVALID_ADDRESS:
-			return "Specified address is not currently valid";
-		case KERN_PROTECTION_FAILURE:
-			return "Specified memory is valid, but does not permit the required forms of access";
-		case kIOReturnNoDevice:
-			return "no such device";
-		case kIOReturnAborted:
-			return "operation aborted";
-		case kIOReturnUnderrun:
-			return "data underrun";
-		case kIOReturnNoBandwidth:
-			return "No Bandwidth: bus bandwidth would be exceeded";
-		case kIOReturnIsoTooOld:
-			return "isochronous I/O request for distant past!";
-		case kIOUSBNotSent2Err:
-			return "USB: Transaction not sent";
-		case kIOUSBTransactionTimeout:
-			return "USB: Transaction timed out";
-		case kIOUSBPipeStalled:
-			return "Pipe has stalled, error needs to be cleared";
-		case kIOUSBLowLatencyFrameListNotPreviouslyAllocated:
-			return "Attempted to use user land low latency isoc calls w/out calling PrepareBuffer (on the frame list) first";
-		default:
-			sprintf(other, "result %#x", err);
-			return other;
-	}
-	return NULL;
-}
-
-void show_io_err(const char *msg, IOReturn err)
-{
-	fprintf(stderr, "%s (%08x) %s\n", msg, err, io_err_string(err));
-}
-
-void show_kern_err(const char *msg, kern_return_t kr)
-{
-	fprintf(stderr, "%s (%08x)\n", msg, kr);
-}
-

@@ -128,7 +128,6 @@ private:
 
 	IOReturn setBusFrameNumber();
 	IOReturn scheduleIsoch(K1IsocTransaction *t);
-	void dumpTransactions(int bufferIndex, int frameIndex);
 
 	// these fns in global namespace need to set the device state.
 	//
@@ -149,6 +148,9 @@ private:
 	void reportDeviceError(int errCode, int d1, int d2, float df1, float df2);
 	void dumpDeviceData(float* pData, int size);
 	void removeDevice();
+
+	static int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
+	void dumpTransactions(int bufferIndex, int frameIndex);
 
 	std::atomic<MLSoundplaneState> mState;
 	char mDescStr[256]; // max descriptor length.
