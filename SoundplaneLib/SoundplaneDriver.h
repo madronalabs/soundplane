@@ -186,7 +186,7 @@ public:
 	K1IsocTransaction			transactionData[kSoundplaneANumEndpoints * kSoundplaneABuffers];
 	UInt8						payloadIndex[kSoundplaneANumEndpoints];
 
-	inline K1IsocTransaction* getTransactionData(int endpoint, int buf) { return transactionData + kSoundplaneABuffers*endpoint + buf; }
+	K1IsocTransaction* getTransactionData(int endpoint, int buf) { return transactionData + kSoundplaneABuffers*endpoint + buf; }
 
 	UInt16 getFirmwareVersion();
 	int getSerialNumberString(char* destStr, int maxLen);
