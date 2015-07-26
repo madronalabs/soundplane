@@ -244,14 +244,12 @@ void SoundplaneDriver::reclockFrameToBuffer(float* pFrame)
 
 MLSoundplaneState SoundplaneDriver::getDeviceState()
 {
-	PaUtil_ReadMemoryBarrier();
-	return mState;
+	return mState.load(std::memory_order_acquire);
 }
 
 void SoundplaneDriver::setDeviceState(MLSoundplaneState n)
 {
-	PaUtil_WriteMemoryBarrier();
-	mState = n;
+	mState.store(n, std::memory_order_release);
 	for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
 	{
 		(*it)->deviceStateChanged(n);
@@ -260,7 +258,6 @@ void SoundplaneDriver::setDeviceState(MLSoundplaneState n)
 
 void SoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
 {
-	PaUtil_WriteMemoryBarrier();
 	for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
 	{
 		(*it)->handleDeviceError(errCode, d1, d2, df1, df2);
@@ -269,7 +266,6 @@ void SoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1,
 
 void SoundplaneDriver::dumpDeviceData(float* pData, int size)
 {
-	PaUtil_WriteMemoryBarrier();
 	for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
 	{
 		(*it)->handleDeviceDataDump(pData, size);

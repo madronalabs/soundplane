@@ -131,8 +131,31 @@ class SoundplaneDriverListener
 public:
 	SoundplaneDriverListener() {}
 	virtual ~SoundplaneDriverListener() {}
+
+	/**
+	 * This callback may be invoked from an arbitrary thread, even from an
+	 * interrupt context, so be careful! However, when s is
+	 * kDeviceIsTerminating, the callback is never invoked from an interrupt
+	 * context, so in that particular case it is safe to block.
+	 *
+	 * For each state change, there will be exactly one deviceStateChanged
+	 * invocation. However, these calls may arrive simultaneously or out of
+	 * order, so be careful!
+	 *
+	 * Please note that by the time the callback is invoked with a given state
+	 * s, the SoundplaneDriver might already have moved to another state, so
+	 * it might be that s != driver->getDeviceState().
+	 */
 	virtual void deviceStateChanged(MLSoundplaneState s) = 0;
+	/**
+	 * This callback may be invoked from an arbitrary thread, but is never
+	 * invoked in an interrupt context.
+	 */
 	virtual void handleDeviceError(int errorType, int di1, int di2, float df1, float df2) = 0;
+	/**
+	 * This callback may be invoked from an arbitrary thread, but is never
+	 * invoked in an interrupt context.
+	 */
 	virtual void handleDeviceDataDump(float* pData, int size) = 0;
 };
 
@@ -161,7 +184,11 @@ public:
 	~SoundplaneDriver();
 
 	void init();
+
+private:
 	void shutdown();
+
+public:
 	int getSerialNumber();
 	int readSurface(float* pDest);
 	void flushOutputBuffer();
@@ -219,7 +246,7 @@ private:
 	void dumpDeviceData(float* pData, int size);
 	void removeDevice();
 
-	MLSoundplaneState mState;
+	std::atomic<MLSoundplaneState> mState;
 	char mDescStr[256]; // max descriptor length.
 	char mSerialString[64]; // scratch string
 	unsigned char mCurrentCarriers[kSoundplaneSensorWidth];
