@@ -77,16 +77,19 @@ std::string SoundplaneDriverLibusb::getSerialNumberString() const
 
 const unsigned char *SoundplaneDriverLibusb::getCarriers() const
 {
+	// FIXME: Not implemented
 	return mCurrentCarriers;
 }
 
 int SoundplaneDriverLibusb::setCarriers(const unsigned char *carriers)
 {
+	// FIXME: Not implemented
 	return 0;
 }
 
 int SoundplaneDriverLibusb::enableCarriers(unsigned long mask)
 {
+	// FIXME: Not implemented
 	return 0;
 }
 
