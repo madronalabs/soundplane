@@ -6,6 +6,8 @@
 #ifndef __SOUNDPLANE_DRIVER_LIBUSB__
 #define __SOUNDPLANE_DRIVER_LIBUSB__
 
+#include <libusb.h>
+
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
 
