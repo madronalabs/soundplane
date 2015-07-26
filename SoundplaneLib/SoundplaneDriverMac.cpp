@@ -736,7 +736,7 @@ void SoundplaneDriverMac::removeDevice()
 //
 void SoundplaneDriverMac::deviceAdded(void *refCon, io_iterator_t iterator)
 {
-	SoundplaneDriverMac			*k1 = (SoundplaneDriverMac *)refCon;
+	SoundplaneDriverMac			*k1 = static_cast<SoundplaneDriverMac *>(refCon);
 	kern_return_t				kr;
 	IOReturn					err;
 	io_service_t				usbDeviceRef;
@@ -1025,7 +1025,7 @@ release:
 //
 void SoundplaneDriverMac::deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument)
 {
-	SoundplaneDriverMac *k1 = (SoundplaneDriverMac *)refCon;
+	SoundplaneDriverMac *k1 = static_cast<SoundplaneDriverMac *>(refCon);
 
 	if (kIOMessageServiceIsTerminated == messageType)
 	{
