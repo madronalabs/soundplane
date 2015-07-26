@@ -22,7 +22,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <list>
-#include "pa_memorybarrier.h"
 #include "pa_ringbuffer.h"
 
 // Soundplane data format:

@@ -5,6 +5,8 @@
 
 #include "SoundplaneModel.h"
 
+#include "pa_memorybarrier.h"
+
 static const std::string kOSCDefaultStr("localhost:3123 (default)");
 const char *kUDPType      =   "_osc._udp";
 const char *kLocalDotDomain   =   "local.";
