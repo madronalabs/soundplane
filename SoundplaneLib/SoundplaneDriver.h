@@ -194,7 +194,7 @@ public:
 	int getSerialNumber();
 	int readSurface(float* pDest);
 	void flushOutputBuffer();
-	float carrierToFrequency(int carrier);
+	static float carrierToFrequency(int carrier);
 	int setCarriers(const unsigned char *carriers);
 	int enableCarriers(unsigned long mask);
 	void setDefaultCarriers();
@@ -223,10 +223,10 @@ public:
 
 	MLSoundplaneState getDeviceState();
 
+private:
 	int mTransactionsInFlight;
 	int startupCtr;
 
-private:
 	void grabThread();
 	void processThread();
 

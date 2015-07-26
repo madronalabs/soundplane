@@ -1339,7 +1339,7 @@ void SoundplaneModel::dumpCarriers()
 	for(int i=0; i<kSoundplaneSensorWidth; ++i)
 	{
 		int c = mCarriers[i];
-		debug() << i << ": " << c << " ["<< mpDriver->carrierToFrequency(c) << "Hz] \n";
+		debug() << i << ": " << c << " ["<< SoundplaneDriver::carrierToFrequency(c) << "Hz] \n";
 	}
 }
 
@@ -1522,7 +1522,7 @@ void SoundplaneModel::nextSelectCarriersStep()
 	{
 		noiseSum = 0;
 		int carrier = mCarriers[col];
-		float cFreq = mpDriver->carrierToFrequency(carrier);
+		float cFreq = SoundplaneDriver::carrierToFrequency(carrier);
 
 		for(int row=0; row<kSoundplaneHeight; ++row)
 		{
