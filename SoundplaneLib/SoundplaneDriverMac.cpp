@@ -494,21 +494,6 @@ void SoundplaneDriverMac::addOffset(int& buffer, int& frame, int offset)
 	}
 }
 
-UInt16 SoundplaneDriverMac::getTransferBytesRequested(int endpoint, int buffer, int frame, int offset)
-{
-	if(getDeviceState() < kDeviceConnected) return 0;
-	UInt16 b = 0;
-	addOffset(buffer, frame, offset);
-	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-
-	if (t)
-	{
-		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
-		b = pf->frReqCount;
-	}
-	return b;
-}
-
 UInt16 SoundplaneDriverMac::getTransferBytesReceived(int endpoint, int buffer, int frame, int offset)
 {
 	if(getDeviceState() < kDeviceConnected) return 0;

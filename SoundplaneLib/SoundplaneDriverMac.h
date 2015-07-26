@@ -64,7 +64,6 @@ private:
 	static void isochComplete(void *refCon, IOReturn result, void *arg0);
 
 	void addOffset(int& buffer, int& frame, int offset);
-	UInt16 getTransferBytesRequested(int endpoint, int buffer, int frame, int offset = 0);
 	UInt16 getTransferBytesReceived(int endpoint, int buffer, int frame, int offset = 0);
 	AbsoluteTime getTransferTimeStamp(int endpoint, int buffer, int frame, int offset = 0);
 	IOReturn getTransferStatus(int endpoint, int buffer, int frame, int offset = 0);
