@@ -159,8 +159,19 @@ private:
 	void processThreadCloseDevice();
 	void processThread();
 
-	bool mQuitting = false;
-	std::mutex mMutex;  // Used with mCondition and protects mQuitting
+	/**
+	 * mState is set only by the processThread. Because the processThread never
+	 * decides to quit, the outward facing state of the driver is
+	 * kDeviceIsTerminating if mQuitting is true.
+	 */
+	std::atomic<MLSoundplaneState> mState;
+	/**
+	 * mQuitting can be set to true by anyone, and is read by the processing
+	 * thread and getDeviceState in order to know if the driver is quitting.
+	 */
+	std::atomic<bool> mQuitting;
+
+	std::mutex mMutex;  // Used with mCondition
 	std::condition_variable mCondition;  // Used to wake up the process thread
 
 	libusb_context				*mLibusbContext = nullptr;
@@ -168,8 +179,6 @@ private:
 	unsigned char				mCurrentCarriers[kSoundplaneSensorWidth];
 
 	std::thread					mProcessThread;
-
-	std::atomic<MLSoundplaneState> mState;
 };
 
 #endif // __SOUNDPLANE_DRIVER_LIBUSB__

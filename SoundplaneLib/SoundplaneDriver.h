@@ -15,12 +15,12 @@
 //
 typedef enum
 {
-  kNoDevice = 0,
-  kDeviceConnected = 1,
-  kDeviceHasIsochSync = 2,
-  kDeviceIsTerminating = 3,
-  kDeviceSuspend = 4,
-  kDeviceResume = 5
+  kNoDevice = 0,  // No device has been found yet
+  kDeviceConnected = 1,  // A device has been found, but isochronous transfer isn't yet up
+  kDeviceHasIsochSync = 2,  // The main mode
+  kDeviceIsTerminating = 3,  // The driver is shutting down
+  kDeviceSuspend = 4,  // Seems to be unused (?)
+  kDeviceResume = 5  // Seems to be unused (?)
 } MLSoundplaneState;
 
 class SoundplaneDriverListener

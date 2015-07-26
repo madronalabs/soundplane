@@ -22,17 +22,16 @@ std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListe
 
 
 SoundplaneDriverLibusb::SoundplaneDriverLibusb(SoundplaneDriverListener* listener) :
-    mListener(listener),
-    mState(kNoDevice)
+    mState(kNoDevice),
+    mQuitting(false),
+    mListener(listener)
 {
 }
 
 SoundplaneDriverLibusb::~SoundplaneDriverLibusb()
 {
-	{
-		std::unique_lock<std::mutex> lock(mMutex);
-		mQuitting = true;
-	}
+	// This causes getDeviceState to return kDeviceIsTerminating
+	mQuitting.store(true, std::memory_order_release);
 	mCondition.notify_one();
 	mProcessThread.join();
 	libusb_exit(mLibusbContext);
@@ -59,7 +58,9 @@ void SoundplaneDriverLibusb::flushOutputBuffer()
 
 MLSoundplaneState SoundplaneDriverLibusb::getDeviceState() const
 {
-	return mState.load(std::memory_order_acquire);
+	return mQuitting.load(std::memory_order_acquire) ?
+		kDeviceIsTerminating :
+		mState.load(std::memory_order_acquire);
 }
 
 UInt16 SoundplaneDriverLibusb::getFirmwareVersion() const
@@ -88,7 +89,7 @@ bool SoundplaneDriverLibusb::processThreadWait(int ms)
 {
 	std::unique_lock<std::mutex> lock(mMutex);
 	mCondition.wait_for(lock, std::chrono::milliseconds(ms));
-	return mQuitting;
+	return mQuitting.load(std::memory_order_acquire);
 }
 
 bool SoundplaneDriverLibusb::processThreadOpenDevice(LibusbClaimedDevice &outDevice)
@@ -111,6 +112,8 @@ bool SoundplaneDriverLibusb::processThreadOpenDevice(LibusbClaimedDevice &outDev
 }
 
 void SoundplaneDriverLibusb::processThread() {
+	// Each iteration of this loop is one cycle of finding a Soundplane device,
+	// using it, and the device going away.
 	for (;;)
 	{
 		LibusbClaimedDevice handle;
