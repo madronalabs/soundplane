@@ -24,14 +24,14 @@
 #include "pa_ringbuffer.h"
 
 // Soundplane data format:
-// The Soundplane Model A sends frames of data over USB using an isochronous interface with two endpoints. 
+// The Soundplane Model A sends frames of data over USB using an isochronous interface with two endpoints.
 // Each endpoint carries the data for one of the two sensor boards in the Soundplane. There is a left sensor board, endpoint 0,
 // and a right sensor board, endpoint 1.  Each sensor board has 8 pickups (horizontal) and 32 carriers (vertical)
-// for a total of 256 taxels of data. 
-// 
+// for a total of 256 taxels of data.
+//
 // The data is generated from FFTs run on the DSP inside the Soundplane. The sampling rate is 125000 Hz, which is created by
 // the Soundplane processor’s internal clock dividing a 12 mHz crystal clock by 96. An FFT is performed every 128 samples
-// to make data blocks for each endpoint at a post-FFT rate of 976.5625 Hz. 
+// to make data blocks for each endpoint at a post-FFT rate of 976.5625 Hz.
 //
 // Each data block for a surface contains 256 12-bit taxels packed into 192 16-bit words, followed by one 16-bit
 // sequence number for a total of 388 bytes. The taxel data are packed as follows:
@@ -39,11 +39,11 @@
 // 12 bits taxel 2 [HHHHMMMMLLLL]
 // 24 bits combined in three bytes: [mmmmllll LLLLhhhh HHHHMMMM]
 //
-// The packed data are followed by a 16-bit sequence number.  
+// The packed data are followed by a 16-bit sequence number.
 // Two bytes of padding are also present in the data packet. A full packet is always requested, and the
 // Soundplane hardware returns either 0, or the data minus the padding. The padding is needed because for some
 // arcane reason the data sent should be less than the negotiated size. So the negotiated size includes the
-// padding (388 bytes) while 386 bytes are typically received in any transaction. 
+// padding (388 bytes) while 386 bytes are typically received in any transaction.
 
 // Soundplane A hardware
 const int kSoundplaneASampleRate = 125000;
@@ -123,7 +123,7 @@ typedef enum
 } MLSoundplaneErrorType;
 
 void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest);
-	
+
 class SoundplaneDriverListener
 {
 public:
@@ -148,7 +148,7 @@ typedef struct
 	IOUSBLowLatencyIsocFrame	*isocFrames;
 	unsigned char				*payloads;
 	UInt8						endpointNum;
-	UInt8						endpointIndex; 
+	UInt8						endpointIndex;
 	UInt8						bufIndex;
 } K1IsocTransaction;
 
@@ -157,7 +157,7 @@ class SoundplaneDriver
 public:
 	SoundplaneDriver();
 	~SoundplaneDriver();
-	
+
 	void init();
 	void shutdown();
 	int getSerialNumber();
@@ -179,7 +179,7 @@ public:
 
 	IOUSBDeviceInterface187		**dev;
 	IOUSBInterfaceInterface192	**intf;
-	
+
 	UInt64						busFrameNumber[kSoundplaneANumEndpoints];
 	K1IsocTransaction*			mpTransactionData;
 	UInt8						payloadIndex[kSoundplaneANumEndpoints];
@@ -190,11 +190,11 @@ public:
 	int getSerialNumberString(char* destStr, int maxLen);
 
 	MLSoundplaneState getDeviceState();
-	
+
 	void addListener(SoundplaneDriverListener* pL) { mListeners.push_back(pL); }
 	int mTransactionsInFlight;
 	int startupCtr;
-	
+
 private:
 	// these fns in global namespace need to set the device state.
 	//
@@ -216,25 +216,25 @@ private:
 	void reportDeviceError(int errCode, int d1, int d2, float df1, float df2);
 	void dumpDeviceData(float* pData, int size);
 	void removeDevice();
-	
+
 	MLSoundplaneState mState;
 	char mDescStr[256]; // max descriptor length.
 	char mSerialString[64]; // scratch string
 	unsigned char mCurrentCarriers[kSoundplaneSensorWidth];
 	float * mpOutputData;
-	PaUtilRingBuffer mOutputBuf;	
+	PaUtilRingBuffer mOutputBuf;
 	std::list<SoundplaneDriverListener*> mListeners;
 };
 
-inline UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f) 
-{ 
+inline UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f)
+{
 	if (!t->payloads) return 0;
 	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
-	return p[f].seqNum; 
+	return p[f].seqNum;
 }
 
-inline void setSequenceNumber(K1IsocTransaction* t, int f, UInt16 s) 
-{ 
+inline void setSequenceNumber(K1IsocTransaction* t, int f, UInt16 s)
+{
 	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
 	p[f].seqNum = s;
 }
