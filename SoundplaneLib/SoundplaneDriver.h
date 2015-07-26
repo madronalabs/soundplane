@@ -255,7 +255,7 @@ private:
 	PaUtilRingBuffer mOutputBuf;
 
 	// mListener may be nullptr
-	SoundplaneDriverListener* mListener;
+	SoundplaneDriverListener* const mListener;
 };
 
 inline UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f)

@@ -55,7 +55,8 @@ SoundplaneDriver::SoundplaneDriver(SoundplaneDriverListener* listener) :
 	intf(0),
 	mTransactionsInFlight(0),
 	mState(kNoDevice),
-	startupCtr(0)
+	startupCtr(0),
+	mListener(listener)
 {
 	clientRef = 0;
 
@@ -72,8 +73,6 @@ SoundplaneDriver::SoundplaneDriver(SoundplaneDriverListener* listener) :
 	{
 		mCurrentCarriers[i] = kDefaultCarriers[i];
 	}
-
-	mListener = listener;
 }
 
 SoundplaneDriver::~SoundplaneDriver()
@@ -1249,7 +1248,7 @@ void *soundplaneGrabThread(void *arg)
 // This thread is responsible for collecting all data from the Soundplane. The routines isochComplete()
 // and scheduleIsoch() combine to keep data running into the transfer buffers in round-robin fashion.
 // This thread looks at those buffers and attempts to stay in sync with incoming data, first
-// bu finding the most recent transfer to start from, then watching as transfers are filled in
+// by finding the most recent transfer to start from, then watching as transfers are filled in
 // with successive sequence numbers. When a matching pair of endpoints is found, reclockFrameToBuffer()
 // is called to send the data to any listeners.
 //
