@@ -42,6 +42,23 @@ const unsigned char kDefaultCarriers[kSoundplaneSensorWidth] =
 	28, 29, 30, 31, 33, 34
 };
 
+namespace {
+
+UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f)
+{
+	if (!t->payloads) return 0;
+	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
+	return p[f].seqNum;
+}
+
+void setSequenceNumber(K1IsocTransaction* t, int f, UInt16 s)
+{
+	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
+	p[f].seqNum = s;
+}
+
+}
+
 // -------------------------------------------------------------------------------
 #pragma mark SoundplaneDriver
 

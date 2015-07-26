@@ -78,7 +78,6 @@ const int kSoundplaneABuffersInFlight = 4;
 const int kSoundplaneANumIsochFrames = 20;
 const int kSoundplaneOutputBufFrames = 128;
 const int kSoundplaneStartupFrames = 50;
-extern const unsigned char kDefaultCarriers[kSoundplaneSensorWidth];
 
 // isoc frame data update rate in ms. see LowLatencyReadIsochPipeAsync docs in IOUSBLib.h.
 const int kSoundplaneAUpdateFrequency = 1;
@@ -261,19 +260,6 @@ private:
 	// mListener may be nullptr
 	SoundplaneDriverListener* const mListener;
 };
-
-inline UInt16 getTransactionSequenceNumber(K1IsocTransaction* t, int f)
-{
-	if (!t->payloads) return 0;
-	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
-	return p[f].seqNum;
-}
-
-inline void setSequenceNumber(K1IsocTransaction* t, int f, UInt16 s)
-{
-	SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
-	p[f].seqNum = s;
-}
 
 void setThreadPriority(pthread_t inThread, UInt32 inPriority, Boolean inIsFixed);
 
