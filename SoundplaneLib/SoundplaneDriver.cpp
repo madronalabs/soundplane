@@ -30,7 +30,6 @@ int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *de
 void show_io_err(const char *msg, IOReturn err);
 void show_kern_err(const char *msg, kern_return_t kr);
 const char *io_err_string(IOReturn err);
-void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
 
 // default carriers.  avoiding 32 (always bad)
 // in use these should be overridden by the selected carriers.
@@ -610,8 +609,6 @@ number has already passed. This is normal.
 // --------------------------------------------------------------------------------
 #pragma mark isochronous data
 
-void isochComplete(void *refCon, IOReturn result, void *arg0);
-
 // Schedule an isochronous transfer. LowLatencyReadIsochPipeAsync() is used for all transfers
 // to get the lowest possible latency. In order to complete, the transfer should be scheduled for a
 // time in the future, but as soon as possible for low latency.
@@ -662,7 +659,7 @@ IOReturn SoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
 // Since this is called at main interrupt time, it must return as quickly as possible.
 // It is only responsible for scheduling the next transfer into the next transaction buffer.
 //
-void isochComplete(void *refCon, IOReturn result, void *arg0)
+void SoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg0)
 {
 	IOReturn err;
 
@@ -817,7 +814,7 @@ IOReturn SoundplaneDriver::setBusFrameNumber()
 
 // deviceAdded() is called by the callback set up in the grab thread when a new Soundplane device is found.
 //
-void deviceAdded(void *refCon, io_iterator_t iterator)
+void SoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 {
 	SoundplaneDriver			*k1 = (SoundplaneDriver *)refCon;
 	kern_return_t				kr;
@@ -1106,7 +1103,7 @@ release:
 
 // if device is unplugged, remove device and go back to waiting.
 //
-void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument)
+void SoundplaneDriver::deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument)
 {
 	SoundplaneDriver *k1 = (SoundplaneDriver *)refCon;
 

@@ -158,9 +158,6 @@ public:
 	virtual void handleDeviceDataDump(float* pData, int size) = 0;
 };
 
-void * soundplaneProcessThread(void *arg);
-void deviceAdded(void *refCon, io_iterator_t iterator);
-void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
 void isochComplete(void *refCon, IOReturn result, void *arg0);
 
 class SoundplaneDriver;
@@ -236,10 +233,9 @@ private:
 
 	// these fns in global namespace need to set the device state.
 	//
-	friend void * ::soundplaneProcessThread(void *arg);
-	friend void ::deviceAdded(void *refCon, io_iterator_t iterator);
-	friend void ::deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
-	friend void ::isochComplete(void *refCon, IOReturn result, void *arg0);
+	static void deviceAdded(void *refCon, io_iterator_t iterator);
+	static void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
+	static void isochComplete(void *refCon, IOReturn result, void *arg0);
 
 	void addOffset(int& buffer, int& frame, int offset);
 	UInt16 getTransferBytesRequested(int endpoint, int buffer, int frame, int offset = 0);
