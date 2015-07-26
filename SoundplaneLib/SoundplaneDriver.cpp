@@ -250,26 +250,23 @@ MLSoundplaneState SoundplaneDriver::getDeviceState()
 void SoundplaneDriver::setDeviceState(MLSoundplaneState n)
 {
 	mState.store(n, std::memory_order_release);
-	for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
-	{
-		(*it)->deviceStateChanged(n);
-	}
+	forEachListener([=](SoundplaneDriverListener* listener) {
+		listener->deviceStateChanged(n);
+	});
 }
 
 void SoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
 {
-	for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
-	{
-		(*it)->handleDeviceError(errCode, d1, d2, df1, df2);
-	}
+	forEachListener([=](SoundplaneDriverListener* listener) {
+		listener->handleDeviceError(errCode, d1, d2, df1, df2);
+	});
 }
 
 void SoundplaneDriver::dumpDeviceData(float* pData, int size)
 {
-	for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
-	{
-		(*it)->handleDeviceDataDump(pData, size);
-	}
+	forEachListener([=](SoundplaneDriverListener* listener) {
+		listener->handleDeviceDataDump(pData, size);
+	});
 }
 
 // add a positive or negative offset to the current (buffer, frame) position.

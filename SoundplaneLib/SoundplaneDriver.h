@@ -225,6 +225,16 @@ public:
 	int startupCtr;
 
 private:
+	template<typename Block>
+	void forEachListener(Block block) {
+		// It is necessary for this method to be lock-free because it is
+		// sometimes called within an interrupt context.
+		for(std::list<SoundplaneDriverListener*>::iterator it = mListeners.begin(); it != mListeners.end(); ++it)
+		{
+			block(*it);
+		}
+	}
+
 	// these fns in global namespace need to set the device state.
 	//
 	friend void * ::soundplaneProcessThread(void *arg);
