@@ -148,6 +148,35 @@ private:
 	};
 
 	/**
+	 * An object that represents one USB transaction: It has a buffer and
+	 * a libusb_transfer*.
+	 */
+	template<int Packets>
+	class Transfer
+	{
+	public:
+		Transfer()
+		{
+			mTransfer = libusb_alloc_transfer(Packets);
+		}
+
+		~Transfer()
+		{
+			libusb_free_transfer(mTransfer);
+		}
+
+		libusb_transfer* get() const
+		{
+			return mTransfer;
+		}
+
+	private:
+		libusb_transfer* mTransfer;
+	};
+
+	using Transfers = std::array<std::array<Transfer<kSoundplaneANumIsochFrames>, kSoundplaneABuffers>, kSoundplaneANumEndpoints>;
+
+	/**
 	 * Inform the listener that the device state was updated to a new state.
 	 * May be called from any thread.
 	 */
@@ -177,6 +206,13 @@ private:
 	 * Returns true if the process thread should quit.
 	 */
 	bool processThreadSetDeviceState(MLSoundplaneState newState);
+	/**
+	 * Returns false if selecting the isochronous failed.
+	 */
+	bool processThreadSelectIsochronousInterface(libusb_device_handle *device) const;
+	void processThreadScheduleInitialTransfers(
+		const Transfers &transfers,
+		libusb_device_handle *device) const;
 	void processThread();
 
 	/**

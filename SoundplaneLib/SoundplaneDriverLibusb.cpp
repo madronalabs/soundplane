@@ -13,6 +13,8 @@
 
 #include <unistd.h>
 
+static constexpr int kInterfaceNumber = 0;
+
 std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListener *listener)
 {
     auto *driver = new SoundplaneDriverLibusb(listener);
@@ -113,7 +115,7 @@ bool SoundplaneDriverLibusb::processThreadOpenDevice(LibusbClaimedDevice &outDev
 	{
 		libusb_device_handle* handle = libusb_open_device_with_vid_pid(
 			mLibusbContext, kSoundplaneUSBVendor, kSoundplaneUSBProduct);
-		LibusbClaimedDevice result(LibusbDevice(handle), 0);
+		LibusbClaimedDevice result(LibusbDevice(handle), kInterfaceNumber);
 		if (result)
 		{
 			std::swap(result, outDevice);
@@ -170,6 +172,41 @@ bool SoundplaneDriverLibusb::processThreadSetDeviceState(MLSoundplaneState newSt
 	}
 }
 
+bool SoundplaneDriverLibusb::processThreadSelectIsochronousInterface(libusb_device_handle *device) const
+{
+	if (libusb_set_interface_alt_setting(device, kInterfaceNumber, kSoundplaneAlternateSetting) < 0) {
+		fprintf(stderr, "Failed to select alternate setting on the Soundplane\n");
+		return false;
+	}
+	return true;
+}
+
+void SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
+	const Transfers &transfers,
+	libusb_device_handle *device) const
+{
+	for (int endpoint = 0; endpoint < kSoundplaneANumEndpoints; endpoint++)
+	{
+		for (int buffer = 0; buffer < kSoundplaneABuffers; buffer++)
+		{
+			libusb_transfer *xfer = transfers[endpoint][buffer].get();
+			#if 0
+			libusb_fill_iso_transfer(
+				xfer,
+				device,
+				kSoundplaneAEndpointStartIdx + endpoint,
+				BUFFER,
+				BUFFER_LENGTH,
+				NUM_ISO_PACKETS,
+				CALLBACK,
+				USER_DATA,
+				TIMEOUT);
+			libusb_set_iso_packet_lengths(xfr, sizeof(buf)/num_iso_pack);
+			#endif
+		}
+	}
+}
+
 void SoundplaneDriverLibusb::processThread() {
 	// Each iteration of this loop is one cycle of finding a Soundplane device,
 	// using it, and the device going away.
@@ -187,8 +224,22 @@ void SoundplaneDriverLibusb::processThread() {
 		/// Print debug info
 		printDebugInfo(handle.get());
 
-		printf("Handle: %p\n", handle.get());
+		// Select the isochronous interface of the Soundplane
+		if (!processThreadSelectIsochronousInterface(handle.get())) {
+			continue;
+		}
+
+		/// Allocate transfer buffers
+		Transfers transfers;
+
+		/// Notify the world that we are now connected
 		if (processThreadSetDeviceState(kDeviceConnected)) return;
+
+		/// Schedule initial transfers
+		processThreadScheduleInitialTransfers(transfers, handle.get());
+
+		// FIXME: Listen for device removal
+		printf("Handle: %p\n", handle.get());
 		sleep(10);
 		if (processThreadSetDeviceState(kNoDevice)) return;
 		sleep(10);
