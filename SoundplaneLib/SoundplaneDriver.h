@@ -183,10 +183,10 @@ public:
 	IOUSBInterfaceInterface192	**intf;
 
 	UInt64						busFrameNumber[kSoundplaneANumEndpoints];
-	K1IsocTransaction*			mpTransactionData;
+	K1IsocTransaction			transactionData[kSoundplaneANumEndpoints * kSoundplaneABuffers];
 	UInt8						payloadIndex[kSoundplaneANumEndpoints];
 
-	inline K1IsocTransaction* getTransactionData(int endpoint, int buf) { return mpTransactionData + kSoundplaneABuffers*endpoint + buf; }
+	inline K1IsocTransaction* getTransactionData(int endpoint, int buf) { return transactionData + kSoundplaneABuffers*endpoint + buf; }
 
 	UInt16 getFirmwareVersion();
 	int getSerialNumberString(char* destStr, int maxLen);

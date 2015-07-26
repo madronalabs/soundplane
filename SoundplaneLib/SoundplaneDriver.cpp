@@ -46,7 +46,6 @@ SoundplaneDriver::SoundplaneDriver() :
 	clientRef(0),
 	dev(0),
 	intf(0),
-	mpTransactionData(0),
 	mpOutputData(0),
 	mTransactionsInFlight(0),
 	mState(kNoDevice),
@@ -59,12 +58,7 @@ SoundplaneDriver::SoundplaneDriver() :
 		busFrameNumber[i] = 0;
 	}
 
-	size_t transactionsSize = kSoundplaneANumEndpoints * kSoundplaneABuffers * sizeof(K1IsocTransaction);
-	mpTransactionData = (K1IsocTransaction*)malloc(transactionsSize);
-	if (mpTransactionData)
-	{
-		bzero(mpTransactionData, transactionsSize);
-	}
+	bzero(transactionData, sizeof(transactionData));
 
 	size_t outputFrameSize = kSoundplaneWidth * kSoundplaneHeight * sizeof(float);
 	size_t outputBufSize = kSoundplaneOutputBufFrames * outputFrameSize;
@@ -88,7 +82,6 @@ SoundplaneDriver::~SoundplaneDriver()
 {
 	printf("SoundplaneDriver shutting down...\n");
 	shutdown();
-	if (mpTransactionData) free(mpTransactionData);
 	if (mpOutputData) free(mpOutputData);
 }
 
