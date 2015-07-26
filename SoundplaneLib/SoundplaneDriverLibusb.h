@@ -33,6 +33,7 @@ public:
 	virtual int enableCarriers(unsigned long mask) override;
 
 private:
+	libusb_context *mLibusbContext;
 	SoundplaneDriverListener *mListener;
 	unsigned char mCurrentCarriers[kSoundplaneSensorWidth];
 };

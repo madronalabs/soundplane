@@ -26,10 +26,14 @@ SoundplaneDriverLibusb::SoundplaneDriverLibusb(SoundplaneDriverListener* listene
 
 SoundplaneDriverLibusb::~SoundplaneDriverLibusb()
 {
+	libusb_exit(mLibusbContext);
 }
 
 void SoundplaneDriverLibusb::init()
 {
+	if (libusb_init(&mLibusbContext) < 0) {
+		throw new std::runtime_error("Failed to initialize libusb");
+	}
 }
 
 int SoundplaneDriverLibusb::readSurface(float* pDest)
