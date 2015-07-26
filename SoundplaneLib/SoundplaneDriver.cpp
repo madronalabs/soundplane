@@ -50,7 +50,6 @@ const unsigned char kDefaultCarriers[kSoundplaneSensorWidth] =
 #pragma mark SoundplaneDriver
 
 SoundplaneDriver::SoundplaneDriver(SoundplaneDriverListener* listener) :
-	clientRef(0),
 	dev(0),
 	intf(0),
 	mTransactionsInFlight(0),
@@ -58,8 +57,6 @@ SoundplaneDriver::SoundplaneDriver(SoundplaneDriverListener* listener) :
 	startupCtr(0),
 	mListener(listener)
 {
-	clientRef = 0;
-
 	for(int i=0; i<kSoundplaneANumEndpoints; ++i)
 	{
 		busFrameNumber[i] = 0;

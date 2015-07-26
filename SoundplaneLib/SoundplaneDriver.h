@@ -200,7 +200,6 @@ public:
 	void setDefaultCarriers();
 	void dumpCarriers();
 
-	void						*clientRef;
 	std::thread					mGrabThread;
 	std::thread					mProcessThread;
 
