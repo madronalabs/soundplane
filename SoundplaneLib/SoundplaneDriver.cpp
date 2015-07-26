@@ -1130,7 +1130,7 @@ void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageTy
 // -------------------------------------------------------------------------------
 #pragma mark thread utilities
 
-void setThreadPriority (pthread_t inThread, UInt32 inPriority, Boolean inIsFixed)
+void setThreadPriority(pthread_t inThread, UInt32 inPriority, Boolean inIsFixed)
 {
 	if (inPriority == 96)
 	{
@@ -1160,90 +1160,6 @@ void setThreadPriority (pthread_t inThread, UInt32 inPriority, Boolean inIsFixed
         thread_policy_set (pthread_mach_thread_np(inThread), THREAD_PRECEDENCE_POLICY, (thread_policy_t)&thePrecedencePolicy, THREAD_PRECEDENCE_POLICY_COUNT);
 	}
 }
-
-UInt32 getThreadPriority(pthread_t inThread, int inWhichPriority)
-{
-    thread_basic_info_data_t threadInfo;
-    policy_info_data_t thePolicyInfo;
-    unsigned int count;
-
-    // get basic info
-    count = THREAD_BASIC_INFO_COUNT;
-    thread_info(pthread_mach_thread_np(inThread), THREAD_BASIC_INFO, (thread_info_t)&threadInfo, &count);
-
-    switch (threadInfo.policy)
-	{
-        case POLICY_TIMESHARE:
-            count = POLICY_TIMESHARE_INFO_COUNT;
-            thread_info(pthread_mach_thread_np(inThread), THREAD_SCHED_TIMESHARE_INFO, (thread_info_t)&(thePolicyInfo.ts), &count);
-            if (inWhichPriority) {
-                return thePolicyInfo.ts.cur_priority;
-            } else {
-                return thePolicyInfo.ts.base_priority;
-            }
-            break;
-
-        case POLICY_FIFO:
-            count = POLICY_FIFO_INFO_COUNT;
-            thread_info(pthread_mach_thread_np(inThread), THREAD_SCHED_FIFO_INFO, (thread_info_t)&(thePolicyInfo.fifo), &count);
-            if ( (thePolicyInfo.fifo.depressed) && (inWhichPriority) ) {
-                return thePolicyInfo.fifo.depress_priority;
-            }
-            return thePolicyInfo.fifo.base_priority;
-            break;
-
-        case POLICY_RR:
-            count = POLICY_RR_INFO_COUNT;
-            thread_info(pthread_mach_thread_np(inThread), THREAD_SCHED_RR_INFO, (thread_info_t)&(thePolicyInfo.rr), &count);
-            if ( (thePolicyInfo.rr.depressed) && (inWhichPriority) ) {
-                return thePolicyInfo.rr.depress_priority;
-            }
-            return thePolicyInfo.rr.base_priority;
-            break;
-    }
-
-    return 0;
-}
-
-UInt32 getThreadPolicy(pthread_t inThread)
-{
-    thread_basic_info_data_t threadInfo;
-    unsigned int count;
-
-    // get basic info
-    count = THREAD_BASIC_INFO_COUNT;
-    thread_info(pthread_mach_thread_np(inThread), THREAD_BASIC_INFO, (thread_info_t)&threadInfo, &count);
-
-    return (threadInfo.policy);
-}
-
-void displayThreadInfo(pthread_t inThread)
-{
-	printf("--------\n");
-
-	printf("policy: ");
-	UInt32 policy = getThreadPolicy(inThread);
-	switch(policy)
-	{
-		case POLICY_TIMESHARE:
-			printf("POLICY_TIMESHARE");
-		break;
-		case POLICY_FIFO:
-			printf("POLICY_FIFO");
-		break;
-		case POLICY_RR:
-			printf("POLICY_RR");
-		break;
-		default:
-			printf("UNKNOWN");
-		break;
-	}
-	printf (", req. prio: %d, new prio: %d \n",
-		(int)getThreadPriority(inThread, 0), (int)getThreadPriority(inThread, 1));
-	printf("--------\n");
-
-}
-
 
 float frameDiff(float * p1, float * p2, int frameSize);
 float frameDiff(float * p1, float * p2, int frameSize)

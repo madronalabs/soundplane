@@ -241,10 +241,7 @@ inline void setSequenceNumber(K1IsocTransaction* t, int f, UInt16 s)
 	p[f].seqNum = s;
 }
 
-void setThreadPriority (pthread_t inThread, UInt32 inPriority, Boolean inIsFixed);
-UInt32 getThreadPriority(pthread_t inThread, int inWhichPriority);
-UInt32 getThreadPolicy(pthread_t inThread);
-void displayThreadInfo(pthread_t inThread);
+void setThreadPriority(pthread_t inThread, UInt32 inPriority, Boolean inIsFixed);
 void dumpTransactions(void *arg, int bufferIndex, int frameIndex);
 int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
 void show_io_err(const char *msg, IOReturn err);
