@@ -168,6 +168,8 @@ private:
 	unsigned char				mCurrentCarriers[kSoundplaneSensorWidth];
 
 	std::thread					mProcessThread;
+
+	std::atomic<MLSoundplaneState> mState;
 };
 
 #endif // __SOUNDPLANE_DRIVER_LIBUSB__

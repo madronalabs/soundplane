@@ -22,7 +22,8 @@ std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListe
 
 
 SoundplaneDriverLibusb::SoundplaneDriverLibusb(SoundplaneDriverListener* listener) :
-    mListener(listener)
+    mListener(listener),
+    mState(kNoDevice)
 {
 }
 
@@ -58,7 +59,7 @@ void SoundplaneDriverLibusb::flushOutputBuffer()
 
 MLSoundplaneState SoundplaneDriverLibusb::getDeviceState() const
 {
-	return kNoDevice;
+	return mState.load(std::memory_order_acquire);
 }
 
 UInt16 SoundplaneDriverLibusb::getFirmwareVersion() const
@@ -116,6 +117,9 @@ void SoundplaneDriverLibusb::processThread() {
 		if (processThreadOpenDevice(handle)) return;
 
 		printf("Handle: %p\n", handle.get());
-		sleep(1);
+		mState.store(kDeviceConnected, std::memory_order_release);
+		sleep(10);
+		mState.store(kNoDevice, std::memory_order_release);
+		sleep(10);
 	}
 }

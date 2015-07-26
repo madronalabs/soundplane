@@ -67,7 +67,17 @@ public:
 	virtual int readSurface(float* pDest) = 0;
 	virtual void flushOutputBuffer() = 0;
 	virtual MLSoundplaneState getDeviceState() const = 0;
+
+	/**
+	 * Returns the firmware version of the connected Soundplane device. Returns 0
+	 * if getDeviceState() == kNoDevice
+	 */
 	virtual UInt16 getFirmwareVersion() const = 0;
+
+	/**
+	 * Returns the serial number of the connected Soundplane device. Returns 0
+	 * if getDeviceState() == kNoDevice
+	 */
 	virtual std::string getSerialNumberString() const = 0;
 
 	/**
@@ -75,7 +85,15 @@ public:
 	 * is kSoundplaneSensorWidth.
 	 */
 	virtual const unsigned char *getCarriers() const = 0;
+
+	/**
+	 * Calls to setCarriers fail if getDeviceState() == kNoDevice
+	 */
 	virtual int setCarriers(const unsigned char *carriers) = 0;
+
+	/**
+	 * Calls to enableCarriers fail if getDeviceState() == kNoDevice
+	 */
 	virtual int enableCarriers(unsigned long mask) = 0;
 
 	/**
@@ -92,8 +110,8 @@ public:
 	/**
 	 * Create a SoundplaneDriver object that is appropriate for the current
 	 * platform.
-   *
-   * listener may be nullptr.
+	 *
+	 * listener may be nullptr.
 	 */
 	static std::unique_ptr<SoundplaneDriver> create(SoundplaneDriverListener *listener);
 
