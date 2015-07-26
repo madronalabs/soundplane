@@ -225,6 +225,8 @@ public:
 	int startupCtr;
 
 private:
+	void grabThread();
+
 	// these fns in global namespace need to set the device state.
 	//
 	friend void * ::soundplaneProcessThread(void *arg);

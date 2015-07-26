@@ -32,7 +32,6 @@ void show_io_err(const char *msg, IOReturn err);
 void show_kern_err(const char *msg, kern_return_t kr);
 const char *io_err_string(IOReturn err);
 void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
-void *soundplaneGrabThread(void *arg);
 void *soundplaneProcessThread(void *arg);
 
 // default carriers.  avoiding 32 (always bad)
@@ -81,7 +80,7 @@ SoundplaneDriver::~SoundplaneDriver()
 void SoundplaneDriver::init()
 {
 	// create device grab thread
-	mGrabThread = std::thread(soundplaneGrabThread, this);
+	mGrabThread = std::thread(&SoundplaneDriver::grabThread, this);
 	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
 
 	// create isochronous read and process thread
@@ -1184,9 +1183,8 @@ void dumpFrame(float* frame)
 // This thread is responsible for finding and adding USB devices matching the Soundplane.
 // Execution is controlled by a Core Foundation (Cocoa) run loop.
 //
-void *soundplaneGrabThread(void *arg)
+void SoundplaneDriver::grabThread()
 {
-	SoundplaneDriver* k1 = static_cast<SoundplaneDriver*>(arg);
 	bool OK = true;
 	kern_return_t				kr;
 	CFMutableDictionaryRef		matchingDict;
@@ -1213,21 +1211,21 @@ void *soundplaneGrabThread(void *arg)
 		CFRelease(numberRef);
 		numberRef = NULL;
 
-		k1->notifyPort = IONotificationPortCreate(kIOMasterPortDefault);
-		runLoopSource = IONotificationPortGetRunLoopSource(k1->notifyPort);
+		notifyPort = IONotificationPortCreate(kIOMasterPortDefault);
+		runLoopSource = IONotificationPortGetRunLoopSource(notifyPort);
 		CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopDefaultMode);
 
 		// Set up asynchronous callback to call deviceAdded() when a Soundplane is found.
 		// TODO REVIEW: Check out IOServiceMatching() and IOServiceNameMatching()
-		kr = IOServiceAddMatchingNotification(  k1->notifyPort,
+		kr = IOServiceAddMatchingNotification(  notifyPort,
 												kIOFirstMatchNotification,
 												matchingDict,
 												deviceAdded,
-												k1, // refCon
-												&(k1->matchedIter) );
+												this, // refCon
+												&(matchedIter) );
 
 		// Iterate once to get already-present devices and arm the notification
-		deviceAdded(k1, k1->matchedIter);
+		deviceAdded(this, matchedIter);
 
 		// Start the run loop. Now we'll receive notifications and remain looping here until the
 		// run loop is stopped with CFRunLoopStop or all the sources and timers are removed from
@@ -1239,7 +1237,6 @@ void *soundplaneGrabThread(void *arg)
 		// clean up
 		CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopDefaultMode);
 	}
-	return NULL;
 }
 
 // This thread is responsible for collecting all data from the Soundplane. The routines isochComplete()
