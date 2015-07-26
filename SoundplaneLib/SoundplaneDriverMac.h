@@ -37,9 +37,9 @@ public:
 
 	virtual int readSurface(float* pDest) override;
 	virtual void flushOutputBuffer() override;
-	virtual MLSoundplaneState getDeviceState() override;
-	virtual UInt16 getFirmwareVersion() override;
-	virtual std::string getSerialNumberString() override;
+	virtual MLSoundplaneState getDeviceState() const override;
+	virtual UInt16 getFirmwareVersion() const override;
+	virtual std::string getSerialNumberString() const override;
 
 	virtual const unsigned char *getCarriers() const override;
 	virtual int setCarriers(const unsigned char *carriers) override;

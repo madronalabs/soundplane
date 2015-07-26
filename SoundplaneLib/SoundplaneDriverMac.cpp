@@ -226,12 +226,12 @@ void SoundplaneDriverMac::flushOutputBuffer()
 	PaUtil_FlushRingBuffer(&mOutputBuf);
 }
 
-MLSoundplaneState SoundplaneDriverMac::getDeviceState()
+MLSoundplaneState SoundplaneDriverMac::getDeviceState() const
 {
 	return mState.load(std::memory_order_acquire);
 }
 
-UInt16 SoundplaneDriverMac::getFirmwareVersion()
+UInt16 SoundplaneDriverMac::getFirmwareVersion() const
 {
 	if(getDeviceState() < kDeviceConnected) return 0;
 	UInt16 r = 0;
@@ -248,7 +248,7 @@ UInt16 SoundplaneDriverMac::getFirmwareVersion()
 	return r;
 }
 
-std::string SoundplaneDriverMac::getSerialNumberString()
+std::string SoundplaneDriverMac::getSerialNumberString() const
 {
 	if (getDeviceState() < kDeviceConnected) return 0;
 	char buffer[64];

@@ -62,9 +62,9 @@ public:
 
 	virtual int readSurface(float* pDest) = 0;
 	virtual void flushOutputBuffer() = 0;
-	virtual MLSoundplaneState getDeviceState() = 0;
-	virtual UInt16 getFirmwareVersion() = 0;
-	virtual std::string getSerialNumberString() = 0;
+	virtual MLSoundplaneState getDeviceState() const = 0;
+	virtual UInt16 getFirmwareVersion() const = 0;
+	virtual std::string getSerialNumberString() const = 0;
 
 	/**
 	 * Returns a pointer to the array of current carriers. The array length
@@ -78,12 +78,12 @@ public:
 	 * Helper function for getting the serial number as a number rather than
 	 * as a string.
 	 */
-	virtual int getSerialNumber() final;
+	virtual int getSerialNumber() const final;
 
 	/**
 	 * Helper function for printing the carrier frequencies.
 	 */
-	virtual void dumpCarriers() final;
+	virtual void dumpCarriers() const final;
 
 	/**
 	 * Create a SoundplaneDriver object that is appropriate for the current

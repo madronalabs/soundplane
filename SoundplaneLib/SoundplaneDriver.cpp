@@ -15,7 +15,7 @@ float SoundplaneDriver::carrierToFrequency(int carrier)
 	return freq;
 }
 
-int SoundplaneDriver::getSerialNumber()
+int SoundplaneDriver::getSerialNumber() const
 {
 	const auto state = getDeviceState();
 	if (state == kDeviceConnected || state == kDeviceHasIsochSync)
@@ -33,7 +33,7 @@ int SoundplaneDriver::getSerialNumber()
 	return 0;
 }
 
-void SoundplaneDriver::dumpCarriers()
+void SoundplaneDriver::dumpCarriers() const
 {
 	printf( "-----------------\n");
 	const auto carriers = getCarriers();
