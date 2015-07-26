@@ -226,6 +226,7 @@ public:
 
 private:
 	void grabThread();
+	void processThread();
 
 	// these fns in global namespace need to set the device state.
 	//

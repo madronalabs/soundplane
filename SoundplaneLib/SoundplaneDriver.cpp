@@ -32,7 +32,6 @@ void show_io_err(const char *msg, IOReturn err);
 void show_kern_err(const char *msg, kern_return_t kr);
 const char *io_err_string(IOReturn err);
 void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
-void *soundplaneProcessThread(void *arg);
 
 // default carriers.  avoiding 32 (always bad)
 // in use these should be overridden by the selected carriers.
@@ -84,7 +83,7 @@ void SoundplaneDriver::init()
 	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
 
 	// create isochronous read and process thread
-	mProcessThread = std::thread(soundplaneProcessThread, this);
+	mProcessThread = std::thread(&SoundplaneDriver::processThread, this);
 
 	// set thread to real time priority
 	setThreadPriority(mProcessThread.native_handle(), 96, true);
@@ -1246,9 +1245,8 @@ void SoundplaneDriver::grabThread()
 // with successive sequence numbers. When a matching pair of endpoints is found, reclockFrameToBuffer()
 // is called to send the data to any listeners.
 //
-void *soundplaneProcessThread(void *arg)
+void SoundplaneDriver::processThread()
 {
-	SoundplaneDriver* k1 = static_cast<SoundplaneDriver*>(arg);
 	UInt16 curSeqNum0, curSeqNum1;
 	UInt16 maxSeqNum0, maxSeqNum1;
 	UInt16 currentCompleteSequence = 0;
@@ -1285,25 +1283,25 @@ void *soundplaneProcessThread(void *arg)
 	pWorkingFrame.resize(outputFrameLength);
 	pPrevFrame.resize(outputFrameLength);
 
-	while(k1->getDeviceState() != kDeviceIsTerminating)
+	while(getDeviceState() != kDeviceIsTerminating)
 	{
-		// wait for k1 grab and initialization
-		while (k1->getDeviceState() == kNoDevice)
+		// wait for grab and initialization
+		while (getDeviceState() == kNoDevice)
 		{
 			usleep(100*1000);
 		}
-		while (k1->getDeviceState() == kDeviceSuspend)
+		while (getDeviceState() == kDeviceSuspend)
 		{
 			usleep(100*1000);
 		}
-		while(k1->getDeviceState() == kDeviceConnected)
+		while (getDeviceState() == kDeviceConnected)
 		{
 			// initialize: find latest scheduled transaction
 			UInt64 maxTransactionStartFrame = 0;
 			int maxIdx = -1;
 			for(int j=0; j < kSoundplaneABuffers; ++j)
 			{
-				K1IsocTransaction* t = k1->getTransactionData(0, j);
+				K1IsocTransaction* t = getTransactionData(0, j);
 				UInt64 frame = t->busFrameNumber;
 				if(frame > maxTransactionStartFrame)
 				{
@@ -1324,8 +1322,8 @@ void *soundplaneProcessThread(void *arg)
 				{
 					for(frameIndex=kSoundplaneANumIsochFrames - 1; (frameIndex >= 0) && lost; frameIndex--)
 					{
-						int l0 = k1->getSequenceNumber(0, bufferIndex, frameIndex);
-						int l1 = k1->getSequenceNumber(1, bufferIndex, frameIndex);
+						int l0 = getSequenceNumber(0, bufferIndex, frameIndex);
+						int l1 = getSequenceNumber(1, bufferIndex, frameIndex);
 
 						if (l0)
 							seq0 = l0;
@@ -1341,8 +1339,8 @@ void *soundplaneProcessThread(void *arg)
 
 							// finally, we have sync.
 							//
-							k1->setDefaultCarriers();
-							k1->setDeviceState(kDeviceHasIsochSync);
+							setDefaultCarriers();
+							setDeviceState(kDeviceHasIsochSync);
 							lost = false;
 						}
 					}
@@ -1358,14 +1356,14 @@ void *soundplaneProcessThread(void *arg)
 
 		// resume: for now just like kDeviceConnected, but without default carriers
 		//
-		while(k1->getDeviceState() == kDeviceResume)
+		while(getDeviceState() == kDeviceResume)
 		{
 			// initialize: find latest scheduled transaction
 			UInt64 maxTransactionStartFrame = 0;
 			int maxIdx = -1;
 			for(int j=0; j < kSoundplaneABuffers; ++j)
 			{
-				K1IsocTransaction* t = k1->getTransactionData(0, j);
+				K1IsocTransaction* t = getTransactionData(0, j);
 				UInt64 frame = t->busFrameNumber;
 				if(frame > maxTransactionStartFrame)
 				{
@@ -1386,8 +1384,8 @@ void *soundplaneProcessThread(void *arg)
 				{
 					for(frameIndex=kSoundplaneANumIsochFrames - 1; (frameIndex >= 0) && lost; frameIndex--)
 					{
-						int l0 = k1->getSequenceNumber(0, bufferIndex, frameIndex);
-						int l1 = k1->getSequenceNumber(1, bufferIndex, frameIndex);
+						int l0 = getSequenceNumber(0, bufferIndex, frameIndex);
+						int l1 = getSequenceNumber(1, bufferIndex, frameIndex);
 
 						if (l0)
 							seq0 = l0;
@@ -1401,7 +1399,7 @@ void *soundplaneProcessThread(void *arg)
 							curSeqNum1 = maxSeqNum1 = seq1;
 							currentCompleteSequence = std::min(curSeqNum0, curSeqNum1);
 
-							k1->setDeviceState(kDeviceHasIsochSync);
+							setDeviceState(kDeviceHasIsochSync);
 							lost = false;
 						}
 					}
@@ -1416,13 +1414,13 @@ void *soundplaneProcessThread(void *arg)
 		}
 
 		initCtr = 0;
-		while(k1->getDeviceState() == kDeviceHasIsochSync)
+		while(getDeviceState() == kDeviceHasIsochSync)
 		{
 			// look ahead by 1 frame to see if data was received for either surface of next frame
 			//
 			int lookahead = 1;
-			nextBytes0 = k1->getTransferBytesReceived(0, bufferIndex, frameIndex, lookahead);
-			nextBytes1 = k1->getTransferBytesReceived(1, bufferIndex, frameIndex, lookahead);
+			nextBytes0 = getTransferBytesReceived(0, bufferIndex, frameIndex, lookahead);
+			nextBytes1 = getTransferBytesReceived(1, bufferIndex, frameIndex, lookahead);
 
 			// does next frame contain something ?
 			// if so, we know this frame is done.
@@ -1439,18 +1437,18 @@ void *soundplaneProcessThread(void *arg)
 				// see what data was received for current frame.  The Soundplane A always returns
 				// either a full packet of 386 bytes, or 0.
 				//
-				curBytes0 = k1->getTransferBytesReceived(0, bufferIndex, frameIndex);
-				curBytes1 = k1->getTransferBytesReceived(1, bufferIndex, frameIndex);
+				curBytes0 = getTransferBytesReceived(0, bufferIndex, frameIndex);
+				curBytes1 = getTransferBytesReceived(1, bufferIndex, frameIndex);
 
 				// get sequence numbers from current frame
 				if (curBytes0)
 				{
-					curSeqNum0 = k1->getSequenceNumber(0, bufferIndex, frameIndex);
+					curSeqNum0 = getSequenceNumber(0, bufferIndex, frameIndex);
 					maxSeqNum0 = curSeqNum0;
 				}
 				if (curBytes1)
 				{
-					curSeqNum1 = k1->getSequenceNumber(1, bufferIndex, frameIndex);
+					curSeqNum1 = getSequenceNumber(1, bufferIndex, frameIndex);
 					maxSeqNum1 = curSeqNum1;
 				}
 				// get newest sequence number for which we have all surfaces
@@ -1471,7 +1469,7 @@ void *soundplaneProcessThread(void *arg)
 					int sequenceWanted = ((int)currentCompleteSequence + 1)&0x0000FFFF;
 					if (newestCompleteSequence != sequenceWanted)
 					{
-						k1->reportDeviceError(kDevGapInSequence, currentCompleteSequence, newestCompleteSequence, 0., 0.);
+						reportDeviceError(kDevGapInSequence, currentCompleteSequence, newestCompleteSequence, 0., 0.);
 						printThis = true;
 						gaps++;
 
@@ -1488,15 +1486,15 @@ void *soundplaneProcessThread(void *arg)
 					int f = frameIndex;
 					for(int k = 0; k > -kSoundplaneABuffers * kSoundplaneANumIsochFrames; k--)
 					{
-						int seq0 = k1->getSequenceNumber(0, b, f, k);
+						int seq0 = getSequenceNumber(0, b, f, k);
 						if (seq0 == currentCompleteSequence)
 						{
-							pPayload0 = k1->getPayloadPtr(0, b, f, k);
+							pPayload0 = getPayloadPtr(0, b, f, k);
 						}
-						int seq1 = k1->getSequenceNumber(1, b, f, k);
+						int seq1 = getSequenceNumber(1, b, f, k);
 						if (seq1 == currentCompleteSequence)
 						{
-							pPayload1 = k1->getPayloadPtr(1, b, f, k);
+							pPayload1 = getPayloadPtr(1, b, f, k);
 						}
 						if (pPayload0 && pPayload1)
 						{
@@ -1510,27 +1508,27 @@ void *soundplaneProcessThread(void *arg)
 					{
 						K1_unpack_float2(pPayload0, pPayload1, pWorkingFrame.data());
 						K1_clear_edges(pWorkingFrame.data());
-						if(k1->startupCtr > kSoundplaneStartupFrames)
+						if(startupCtr > kSoundplaneStartupFrames)
 						{
 							float df = frameDiff(pPrevFrame.data(), pWorkingFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
 							if (df < kMaxFrameDiff)
 							{
 								// we are OK, the data gets out normally
-								k1->reclockFrameToBuffer(pWorkingFrame.data());
+								reclockFrameToBuffer(pWorkingFrame.data());
 							}
 							else
 							{
 								// possible sensor glitch.  also occurs when changing carriers.
-								k1->reportDeviceError(kDevDataDiffTooLarge, k1->startupCtr, 0, df, 0.);
-								k1->dumpDeviceData(pPrevFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
-								k1->dumpDeviceData(pWorkingFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
-								k1->startupCtr = 0;
+								reportDeviceError(kDevDataDiffTooLarge, startupCtr, 0, df, 0.);
+								dumpDeviceData(pPrevFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
+								dumpDeviceData(pWorkingFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
+								startupCtr = 0;
 							}
 						}
 						else
 						{
 							// wait for initialization
-							k1->startupCtr++;
+							startupCtr++;
 						}
 
 						std::copy(pWorkingFrame.begin(), pWorkingFrame.end(), pPrevFrame.begin());
@@ -1553,17 +1551,17 @@ void *soundplaneProcessThread(void *arg)
 				{
 					printf("RESYNCHING\n");
 					waiting = 0;
-					k1->setDeviceState(kNoDevice);
+					setDeviceState(kNoDevice);
 				}
 			}
 
 			if (printThis)
 			{
-				if (k1->dev)
+				if (dev)
 				{
 		//			AbsoluteTime atTime;
 		//			UInt64 bf;
-		//			OSErr err = (*k1->dev)->GetBusFrameNumber(k1->dev, &bf, &atTime);
+		//			OSErr err = (*dev)->GetBusFrameNumber(dev, &bf, &atTime);
 		//			dumpTransactions(k1, bufferIndex, frameIndex);
 
 					printf("current seq num: %d / %d\n", curSeqNum0, curSeqNum1);
@@ -1571,7 +1569,7 @@ void *soundplaneProcessThread(void *arg)
 					printf("process: gaps %d, dropped %d, gotNext %d \n", gaps, droppedTransactions, gotNext);
 					printf("process: good frames %d, bad xfers %d \n", framesReceived, badXfers);
 					printf("process: current sequence: [%d, %d] \n", maxSeqNum0, maxSeqNum1);
-					printf("process: transactions in flight: %d\n", k1->mTransactionsInFlight);
+					printf("process: transactions in flight: %d\n", mTransactionsInFlight);
 
 					droppedTransactions = 0;
 					framesReceived = 0;
@@ -1587,10 +1585,6 @@ void *soundplaneProcessThread(void *arg)
 			usleep(500);
 		}
 	}
-
-	// confirm termination
-
-	return NULL;
 }
 
 // -------------------------------------------------------------------------------
