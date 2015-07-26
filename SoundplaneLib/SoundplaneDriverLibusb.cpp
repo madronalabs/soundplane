@@ -32,6 +32,7 @@ SoundplaneDriverLibusb::~SoundplaneDriverLibusb()
 {
 	// This causes getDeviceState to return kDeviceIsTerminating
 	mQuitting.store(true, std::memory_order_release);
+	emitDeviceStateChanged(kDeviceIsTerminating);
 	mCondition.notify_one();
 	mProcessThread.join();
 	libusb_exit(mLibusbContext);
@@ -74,16 +75,26 @@ std::string SoundplaneDriverLibusb::getSerialNumberString() const
 	return std::string(reinterpret_cast<const char *>(serialNumber.data()));
 }
 
-const unsigned char *SoundplaneDriverLibusb::getCarriers() const {
+const unsigned char *SoundplaneDriverLibusb::getCarriers() const
+{
 	return mCurrentCarriers;
 }
 
-int SoundplaneDriverLibusb::setCarriers(const unsigned char *carriers) {
+int SoundplaneDriverLibusb::setCarriers(const unsigned char *carriers)
+{
 	return 0;
 }
 
-int SoundplaneDriverLibusb::enableCarriers(unsigned long mask) {
+int SoundplaneDriverLibusb::enableCarriers(unsigned long mask)
+{
 	return 0;
+}
+
+void SoundplaneDriverLibusb::emitDeviceStateChanged(MLSoundplaneState newState) const
+{
+	if (mListener) {
+		mListener->deviceStateChanged(newState);
+	}
 }
 
 bool SoundplaneDriverLibusb::processThreadWait(int ms) const
@@ -134,6 +145,16 @@ bool SoundplaneDriverLibusb::processThreadGetDeviceInfo(libusb_device_handle *de
 	return true;
 }
 
+bool SoundplaneDriverLibusb::processThreadSetDeviceState(MLSoundplaneState newState) {
+	mState.store(newState, std::memory_order_release);
+	if (mQuitting.load(std::memory_order_acquire)) {
+		return true;
+	} else {
+		emitDeviceStateChanged(newState);
+		return false;
+	}
+}
+
 void SoundplaneDriverLibusb::processThread() {
 	// Each iteration of this loop is one cycle of finding a Soundplane device,
 	// using it, and the device going away.
@@ -149,9 +170,9 @@ void SoundplaneDriverLibusb::processThread() {
 		}
 
 		printf("Handle: %p\n", handle.get());
-		mState.store(kDeviceConnected, std::memory_order_release);
+		if (processThreadSetDeviceState(kDeviceConnected)) return;
 		sleep(10);
-		mState.store(kNoDevice, std::memory_order_release);
+		if (processThreadSetDeviceState(kNoDevice)) return;
 		sleep(10);
 	}
 }

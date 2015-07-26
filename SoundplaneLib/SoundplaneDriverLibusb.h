@@ -148,6 +148,12 @@ private:
 	};
 
 	/**
+	 * Inform the listener that the device state was updated to a new state.
+	 * May be called from any thread.
+	 */
+	void emitDeviceStateChanged(MLSoundplaneState newState) const;
+
+	/**
 	 * Returns true if the process thread should quit.
 	 *
 	 * May spuriously wait for a shorter than the specified time.
@@ -164,6 +170,12 @@ private:
 	 * Returns false if getting the device info failed.
 	 */
 	bool processThreadGetDeviceInfo(libusb_device_handle *device);
+	/**
+	 * Sets mState to a new value and notifies the listener.
+	 *
+	 * Returns true if the process thread should quit.
+	 */
+	bool processThreadSetDeviceState(MLSoundplaneState newState);
 	void processThread();
 
 	/**
