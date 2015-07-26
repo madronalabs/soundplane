@@ -6,6 +6,8 @@
 #ifndef __SOUNDPLANE_DRIVER_LIBUSB__
 #define __SOUNDPLANE_DRIVER_LIBUSB__
 
+#include <condition_variable>
+#include <mutex>
 #include <thread>
 
 #include <libusb.h>
@@ -35,13 +37,27 @@ public:
 	virtual int enableCarriers(unsigned long mask) override;
 
 private:
-	void grabThread();
+	/**
+	 * Returns true if the process thread should quit.
+	 *
+	 * May spuriously wait for a shorter than the specified time.
+	 */
+	bool processThreadWait(int ms);
+	/**
+	 * Returns nullptr if the process thread should quit.
+	 */
+	libusb_device_handle* processThreadOpenDevice();
+	void processThread();
+
+	bool mQuitting = false;
+	std::mutex mMutex;  // Used with mCondition and protects mQuitting
+	std::condition_variable mCondition;  // Used to wake up the process thread
 
 	libusb_context				*mLibusbContext = nullptr;
 	SoundplaneDriverListener	*mListener;
 	unsigned char				mCurrentCarriers[kSoundplaneSensorWidth];
 
-	std::thread					mGrabThread;
+	std::thread					mProcessThread;
 };
 
 #endif // __SOUNDPLANE_DRIVER_LIBUSB__

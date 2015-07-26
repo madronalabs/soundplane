@@ -28,6 +28,12 @@ SoundplaneDriverLibusb::SoundplaneDriverLibusb(SoundplaneDriverListener* listene
 
 SoundplaneDriverLibusb::~SoundplaneDriverLibusb()
 {
+	{
+		std::unique_lock<std::mutex> lock(mMutex);
+		mQuitting = true;
+	}
+	mCondition.notify_one();
+	mProcessThread.join();
 	libusb_exit(mLibusbContext);
 }
 
@@ -38,8 +44,7 @@ void SoundplaneDriverLibusb::init()
 	}
 
 	// create device grab thread
-	mGrabThread = std::thread(&SoundplaneDriverLibusb::grabThread, this);
-	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
+	mProcessThread = std::thread(&SoundplaneDriverLibusb::processThread, this);
 }
 
 int SoundplaneDriverLibusb::readSurface(float* pDest)
@@ -78,11 +83,35 @@ int SoundplaneDriverLibusb::enableCarriers(unsigned long mask) {
 	return 0;
 }
 
-void SoundplaneDriverLibusb::grabThread() {
+bool SoundplaneDriverLibusb::processThreadWait(int ms)
+{
+	std::unique_lock<std::mutex> lock(mMutex);
+	mCondition.wait_for(lock, std::chrono::milliseconds(ms));
+	return mQuitting;
+}
+
+libusb_device_handle* SoundplaneDriverLibusb::processThreadOpenDevice()
+{
 	for (;;)
 	{
-		libusb_device_handle *handle = libusb_open_device_with_vid_pid(
+		libusb_device_handle* handle = libusb_open_device_with_vid_pid(
 			mLibusbContext, kSoundplaneUSBVendor, kSoundplaneUSBProduct);
+		if (handle)
+		{
+			return handle;
+		}
+		if (processThreadWait(1000))
+		{
+			return nullptr;
+		}
+	}
+}
+
+void SoundplaneDriverLibusb::processThread() {
+	for (;;)
+	{
+		libusb_device_handle *handle = processThreadOpenDevice();
+		if (!handle) return;
 
 		printf("Handle: %p\n", handle);
 		sleep(1);
