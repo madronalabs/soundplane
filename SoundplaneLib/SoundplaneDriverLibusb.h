@@ -170,6 +170,7 @@ private:
 	 * Returns false if getting the device info failed.
 	 */
 	bool processThreadGetDeviceInfo(libusb_device_handle *device);
+	void printDebugInfo(libusb_device_handle *device) const;
 	/**
 	 * Sets mState to a new value and notifies the listener.
 	 *

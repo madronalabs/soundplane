@@ -148,7 +148,19 @@ bool SoundplaneDriverLibusb::processThreadGetDeviceInfo(libusb_device_handle *de
 	return true;
 }
 
-bool SoundplaneDriverLibusb::processThreadSetDeviceState(MLSoundplaneState newState) {
+void SoundplaneDriverLibusb::printDebugInfo(libusb_device_handle *device) const
+{
+	libusb_config_descriptor *descriptor;
+	if (libusb_get_active_config_descriptor(libusb_get_device(device), &descriptor) < 0) {
+		fprintf(stderr, "Failed to get device debug information\n");
+		return;
+	}
+
+	printf("Available Bus Power: %d mA\n", 2 * static_cast<int>(descriptor->MaxPower));
+}
+
+bool SoundplaneDriverLibusb::processThreadSetDeviceState(MLSoundplaneState newState)
+{
 	mState.store(newState, std::memory_order_release);
 	if (mQuitting.load(std::memory_order_acquire)) {
 		return true;
@@ -171,6 +183,9 @@ void SoundplaneDriverLibusb::processThread() {
 		if (!processThreadGetDeviceInfo(handle.get())) {
 			continue;
 		}
+
+		/// Print debug info
+		printDebugInfo(handle.get());
 
 		printf("Handle: %p\n", handle.get());
 		if (processThreadSetDeviceState(kDeviceConnected)) return;
