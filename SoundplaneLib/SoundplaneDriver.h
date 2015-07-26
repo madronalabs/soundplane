@@ -6,25 +6,21 @@
 #ifndef __SOUNDPLANE_DRIVER__
 #define __SOUNDPLANE_DRIVER__
 
-#include <thread>
+#include <memory>
 
 #include <CoreFoundation/CoreFoundation.h>
-#include <IOKit/usb/USB.h>
-#include <IOKit/IOKitLib.h>
-#include <IOKit/usb/IOUSBLib.h>
-#include <IOKit/IOMessage.h>
-#include <IOKit/IOCFPlugIn.h>
-#include <IOKit/IOReturn.h>
-#include <mach/kern_return.h>
 
-#include <mach/mach.h>
-#include <sys/time.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <list>
-#include "pa_ringbuffer.h"
-
-#include "SoundplaneDriverData.h"
+// device states
+//
+typedef enum
+{
+  kNoDevice = 0,
+  kDeviceConnected = 1,
+  kDeviceHasIsochSync = 2,
+  kDeviceIsTerminating = 3,
+  kDeviceSuspend = 4,
+  kDeviceResume = 5
+} MLSoundplaneState;
 
 class SoundplaneDriverListener
 {
@@ -62,98 +58,32 @@ public:
 class SoundplaneDriver
 {
 public:
+	virtual ~SoundplaneDriver() = default;
+
+	virtual int readSurface(float* pDest) = 0;
+	virtual void flushOutputBuffer() = 0;
+	virtual MLSoundplaneState getDeviceState() = 0;
+	virtual UInt16 getFirmwareVersion() = 0;
+	virtual std::string getSerialNumberString() = 0;
+
+	virtual void dumpCarriers() = 0;
+	virtual int setCarriers(const unsigned char *carriers) = 0;
+	virtual int enableCarriers(unsigned long mask) = 0;
+	virtual void setDefaultCarriers() = 0;
+
 	/**
-	 * listener may be nullptr
+	 * Helper function for getting the serial number as a number rather than
+	 * as a string.
 	 */
-	SoundplaneDriver(SoundplaneDriverListener* listener);
-	~SoundplaneDriver();
+	virtual int getSerialNumber() final;
 
-	void init();
-
-	int readSurface(float* pDest);
-	void flushOutputBuffer();
-	MLSoundplaneState getDeviceState();
-	UInt16 getFirmwareVersion();
-	int getSerialNumber();
-	int getSerialNumberString(char* destStr, int maxLen);
+	/**
+	 * Create a SoundplaneDriver object that is appropriate for the current
+	 * platform.
+	 */
+	static std::unique_ptr<SoundplaneDriver> create(SoundplaneDriverListener *listener);
 
 	static float carrierToFrequency(int carrier);
-	void dumpCarriers();
-	int setCarriers(const unsigned char *carriers);
-	int enableCarriers(unsigned long mask);
-	void setDefaultCarriers();
-
-private:
-	struct K1IsocTransaction
-	{
-		UInt64						busFrameNumber;
-		SoundplaneDriver			*parent;
-		IOUSBLowLatencyIsocFrame	*isocFrames;
-		unsigned char				*payloads;
-		UInt8						endpointNum;
-		UInt8						endpointIndex;
-		UInt8						bufIndex;
-
-		UInt16 getTransactionSequenceNumber(int f);
-		void setSequenceNumber(int f, UInt16 s);
-	};
-
-	IOReturn scheduleIsoch(K1IsocTransaction *t);
-	static void isochComplete(void *refCon, IOReturn result, void *arg0);
-
-	void addOffset(int& buffer, int& frame, int offset);
-	UInt16 getTransferBytesRequested(int endpoint, int buffer, int frame, int offset = 0);
-	UInt16 getTransferBytesReceived(int endpoint, int buffer, int frame, int offset = 0);
-	AbsoluteTime getTransferTimeStamp(int endpoint, int buffer, int frame, int offset = 0);
-	IOReturn getTransferStatus(int endpoint, int buffer, int frame, int offset = 0);
-	UInt16 getSequenceNumber(int endpoint, int buf, int frame, int offset = 0);
-	unsigned char* getPayloadPtr(int endpoint, int buf, int frame, int offset = 0);
-
-	IOReturn setBusFrameNumber();
-	void removeDevice();
-	static void deviceAdded(void *refCon, io_iterator_t iterator);
-	static void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
-
-	void grabThread();
-	void processThread();
-
-	void reclockFrameToBuffer(float* pSurface);
-	void setDeviceState(MLSoundplaneState n);
-	void reportDeviceError(int errCode, int d1, int d2, float df1, float df2);
-	void dumpDeviceData(float* pData, int size);
-
-	static int getStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
-	void dumpTransactions(int bufferIndex, int frameIndex);
-	K1IsocTransaction* getTransactionData(int endpoint, int buf) { return transactionData + kSoundplaneABuffers*endpoint + buf; }
-
-	int mTransactionsInFlight;
-	int startupCtr;
-
-	std::thread					mGrabThread;
-	std::thread					mProcessThread;
-
-	IONotificationPortRef		notifyPort;
-	io_iterator_t				matchedIter;
-	io_object_t					notification;
-
-	IOUSBDeviceInterface187		**dev;
-	IOUSBInterfaceInterface192	**intf;
-
-	UInt64						busFrameNumber[kSoundplaneANumEndpoints];
-	K1IsocTransaction			transactionData[kSoundplaneANumEndpoints * kSoundplaneABuffers];
-	UInt8						payloadIndex[kSoundplaneANumEndpoints];
-
-	std::atomic<MLSoundplaneState> mState;
-	char mDescStr[256]; // max descriptor length.
-	char mSerialString[64]; // scratch string
-	unsigned char mCurrentCarriers[kSoundplaneSensorWidth];
-	float mpOutputData[kSoundplaneWidth * kSoundplaneHeight * kSoundplaneOutputBufFrames];
-	PaUtilRingBuffer mOutputBuf;
-
-	// mListener may be nullptr
-	SoundplaneDriverListener* const mListener;
 };
-
-void setThreadPriority(pthread_t inThread, UInt32 inPriority, Boolean inIsFixed);
 
 #endif // __SOUNDPLANE_DRIVER__

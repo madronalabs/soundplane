@@ -1,9 +1,12 @@
 set(SP_DRIVER_SOURCES
   SoundplaneDriver.cpp
   SoundplaneDriver.h
-  SoundplaneDriverData.cpp
-  SoundplaneDriverData.h
+  SoundplaneDriverMac.h
+  SoundplaneDriverMac.cpp
+  SoundplaneModelA.cpp
   SoundplaneModelA.h
+  ThreadUtility.cpp
+  ThreadUtility.h
   )
 add_library(soundplanelib ${SP_DRIVER_SOURCES})
 target_link_libraries(soundplanelib portaudio)

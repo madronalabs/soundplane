@@ -5,7 +5,11 @@
 
 #include "SoundplaneModel.h"
 
+#include <IOKit/IOReturn.h>
+
 #include "pa_memorybarrier.h"
+
+#include "ThreadUtility.h"
 
 static const std::string kOSCDefaultStr("localhost:3123 (default)");
 const char *kUDPType      =   "_osc._udp";
@@ -567,8 +571,7 @@ void SoundplaneModel::initialize()
 
 	addListener(&mOSCOutput);
 
-	mpDriver = new SoundplaneDriver(this);
-	mpDriver->init();
+	mpDriver = SoundplaneDriver::create(this).release();
 
 	// TODO mem err handling
 	if (!mCalibrateData.setDims(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneCalibrateSize))
@@ -610,7 +613,6 @@ int SoundplaneModel::getDeviceState(void)
 void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 {
 	unsigned long instrumentModel = 1; // Soundplane A
-	unsigned long serial = mpDriver->getSerialNumber();
 
 	PaUtil_WriteMemoryBarrier();
 
@@ -624,7 +626,7 @@ void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 		break;
 		case kDeviceHasIsochSync:
 			// get serial number and auto calibrate noise on sync detect
-			mOSCOutput.setSerialNumber((instrumentModel << 16) | serial);
+			mOSCOutput.setSerialNumber((instrumentModel << 16) | mpDriver->getSerialNumber());
 			mNeedsCarriersSet = true;
 			// output will be enabled at end of calibration.
 			mNeedsCalibrate = true;
@@ -723,8 +725,7 @@ const char* SoundplaneModel::getHardwareStr()
 {
 	long v;
 	unsigned char a, b, c;
-	char serial[64] = {0};
-	int len;
+	std::string serial_number;
 	switch(getDeviceState())
 	{
 		case kNoDevice:
@@ -733,14 +734,14 @@ const char* SoundplaneModel::getHardwareStr()
 		case kDeviceConnected:
 		case kDeviceHasIsochSync:
 
-			len = mpDriver->getSerialNumberString(serial, 64);
+			serial_number = mpDriver->getSerialNumberString();
 
 			v = mpDriver->getFirmwareVersion();
 			a = v >> 8 & 0x0F;
 			b = v >> 4 & 0x0F,
 			c = v & 0x0F;
 
-			snprintf(mHardwareStr, miscStrSize, "%s #%s, firmware %d.%d.%d", kSoundplaneAName, serial, a, b, c);
+			snprintf(mHardwareStr, miscStrSize, "%s #%s, firmware %d.%d.%d", kSoundplaneAName, serial_number.c_str(), a, b, c);
 			break;
 
 		default:

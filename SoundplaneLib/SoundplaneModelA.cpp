@@ -1,8 +1,8 @@
-// SoundplaneDriverData.cpp
+// SoundplaneModelA.cpp
 //
 // Contains constants that are used by Soundplane drivers.
 
-#include "SoundplaneDriverData.h"
+#include "SoundplaneModelA.h"
 
 const char* kSoundplaneAName = ("Soundplane Model A");
 

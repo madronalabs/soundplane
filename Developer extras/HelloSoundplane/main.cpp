@@ -19,20 +19,19 @@ int main(int argc, const char * argv[])
 	MLSignal mSurface(kSoundplaneWidth, kSoundplaneHeight);
 	MLSignal mCalibration(kSoundplaneWidth, kSoundplaneHeight);
 	int driverState = 0;
-	SoundplaneDriver driver(nullptr);
+	const auto driver = SoundplaneDriver::create(nullptr);
 
 	std::cout << "Hello, Soundplane?\n";
 
-	driver.init();
 	while(driverState != kDeviceHasIsochSync)
 	{
-		driverState = driver.getDeviceState();
+		driverState = driver->getDeviceState();
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		std::cout << "waiting for driver, state:" << driverState << "\n";
 	}
 
 	// read a single frame as calibration snapshot
-	driver.readSurface(mCalibration.getBuffer());
+	driver->readSurface(mCalibration.getBuffer());
 
 	int framesRead, frameCounter = 0;
 	while(1)
@@ -42,7 +41,7 @@ int main(int argc, const char * argv[])
 		// read all available frames from driver
 		do
 		{
-			framesRead = driver.readSurface(mSurface.getBuffer());
+			framesRead = driver->readSurface(mSurface.getBuffer());
 			frameCounter += framesRead;
 		}
 		while(framesRead);
