@@ -20,27 +20,12 @@
 //#define SHOW_BUS_FRAME_NUMBER
 //#define SHOW_ALL_SEQUENCE_NUMBERS
 
-const char* kSoundplaneAName = ("Soundplane Model A");
-
-const int kSoundplaneAlternateSetting = 1;
-
 #define printBCD(bcd) printf("%hhx.%hhx.%hhx\n", bcd >> 8, 0x0f & bcd >> 4, 0x0f & bcd)
 
 int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
 void show_io_err(const char *msg, IOReturn err);
 void show_kern_err(const char *msg, kern_return_t kr);
 const char *io_err_string(IOReturn err);
-
-// default carriers.  avoiding 32 (always bad)
-// in use these should be overridden by the selected carriers.
-//
-const unsigned char kDefaultCarriers[kSoundplaneSensorWidth] =
-{
-	0, 0, 4, 5, 6, 7, 8, 9, 10, 11,
-	12, 13, 14, 15, 16, 17, 18, 19,
-	20, 21, 22, 23, 24, 25, 26, 27,
-	28, 29, 30, 31, 33, 34
-};
 
 namespace {
 
@@ -529,71 +514,6 @@ void SoundplaneDriver::setDefaultCarriers()
 		mCurrentCarriers[i] = kDefaultCarriers[i];
 	}
 	setCarriers(mCurrentCarriers);
-}
-
-// --------------------------------------------------------------------------------
-#pragma mark unpacking data
-
-// combine two surface payloads to a single buffer of floating point pressure values.
-//
-void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest)
-{
-	unsigned short a, b;
-	float *pDestRow0, *pDestRow1;
-
-	// evey three bytes of payload provide 24 bits,
-	// which is two 12-bit magnitude values packed
-	// ml Lh HM
-	//
-	int c = 0;
-	for(int i=0; i<kSoundplaneAPickupsPerBoard; ++i)
-	{
-		pDestRow0 = pDest + kSoundplaneANumCarriers*2*i;
-		pDestRow1 = pDestRow0 + kSoundplaneANumCarriers;
-		for (int j = 0; j < kSoundplaneANumCarriers; j += 2)
-		{
-			a = pSrc0[c+1] & 0x0F;	// 000h
-			a <<= 8;				// 0h00
-			a |= pSrc0[c];			// 0hml
-			pDestRow0[j] = a / 4096.f;
-
-			a = pSrc0[c+2];			// 00HM
-			a <<= 4;				// 0HM0
-			a |= ((pSrc0[c+1] & 0xF0) >> 4);	// 0HML
-			pDestRow0[j + 1] = a / 4096.f;
-
-			// flip surface 2
-
-			b = pSrc1[c+1] & 0x0F;	// 000h
-			b <<= 8;				// 0h00
-			b |= pSrc1[c];			// 0hml
-			pDestRow1[kSoundplaneANumCarriers - 1 - j] = b / 4096.f;
-
-			b = pSrc1[c+2];			// 00HM
-			b <<= 4;				// 0HM0
-			b |= ((pSrc1[c+1] & 0xF0) >> 4);	// 0HML
-			pDestRow1[kSoundplaneANumCarriers - 2 - j] = b / 4096.f;
-
-			c += 3;
-		}
-	}
-}
-
-// set data from edge carriers, unused on Soundplane A, to duplicate
-// actual data nearby.
-void K1_clear_edges(float *pDest)
-{
-	float *pDestRow;
-	for(int i=0; i<kSoundplaneAPickupsPerBoard; ++i)
-	{
-		pDestRow = pDest + kSoundplaneANumCarriers*2*i;
-		const float zl = pDestRow[2];
-		pDestRow[1] = zl;
-		pDestRow[0] = 0;
-		const float zr = pDestRow[kSoundplaneANumCarriers*2 - 3];
-		pDestRow[kSoundplaneANumCarriers*2 - 2] = zr;
-		pDestRow[kSoundplaneANumCarriers*2 - 1] = 0;
-	}
 }
 
 /*
