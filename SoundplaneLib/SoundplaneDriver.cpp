@@ -1177,9 +1177,6 @@ void dumpFrame(float* frame)
 // This thread is responsible for finding and adding USB devices matching the Soundplane.
 // Execution is controlled by a Core Foundation (Cocoa) run loop.
 //
-// TODO investigate using a pthread here for consistency and code that looks more
-// similar across multiple platforms.
-//
 void *soundplaneGrabThread(void *arg)
 {
 	SoundplaneDriver* k1 = static_cast<SoundplaneDriver*>(arg);
