@@ -11,11 +11,24 @@ if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
   )
 endif()
 
+set(ML_JUCE_HEADER_PATH "${CMAKE_SOURCE_DIR}/Source")
+if(NOT SP_MADRONALIB_DIR)
+  set(SP_MADRONALIB_DIR "${CMAKE_SOURCE_DIR}/external/madronalib")
+endif()
+
+add_subdirectory(${SP_MADRONALIB_DIR})
+
+set(SP_DRIVER_SOURCES
+  SoundplaneLib/SoundplaneDriver.cpp
+  SoundplaneLib/SoundplaneDriver.h
+  )
+add_library(soundplane_driver ${SP_DRIVER_SOURCES})
+target_link_libraries(soundplane_driver portaudio)
+target_include_directories(soundplane_driver PUBLIC SoundplaneLib)
+
 set(SP_SOURCES
   Data/SoundplaneBinaryData/SoundplaneBinaryData.cpp
   Data/SoundplaneBinaryData/SoundplaneBinaryData.h
-  SoundplaneLib/SoundplaneDriver.cpp
-  SoundplaneLib/SoundplaneDriver.h
   Source/AppConfig.h
   Source/Filters2D.cpp
   Source/Filters2D.h
@@ -56,14 +69,7 @@ set(SP_DATA
   ${PLIST_FULL_PATH}
   )
 
-set(ML_JUCE_HEADER_PATH "${CMAKE_SOURCE_DIR}/Source")
 set(SP_CODE_SIGN_IDENTITY "" CACHE STRING "Code sign identity")
-
-if(NOT SP_MADRONALIB_DIR)
-  set(SP_MADRONALIB_DIR "${CMAKE_SOURCE_DIR}/external/madronalib")
-endif()
-
-add_subdirectory(${SP_MADRONALIB_DIR})
 
 add_executable(
   Soundplane
@@ -81,7 +87,7 @@ set_target_properties(Soundplane
   MACOSX_BUNDLE_BUNDLE_NAME "Soundplane"
   )
 target_link_libraries(Soundplane madronalib)
+target_link_libraries(Soundplane soundplane_driver)
 target_link_libraries(Soundplane "-framework IOKit")
 target_include_directories(Soundplane PRIVATE "${ML_JUCE_DIR}")
-target_include_directories(Soundplane PRIVATE SoundplaneLib)
 target_include_directories(Soundplane PRIVATE Data/SoundplaneBinaryData)
