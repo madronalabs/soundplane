@@ -268,10 +268,5 @@ inline void setSequenceNumber(K1IsocTransaction* t, int f, UInt16 s)
 }
 
 void setThreadPriority(pthread_t inThread, UInt32 inPriority, Boolean inIsFixed);
-void dumpTransactions(void *arg, int bufferIndex, int frameIndex);
-int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
-void show_io_err(const char *msg, IOReturn err);
-void show_kern_err(const char *msg, kern_return_t kr);
-const char *io_err_string(IOReturn err);
 
 #endif // __SOUNDPLANE_DRIVER__

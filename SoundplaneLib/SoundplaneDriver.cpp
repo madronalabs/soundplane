@@ -26,6 +26,11 @@ const int kSoundplaneAlternateSetting = 1;
 
 #define printBCD(bcd) printf("%hhx.%hhx.%hhx\n", bcd >> 8, 0x0f & bcd >> 4, 0x0f & bcd)
 
+void dumpTransactions(void *arg, int bufferIndex, int frameIndex);
+int GetStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang);
+void show_io_err(const char *msg, IOReturn err);
+void show_kern_err(const char *msg, kern_return_t kr);
+const char *io_err_string(IOReturn err);
 void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
 void *soundplaneGrabThread(void *arg);
 void *soundplaneProcessThread(void *arg);
