@@ -41,7 +41,7 @@ public:
 	virtual UInt16 getFirmwareVersion() override;
 	virtual std::string getSerialNumberString() override;
 
-	virtual void dumpCarriers() override;
+	virtual const unsigned char *getCarriers() const override;
 	virtual int setCarriers(const unsigned char *carriers) override;
 	virtual int enableCarriers(unsigned long mask) override;
 	virtual void setDefaultCarriers() override;

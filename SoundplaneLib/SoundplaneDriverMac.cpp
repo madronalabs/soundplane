@@ -279,13 +279,8 @@ std::string SoundplaneDriverMac::getSerialNumberString()
 // -------------------------------------------------------------------------------
 #pragma mark carriers
 
-void SoundplaneDriverMac::dumpCarriers()
-{
-	printf( "-----------------\n");
-	for(int i=0; i < kSoundplaneSensorWidth; ++i)
-	{
-		printf("carrier idx %d : %f Hz\n" ,i , carrierToFrequency(mCurrentCarriers[i]));
-	}
+const unsigned char *SoundplaneDriverMac::getCarriers() const {
+	return mCurrentCarriers;
 }
 
 int SoundplaneDriverMac::setCarriers(const unsigned char *cData)

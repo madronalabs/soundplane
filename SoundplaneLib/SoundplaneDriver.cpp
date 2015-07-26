@@ -32,3 +32,13 @@ int SoundplaneDriver::getSerialNumber()
   }
   return 0;
 }
+
+void SoundplaneDriver::dumpCarriers()
+{
+  printf( "-----------------\n");
+  const auto carriers = getCarriers();
+  for(int i=0; i < kSoundplaneSensorWidth; ++i)
+  {
+    printf("carrier idx %d : %f Hz\n" ,i , carrierToFrequency(carriers[i]));
+  }
+}

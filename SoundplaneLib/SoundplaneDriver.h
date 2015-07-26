@@ -66,7 +66,11 @@ public:
 	virtual UInt16 getFirmwareVersion() = 0;
 	virtual std::string getSerialNumberString() = 0;
 
-	virtual void dumpCarriers() = 0;
+	/**
+	 * Returns a pointer to the array of current carriers. The array length
+	 * is kSoundplaneSensorWidth.
+	 */
+	virtual const unsigned char *getCarriers() const = 0;
 	virtual int setCarriers(const unsigned char *carriers) = 0;
 	virtual int enableCarriers(unsigned long mask) = 0;
 	virtual void setDefaultCarriers() = 0;
@@ -76,6 +80,11 @@ public:
 	 * as a string.
 	 */
 	virtual int getSerialNumber() final;
+
+	/**
+	 * Helper function for printing the carrier frequencies.
+	 */
+	virtual void dumpCarriers() final;
 
 	/**
 	 * Create a SoundplaneDriver object that is appropriate for the current
