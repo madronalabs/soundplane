@@ -150,15 +150,45 @@ bool SoundplaneDriverLibusb::processThreadGetDeviceInfo(libusb_device_handle *de
 	return true;
 }
 
-void SoundplaneDriverLibusb::printDebugInfo(libusb_device_handle *device) const
+bool SoundplaneDriverLibusb::processThreadGetEndpointAddresses(
+	Transfers &transfers, libusb_device_handle *device) const
 {
 	libusb_config_descriptor *descriptor;
 	if (libusb_get_active_config_descriptor(libusb_get_device(device), &descriptor) < 0) {
 		fprintf(stderr, "Failed to get device debug information\n");
-		return;
+		return false;
 	}
 
 	printf("Available Bus Power: %d mA\n", 2 * static_cast<int>(descriptor->MaxPower));
+
+	if (descriptor->bNumInterfaces <= kInterfaceNumber) {
+		fprintf(stderr, "No available interfaces: %d\n", descriptor->bNumInterfaces);
+		return false;
+	}
+	const struct libusb_interface& interface = descriptor->interface[kInterfaceNumber];
+	if (interface.num_altsetting <= kSoundplaneAlternateSetting) {
+		fprintf(stderr, "Desired alt setting %d is not available\n", kSoundplaneAlternateSetting);
+		return false;
+	}
+	const struct libusb_interface_descriptor& interfaceDescriptor = interface.altsetting[kSoundplaneAlternateSetting];
+	if (interfaceDescriptor.bNumEndpoints < kSoundplaneANumEndpoints) {
+		fprintf(
+			stderr,
+			"Alt setting %d has too few endpoints (has %d, needs %d)\n",
+			kSoundplaneAlternateSetting,
+			interfaceDescriptor.bNumEndpoints,
+			kSoundplaneANumEndpoints);
+		return false;
+	}
+	for (int i = 0; i < kSoundplaneANumEndpoints; i++) {
+		const struct libusb_endpoint_descriptor& endpoint = interfaceDescriptor.endpoint[i];
+		for (auto &transfer : transfers[i])
+		{
+			transfer.endpointAddress = endpoint.bEndpointAddress;
+		}
+	}
+
+	return true;
 }
 
 bool SoundplaneDriverLibusb::processThreadSetDeviceState(MLSoundplaneState newState)
@@ -191,19 +221,24 @@ void SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
 		{
 			auto &transfer = transfers[endpoint][buffer];
 			libusb_fill_iso_transfer(
-				transfer.libusb_transfer(),
+				transfer.transfer,
 				device,
-				kSoundplaneAEndpointStartIdx + endpoint,
-				transfer.buffer(),
-				transfer.bufferSize(),
+				transfer.endpointAddress,
+				transfer.buffer,
+				sizeof(transfer.buffer),
 				transfer.numPackets(),
 				processThreadTransferCallback,
 				NULL,
 				200);
 			libusb_set_iso_packet_lengths(
-				transfer.libusb_transfer(),
-				transfer.bufferSize() / transfer.numPackets());
-			libusb_submit_transfer(transfer.libusb_transfer());
+				transfer.transfer,
+				sizeof(transfer.buffer) / transfer.numPackets());
+
+			const auto result = libusb_submit_transfer(transfer.transfer);
+			if (result < 0)
+			{
+				fprintf(stderr, "Failed to submit USB transfer: %s\n", libusb_error_name(result));
+			}
 		}
 	}
 }
@@ -223,38 +258,42 @@ void SoundplaneDriverLibusb::processThread() {
 		if (processThreadOpenDevice(handle)) return;
 
 		/// Retrieve firmware version and serial number
-		if (!processThreadGetDeviceInfo(handle.get())) {
+		if (!processThreadGetDeviceInfo(handle.get()))
+		{
 			continue;
 		}
 
-		/// Print debug info
-		printDebugInfo(handle.get());
-
 		// Select the isochronous interface of the Soundplane
-		if (!processThreadSelectIsochronousInterface(handle.get())) {
+		if (!processThreadSelectIsochronousInterface(handle.get()))
+		{
 			continue;
 		}
 
 		/// Allocate transfer buffers
 		Transfers transfers;
 
+		/// Get endpoint addresses
+		if (!processThreadGetEndpointAddresses(transfers, handle.get()))
+		{
+			continue;
+		}
+
 		/// Notify the world that we are now connected
 		if (processThreadSetDeviceState(kDeviceConnected)) return;
 
-		printf("A\n");
 		/// Schedule initial transfers
 		processThreadScheduleInitialTransfers(transfers, handle.get());
-		printf("B\n");
 
 		/// Run the main event loop
 		while (!mQuitting.load(std::memory_order_acquire)) {
-			printf("C\n");
 			if (libusb_handle_events(mLibusbContext) != LIBUSB_SUCCESS) {
 				fprintf(stderr, "Libusb error!\n");
+				break;
 			}
 		}
 
 		// FIXME: Listen for device removal
+		// FIXME: What to do about timeouts?
 		printf("Handle: %p\n", handle.get());
 		sleep(10);
 		if (processThreadSetDeviceState(kNoDevice)) return;

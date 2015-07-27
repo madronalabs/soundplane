@@ -156,29 +156,12 @@ private:
 	{
 		static constexpr int kBufferSize = sizeof(SoundplaneADataPacket) * Packets;
 	public:
-		Transfer()
-		{
-			mTransfer = libusb_alloc_transfer(Packets);
-		}
+		Transfer() :
+			transfer(libusb_alloc_transfer(Packets)) {}
 
 		~Transfer()
 		{
-			libusb_free_transfer(mTransfer);
-		}
-
-		libusb_transfer* libusb_transfer() const
-		{
-			return mTransfer;
-		}
-
-		unsigned char* buffer()
-		{
-			return mBuffer;
-		}
-
-		static constexpr int bufferSize()
-		{
-			return sizeof(mBuffer);
+			libusb_free_transfer(transfer);
 		}
 
 		static constexpr int numPackets()
@@ -186,9 +169,9 @@ private:
 			return Packets;
 		}
 
-	private:
-		struct libusb_transfer* mTransfer;
-		unsigned char mBuffer[kBufferSize];
+		int endpointAddress;
+		struct libusb_transfer* const transfer;
+		unsigned char buffer[kBufferSize];
 	};
 
 	using Transfers = std::array<std::array<Transfer<kSoundplaneANumIsochFrames>, kSoundplaneABuffers>, kSoundplaneANumEndpoints>;
@@ -216,7 +199,15 @@ private:
 	 * Returns false if getting the device info failed.
 	 */
 	bool processThreadGetDeviceInfo(libusb_device_handle *device);
-	void printDebugInfo(libusb_device_handle *device) const;
+	/**
+	 * Get the endpoint addresses and fill them in into the Transfer objects
+	 * for later use.
+	 *
+	 * Returns false if getting the endpoint addresses failed.
+	 */
+	bool processThreadGetEndpointAddresses(
+		Transfers &transfers,
+		libusb_device_handle *device) const;
 	/**
 	 * Sets mState to a new value and notifies the listener.
 	 *
