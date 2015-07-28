@@ -158,6 +158,9 @@ private:
 		Transfer() :
 			transfer(libusb_alloc_transfer(kSoundplaneANumIsochFrames)) {}
 
+		Transfer(const Transfer &) = delete;
+		Transfer& operator=(const Transfer &) = delete;
+
 		~Transfer()
 		{
 			libusb_free_transfer(transfer);
@@ -168,7 +171,8 @@ private:
 			return kSoundplaneANumIsochFrames;
 		}
 
-		int endpointAddress;
+		int endpointAddress = 0;
+		SoundplaneDriverLibusb* parent = nullptr;
 		struct libusb_transfer* const transfer;
 		unsigned char buffer[kBufferSize];
 	};
@@ -200,13 +204,13 @@ private:
 	bool processThreadGetDeviceInfo(libusb_device_handle *device);
 	/**
 	 * Get the endpoint addresses and fill them in into the Transfer objects
-	 * for later use.
+	 * for later use. Also set the parent field of the Transfer objects.
 	 *
 	 * Returns false if getting the endpoint addresses failed.
 	 */
-	bool processThreadGetEndpointAddresses(
+	bool processThreadFillTransferInformation(
 		Transfers &transfers,
-		libusb_device_handle *device) const;
+		libusb_device_handle *device);
 	/**
 	 * Sets mState to a new value and notifies the listener.
 	 *
@@ -229,7 +233,8 @@ private:
 	bool processThreadScheduleInitialTransfers(
 		Transfers &transfers,
 		libusb_device_handle *device) const;
-	static void processThreadTransferCallback(struct libusb_transfer *xfr);
+	static void processThreadTransferCallbackStatic(struct libusb_transfer *xfr);
+	void processThreadTransferCallback(Transfer& transfer);
 	void processThread();
 
 	/**
@@ -244,17 +249,39 @@ private:
 	 */
 	std::atomic<bool> mQuitting;
 
+	/**
+	 * Written to by the processing thread, read by any thread.
+	 */
 	std::atomic<UInt16> mFirmwareVersion;
+	/**
+	 * Written to by the processing thread, read by any thread.
+	 */
 	std::atomic<std::array<unsigned char, 64>> mSerialNumber;
 
 	mutable std::mutex mMutex;  // Used with mCondition
 	mutable std::condition_variable mCondition;  // Used to wake up the process thread
 
+	/**
+	 * Written on object initialization and then never modified. Can be read
+	 * from any thread.
+	 */
 	libusb_context				*mLibusbContext = nullptr;
-	SoundplaneDriverListener	*mListener;
+	/**
+	 * Written on object initialization and then never modified. Can be read
+	 * from any thread.
+	 */
+	SoundplaneDriverListener	* const mListener;
 	unsigned char				mCurrentCarriers[kSoundplaneSensorWidth];
 
 	std::thread					mProcessThread;
+
+	/**
+	 * The usb transfer callbacks set this to true if reading failed and the
+	 * device connection should be treated as lost.
+	 *
+	 * Accessed only from the processing thread.
+	 */
+	bool						mUsbFailed;
 };
 
 #endif // __SOUNDPLANE_DRIVER_LIBUSB__

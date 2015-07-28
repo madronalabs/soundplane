@@ -150,8 +150,8 @@ bool SoundplaneDriverLibusb::processThreadGetDeviceInfo(libusb_device_handle *de
 	return true;
 }
 
-bool SoundplaneDriverLibusb::processThreadGetEndpointAddresses(
-	Transfers &transfers, libusb_device_handle *device) const
+bool SoundplaneDriverLibusb::processThreadFillTransferInformation(
+	Transfers &transfers, libusb_device_handle *device)
 {
 	libusb_config_descriptor *descriptor;
 	if (libusb_get_active_config_descriptor(libusb_get_device(device), &descriptor) < 0) {
@@ -185,6 +185,7 @@ bool SoundplaneDriverLibusb::processThreadGetEndpointAddresses(
 		for (auto &transfer : transfers[i])
 		{
 			transfer.endpointAddress = endpoint.bEndpointAddress;
+			transfer.parent = this;
 		}
 	}
 
@@ -222,7 +223,7 @@ bool SoundplaneDriverLibusb::processThreadScheduleTransfer(
 		transfer.buffer,
 		sizeof(transfer.buffer),
 		transfer.numPackets(),
-		processThreadTransferCallback,
+		processThreadTransferCallbackStatic,
 		&transfer,
 		200);
 	libusb_set_iso_packet_lengths(
@@ -255,9 +256,20 @@ bool SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
 	return true;
 }
 
-void SoundplaneDriverLibusb::processThreadTransferCallback(struct libusb_transfer *xfr)
+void SoundplaneDriverLibusb::processThreadTransferCallbackStatic(struct libusb_transfer *xfr)
+{
+	Transfer *transfer = static_cast<Transfer*>(xfr->user_data);
+	transfer->parent->processThreadTransferCallback(*transfer);
+}
+
+void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 {
 	printf("Transfer\n");
+
+	// Schedule another transfer
+	if (!processThreadScheduleTransfer(transfer, transfer.transfer->dev_handle)) {
+		mUsbFailed = true;
+	}
 }
 
 void SoundplaneDriverLibusb::processThread() {
@@ -265,6 +277,7 @@ void SoundplaneDriverLibusb::processThread() {
 	// using it, and the device going away.
 	while (!mQuitting.load(std::memory_order_acquire))
 	{
+		mUsbFailed = false;
 		Transfers transfers;
 		LibusbClaimedDevice handle;
 
@@ -272,7 +285,7 @@ void SoundplaneDriverLibusb::processThread() {
 			processThreadOpenDevice(handle) &&
 			processThreadGetDeviceInfo(handle.get()) &&
 			processThreadSelectIsochronousInterface(handle.get()) &&
-			processThreadGetEndpointAddresses(transfers, handle.get()) &&
+			processThreadFillTransferInformation(transfers, handle.get()) &&
 			processThreadSetDeviceState(kDeviceConnected) &&
 			processThreadScheduleInitialTransfers(transfers, handle.get());
 
@@ -280,15 +293,16 @@ void SoundplaneDriverLibusb::processThread() {
 
 		/// Run the main event loop
 		while (!mQuitting.load(std::memory_order_acquire)) {
-			if (libusb_handle_events(mLibusbContext) != LIBUSB_SUCCESS) {
+			if (libusb_handle_events(mLibusbContext) != LIBUSB_SUCCESS)
+			{
 				fprintf(stderr, "Libusb error!\n");
 				break;
 			}
+			if (mUsbFailed)
+			{
+				break;
+			}
 		}
-
-		// FIXME: Listen for device removal
-		// FIXME: What to do about timeouts?
-		printf("Handle: %p\n", handle.get());
 
 		if (!processThreadSetDeviceState(kNoDevice)) continue;
 	}
