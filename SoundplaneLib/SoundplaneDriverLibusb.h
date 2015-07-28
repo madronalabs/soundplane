@@ -151,13 +151,12 @@ private:
 	 * An object that represents one USB transaction: It has a buffer and
 	 * a libusb_transfer*.
 	 */
-	template<int Packets>
 	class Transfer
 	{
-		static constexpr int kBufferSize = sizeof(SoundplaneADataPacket) * Packets;
+		static constexpr int kBufferSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
 	public:
 		Transfer() :
-			transfer(libusb_alloc_transfer(Packets)) {}
+			transfer(libusb_alloc_transfer(kSoundplaneANumIsochFrames)) {}
 
 		~Transfer()
 		{
@@ -166,7 +165,7 @@ private:
 
 		static constexpr int numPackets()
 		{
-			return Packets;
+			return kSoundplaneANumIsochFrames;
 		}
 
 		int endpointAddress;
@@ -174,7 +173,7 @@ private:
 		unsigned char buffer[kBufferSize];
 	};
 
-	using Transfers = std::array<std::array<Transfer<kSoundplaneANumIsochFrames>, kSoundplaneABuffers>, kSoundplaneANumEndpoints>;
+	using Transfers = std::array<std::array<Transfer, kSoundplaneABuffers>, kSoundplaneANumEndpoints>;
 
 	/**
 	 * Inform the listener that the device state was updated to a new state.
@@ -218,7 +217,16 @@ private:
 	 * Returns false if selecting the isochronous failed.
 	 */
 	bool processThreadSelectIsochronousInterface(libusb_device_handle *device) const;
-	void processThreadScheduleInitialTransfers(
+	/**
+	 * Returns false if scheduling the transfer failed.
+	 */
+	bool processThreadScheduleTransfer(
+		Transfer &transfer,
+		libusb_device_handle *device) const;
+	/**
+	 * Returns false if scheduling of any of the initial transfers failed.
+	 */
+	bool processThreadScheduleInitialTransfers(
 		Transfers &transfers,
 		libusb_device_handle *device) const;
 	static void processThreadTransferCallback(struct libusb_transfer *xfr);

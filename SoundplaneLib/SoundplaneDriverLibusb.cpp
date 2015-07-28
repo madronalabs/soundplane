@@ -211,7 +211,34 @@ bool SoundplaneDriverLibusb::processThreadSelectIsochronousInterface(libusb_devi
 	return true;
 }
 
-void SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
+bool SoundplaneDriverLibusb::processThreadScheduleTransfer(
+	Transfer &transfer,
+	libusb_device_handle *device) const
+{
+	libusb_fill_iso_transfer(
+		transfer.transfer,
+		device,
+		transfer.endpointAddress,
+		transfer.buffer,
+		sizeof(transfer.buffer),
+		transfer.numPackets(),
+		processThreadTransferCallback,
+		NULL,
+		200);
+	libusb_set_iso_packet_lengths(
+		transfer.transfer,
+		sizeof(transfer.buffer) / transfer.numPackets());
+
+	const auto result = libusb_submit_transfer(transfer.transfer);
+	if (result < 0)
+	{
+		fprintf(stderr, "Failed to submit USB transfer: %s\n", libusb_error_name(result));
+		return false;
+	}
+	return true;
+}
+
+bool SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
 	Transfers &transfers,
 	libusb_device_handle *device) const
 {
@@ -220,27 +247,12 @@ void SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
 		for (int buffer = 0; buffer < kSoundplaneABuffers; buffer++)
 		{
 			auto &transfer = transfers[endpoint][buffer];
-			libusb_fill_iso_transfer(
-				transfer.transfer,
-				device,
-				transfer.endpointAddress,
-				transfer.buffer,
-				sizeof(transfer.buffer),
-				transfer.numPackets(),
-				processThreadTransferCallback,
-				NULL,
-				200);
-			libusb_set_iso_packet_lengths(
-				transfer.transfer,
-				sizeof(transfer.buffer) / transfer.numPackets());
-
-			const auto result = libusb_submit_transfer(transfer.transfer);
-			if (result < 0)
-			{
-				fprintf(stderr, "Failed to submit USB transfer: %s\n", libusb_error_name(result));
+			if (!processThreadScheduleTransfer(transfer, device)) {
+				return false;
 			}
 		}
 	}
+	return true;
 }
 
 void SoundplaneDriverLibusb::processThreadTransferCallback(struct libusb_transfer *xfr)
@@ -255,34 +267,25 @@ void SoundplaneDriverLibusb::processThread() {
 	{
 		/// Open and claim the device
 		LibusbClaimedDevice handle;
-		if (processThreadOpenDevice(handle)) return;
+		if (processThreadOpenDevice(handle)) continue;
 
 		/// Retrieve firmware version and serial number
-		if (!processThreadGetDeviceInfo(handle.get()))
-		{
-			continue;
-		}
+		if (!processThreadGetDeviceInfo(handle.get())) continue;
 
 		// Select the isochronous interface of the Soundplane
-		if (!processThreadSelectIsochronousInterface(handle.get()))
-		{
-			continue;
-		}
+		if (!processThreadSelectIsochronousInterface(handle.get())) continue;
 
 		/// Allocate transfer buffers
 		Transfers transfers;
 
 		/// Get endpoint addresses
-		if (!processThreadGetEndpointAddresses(transfers, handle.get()))
-		{
-			continue;
-		}
+		if (!processThreadGetEndpointAddresses(transfers, handle.get())) continue;
 
 		/// Notify the world that we are now connected
-		if (processThreadSetDeviceState(kDeviceConnected)) return;
+		if (processThreadSetDeviceState(kDeviceConnected)) continue;
 
 		/// Schedule initial transfers
-		processThreadScheduleInitialTransfers(transfers, handle.get());
+		if (!processThreadScheduleInitialTransfers(transfers, handle.get())) continue;
 
 		/// Run the main event loop
 		while (!mQuitting.load(std::memory_order_acquire)) {
