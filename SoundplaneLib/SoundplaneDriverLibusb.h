@@ -104,7 +104,7 @@ private:
 			mHandle(std::move(handle)),
 			mInterfaceNumber(interfaceNumber) {
 			// Attempt to claim the specified interface
-			if (libusb_claim_interface(mHandle.get(), interfaceNumber) < 0) {
+			if (!mHandle.get() || libusb_claim_interface(mHandle.get(), interfaceNumber) < 0) {
 				// Claim failed. Reset underlying handle
 				LibusbDevice empty;
 				std::swap(empty, mHandle);
