@@ -276,7 +276,7 @@ private:
 	std::thread					mProcessThread;
 
 	/**
-	 * The usb transfer callbacks set this to true if reading failed and the
+	 * The usb transfer callback sets this to true if reading failed and the
 	 * device connection should be treated as lost.
 	 *
 	 * Accessed only from the processing thread.

@@ -264,7 +264,10 @@ void SoundplaneDriverLibusb::processThreadTransferCallbackStatic(struct libusb_t
 
 void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 {
-	printf("Transfer\n");
+	// Report kDeviceHasIsochSync if appropriate
+	if (mState.load(std::memory_order_acquire) == kDeviceConnected) {
+		processThreadSetDeviceState(kDeviceHasIsochSync);
+	}
 
 	// Schedule another transfer
 	if (!processThreadScheduleTransfer(transfer, transfer.transfer->dev_handle)) {
