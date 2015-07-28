@@ -182,13 +182,13 @@ private:
 	void emitDeviceStateChanged(MLSoundplaneState newState) const;
 
 	/**
-	 * Returns true if the process thread should quit.
+	 * Returns false if the process thread should quit.
 	 *
 	 * May spuriously wait for a shorter than the specified time.
 	 */
 	bool processThreadWait(int ms) const;
 	/**
-	 * Returns true if the process thread should quit.
+	 * Returns false if the process thread should quit.
 	 */
 	bool processThreadOpenDevice(LibusbClaimedDevice &outDevice) const;
 	/**
@@ -210,7 +210,7 @@ private:
 	/**
 	 * Sets mState to a new value and notifies the listener.
 	 *
-	 * Returns true if the process thread should quit.
+	 * Returns false if the process thread should quit.
 	 */
 	bool processThreadSetDeviceState(MLSoundplaneState newState);
 	/**
