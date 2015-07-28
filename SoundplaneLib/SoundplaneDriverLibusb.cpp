@@ -264,14 +264,25 @@ void SoundplaneDriverLibusb::processThreadTransferCallbackStatic(struct libusb_t
 
 void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 {
+	// Check if the transfer was successful
+	if (transfer.transfer->status != LIBUSB_TRANSFER_COMPLETED)
+	{
+		fprintf(stderr, "Failed USB transfer failed: %s\n", libusb_error_name(transfer.transfer->status));
+		mUsbFailed = true;
+		return;
+	}
+
 	// Report kDeviceHasIsochSync if appropriate
-	if (mState.load(std::memory_order_acquire) == kDeviceConnected) {
+	if (mState.load(std::memory_order_acquire) == kDeviceConnected)
+	{
 		processThreadSetDeviceState(kDeviceHasIsochSync);
 	}
 
 	// Schedule another transfer
-	if (!processThreadScheduleTransfer(transfer, transfer.transfer->dev_handle)) {
+	if (!processThreadScheduleTransfer(transfer, transfer.transfer->dev_handle))
+	{
 		mUsbFailed = true;
+		return;
 	}
 }
 
