@@ -275,6 +275,7 @@ void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 	// Report kDeviceHasIsochSync if appropriate
 	if (mState.load(std::memory_order_acquire) == kDeviceConnected)
 	{
+		// FIXME: Set default carriers
 		processThreadSetDeviceState(kDeviceHasIsochSync);
 	}
 
