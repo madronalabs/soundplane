@@ -217,12 +217,6 @@ private:
 	using Transfers = std::array<std::array<Transfer, kBuffersPerEndpoint>, kSoundplaneANumEndpoints>;
 
 	/**
-	 * Inform the listener that the device state was updated to a new state.
-	 * May be called from any thread.
-	 */
-	void emitDeviceStateChanged(MLSoundplaneState newState) const;
-
-	/**
 	 * Returns false if the process thread should quit.
 	 *
 	 * May spuriously wait for a shorter than the specified time.

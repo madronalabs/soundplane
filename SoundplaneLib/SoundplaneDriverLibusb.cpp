@@ -34,7 +34,6 @@ SoundplaneDriverLibusb::~SoundplaneDriverLibusb()
 {
 	// This causes getDeviceState to return kDeviceIsTerminating
 	mQuitting.store(true, std::memory_order_release);
-	emitDeviceStateChanged(kDeviceIsTerminating);  // FIXME: Emit this from the process thread instead
 	mCondition.notify_one();
 	mProcessThread.join();
 	libusb_exit(mLibusbContext);
@@ -93,13 +92,6 @@ int SoundplaneDriverLibusb::enableCarriers(unsigned long mask)
 {
 	// FIXME: Not implemented
 	return 0;
-}
-
-void SoundplaneDriverLibusb::emitDeviceStateChanged(MLSoundplaneState newState) const
-{
-	if (mListener) {
-		mListener->deviceStateChanged(newState);
-	}
 }
 
 bool SoundplaneDriverLibusb::processThreadWait(int ms) const
@@ -206,12 +198,10 @@ bool SoundplaneDriverLibusb::processThreadFillTransferInformation(
 bool SoundplaneDriverLibusb::processThreadSetDeviceState(MLSoundplaneState newState)
 {
 	mState.store(newState, std::memory_order_release);
-	if (mQuitting.load(std::memory_order_acquire)) {
-		return false;
-	} else {
-		emitDeviceStateChanged(newState);
-		return true;
+	if (mListener) {
+		mListener->deviceStateChanged(newState);
 	}
+	return !mQuitting.load(std::memory_order_acquire);
 }
 
 bool SoundplaneDriverLibusb::processThreadSelectIsochronousInterface(libusb_device_handle *device) const
@@ -338,4 +328,6 @@ void SoundplaneDriverLibusb::processThread() {
 
 		if (!processThreadSetDeviceState(kNoDevice)) continue;
 	}
+
+	processThreadSetDeviceState(kDeviceIsTerminating);
 }
