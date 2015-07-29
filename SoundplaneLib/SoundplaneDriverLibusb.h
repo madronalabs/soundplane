@@ -15,6 +15,7 @@
 
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
+#include "Unpacker.h"
 
 class SoundplaneDriverLibusb : public SoundplaneDriver
 {
@@ -148,12 +149,22 @@ private:
 	};
 
 	/**
+	 * SoundplaneDriverLibusb holds an integer multiple >= 2 of the buffers that
+	 * are in flight. This is because buffers that have been received might not
+	 * be immediately processable, since the separate Soundplane USB endpoints
+	 * can be slightly out of sync. The buffers that are not in flight are kept
+	 * so that when endpoint 1 is lagging behind endpoint 2, the full messages
+	 * can be reconstructed when the packets for endpoint 1 arrive.
+	 */
+	static constexpr int kInFlightMultiplier = 2;
+	static constexpr int kBuffersPerEndpoint = kInFlightMultiplier * kSoundplaneABuffersInFlight;
+
+	/**
 	 * An object that represents one USB transaction: It has a buffer and
 	 * a libusb_transfer*.
 	 */
 	class Transfer
 	{
-		static constexpr int kBufferSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
 	public:
 		Transfer() :
 			transfer(libusb_alloc_transfer(kSoundplaneANumIsochFrames)) {}
@@ -171,13 +182,39 @@ private:
 			return kSoundplaneANumIsochFrames;
 		}
 
+		/**
+		 * Identifier for the endpoint, starting at 0 and going up
+		 * monotonically.
+		 */
+		int endpointId = 0;
+		/**
+		 * Endpoint "address", as used by libusb.
+		 */
 		int endpointAddress = 0;
 		SoundplaneDriverLibusb* parent = nullptr;
 		struct libusb_transfer* const transfer;
-		unsigned char buffer[kBufferSize];
+		SoundplaneADataPacket packets[kSoundplaneANumIsochFrames];
+		/**
+		 * Only an integer fraction of the allocated buffers are ever being
+		 * processed by libusb. The other ones are kept in order to be able
+		 * to reconstruct messages even though the different Soundplane
+		 * endpoints can be out of sync.
+		 *
+		 * When a transfer is done, SoundplaneDriverLibusb needs to queue one
+		 * more transfer. Since the transfer that was just done has to be kept
+		 * for a while before being re-submitted, some other transfer has to be
+		 * submitted instead. nextTransfer points to that packet.
+		 *
+		 * In practice, the nextTransfer pointers are set up on initialization
+		 * to point to each other in circular lists that have
+		 * kInFlightMultiplier elements per cycle.
+		 *
+		 * @see kInFlightMultiplier
+		 */
+		Transfer* nextTransfer;
 	};
 
-	using Transfers = std::array<std::array<Transfer, kSoundplaneABuffers>, kSoundplaneANumEndpoints>;
+	using Transfers = std::array<std::array<Transfer, kBuffersPerEndpoint>, kSoundplaneANumEndpoints>;
 
 	/**
 	 * Inform the listener that the device state was updated to a new state.
@@ -282,6 +319,14 @@ private:
 	 * Accessed only from the processing thread.
 	 */
 	bool						mUsbFailed;
+
+	/**
+	 * The Unpacker object used for combining frames from the Soundplane
+	 * endpoints into a single stream of pressure messages.
+	 *
+	 * Accessed only from the processing thread.
+	 */
+	Unpacker<kBuffersPerEndpoint - kSoundplaneABuffersInFlight, kSoundplaneANumEndpoints> mUnpacker;
 };
 
 #endif // __SOUNDPLANE_DRIVER_LIBUSB__

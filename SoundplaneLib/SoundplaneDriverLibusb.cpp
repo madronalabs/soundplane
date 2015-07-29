@@ -34,7 +34,7 @@ SoundplaneDriverLibusb::~SoundplaneDriverLibusb()
 {
 	// This causes getDeviceState to return kDeviceIsTerminating
 	mQuitting.store(true, std::memory_order_release);
-	emitDeviceStateChanged(kDeviceIsTerminating);
+	emitDeviceStateChanged(kDeviceIsTerminating);  // FIXME: Emit this from the process thread instead
 	mCondition.notify_one();
 	mProcessThread.join();
 	libusb_exit(mLibusbContext);
@@ -180,12 +180,23 @@ bool SoundplaneDriverLibusb::processThreadFillTransferInformation(
 			kSoundplaneANumEndpoints);
 		return false;
 	}
-	for (int i = 0; i < kSoundplaneANumEndpoints; i++) {
+	for (int i = 0; i < transfers.size(); i++) {
 		const struct libusb_endpoint_descriptor& endpoint = interfaceDescriptor.endpoint[i];
-		for (auto &transfer : transfers[i])
+		auto &transfersForEndpoint = transfers[i];
+		for (int j = 0; j < transfersForEndpoint.size(); j++)
 		{
+			auto &transfer = transfersForEndpoint[j];
+			transfer.endpointId = i;
 			transfer.endpointAddress = endpoint.bEndpointAddress;
 			transfer.parent = this;
+			// Divide the transfers into groups of kInFlightMultiplier. Within
+			// each group, each transfer points to the previous one, except for
+			// the first, which points to the last one. With this scheme, the
+			// nextTransfer pointers form cycles of length kInFlightMultiplier.
+			//
+			// @see The nextTransfer member declaration
+			const bool isAtStartOfCycle = j % kInFlightMultiplier == 0;
+			transfer.nextTransfer = &transfersForEndpoint[j + (isAtStartOfCycle ? kInFlightMultiplier - 1 : -1)];
 		}
 	}
 
@@ -220,15 +231,15 @@ bool SoundplaneDriverLibusb::processThreadScheduleTransfer(
 		transfer.transfer,
 		device,
 		transfer.endpointAddress,
-		transfer.buffer,
-		sizeof(transfer.buffer),
+		reinterpret_cast<unsigned char *>(transfer.packets),
+		sizeof(transfer.packets),
 		transfer.numPackets(),
 		processThreadTransferCallbackStatic,
 		&transfer,
 		200);
 	libusb_set_iso_packet_lengths(
 		transfer.transfer,
-		sizeof(transfer.buffer) / transfer.numPackets());
+		sizeof(transfer.packets) / transfer.numPackets());
 
 	const auto result = libusb_submit_transfer(transfer.transfer);
 	if (result < 0)
@@ -245,7 +256,7 @@ bool SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
 {
 	for (int endpoint = 0; endpoint < kSoundplaneANumEndpoints; endpoint++)
 	{
-		for (int buffer = 0; buffer < kSoundplaneABuffers; buffer++)
+		for (int buffer = 0; buffer < kSoundplaneABuffersInFlight; buffer++)
 		{
 			auto &transfer = transfers[endpoint][buffer];
 			if (!processThreadScheduleTransfer(transfer, device)) {
@@ -279,8 +290,14 @@ void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 		processThreadSetDeviceState(kDeviceHasIsochSync);
 	}
 
+	mUnpacker.gotTransfer(
+		transfer.endpointId,
+		transfer.packets,
+		transfer.transfer->num_iso_packets);
+
 	// Schedule another transfer
-	if (!processThreadScheduleTransfer(transfer, transfer.transfer->dev_handle))
+	Transfer& nextTransfer = *transfer.nextTransfer;
+	if (!processThreadScheduleTransfer(nextTransfer, nextTransfer.transfer->dev_handle))
 	{
 		mUsbFailed = true;
 		return;
