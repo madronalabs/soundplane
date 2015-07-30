@@ -311,7 +311,7 @@ int SoundplaneDriverMac::enableCarriers(unsigned long mask)
 	startupCtr = 0;
 
     request.bmRequestType = USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
-    request.bRequest = 1;
+    request.bRequest = kRequestMask;
 	request.wValue = mask >> 16;
 	request.wIndex = mask;
 	request.wLength = 0;

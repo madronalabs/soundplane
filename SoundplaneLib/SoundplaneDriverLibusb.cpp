@@ -79,6 +79,10 @@ SoundplaneDriverLibusb::~SoundplaneDriverLibusb()
 	mQuitting.store(true, std::memory_order_release);
 	mCondition.notify_one();
 	mProcessThread.join();
+
+	delete mEnableCarriersRequest.load(std::memory_order_acquire);
+	delete mSetCarriersRequest.load(std::memory_order_acquire);
+
 	libusb_exit(mLibusbContext);
 }
 
@@ -128,20 +132,65 @@ std::string SoundplaneDriverLibusb::getSerialNumberString() const
 
 const unsigned char *SoundplaneDriverLibusb::getCarriers() const
 {
-	// FIXME: Not implemented
-	return mCurrentCarriers;
+	// FIXME: Change this interface to specify the size of the data
+	return mCurrentCarriers.data();
 }
 
 int SoundplaneDriverLibusb::setCarriers(const unsigned char *carriers)
 {
-	// FIXME: Not implemented
+	// FIXME: Change this interface to specify the size of the data
+	// FIXME: Change this interface to return void
+
+	auto * const sentCarriers = new Carriers;
+	std::copy(carriers, carriers + sentCarriers->size(), sentCarriers->begin());
+	std::copy(carriers, carriers + sentCarriers->size(), mCurrentCarriers.begin());
+	delete mSetCarriersRequest.exchange(sentCarriers, std::memory_order_release);
 	return 0;
 }
 
 int SoundplaneDriverLibusb::enableCarriers(unsigned long mask)
 {
-	// FIXME: Not implemented
+	// FIXME: Change this interface to return void
+	delete mEnableCarriersRequest.exchange(
+		new unsigned long(mask), std::memory_order_release);
 	return 0;
+}
+
+libusb_error SoundplaneDriverLibusb::sendControl(
+	libusb_device_handle *device,
+	uint8_t request,
+	uint16_t value,
+	uint16_t index,
+	const unsigned char *data,
+	size_t dataSize,
+	libusb_transfer_cb_fn cb,
+	void *userData)
+{
+	unsigned char *buf = static_cast<unsigned char*>(malloc(LIBUSB_CONTROL_SETUP_SIZE + dataSize));
+	struct libusb_transfer *transfer;
+
+	if (!buf)
+	{
+		return LIBUSB_ERROR_NO_MEM;
+	}
+
+	memcpy(buf + LIBUSB_CONTROL_SETUP_SIZE, data, dataSize);
+
+	transfer = libusb_alloc_transfer(0);
+	if (!transfer)
+	{
+		free(buf);
+		return LIBUSB_ERROR_NO_MEM;
+	}
+
+	static constexpr auto kCtrlOut = LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT;
+	libusb_fill_control_setup(buf, kCtrlOut, request, value, index, dataSize);
+	libusb_fill_control_transfer(transfer, device, buf, cb, userData, 1000);
+
+	transfer->flags = LIBUSB_TRANSFER_SHORT_NOT_OK
+		| LIBUSB_TRANSFER_FREE_BUFFER
+		| LIBUSB_TRANSFER_FREE_TRANSFER;
+	return static_cast<libusb_error>(libusb_submit_transfer(transfer));
 }
 
 bool SoundplaneDriverLibusb::processThreadWait(int ms) const
@@ -347,7 +396,47 @@ void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 	}
 }
 
-void SoundplaneDriverLibusb::processThread() {
+void SoundplaneDriverLibusb::processThreadSetCarriers(
+	libusb_device_handle *device, const unsigned char *carriers, size_t carriersSize)
+{
+	sendControl(
+		device,
+		kRequestMask,
+		0,
+		kRequestCarriersIndex,
+		carriers,
+		carriersSize,
+		nullptr,
+		nullptr);
+}
+
+void SoundplaneDriverLibusb::processThreadHandleRequests(libusb_device_handle *device)
+{
+	const auto carrierMask = mEnableCarriersRequest.exchange(nullptr, std::memory_order_acquire);
+	if (carrierMask)
+	{
+		unsigned long mask = *carrierMask;
+		sendControl(
+			device,
+			kRequestMask,
+			mask >> 16,
+			mask,
+			nullptr,
+			0,
+			nullptr,
+			nullptr);
+		delete carrierMask;
+	}
+	const auto carriers = mSetCarriersRequest.exchange(nullptr, std::memory_order_acquire);
+	if (carriers)
+	{
+		processThreadSetCarriers(device, carriers->data(), carriers->size());
+		delete carriers;
+	}
+}
+
+void SoundplaneDriverLibusb::processThread()
+{
 	// Each iteration of this loop is one cycle of finding a Soundplane device,
 	// using it, and the device going away.
 	while (!mQuitting.load(std::memory_order_acquire))
@@ -393,6 +482,7 @@ void SoundplaneDriverLibusb::processThread() {
 			{
 				break;
 			}
+			processThreadHandleRequests(handle.get());
 		}
 
 		if (!processThreadSetDeviceState(kNoDevice)) continue;

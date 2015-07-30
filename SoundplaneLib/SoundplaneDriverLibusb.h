@@ -221,6 +221,16 @@ private:
 
 	using Transfers = std::array<std::array<Transfer, kBuffersPerEndpoint>, kSoundplaneANumEndpoints>;
 
+	static libusb_error sendControl(
+		libusb_device_handle *device,
+		uint8_t request,
+		uint16_t value,
+		uint16_t index,
+		const unsigned char *data,
+		size_t dataSize,
+		libusb_transfer_cb_fn cb,
+		void *userData);
+
 	/**
 	 * Returns false if the process thread should quit.
 	 *
@@ -272,6 +282,9 @@ private:
 		libusb_device_handle *device) const;
 	static void processThreadTransferCallbackStatic(struct libusb_transfer *xfr);
 	void processThreadTransferCallback(Transfer& transfer);
+	void processThreadSetCarriers(
+		libusb_device_handle *device, const unsigned char *carriers, size_t carriersSize);
+	void processThreadHandleRequests(libusb_device_handle *device);
 	void processThread();
 
 	/**
@@ -287,16 +300,21 @@ private:
 	std::atomic<bool> mQuitting;
 
 	/**
-	 * Written to by the processing thread, read by any thread.
+	 * Written to by the processing thread before mState is set from kNoDevice,
+	 * read by any thread.
 	 */
 	std::atomic<UInt16> mFirmwareVersion;
 	/**
-	 * Written to by the processing thread, read by any thread.
+	 * Written to by the processing thread before mState is set from kNoDevice,
+	 * read by any thread.
 	 */
 	std::atomic<std::array<unsigned char, 64>> mSerialNumber;
 
 	mutable std::mutex mMutex;  // Used with mCondition
-	mutable std::condition_variable mCondition;  // Used to wake up the process thread
+	/**
+	 * Used to wake up the process thread when it's waiting for a device
+	 */
+	mutable std::condition_variable mCondition;
 
 	/**
 	 * Written on object initialization and then never modified. Can be read
@@ -308,7 +326,6 @@ private:
 	 * from any thread.
 	 */
 	SoundplaneDriverListener	* const mListener;
-	unsigned char				mCurrentCarriers[kSoundplaneSensorWidth];
 
 	std::thread					mProcessThread;
 
@@ -326,6 +343,25 @@ private:
 	 */
 	float mpOutputData[kSoundplaneOutputFrameLength * kSoundplaneOutputBufFrames];
 	PaUtilRingBuffer mOutputBuf;
+
+	using Carriers = std::array<unsigned char, kSoundplaneSensorWidth>;
+	/**
+	 * Set to a value (allocated with new) by setCarriers. Read (and deleted)
+	 * by the processing thread.
+	 */
+	std::atomic<const Carriers*> mSetCarriersRequest;
+
+	/**
+	 * Neither read nor written to by the processing thread. This is only a
+	 * copy of the values for use by the clients of SoundplaneDriverLibusb.
+	 */
+	Carriers					mCurrentCarriers;
+
+	/**
+	 * Set to a value (allocated with new) by enableCarriers. Read (and deleted)
+	 * by the processing thread.
+	 */
+	std::atomic<const unsigned long*> mEnableCarriersRequest;
 };
 
 #endif // __SOUNDPLANE_DRIVER_LIBUSB__
