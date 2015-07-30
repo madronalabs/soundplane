@@ -83,9 +83,15 @@ class Unpacker
 		std::array<float, kSoundplaneOutputFrameLength> workingFrame;
 		K1_unpack_float2(p0.packedData, p1.packedData, workingFrame);
 		K1_clear_edges(workingFrame);
+		mGotFrame(workingFrame);
 	}
 
 public:
+	using GotFrameCallback = std::function<void (const SoundplaneOutputFrame& frame)>;
+
+	Unpacker(GotFrameCallback gotFrame) :
+		mGotFrame(std::move(gotFrame)) {}
+
 	/**
 	 * Feed the Unpacker with a number of packets. The Unpacker tolerates packet
 	 * losses, but it does not tolerate packet reordering. If a packet arrives
@@ -194,6 +200,7 @@ private:
 	}
 
 	RingBuffer<Transfer, StoredTransfersPerEndpoint> mTransfers[Endpoints];
+	const GotFrameCallback mGotFrame;
 };
 
 #endif // __UNPACKER__

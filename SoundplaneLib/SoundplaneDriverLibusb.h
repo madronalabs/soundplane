@@ -13,6 +13,8 @@
 
 #include <libusb.h>
 
+#include "pa_ringbuffer.h"
+
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
 #include "Unpacker.h"
@@ -317,6 +319,13 @@ private:
 	 * Accessed only from the processing thread.
 	 */
 	bool						mUsbFailed;
+
+	/**
+	 * Ring buffer is read by one reader (the client of the driver) and written
+	 * to by the processing thread.
+	 */
+	float mpOutputData[kSoundplaneOutputFrameLength * kSoundplaneOutputBufFrames];
+	PaUtilRingBuffer mOutputBuf;
 };
 
 #endif // __SOUNDPLANE_DRIVER_LIBUSB__

@@ -106,7 +106,7 @@ private:
 
 	std::atomic<MLSoundplaneState> mState;
 	unsigned char mCurrentCarriers[kSoundplaneSensorWidth];
-	float mpOutputData[kSoundplaneWidth * kSoundplaneHeight * kSoundplaneOutputBufFrames];
+	float mpOutputData[kSoundplaneOutputFrameLength * kSoundplaneOutputBufFrames];
 	PaUtilRingBuffer mOutputBuf;
 
 	// mListener may be nullptr

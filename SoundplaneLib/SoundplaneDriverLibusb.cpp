@@ -13,7 +13,49 @@
 
 #include <unistd.h>
 
-static constexpr int kInterfaceNumber = 0;
+namespace
+{
+
+constexpr int kInterfaceNumber = 0;
+
+using GotFrameCallback = std::function<void (const SoundplaneOutputFrame& frame)>;
+
+template<typename GlitchCallback>
+GotFrameCallback makeAnomalyFilter(
+	const GlitchCallback &glitchCallback,
+	const GotFrameCallback &successCallback)
+{
+	int startupCtr = 0;
+	SoundplaneOutputFrame previousFrame;
+	return [startupCtr, previousFrame, glitchCallback, successCallback](
+		const SoundplaneOutputFrame& frame) mutable
+	{
+		if (startupCtr > kSoundplaneStartupFrames)
+		{
+			float df = frameDiff(previousFrame, frame);
+			if (df < kMaxFrameDiff)
+			{
+				// We are OK, the data gets out normally
+				successCallback(frame);
+			}
+			else
+			{
+				// Possible sensor glitch.  also occurs when changing carriers.
+				glitchCallback(startupCtr, df, previousFrame, frame);
+				startupCtr = 0;
+			}
+		}
+		else
+		{
+			// Wait for initialization
+			startupCtr++;
+		}
+
+		previousFrame = frame;
+	};
+}
+
+}
 
 std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListener *listener)
 {
@@ -28,6 +70,7 @@ SoundplaneDriverLibusb::SoundplaneDriverLibusb(SoundplaneDriverListener* listene
 	mQuitting(false),
 	mListener(listener)
 {
+	PaUtil_InitializeRingBuffer(&mOutputBuf, sizeof(mpOutputData) / kSoundplaneOutputBufFrames, kSoundplaneOutputBufFrames, mpOutputData);
 }
 
 SoundplaneDriverLibusb::~SoundplaneDriverLibusb()
@@ -51,11 +94,17 @@ void SoundplaneDriverLibusb::init()
 
 int SoundplaneDriverLibusb::readSurface(float* pDest)
 {
-	return 0;
+	int result = 0;
+	if(PaUtil_GetRingBufferReadAvailable(&mOutputBuf) >= 1)
+	{
+		result = PaUtil_ReadRingBuffer(&mOutputBuf, pDest, 1);
+	}
+	return result;
 }
 
 void SoundplaneDriverLibusb::flushOutputBuffer()
 {
+	PaUtil_FlushRingBuffer(&mOutputBuf);
 }
 
 MLSoundplaneState SoundplaneDriverLibusb::getDeviceState() const
@@ -305,7 +354,20 @@ void SoundplaneDriverLibusb::processThread() {
 		mUsbFailed = false;
 		Transfers transfers;
 		LibusbClaimedDevice handle;
-		LibusbUnpacker unpacker;
+		LibusbUnpacker unpacker(makeAnomalyFilter(
+			[this](int startupCtr, float df, const SoundplaneOutputFrame& previousFrame, const SoundplaneOutputFrame& frame)
+			{
+				if (mListener)
+				{
+					mListener->handleDeviceError(kDevDataDiffTooLarge, startupCtr, 0, df, 0.);
+					mListener->handleDeviceDataDump(previousFrame.data(), previousFrame.size());
+					mListener->handleDeviceDataDump(frame.data(), frame.size());
+				}
+			},
+			[this](const SoundplaneOutputFrame& frame)
+			{
+				PaUtil_WriteRingBuffer(&mOutputBuf, frame.data(), 1);
+			}));
 
 		bool success =
 			processThreadOpenDevice(handle) &&
