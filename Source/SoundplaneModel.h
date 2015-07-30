@@ -80,7 +80,7 @@ public:
 	int getHeight() { return mSurface.getHeight(); }
 
 	void setDefaultCarriers();
-	void setCarriers(unsigned char* c);
+	void setCarriers(const SoundplaneDriver::Carriers& c);
 	int enableCarriers(unsigned long mask);
 	int getNumCarriers() { return kSoundplaneSensorWidth; }
 	void dumpCarriers();
@@ -196,7 +196,7 @@ private:
 	// when on, calibration tries to collect the lowest noise carriers to use.  otherwise a default set is used.
 	//
 	bool mDynamicCarriers;
-	unsigned char mCarriers[kSoundplaneSensorWidth];
+	SoundplaneDriver::Carriers mCarriers;
 
 	bool mHasCalibration;
 	MLSignal mCalibrateSum;

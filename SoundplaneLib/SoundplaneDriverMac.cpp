@@ -280,15 +280,12 @@ const unsigned char *SoundplaneDriverMac::getCarriers() const {
 	return mCurrentCarriers;
 }
 
-int SoundplaneDriverMac::setCarriers(const unsigned char *cData)
+int SoundplaneDriverMac::setCarriers(const Carriers& cData)
 {
 	if (!dev) return 0;
 	if (getDeviceState() < kDeviceConnected) return 0;
 	IOUSBDevRequest request;
-	for(int i=0; i < kSoundplaneSensorWidth; ++i)
-	{
-		mCurrentCarriers[i] = cData[i];
-	}
+	std::copy(cData.begin(), cData.end(), mCurrentCarriers);
 
 	// wait for data to settle after setting carriers
 	// TODO understand this startup behavior better

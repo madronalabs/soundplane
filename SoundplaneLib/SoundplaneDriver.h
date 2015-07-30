@@ -6,10 +6,13 @@
 #ifndef __SOUNDPLANE_DRIVER__
 #define __SOUNDPLANE_DRIVER__
 
+#include <array>
 #include <memory>
 #include <string>
 
 #include <CoreFoundation/CoreFoundation.h>
+
+#include "SoundplaneModelA.h"
 
 // device states
 //
@@ -86,10 +89,11 @@ public:
 	 */
 	virtual const unsigned char *getCarriers() const = 0;
 
+	using Carriers = std::array<unsigned char, kSoundplaneSensorWidth>;
 	/**
 	 * Calls to setCarriers fail if getDeviceState() == kNoDevice
 	 */
-	virtual int setCarriers(const unsigned char *carriers) = 0;
+	virtual int setCarriers(const Carriers& carriers) = 0;
 
 	/**
 	 * Calls to enableCarriers fail if getDeviceState() == kNoDevice

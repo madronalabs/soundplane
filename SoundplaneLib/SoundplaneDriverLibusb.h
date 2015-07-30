@@ -37,7 +37,7 @@ public:
 	virtual std::string getSerialNumberString() const override;
 
 	virtual const unsigned char *getCarriers() const override;
-	virtual int setCarriers(const unsigned char *carriers) override;
+	virtual int setCarriers(const Carriers& carriers) override;
 	virtual int enableCarriers(unsigned long mask) override;
 
 private:
@@ -349,7 +349,6 @@ private:
 	float mpOutputData[kSoundplaneOutputFrameLength * kSoundplaneOutputBufFrames];
 	PaUtilRingBuffer mOutputBuf;
 
-	using Carriers = std::array<unsigned char, kSoundplaneSensorWidth>;
 	/**
 	 * Set to a value (allocated with new) by setCarriers. Read (and deleted)
 	 * by the processing thread.

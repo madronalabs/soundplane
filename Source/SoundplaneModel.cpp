@@ -36,20 +36,19 @@ const unsigned char kModelDefaultCarriers[kModelDefaultCarriersSize] =
 // middle of the 40 defaults.
 //
 static const int kStandardCarrierSets = 8;
-static void makeStandardCarrierSet(unsigned char pC[kSoundplaneSensorWidth], int set);
-static void makeStandardCarrierSet(unsigned char pC[kSoundplaneSensorWidth], int set)
+static void makeStandardCarrierSet(SoundplaneDriver::Carriers &carriers, int set)
 {
 	int skipStart = set*4 + 2;
 	skipStart = clamp(skipStart, 0, kSoundplaneSensorWidth);
 	int skipSize = 8;
-	pC[0] = pC[1] = 0;
+	carriers[0] = carriers[1] = 0;
 	for(int i=2; i<skipStart; ++i)
 	{
-		pC[i] = kModelDefaultCarriers[i];
+		carriers[i] = kModelDefaultCarriers[i];
 	}
 	for(int i=skipStart; i<kSoundplaneSensorWidth; ++i)
 	{
-		pC[i] = kModelDefaultCarriers[i + skipSize];
+		carriers[i] = kModelDefaultCarriers[i + skipSize];
 	}
 }
 
@@ -1308,7 +1307,7 @@ void SoundplaneModel::setDefaultCarriers()
 	}
 }
 
-void SoundplaneModel::setCarriers(unsigned char* c)
+void SoundplaneModel::setCarriers(const SoundplaneDriver::Carriers& c)
 {
 	if (mpDriver)
 	{
