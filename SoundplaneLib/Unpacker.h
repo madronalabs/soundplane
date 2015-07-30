@@ -38,7 +38,7 @@ class Unpacker
 		void push_back(T value)
 		{
 			mData[mIdx] = value;
-			mSize = std::max(Capacity, mSize + 1);
+			mSize = std::min(Capacity, mSize + 1);
 			mIdx = (mIdx + 1) % Capacity;
 		}
 
@@ -49,9 +49,9 @@ class Unpacker
 
 		T &front()
 		{
-			// Add 2 * Capacity to ensure that the number that's %Capacity'd
+			// Add Capacity to ensure that the number that's %Capacity'd
 			// isn't negative.
-			return mData[(mIdx + (2 * Capacity) - 1 - mSize) % Capacity];
+			return mData[(mIdx + Capacity - mSize) % Capacity];
 		}
 
 		bool empty() const
@@ -63,6 +63,13 @@ class Unpacker
 		size_t mIdx = 0;
 		T mData[Capacity];
 	};
+
+	template<typename Int>
+	static bool lessThanHandleOverflow(Int a, Int b)
+	{
+		// FIXME
+		return a < b;
+	}
 
 public:
 	/**
@@ -83,7 +90,7 @@ public:
 	 */
 	void gotTransfer(int endpoint, SoundplaneADataPacket* packets, int numPackets)
 	{
-		mTransfers[endpoint].push_back(Transfer(packets, numPackets));
+		mTransfers[endpoint].push_back(Transfer(endpoint, packets, numPackets));
 
 		Transfer* ts[2] = { getOldestTransfer(0), getOldestTransfer(1) };
 		while (ts[0] && ts[1])
@@ -94,20 +101,17 @@ public:
 			{
 				// The sequence numbers line up
 				// FIXME: K1_unpack_float2(p0.packedData, p1.packedData, TODO);
+				// printf("Unpack %u\n", p0.seqNum);
+				popPacket(&ts[0]);
+				popPacket(&ts[1]);
 			}
 			else
 			{
 				// The oldest packet we have for one endpoint is older than
 				// the oldest for the other. In this case we discard the older
 				// packet.
-				//
-				// FIXME: < is not the right thing to do here. Handle overflow.
-				int olderTransferIdx = p0.seqNum < p1.seqNum ? 0 : 1;
-				if (ts[olderTransferIdx]->popCurrentPacket())
-				{
-					mTransfers[olderTransferIdx].pop_front();
-					ts[olderTransferIdx] = getOldestTransfer(0);
-				}
+				int olderTransferEndpoint = lessThanHandleOverflow(p0.seqNum, p1.seqNum) ? 0 : 1;
+				popPacket(&ts[olderTransferEndpoint]);
 			}
 		}
 	}
@@ -117,7 +121,8 @@ private:
 	{
 		Transfer() = default;
 
-		Transfer(SoundplaneADataPacket* packets, int numPackets) :
+		Transfer(int endpoint, SoundplaneADataPacket* packets, int numPackets) :
+			mEndpoint(endpoint),
 			mPackets(packets),
 			mNumPackets(numPackets) {}
 
@@ -127,14 +132,20 @@ private:
 		}
 
 		/**
-		 * Returns true if there are no packets left.
+		 * Returns true if there are no packets left after the pop.
 		 */
 		bool popCurrentPacket()
 		{
 			mCurrentPacketIndex++;
 			return mCurrentPacketIndex == mNumPackets;
 		}
+
+		int endpoint() const
+		{
+			return mEndpoint;
+		}
 	private:
+		int mEndpoint;
 		/**
 		 * Index to the first packet that has not yet been processed.
 		 */
@@ -146,13 +157,27 @@ private:
 	/**
 	 * May return nullptr
 	 */
-	Transfer *getOldestTransfer(int endpoint)
+	Transfer* getOldestTransfer(int endpoint)
 	{
 		if (mTransfers[endpoint].empty())
 		{
 			return nullptr;
 		}
 		return &mTransfers[endpoint].front();
+	}
+
+	/**
+	 * If popping the packet pops the last packet in the Transfer, it will
+	 * be updated to the next one (or nullptr).
+	 */
+	void popPacket(Transfer **transfer)
+	{
+        int endpoint = (*transfer)->endpoint();
+		if ((*transfer)->popCurrentPacket())
+		{
+			mTransfers[endpoint].pop_front();
+			*transfer = getOldestTransfer(endpoint);
+		}
 	}
 
 	RingBuffer<Transfer, StoredTransfersPerEndpoint> mTransfers[Endpoints];
