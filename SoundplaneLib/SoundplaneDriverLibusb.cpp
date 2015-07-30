@@ -94,6 +94,7 @@ void SoundplaneDriverLibusb::init()
 
 int SoundplaneDriverLibusb::readSurface(float* pDest)
 {
+	// FIXME: Change to a push based interface
 	int result = 0;
 	if(PaUtil_GetRingBufferReadAvailable(&mOutputBuf) >= 1)
 	{
