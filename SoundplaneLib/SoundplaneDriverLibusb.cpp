@@ -248,7 +248,7 @@ bool SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
 	{
 		for (int buffer = 0; buffer < kSoundplaneABuffersInFlight; buffer++)
 		{
-			auto &transfer = transfers[endpoint][buffer];
+			auto &transfer = transfers[endpoint][buffer * kInFlightMultiplier];
 			if (!processThreadScheduleTransfer(transfer, device)) {
 				return false;
 			}
