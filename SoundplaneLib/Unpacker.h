@@ -5,6 +5,8 @@
 #ifndef __UNPACKER__
 #define __UNPACKER__
 
+#include <array>
+
 #include "SoundplaneModelA.h"
 
 /**
@@ -71,6 +73,11 @@ class Unpacker
 		return static_cast<UInt16>(b - a) < (1 << (sizeof(a) * 8 - 1));
 	}
 
+	/**
+	 * This method is called once the Unpacker has identified a matching set
+	 * of packets. It unpacks the data, performs a sanity check on it and
+	 * passes it to the delegate.
+	 */
 	void matchedPackets(SoundplaneADataPacket& p0, SoundplaneADataPacket& p1)
 	{
 		std::array<float, kSoundplaneOutputFrameLength> workingFrame;
