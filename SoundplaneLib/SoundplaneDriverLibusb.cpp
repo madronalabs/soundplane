@@ -17,16 +17,16 @@ static constexpr int kInterfaceNumber = 0;
 
 std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListener *listener)
 {
-    auto *driver = new SoundplaneDriverLibusb(listener);
-    driver->init();
-    return std::unique_ptr<SoundplaneDriverLibusb>(driver);
+	auto *driver = new SoundplaneDriverLibusb(listener);
+	driver->init();
+	return std::unique_ptr<SoundplaneDriverLibusb>(driver);
 }
 
 
 SoundplaneDriverLibusb::SoundplaneDriverLibusb(SoundplaneDriverListener* listener) :
-    mState(kNoDevice),
-    mQuitting(false),
-    mListener(listener)
+	mState(kNoDevice),
+	mQuitting(false),
+	mListener(listener)
 {
 }
 
