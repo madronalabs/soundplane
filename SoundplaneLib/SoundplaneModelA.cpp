@@ -85,7 +85,7 @@ void K1_clear_edges(SoundplaneOutputFrame& dest)
 	}
 }
 
-float frameDiff(SoundplaneOutputFrame& p0, SoundplaneOutputFrame& p1)
+float frameDiff(const SoundplaneOutputFrame& p0, const SoundplaneOutputFrame& p1)
 {
 	float sum = 0.f;
 	for(int i = 0; i < p0.size(); i++)

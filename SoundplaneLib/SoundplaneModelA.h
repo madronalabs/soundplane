@@ -117,7 +117,7 @@ static constexpr int kSoundplaneOutputFrameLength = kSoundplaneWidth * kSoundpla
 using SoundplaneOutputFrame = std::array<float, kSoundplaneOutputFrameLength>;
 void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, SoundplaneOutputFrame& dest);
 void K1_clear_edges(SoundplaneOutputFrame& dest);
-float frameDiff(SoundplaneOutputFrame& p0, SoundplaneOutputFrame& p1);
+float frameDiff(const SoundplaneOutputFrame& p0, const SoundplaneOutputFrame& p1);
 void dumpFrame(float* frame);
 
 #endif // __SOUNDPLANE_MODEL_A__
