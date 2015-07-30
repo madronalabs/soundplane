@@ -37,7 +37,7 @@ public:
 	virtual std::string getSerialNumberString() const override;
 
 	virtual const unsigned char *getCarriers() const override;
-	virtual int setCarriers(const Carriers& carriers) override;
+	virtual void setCarriers(const Carriers& carriers) override;
 	virtual void enableCarriers(unsigned long mask) override;
 
 private:

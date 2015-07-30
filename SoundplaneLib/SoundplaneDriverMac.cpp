@@ -280,10 +280,10 @@ const unsigned char *SoundplaneDriverMac::getCarriers() const {
 	return mCurrentCarriers;
 }
 
-int SoundplaneDriverMac::setCarriers(const Carriers& cData)
+void SoundplaneDriverMac::setCarriers(const Carriers& cData)
 {
-	if (!dev) return 0;
-	if (getDeviceState() < kDeviceConnected) return 0;
+	if (!dev) return;
+	if (getDeviceState() < kDeviceConnected) return;
 	IOUSBDevRequest request;
 	std::copy(cData.begin(), cData.end(), mCurrentCarriers);
 
@@ -297,7 +297,7 @@ int SoundplaneDriverMac::setCarriers(const Carriers& cData)
 	request.wIndex = kRequestCarriersIndex;
 	request.wLength = 32;
 	request.pData = mCurrentCarriers;
-	return (*dev)->DeviceRequest(dev, &request);
+	(*dev)->DeviceRequest(dev, &request);
 }
 
 void SoundplaneDriverMac::enableCarriers(unsigned long mask)

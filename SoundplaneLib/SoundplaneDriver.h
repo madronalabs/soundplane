@@ -93,7 +93,7 @@ public:
 	/**
 	 * Calls to setCarriers fail if getDeviceState() == kNoDevice
 	 */
-	virtual int setCarriers(const Carriers& carriers) = 0;
+	virtual void setCarriers(const Carriers& carriers) = 0;
 
 	/**
 	 * Calls to enableCarriers fail if getDeviceState() == kNoDevice

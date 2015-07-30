@@ -1312,11 +1312,7 @@ void SoundplaneModel::setCarriers(const SoundplaneDriver::Carriers& c)
 	if (mpDriver)
 	{
 		enableOutput(false);
-		IOReturn err = mpDriver->setCarriers(c);
-		if (err != kIOReturnSuccess)
-		{
-			printf("SoundplaneModel::setCarriers error %d\n", err);
-		}
+		mpDriver->setCarriers(c);
 	}
 }
 

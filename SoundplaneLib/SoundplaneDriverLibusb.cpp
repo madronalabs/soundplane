@@ -136,14 +136,11 @@ const unsigned char *SoundplaneDriverLibusb::getCarriers() const
 	return mCurrentCarriers.data();
 }
 
-int SoundplaneDriverLibusb::setCarriers(const Carriers& carriers)
+void SoundplaneDriverLibusb::setCarriers(const Carriers& carriers)
 {
-	// FIXME: Change this interface to return void
-
 	auto * const sentCarriers = new Carriers(carriers);
 	mCurrentCarriers = carriers;
 	delete mSetCarriersRequest.exchange(sentCarriers, std::memory_order_release);
-	return 0;
 }
 
 void SoundplaneDriverLibusb::enableCarriers(unsigned long mask)
@@ -380,7 +377,6 @@ void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 	// Report kDeviceHasIsochSync if appropriate
 	if (mState.load(std::memory_order_acquire) == kDeviceConnected)
 	{
-		// FIXME: Set default carriers
 		processThreadSetDeviceState(kDeviceHasIsochSync);
 	}
 
