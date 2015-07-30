@@ -1113,8 +1113,6 @@ void SoundplaneDriverMac::processThread()
 	bool lost = true;
 	bool advance = false;
 
-	int initCtr = 0;
-
 	while(getDeviceState() != kDeviceIsTerminating)
 	{
 		// wait for grab and initialization
@@ -1245,7 +1243,6 @@ void SoundplaneDriverMac::processThread()
 			usleep(100*1000);
 		}
 
-		initCtr = 0;
 		while(getDeviceState() == kDeviceHasIsochSync)
 		{
 			// look ahead by 1 frame to see if data was received for either surface of next frame
