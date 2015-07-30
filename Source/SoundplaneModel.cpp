@@ -669,7 +669,7 @@ void SoundplaneModel::handleDeviceError(int errorType, int data1, int data2, flo
 	}
 }
 
-void SoundplaneModel::handleDeviceDataDump(float* pData, int size)
+void SoundplaneModel::handleDeviceDataDump(const float* pData, int size)
 {
 	if(mSelectingCarriers) return;
 

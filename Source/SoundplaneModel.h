@@ -46,7 +46,7 @@ public:
 	// SoundplaneDriverListener
 	void deviceStateChanged(MLSoundplaneState s);
 	void handleDeviceError(int errorType, int data1, int data2, float fd1, float fd2);
-	void handleDeviceDataDump(float* pData, int size);
+	void handleDeviceDataDump(const float* pData, int size);
 
 	// TouchTracker::Listener
 	void hasNewCalibration(const MLSignal& cal, const MLSignal& norm, float avgDist);

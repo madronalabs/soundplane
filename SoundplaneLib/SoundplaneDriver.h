@@ -53,7 +53,7 @@ public:
 	 * This callback may be invoked from an arbitrary thread, but is never
 	 * invoked in an interrupt context.
 	 */
-	virtual void handleDeviceDataDump(float* pData, int size) = 0;
+	virtual void handleDeviceDataDump(const float* pData, int size) = 0;
 };
 
 class SoundplaneDriver
