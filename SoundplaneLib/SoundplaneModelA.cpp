@@ -23,7 +23,7 @@ const unsigned char kDefaultCarriers[kSoundplaneSensorWidth] =
 
 // combine two surface payloads to a single buffer of floating point pressure values.
 //
-void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, std::array<float, kSoundplaneOutputFrameLength>& dest)
+void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, SoundplaneOutputFrame& dest)
 {
 	float *pDest = dest.data();
 	unsigned short a, b;
@@ -69,7 +69,7 @@ void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, std::array<flo
 
 // set data from edge carriers, unused on Soundplane A, to duplicate
 // actual data nearby.
-void K1_clear_edges(std::array<float, kSoundplaneOutputFrameLength>& dest)
+void K1_clear_edges(SoundplaneOutputFrame& dest)
 {
 	float *pDest = dest.data();
 	float *pDestRow;
@@ -85,12 +85,12 @@ void K1_clear_edges(std::array<float, kSoundplaneOutputFrameLength>& dest)
 	}
 }
 
-float frameDiff(float * p1, float * p2, int frameSize)
+float frameDiff(SoundplaneOutputFrame& p0, SoundplaneOutputFrame& p1)
 {
 	float sum = 0.f;
-	for(int i=0; i<frameSize; ++i)
+	for(int i = 0; i < p0.size(); i++)
 	{
-		sum += fabs(p2[i] - p1[i]);
+		sum += fabs(p1[i] - p0[i]);
 	}
 	return sum;
 }

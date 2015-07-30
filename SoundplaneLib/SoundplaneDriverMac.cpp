@@ -1096,8 +1096,8 @@ void SoundplaneDriverMac::processThread()
 	unsigned char* pPayload1 = 0;
 	UInt16 curBytes0, curBytes1;
 	UInt16 nextBytes0, nextBytes1;
-	std::array<float, kSoundplaneOutputFrameLength> pWorkingFrame;
-	std::array<float, kSoundplaneOutputFrameLength> pPrevFrame;
+	SoundplaneOutputFrame pWorkingFrame;
+	SoundplaneOutputFrame pPrevFrame;
 
 	// transaction data buffer index, 0 to kSoundplaneABuffers-1
 	int bufferIndex = 0;
@@ -1346,7 +1346,7 @@ void SoundplaneDriverMac::processThread()
 						K1_clear_edges(pWorkingFrame);
 						if(startupCtr > kSoundplaneStartupFrames)
 						{
-							float df = frameDiff(pPrevFrame.data(), pWorkingFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
+							float df = frameDiff(pPrevFrame, pWorkingFrame);
 							if (df < kMaxFrameDiff)
 							{
 								// we are OK, the data gets out normally

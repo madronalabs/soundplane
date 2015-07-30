@@ -113,9 +113,10 @@ typedef enum
 } MLSoundplaneErrorType;
 
 static constexpr int kSoundplaneOutputFrameLength = kSoundplaneWidth * kSoundplaneHeight;
-void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, std::array<float, kSoundplaneOutputFrameLength>& dest);
-void K1_clear_edges(std::array<float, kSoundplaneOutputFrameLength>& dest);
-float frameDiff(float * p1, float * p2, int frameSize);
+using SoundplaneOutputFrame = std::array<float, kSoundplaneOutputFrameLength>;
+void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, SoundplaneOutputFrame& dest);
+void K1_clear_edges(SoundplaneOutputFrame& dest);
+float frameDiff(SoundplaneOutputFrame& p0, SoundplaneOutputFrame& p1);
 void dumpFrame(float* frame);
 
 #endif // __SOUNDPLANE_MODEL_A__
