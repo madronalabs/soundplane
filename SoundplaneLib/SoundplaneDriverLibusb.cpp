@@ -274,6 +274,7 @@ bool SoundplaneDriverLibusb::processThreadFillTransferInformation(
 			auto &transfer = transfersForEndpoint[j];
 			transfer.endpointId = i;
 			transfer.endpointAddress = endpoint.bEndpointAddress;
+			transfer.device = device;
 			transfer.parent = this;
 			transfer.unpacker = unpacker;
 			// Divide the transfers into groups of kInFlightMultiplier. Within
@@ -314,13 +315,11 @@ bool SoundplaneDriverLibusb::processThreadSelectIsochronousInterface(libusb_devi
 	return true;
 }
 
-bool SoundplaneDriverLibusb::processThreadScheduleTransfer(
-	Transfer &transfer,
-	libusb_device_handle *device) const
+bool SoundplaneDriverLibusb::processThreadScheduleTransfer(Transfer &transfer) const
 {
 	libusb_fill_iso_transfer(
 		transfer.transfer,
-		device,
+		transfer.device,
 		transfer.endpointAddress,
 		reinterpret_cast<unsigned char *>(transfer.packets),
 		sizeof(transfer.packets),
@@ -342,15 +341,14 @@ bool SoundplaneDriverLibusb::processThreadScheduleTransfer(
 }
 
 bool SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
-	Transfers &transfers,
-	libusb_device_handle *device) const
+	Transfers &transfers) const
 {
 	for (int endpoint = 0; endpoint < kSoundplaneANumEndpoints; endpoint++)
 	{
 		for (int buffer = 0; buffer < kSoundplaneABuffersInFlight; buffer++)
 		{
 			auto &transfer = transfers[endpoint][buffer * kInFlightMultiplier];
-			if (!processThreadScheduleTransfer(transfer, device)) {
+			if (!processThreadScheduleTransfer(transfer)) {
 				return false;
 			}
 		}
@@ -387,7 +385,7 @@ void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 
 	// Schedule another transfer
 	Transfer& nextTransfer = *transfer.nextTransfer;
-	if (!processThreadScheduleTransfer(nextTransfer, transfer.transfer->dev_handle))
+	if (!processThreadScheduleTransfer(nextTransfer))
 	{
 		mUsbFailed = true;
 		return;
@@ -464,7 +462,7 @@ void SoundplaneDriverLibusb::processThread()
 			processThreadFillTransferInformation(transfers, &unpacker, handle.get()) &&
 			processThreadSetInitialCarriers(handle.get()) &&
 			processThreadSetDeviceState(kDeviceConnected) &&
-			processThreadScheduleInitialTransfers(transfers, handle.get());
+			processThreadScheduleInitialTransfers(transfers);
 
 		if (!success) continue;
 

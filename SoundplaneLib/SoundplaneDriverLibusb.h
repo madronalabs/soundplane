@@ -195,6 +195,7 @@ private:
 		 * Endpoint "address", as used by libusb.
 		 */
 		int endpointAddress = 0;
+		libusb_device_handle* device = nullptr;
 		SoundplaneDriverLibusb* parent = nullptr;
 		struct libusb_transfer* const transfer;
 		LibusbUnpacker* unpacker = nullptr;
@@ -276,15 +277,11 @@ private:
 	/**
 	 * Returns false if scheduling the transfer failed.
 	 */
-	bool processThreadScheduleTransfer(
-		Transfer &transfer,
-		libusb_device_handle *device) const;
+	bool processThreadScheduleTransfer(Transfer &transfer) const;
 	/**
 	 * Returns false if scheduling of any of the initial transfers failed.
 	 */
-	bool processThreadScheduleInitialTransfers(
-		Transfers &transfers,
-		libusb_device_handle *device) const;
+	bool processThreadScheduleInitialTransfers(Transfers &transfers) const;
 	static void processThreadTransferCallbackStatic(struct libusb_transfer *xfr);
 	void processThreadTransferCallback(Transfer& transfer);
 	libusb_error processThreadSetCarriers(
