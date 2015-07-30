@@ -65,7 +65,7 @@ const int kSoundplaneAlternateSetting = 1;
 
 typedef struct
 {
-  char packedData[kSoundplaneAPackedDataSize];
+  unsigned char packedData[kSoundplaneAPackedDataSize];
   UInt16 seqNum;
   UInt16 padding;
 } SoundplaneADataPacket; // 388 bytes

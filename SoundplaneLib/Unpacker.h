@@ -73,8 +73,9 @@ class Unpacker
 
 	void matchedPackets(SoundplaneADataPacket& p0, SoundplaneADataPacket& p1)
 	{
-		// FIXME: K1_unpack_float2(p0.packedData, p1.packedData, TODO);
-		// printf("Unpack %u\n", p0.seqNum);
+		std::array<float, kSoundplaneOutputFrameLength> workingFrame;
+		K1_unpack_float2(p0.packedData, p1.packedData, workingFrame);
+		K1_clear_edges(workingFrame);
 	}
 
 public:
