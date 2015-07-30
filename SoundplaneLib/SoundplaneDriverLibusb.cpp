@@ -287,7 +287,7 @@ void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 
 	// Schedule another transfer
 	Transfer& nextTransfer = *transfer.nextTransfer;
-	if (!processThreadScheduleTransfer(nextTransfer, nextTransfer.transfer->dev_handle))
+	if (!processThreadScheduleTransfer(nextTransfer, transfer.transfer->dev_handle))
 	{
 		mUsbFailed = true;
 		return;
