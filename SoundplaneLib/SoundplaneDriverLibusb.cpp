@@ -297,6 +297,12 @@ bool SoundplaneDriverLibusb::processThreadFillTransferInformation(
 	return true;
 }
 
+bool SoundplaneDriverLibusb::processThreadSetInitialCarriers(
+	libusb_device_handle *device)
+{
+	return processThreadSetCarriers(device, kDefaultCarriers, sizeof(kDefaultCarriers)) >= 0;
+}
+
 bool SoundplaneDriverLibusb::processThreadSetDeviceState(MLSoundplaneState newState)
 {
 	mState.store(newState, std::memory_order_release);
@@ -396,10 +402,10 @@ void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 	}
 }
 
-void SoundplaneDriverLibusb::processThreadSetCarriers(
+libusb_error SoundplaneDriverLibusb::processThreadSetCarriers(
 	libusb_device_handle *device, const unsigned char *carriers, size_t carriersSize)
 {
-	sendControl(
+	return sendControl(
 		device,
 		kRequestMask,
 		0,
@@ -464,6 +470,7 @@ void SoundplaneDriverLibusb::processThread()
 			processThreadGetDeviceInfo(handle.get()) &&
 			processThreadSelectIsochronousInterface(handle.get()) &&
 			processThreadFillTransferInformation(transfers, &unpacker, handle.get()) &&
+			processThreadSetInitialCarriers(handle.get()) &&
 			processThreadSetDeviceState(kDeviceConnected) &&
 			processThreadScheduleInitialTransfers(transfers, handle.get());
 

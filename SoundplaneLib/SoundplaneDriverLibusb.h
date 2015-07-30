@@ -259,6 +259,11 @@ private:
 		LibusbUnpacker *unpacker,
 		libusb_device_handle *device);
 	/**
+	 * Returns false if the operation failed.
+	 */
+	bool processThreadSetInitialCarriers(
+		libusb_device_handle *device);
+	/**
 	 * Sets mState to a new value and notifies the listener.
 	 *
 	 * Returns false if the process thread should quit.
@@ -282,7 +287,7 @@ private:
 		libusb_device_handle *device) const;
 	static void processThreadTransferCallbackStatic(struct libusb_transfer *xfr);
 	void processThreadTransferCallback(Transfer& transfer);
-	void processThreadSetCarriers(
+	libusb_error processThreadSetCarriers(
 		libusb_device_handle *device, const unsigned char *carriers, size_t carriersSize);
 	void processThreadHandleRequests(libusb_device_handle *device);
 	void processThread();
