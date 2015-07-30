@@ -64,11 +64,11 @@ class Unpacker
 		T mData[Capacity];
 	};
 
-	template<typename Int>
-	static bool lessThanHandleOverflow(Int a, Int b)
+	static bool lessThanHandleOverflow(UInt16 a, UInt16 b)
 	{
-		// FIXME
-		return a < b;
+		// This expression is equivalent to a < b, except that it gracefully
+		// handles serial number overflows.
+		return static_cast<UInt16>(b - a) < (1 << (sizeof(a) * 8 - 1));
 	}
 
 public:
