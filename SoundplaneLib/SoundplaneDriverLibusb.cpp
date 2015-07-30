@@ -146,12 +146,10 @@ int SoundplaneDriverLibusb::setCarriers(const Carriers& carriers)
 	return 0;
 }
 
-int SoundplaneDriverLibusb::enableCarriers(unsigned long mask)
+void SoundplaneDriverLibusb::enableCarriers(unsigned long mask)
 {
-	// FIXME: Change this interface to return void
 	delete mEnableCarriersRequest.exchange(
 		new unsigned long(mask), std::memory_order_release);
-	return 0;
 }
 
 libusb_error SoundplaneDriverLibusb::sendControl(

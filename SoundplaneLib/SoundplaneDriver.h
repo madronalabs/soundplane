@@ -98,7 +98,7 @@ public:
 	/**
 	 * Calls to enableCarriers fail if getDeviceState() == kNoDevice
 	 */
-	virtual int enableCarriers(unsigned long mask) = 0;
+	virtual void enableCarriers(unsigned long mask) = 0;
 
 	/**
 	 * Helper function for getting the serial number as a number rather than

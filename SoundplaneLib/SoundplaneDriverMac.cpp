@@ -300,9 +300,9 @@ int SoundplaneDriverMac::setCarriers(const Carriers& cData)
 	return (*dev)->DeviceRequest(dev, &request);
 }
 
-int SoundplaneDriverMac::enableCarriers(unsigned long mask)
+void SoundplaneDriverMac::enableCarriers(unsigned long mask)
 {
-	if (!dev) return 0;
+	if (!dev) return;
     IOUSBDevRequest	request;
 
 	startupCtr = 0;
@@ -314,7 +314,7 @@ int SoundplaneDriverMac::enableCarriers(unsigned long mask)
 	request.wLength = 0;
 	request.pData = NULL;
 
-	return (*dev)->DeviceRequest(dev, &request);
+	(*dev)->DeviceRequest(dev, &request);
 }
 
 
