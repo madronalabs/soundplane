@@ -143,7 +143,9 @@ bool SoundplaneDriverLibusb::processThreadGetDeviceInfo(libusb_device_handle *de
 }
 
 bool SoundplaneDriverLibusb::processThreadFillTransferInformation(
-	Transfers &transfers, libusb_device_handle *device)
+	Transfers &transfers,
+	LibusbUnpacker *unpacker,
+	libusb_device_handle *device)
 {
 	libusb_config_descriptor *descriptor;
 	if (libusb_get_active_config_descriptor(libusb_get_device(device), &descriptor) < 0) {
@@ -181,6 +183,7 @@ bool SoundplaneDriverLibusb::processThreadFillTransferInformation(
 			transfer.endpointId = i;
 			transfer.endpointAddress = endpoint.bEndpointAddress;
 			transfer.parent = this;
+			transfer.unpacker = unpacker;
 			// Divide the transfers into groups of kInFlightMultiplier. Within
 			// each group, each transfer points to the previous one, except for
 			// the first, which points to the last one. With this scheme, the
@@ -280,7 +283,7 @@ void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 		processThreadSetDeviceState(kDeviceHasIsochSync);
 	}
 
-	mUnpacker.gotTransfer(
+	transfer.unpacker->gotTransfer(
 		transfer.endpointId,
 		transfer.packets,
 		transfer.transfer->num_iso_packets);
@@ -302,12 +305,13 @@ void SoundplaneDriverLibusb::processThread() {
 		mUsbFailed = false;
 		Transfers transfers;
 		LibusbClaimedDevice handle;
+		LibusbUnpacker unpacker;
 
 		bool success =
 			processThreadOpenDevice(handle) &&
 			processThreadGetDeviceInfo(handle.get()) &&
 			processThreadSelectIsochronousInterface(handle.get()) &&
-			processThreadFillTransferInformation(transfers, handle.get()) &&
+			processThreadFillTransferInformation(transfers, &unpacker, handle.get()) &&
 			processThreadSetDeviceState(kDeviceConnected) &&
 			processThreadScheduleInitialTransfers(transfers, handle.get());
 

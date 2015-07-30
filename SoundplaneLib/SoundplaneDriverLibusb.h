@@ -159,6 +159,8 @@ private:
 	static constexpr int kInFlightMultiplier = 2;
 	static constexpr int kBuffersPerEndpoint = kInFlightMultiplier * kSoundplaneABuffersInFlight;
 
+	using LibusbUnpacker = Unpacker<kBuffersPerEndpoint - kSoundplaneABuffersInFlight, kSoundplaneANumEndpoints>;
+
 	/**
 	 * An object that represents one USB transaction: It has a buffer and
 	 * a libusb_transfer*.
@@ -193,6 +195,7 @@ private:
 		int endpointAddress = 0;
 		SoundplaneDriverLibusb* parent = nullptr;
 		struct libusb_transfer* const transfer;
+		LibusbUnpacker* unpacker = nullptr;
 		SoundplaneADataPacket packets[kSoundplaneANumIsochFrames];
 		/**
 		 * Only an integer fraction of the allocated buffers are ever being
@@ -241,6 +244,7 @@ private:
 	 */
 	bool processThreadFillTransferInformation(
 		Transfers &transfers,
+		LibusbUnpacker *unpacker,
 		libusb_device_handle *device);
 	/**
 	 * Sets mState to a new value and notifies the listener.
@@ -313,14 +317,6 @@ private:
 	 * Accessed only from the processing thread.
 	 */
 	bool						mUsbFailed;
-
-	/**
-	 * The Unpacker object used for combining frames from the Soundplane
-	 * endpoints into a single stream of pressure messages.
-	 *
-	 * Accessed only from the processing thread.
-	 */
-	Unpacker<kBuffersPerEndpoint - kSoundplaneABuffersInFlight, kSoundplaneANumEndpoints> mUnpacker;
 };
 
 #endif // __SOUNDPLANE_DRIVER_LIBUSB__
