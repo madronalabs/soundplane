@@ -55,6 +55,7 @@ const int kSoundplaneSensorWidth = 32;
 const int kSoundplanePossibleCarriers = 64;
 const int kSoundplaneWidth = 64;
 const int kSoundplaneHeight = 8;
+const float kMaxFrameDiff = 8.0f;
 
 // Soundplane A USB firmware
 const int kSoundplaneANumEndpoints = 2;

@@ -1117,7 +1117,6 @@ void SoundplaneDriverMac::processThread()
 	bool advance = false;
 
 	int initCtr = 0;
-	const float kMaxFrameDiff = 8.0f;
 
 	while(getDeviceState() != kDeviceIsTerminating)
 	{
