@@ -71,6 +71,12 @@ class Unpacker
 		return static_cast<UInt16>(b - a) < (1 << (sizeof(a) * 8 - 1));
 	}
 
+	void matchedPackets(SoundplaneADataPacket& p0, SoundplaneADataPacket& p1)
+	{
+		// FIXME: K1_unpack_float2(p0.packedData, p1.packedData, TODO);
+		// printf("Unpack %u\n", p0.seqNum);
+	}
+
 public:
 	/**
 	 * Feed the Unpacker with a number of packets. The Unpacker tolerates packet
@@ -100,8 +106,7 @@ public:
 			if (p0.seqNum == p1.seqNum)
 			{
 				// The sequence numbers line up
-				// FIXME: K1_unpack_float2(p0.packedData, p1.packedData, TODO);
-				// printf("Unpack %u\n", p0.seqNum);
+				matchedPackets(p0, p1);
 				popPacket(&ts[0]);
 				popPacket(&ts[1]);
 			}

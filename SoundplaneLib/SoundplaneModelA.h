@@ -5,6 +5,8 @@
 #ifndef __SOUNDPLANE_MODEL_A__
 #define __SOUNDPLANE_MODEL_A__
 
+#include <array>
+
 #include <CoreFoundation/CoreFoundation.h>
 
 // Soundplane data format:
@@ -110,8 +112,9 @@ typedef enum
   kDevGapInSequence = 2
 } MLSoundplaneErrorType;
 
-void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, float *pDest);
-void K1_clear_edges(float *pDest);
+static constexpr int kSoundplaneOutputFrameLength = kSoundplaneWidth * kSoundplaneHeight;
+void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, std::array<float, kSoundplaneOutputFrameLength>& dest);
+void K1_clear_edges(std::array<float, kSoundplaneOutputFrameLength>& dest);
 float frameDiff(float * p1, float * p2, int frameSize);
 void dumpFrame(float* frame);
 

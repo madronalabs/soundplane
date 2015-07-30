@@ -1096,8 +1096,8 @@ void SoundplaneDriverMac::processThread()
 	unsigned char* pPayload1 = 0;
 	UInt16 curBytes0, curBytes1;
 	UInt16 nextBytes0, nextBytes1;
-	std::vector<float> pWorkingFrame;
-	std::vector<float> pPrevFrame;
+	std::array<float, kSoundplaneOutputFrameLength> pWorkingFrame;
+	std::array<float, kSoundplaneOutputFrameLength> pPrevFrame;
 
 	// transaction data buffer index, 0 to kSoundplaneABuffers-1
 	int bufferIndex = 0;
@@ -1118,11 +1118,6 @@ void SoundplaneDriverMac::processThread()
 
 	int initCtr = 0;
 	const float kMaxFrameDiff = 8.0f;
-
-	// init
-	size_t outputFrameLength = kSoundplaneWidth * kSoundplaneHeight;
-	pWorkingFrame.resize(outputFrameLength);
-	pPrevFrame.resize(outputFrameLength);
 
 	while(getDeviceState() != kDeviceIsTerminating)
 	{
@@ -1347,8 +1342,8 @@ void SoundplaneDriverMac::processThread()
 
 					if (pPayload0 && pPayload1)
 					{
-						K1_unpack_float2(pPayload0, pPayload1, pWorkingFrame.data());
-						K1_clear_edges(pWorkingFrame.data());
+						K1_unpack_float2(pPayload0, pPayload1, pWorkingFrame);
+						K1_clear_edges(pWorkingFrame);
 						if(startupCtr > kSoundplaneStartupFrames)
 						{
 							float df = frameDiff(pPrevFrame.data(), pWorkingFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
