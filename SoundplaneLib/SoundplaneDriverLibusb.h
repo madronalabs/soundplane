@@ -286,7 +286,10 @@ private:
 	void processThreadTransferCallback(Transfer& transfer);
 	libusb_error processThreadSetCarriers(
 		libusb_device_handle *device, const unsigned char *carriers, size_t carriersSize);
-	void processThreadHandleRequests(libusb_device_handle *device);
+	/**
+	 * Returns true if a control request was sent.
+	 */
+	bool processThreadHandleRequests(libusb_device_handle *device);
 	void processThread();
 
 	/**

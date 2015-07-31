@@ -18,41 +18,58 @@ namespace
 
 constexpr int kInterfaceNumber = 0;
 
-using GotFrameCallback = std::function<void (const SoundplaneOutputFrame& frame)>;
-
-template<typename GlitchCallback>
-GotFrameCallback makeAnomalyFilter(
-	const GlitchCallback &glitchCallback,
-	const GotFrameCallback &successCallback)
+template<typename GlitchCallback, typename SuccessCallback>
+class AnomalyFilter
 {
-	int startupCtr = 0;
-	SoundplaneOutputFrame previousFrame;
-	return [startupCtr, previousFrame, glitchCallback, successCallback](
-		const SoundplaneOutputFrame& frame) mutable
+public:
+	AnomalyFilter(GlitchCallback glitchCallback, SuccessCallback successCallback) :
+		mGlitchCallback(std::move(glitchCallback)),
+		mSuccessCallback(std::move(successCallback)) {}
+
+	void operator()(const SoundplaneOutputFrame& frame)
 	{
-		if (startupCtr > kSoundplaneStartupFrames)
+		if (mStartupCtr > kSoundplaneStartupFrames)
 		{
-			float df = frameDiff(previousFrame, frame);
+			float df = frameDiff(mPreviousFrame, frame);
 			if (df < kMaxFrameDiff)
 			{
 				// We are OK, the data gets out normally
-				successCallback(frame);
+				mSuccessCallback(frame);
 			}
 			else
 			{
 				// Possible sensor glitch.  also occurs when changing carriers.
-				glitchCallback(startupCtr, df, previousFrame, frame);
-				startupCtr = 0;
+				mGlitchCallback(mStartupCtr, df, mPreviousFrame, frame);
+				mStartupCtr = 0;
 			}
 		}
 		else
 		{
 			// Wait for initialization
-			startupCtr++;
+			mStartupCtr++;
 		}
 
-		previousFrame = frame;
-	};
+		mPreviousFrame = frame;
+	}
+
+	void reset()
+	{
+		mStartupCtr = 0;
+	}
+
+private:
+	SoundplaneOutputFrame mPreviousFrame;
+	int mStartupCtr = 0;
+	GlitchCallback mGlitchCallback;
+	SuccessCallback mSuccessCallback;
+};
+
+template<typename GlitchCallback, typename SuccessCallback>
+AnomalyFilter<GlitchCallback, SuccessCallback> makeAnomalyFilter(
+	GlitchCallback glitchCallback, SuccessCallback successCallback)
+{
+	return AnomalyFilter<GlitchCallback, SuccessCallback>(
+		std::move(glitchCallback), std::move(successCallback));
 }
 
 }
@@ -406,7 +423,7 @@ libusb_error SoundplaneDriverLibusb::processThreadSetCarriers(
 		nullptr);
 }
 
-void SoundplaneDriverLibusb::processThreadHandleRequests(libusb_device_handle *device)
+bool SoundplaneDriverLibusb::processThreadHandleRequests(libusb_device_handle *device)
 {
 	const auto carrierMask = mEnableCarriersRequest.exchange(nullptr, std::memory_order_acquire);
 	if (carrierMask)
@@ -429,6 +446,7 @@ void SoundplaneDriverLibusb::processThreadHandleRequests(libusb_device_handle *d
 		processThreadSetCarriers(device, carriers->data(), carriers->size());
 		delete carriers;
 	}
+	return carrierMask || carriers;
 }
 
 void SoundplaneDriverLibusb::processThread()
@@ -440,7 +458,7 @@ void SoundplaneDriverLibusb::processThread()
 		mUsbFailed = false;
 		Transfers transfers;
 		LibusbClaimedDevice handle;
-		LibusbUnpacker unpacker(makeAnomalyFilter(
+		auto anomalyFilter = makeAnomalyFilter(
 			[this](int startupCtr, float df, const SoundplaneOutputFrame& previousFrame, const SoundplaneOutputFrame& frame)
 			{
 				if (mListener)
@@ -453,7 +471,8 @@ void SoundplaneDriverLibusb::processThread()
 			[this](const SoundplaneOutputFrame& frame)
 			{
 				PaUtil_WriteRingBuffer(&mOutputBuf, frame.data(), 1);
-			}));
+			});
+		LibusbUnpacker unpacker(anomalyFilter);
 
 		bool success =
 			processThreadOpenDevice(handle) &&
@@ -479,7 +498,11 @@ void SoundplaneDriverLibusb::processThread()
 			{
 				break;
 			}
-			processThreadHandleRequests(handle.get());
+			if (processThreadHandleRequests(handle.get()))
+			{
+				// Wait for data to settle after setting carriers
+				anomalyFilter.reset();
+			}
 		}
 
 		if (!processThreadSetDeviceState(kNoDevice)) continue;
