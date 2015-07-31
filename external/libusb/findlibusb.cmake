@@ -2,9 +2,7 @@
 # Once done this will define
 #
 #  LIBUSB_1_FOUND - system has libusb
-#  LIBUSB_1_INCLUDE_DIRS - the libusb include directory
-#  LIBUSB_1_LIBRARIES - Link these to use libusb
-#  LIBUSB_1_DEFINITIONS - Compiler switches required for using libusb
+#  a library libusb that can be used with target_link_libraries
 #
 #  Adapted from cmake-modules Google Code project
 #
@@ -96,3 +94,7 @@ else (LIBUSB_1_LIBRARIES AND LIBUSB_1_INCLUDE_DIRS)
   mark_as_advanced(LIBUSB_1_INCLUDE_DIRS LIBUSB_1_LIBRARIES)
 
 endif (LIBUSB_1_LIBRARIES AND LIBUSB_1_INCLUDE_DIRS)
+
+add_library(libusb empty.c)
+target_link_libraries(libusb ${LIBUSB_1_LIBRARIES})
+target_include_directories(libusb PUBLIC ${LIBUSB_1_INCLUDE_DIRS})
