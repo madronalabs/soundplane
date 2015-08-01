@@ -29,7 +29,7 @@ const int kDefaultUDPPort = 3123;
 const int kNumUDPPorts = 16;
 
 // Soundplane app input port for Kyma and other config messages
-const int kDefaultUDPReceivePort = 3122;
+const int kDefaultUDPReceivePort = 3124;
 
 const int kUDPOutputBufferSize = 4096;
 
@@ -82,7 +82,6 @@ private:
 
 	int mMaxTouches;	
 	
-	//OSCVoice mOSCVoices[kSoundplaneMaxTouches];
 	std::vector< std::vector<OSCVoice> > mOSCVoices;
 	int mPortOffsetsByTouch[kSoundplaneMaxTouches];
 	int mPrevPortOffsetsByTouch[kSoundplaneMaxTouches];
