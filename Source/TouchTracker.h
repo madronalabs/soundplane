@@ -14,6 +14,8 @@
 #include "MLFFT.h" // not production code
 
 #include <list>
+#include <thread>
+#include <mutex>
 
 #define	MAX_PEAKS	64			// number of potential centroids gathered before sorting.
 #define Z_BIAS	1.0f						// multiplier for z component in distance calc
@@ -243,8 +245,8 @@ public:
 	void doNormalize(bool b) { mDoNormalize = b; }
 	
 	// new
-	std::vector<Vec3> getSpans() const { const juce::ScopedLock lock(mSpansLock); return mSpans; }
-	std::vector<Vec3> getPings() const { const juce::ScopedLock lock(mPingsLock); return mPings; }
+	std::vector<Vec3> getSpans() { std::lock_guard<std::mutex> lock(mSpansMutex); return mSpans; }
+	std::vector<Vec3> getPings() { std::lock_guard<std::mutex> lock(mPingsMutex); return mPings; }
 
 private:	
 
@@ -331,10 +333,10 @@ private:
 
 	
 	std::vector<Vec3> mSpans;
-	juce::CriticalSection mSpansLock;
+	std::mutex mSpansMutex;
 	// a ping is a guess at where a touch is over a particular row.
 	std::vector<Vec3> mPings;
-	juce::CriticalSection mPingsLock;
+	std::mutex mPingsMutex;
 
 
 	AsymmetricOnepoleMatrix mBackgroundFilter;

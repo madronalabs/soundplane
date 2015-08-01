@@ -131,8 +131,8 @@ public:
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 	
-	std::vector<Vec3> getSpans() const { return mTracker.getSpans(); }
-	std::vector<Vec3> getPings() const { return mTracker.getPings(); }
+	std::vector<Vec3> getSpans() { return mTracker.getSpans(); }
+	std::vector<Vec3> getPings() { return mTracker.getPings(); }
 
 	const MLSignal* getSignalForViewMode(const std::string& m);
 

@@ -515,7 +515,7 @@ void SoundplaneGridView::renderZGrid()
 			lineColor = (i/16)&1 ? darkBlue : blue;
 			if(state != kDeviceHasIsochSync)
 			{
-				lineColor[3] = 0.1f;
+// MLTEST				lineColor[3] = 0.1f;
 			}
 			glColor4fv(&lineColor[0]);
 			

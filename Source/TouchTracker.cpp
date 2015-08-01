@@ -719,8 +719,8 @@ void TouchTracker::findSpans()
 	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
 	int h = in.getHeight();
-
-	const juce::ScopedLock lock(mSpansLock);
+	
+	std::lock_guard<std::mutex> lock(mSpansMutex);
 	mSpans.clear();
  
 	for(int j=0; j<h; ++j)
@@ -814,7 +814,7 @@ void TouchTracker::fitCurves()
 	zSharp = in;
 	zSharp.convolve5x1(-0.5, 0, 1., 0, -0.5);
 
-	const juce::ScopedLock lock(mPingsLock); //TODO temp
+	std::lock_guard<std::mutex> lock(mPingsMutex);
 	mPings.clear();
 	
 	mFitTestSignal.clear();
@@ -1800,7 +1800,7 @@ void TouchTracker::collectTemplate()
 	int kw = mTemplateSpan.getWidth();
 	
 	float spanBuf[w];
-	const juce::ScopedLock lock(mSpansLock);
+	std::lock_guard<std::mutex> lock(mSpansMutex);
 	
 	for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
 	{
