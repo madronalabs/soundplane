@@ -67,7 +67,7 @@ public:
 
     void clearTouches();
     void addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz);
-    void processTouches();
+    void processTouches(const std::vector<bool>& freedTouches);
     
     const ZoneTouch touchToKeyPos(const ZoneTouch& t) const
     {
@@ -80,7 +80,8 @@ public:
     bool needsRedraw() const { return mNeedsRedraw; }
     const std::string& getName() const { return mName; }
     MLRect getBounds() const { return mBounds; }
-    int getType() const { return mType; }
+	int getType() const { return mType; }
+	int getOffset() const { return mOffset; }
 
     // return values on [0..1]
     float getValue(int i) const { return mValue[clamp(i, 0, kZoneValArraySize - 1)]; }
@@ -124,14 +125,14 @@ protected:
     int mControllerNum1;
     int mControllerNum2;
     int mControllerNum3;
-    int mChannel;
+    int mOffset;
     std::string mName;
     const SoundplaneListenerList& mListeners;
     SoundplaneDataMessage mMessage;
     
 private:
-    void processTouchesNoteRow();
-    void processTouchesNoteOffs();
+    void processTouchesNoteRow(const std::vector<bool>& freedTouches);
+	void processTouchesNoteOffs(std::vector<bool>& freedTouches);
     int getNumberOfActiveTouches() const;
     int getNumberOfNewTouches() const;
     Vec3 getAveragePositionOfActiveTouches() const;
@@ -147,19 +148,17 @@ private:
     bool mNeedsRedraw;
     float mValue[kZoneValArraySize];
 
-    // touches are stored on [0..1] over the Zone boundary.
+    // touch locations are stored scaled to [0..1] over the Zone boundary.
     // incoming touches 
     ZoneTouch mTouches0[kSoundplaneMaxTouches];
     // touch positions this frame
     ZoneTouch mTouches1[kSoundplaneMaxTouches];
-    // touch positions previous frame
-    ZoneTouch mTouches2[kSoundplaneMaxTouches];
     // touch positions saved at touch onsets
     ZoneTouch mStartTouches[kSoundplaneMaxTouches];
     
 	float mSnapFreq;
-	std::vector<Biquad> mNoteFilters;
-	std::vector<Biquad> mVibratoFilters;
+	std::vector<MLBiquad> mNoteFilters;
+	std::vector<MLBiquad> mVibratoFilters;
 
 };
 typedef std::shared_ptr<Zone> ZonePtr;

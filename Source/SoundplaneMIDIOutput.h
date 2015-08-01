@@ -25,25 +25,38 @@ class MIDIVoice
 public:
 	MIDIVoice();
 	~MIDIVoice();
+	
 
-    int age;
+	int age;
 	float x;
 	float y;
 	float z;
+	
 	float dz;
 	float note;
 	float startX;
 	float startY;
 	float startNote;
+	float vibrato;
 
 	int mMIDINote;
+	int mPreviousMIDINote;
 	int mMIDIVel;	
 	int mMIDIBend;
 	int mMIDIXCtrl;
 	int mMIDIYCtrl;
 	int mMIDIPressure;
+	int mMIDIChannel;
+	
+	bool mSendNoteOff;
+	bool mSendNoteOn;
+	bool mSendPressure;
+	bool mSendPitchBend;
+	bool mSendXCtrl;
+	bool mSendYCtrl;
 	
     VoiceState mState;
+
 };
 
 class MIDIDevice
@@ -87,21 +100,44 @@ public:
 	void setActive(bool v);
 	void setPressureActive(bool v);
 
-	void setMaxTouches(int t) { mVoices = clamp(t, 0, kMaxMIDIVoices); }
-	void setBendRange(int r) { mBendRange = r; }
+	void setMaxTouches(int t);
+	void setBendRange(int r);
 	void setTranspose(int t) { mTranspose = t; }
-	void setRetrig(int t) { mRetrig = t; }
+	void setGlissando(int t) { mGlissando = t; }
 	void setAbsRel(int t) { mAbsRel = t; }
 	void setHysteresis(float t) { mHysteresis = t; }
 
-	void setMultiChannel(bool v);
+	void setMPEExtended(bool v);
+	void setMPE(bool v);
 	void setStartChannel(int v);
 	void setKymaPoll(bool v) { mKymaPoll = v; }
 	
 private:
+	int getMPEMainChannel();
+	int getMPEVoiceChannel(int voice);
+	int getVoiceChannel(int voice);
+	int getMIDIPitchBend(MIDIVoice* pVoice);
+	int getMIDIVelocity(MIDIVoice* pVoice);
+	int getRetriggerVelocity(MIDIVoice* pVoice);
+	int getMostRecentVoice();
 
-    void sendPressure(int chan, float p);
+	int getMIDIPressure(MIDIVoice* pVoice);
 
+	void sendMIDIChannelPressure(int chan, int p);
+	void sendAllMIDIChannelPressures(int p);
+	void sendAllMIDINotesOff();
+	
+	void sendMPEChannels();
+    void sendPitchbendRange();
+
+	void setupVoiceChannels();
+	void updateVoiceStates();
+	void sendMIDIVoiceMessages();
+	void sendMIDIControllerMessages();
+	void pollKyma();
+	void dumpVoices();
+
+	
 	int mVoices;
 	
 	MIDIVoice mMIDIVoices[kMaxMIDIVoices];
@@ -115,20 +151,27 @@ private:
     UInt64 mCurrFrameStartTime;
 	UInt64 mLastFrameStartTime;
     bool mTimeToSendNewFrame;
-    bool mGotNoteChangesThisFrame;
+	bool mGotControllerChanges;
     
 	bool mPressureActive;
-	UInt64 mLastTimeDataWasSent;
 	UInt64 mLastTimeNRPNWasSent;
+
 	int mBendRange;
 	int mTranspose;
-	int mRetrig;
+	int mGlissando;
 	int mAbsRel;
 	float mHysteresis;
 	
-	bool mMultiChannel;
-	int mStartChannel;
+	bool mMPEExtended;
+    bool mMPEMode;
+	int mMPEChannels;
+	
+	// channel to be used for single-channel output
+	int mChannel;
+	
 	bool mKymaPoll;
+	bool mVerbose;
+	UInt64 mLastTimeVerbosePrint;
 };
 
 

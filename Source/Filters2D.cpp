@@ -5,49 +5,6 @@
 
 #include "Filters2D.h"
 
-#pragma mark Biquad
-
-Biquad::Biquad()
-{}
-	
-Biquad::~Biquad()
-{}
-
-void Biquad::setState(float f)
-{
-	mY2 = mY1 = f;
-	mX1 = mX2 = f;
-}
-
-void Biquad::process(const int frames)
-{
-	float in, out;
-	in = mpIn[0];
-	
-	out = mCoeffs.a0*in + mCoeffs.a1*mX1 + mCoeffs.a2*mX2 - mCoeffs.b1*mY1 - mCoeffs.b2*mY2;
-	mX2 = mX1;
-	mX1 = in;
-	mY2 = mY1;
-	mY1 = out;
-	mpOut[0] = out;
-	
-	if (out != out)
-	{
-		debug() << "NaN! \n";
-	}
-}
-
-void Biquad::dump()
-{
-	debug() << "biquad{x1: " << mX1 << ", x2: " << mX2 << ", y1: " << mY1 << ", y2: " << mY2 << "}";
-}
-
-void Biquad::dumpCoeffs()
-{
-	debug() << "{a0: " << mCoeffs.a0 << ", a1: " << mCoeffs.a1 << ", a2: " << mCoeffs.a2 << 
-		", b1: " << mCoeffs.b1 << ", b2: " << mCoeffs.b2 << " }";
-}
-
 #pragma mark Biquad2D
 
 Biquad2D::Biquad2D(int w, int h) 

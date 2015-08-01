@@ -382,7 +382,7 @@ void TouchTracker::setThresh(float f)
 { 
 	const float kHysteresis = 0.002f;
 	mOffThreshold = f; 
-	mOnThreshold = f + kHysteresis; 
+	mOnThreshold = mOffThreshold + kHysteresis; 
 	mOverrideThresh = mOnThreshold*5.f;
 	mCalibrator.setThreshold(mOnThreshold);
 }
@@ -829,7 +829,6 @@ void TouchTracker::fitCurves()
 		float a = s.x(); // x1 
 		float b = s.y(); // not really y, rather x2
 		int row = s.z();
-		
 		int ia = floorf(a);
 		int ib = ceilf(b);
 		

@@ -20,8 +20,9 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpController = new SoundplaneController(mpModel);
 	mpView = new SoundplaneView(mpModel, mpController, mpController);
 	mpController->setView(mpView);
+
 	mpController->initialize();	
-	mpView->initialize();		
+	mpView->initialize();		// ?
 	
 	mpWindow = std::unique_ptr<MLAppWindow>(new MLAppWindow());	
 	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);

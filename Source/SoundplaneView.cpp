@@ -1,4 +1,4 @@
-
+//
 // Part of the Soundplane client software by Madrona Labs.
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
@@ -151,7 +151,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	mSoundplaneDeviceState(-1),
 	mpCurveGraph(0),
 	mpViewModeButton(0),
-	mpMIDIDeviceButton(0)
+	mpMIDIDeviceButton(0), 
+	mpOSCServicesButton(0),
+	mpMidiChannelDial(0)
 {
     setWidgetName("soundplane_view");
 	//pModel->addListener(this);
@@ -215,8 +217,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	MLRect presetMenuRect(0, 0, presetMenuWidth, presetMenuHeight);
     
  	float dialY = 8.25;	// center line for dials
-	MLRect dialRect (0, 0, 1.25, 1.0);
-	MLRect dialRectSmall (0, 0, 1., 0.75);
+	MLRect dialRect (0, 0, 1.0, 0.875);
+	MLRect dialRectSmall (0, 0, 1.0, 0.625);
 	MLRect buttonRect(0, 0, 1, 0.5);
 	MLRect toggleRect(0, 0, 1, 0.5);
 	MLRect textButtonRect(0, 0, 5.5, 0.4);
@@ -261,15 +263,15 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
     
 	pB = page0->addToggleButton("quantize", toggleRect.withCenter(4.25, topDialsY), "quantize", c2);
 	pB = page0->addToggleButton("note lock", toggleRect.withCenter(5.25, topDialsY), "lock", c2);
-	pB = page0->addToggleButton("glissando", toggleRect.withCenter(6.25, topDialsY), "retrig", c2);
+	pB = page0->addToggleButton("glissando", toggleRect.withCenter(6.25, topDialsY), "glissando", c2);
     
-	pD = page0->addDial("portamento", dialRectSmall.withCenter(7.75, topDialsY), "snap", c2);
+	pD = page0->addDial("portamento", dialRect.withCenter(7.75, topDialsY), "snap", c2);
 	pD->setRange(0., 1000., 10);
 	pD->setDefault(250.);
-	pD = page0->addDial("vibrato", dialRectSmall.withCenter(8.75, topDialsY), "vibrato", c2);
+	pD = page0->addDial("vibrato", dialRect.withCenter(8.75, topDialsY), "vibrato", c2);
 	pD->setRange(0., 1., 0.01);
 	pD->setDefault(0.5);
-	pD = page0->addDial("transpose", dialRectSmall.withCenter(9.75, topDialsY), "transpose", c2);
+	pD = page0->addDial("transpose", dialRect.withCenter(9.75, topDialsY), "transpose", c2);
 	pD->setRange(-24, 24., 1.);
 	pD->setDefault(0);
 	
@@ -287,14 +289,25 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pB = page0->addToggleButton("active", toggleRect.withCenter(7.75, bottomDialsY), "midi_active", c2);
 	pB = page0->addToggleButton("pressure", toggleRect.withCenter(7.75, bottomDialsY2), "midi_pressure_active", c2);
 	pD = page0->addDial("rate", dialRect.withCenter(8.75, bottomDialsY), "data_freq_midi", c2);
-	pD->setRange(10., 500., 10.);
+	pD->setRange(1., 500., 1.);
 	pD->setDefault(250.);
 	pD = page0->addDial("bend range", dialRect.withCenter(9.75, bottomDialsY), "bend_range", c2);
-	pD->setRange(0., 48., 1.);
+	pD->setRange(0., 96., 1.);
+	for(int i=0; i<13; ++i)
+	{
+		pD->addDetent(i);
+	}
+	for(int i=24; i<97; i += 12)
+	{
+		pD->addDetent(i);
+	}
 	
-	pB = page0->addToggleButton("multi chan", toggleRect.withCenter(8.75, bottomDialsY2), "midi_multi_chan", c2);
-	pD = page0->addDial("start chan", dialRect.withCenter(9.75, bottomDialsY2), "midi_start_chan", c2);
-	pD->setRange(1., 16., 1.);
+	pB = page0->addToggleButton("MPE", toggleRect.withCenter(8.75, bottomDialsY2), "midi_mpe", c2);
+	mpMidiChannelDial = page0->addDial("channel", dialRect.withCenter(9.75, bottomDialsY2), "midi_channel", c2);
+	mpMidiChannelDial->setRange(1., 16., 1.);
+	
+	// 	addWidgetToView(button, r, paramName);
+	// addPropertyView(paramName, button, MLSymbol("value"));
 	
     //	pB = page0->addToggleButton("one / multi", toggleRect.withCenter(6.5, 5.25), "single_multi", c2);
     //	pB->setSplitMode(true);
@@ -317,8 +330,10 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pB = page0->addToggleButton("matrix", toggleRect.withCenter(13.25, bottomDialsY), "osc_send_matrix", c2);
 	
 	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(12.25, 9.), "osc_service_name");
-
 	
+	// additional parameter views allow us to adapt UI based on Model properties.
+	page0->addPropertyView("midi_mpe", this, MLSymbol("mpe")); 	
+
     // --------------------------------------------------------------------------------
 	// page 1 - raw touches
 	//
@@ -371,12 +386,12 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setDefault(4);	
 
 	pD = page1->addDial("thresh", dialRect.withCenter(2.0, dialY), "z_thresh", c2);
-	pD->setRange(0., 0.025, 0.001);	
+	pD->setRange(0., 0.05, 0.001);	
 	pD->setDefault(0.01);	
 	
-	pD = page1->addDial("max force", dialRect.withCenter(3.5, dialY), "z_max", c2);
-	pD->setRange(0.01, 0.1, 0.001);	
-	pD->setDefault(0.05);
+	pD = page1->addDial("z scale", dialRect.withCenter(3.5, dialY), "z_scale", c2);
+	pD->setRange(0.25, 5.0, 0.01);	
+	pD->setDefault(1.0);
 	
 	pD = page1->addDial("z curve", dialRect.withCenter(5.0, dialY), "z_curve", c2);
 	pD->setRange(0., 1., 0.01);	
@@ -388,20 +403,15 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	
 	pB = page1->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
 	
-//	page1->addToggleButton("show frets", toggleRect.withCenter(10, dialY - 0.25), "frets", c2);
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 
 //	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
 
 	// add parameter views handled directly by this Widget
-	page1->addPropertyView("viewmode", this, MLSymbol("viewmode"));
+	page1->addPropertyView("viewmode", this, MLSymbol("viewmode"));	
 	
 	// grid view gets viewmode changes
 	page1->addPropertyView("viewmode", &mGridView, MLSymbol("viewmode"));
-	
-	
-	//page0->addParamView("protocol", this, MLSymbol("show_protocol"));
-	
 
     // --------------------------------------------------------------------------------
     // page 2 - expert stuff
@@ -428,20 +438,21 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 
 	// console
 	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));
+	
 	MLConsole().sendOutputToListener(pDebug);
 	
 	// MLTEST temp
 	//debug().sendOutputToListener(pDebug);
 
-	pD = page2->addDial("bg filter", dialRect.withCenter(2, dialY), "bg_filter", c2);
+	pD = page2->addDial("bg filter", dialRect.withCenter(0.5, dialY), "bg_filter", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.05);
 	
-	pD = page2->addDial("hysteresis", dialRect.withCenter(4, dialY), "hysteresis", c2);
+	pD = page2->addDial("hysteresis", dialRect.withCenter(2, dialY), "hysteresis", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.5);
 	
-	pD = page2->addDial("template", dialRect.withCenter(6, dialY), "t_thresh", c2);
+	pD = page2->addDial("template", dialRect.withCenter(3.5, dialY), "t_thresh", c2);
 	pD->setRange(0., 1., 0.001);	
 	pD->setDefault(0.2);
     
@@ -481,8 +492,25 @@ void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
 	else if(p == "view_page")
 	{
 		handled = true;
-		float v = val.getFloatValue();
-        goToPage(v);
+		int v = val.getFloatValue();
+		goToPage(v);
+		repaint();
+	}
+	else if(p == "mpe")
+	{
+		int v = val.getFloatValue();
+		if(mpMidiChannelDial)
+		{
+			if(v) // MPE mode on
+			{
+				mpMidiChannelDial->setWidgetEnabled(false);	
+			}
+			else
+			{
+				mpMidiChannelDial->setWidgetEnabled(true);	
+			}
+		}
+		handled = true;
 		repaint();
 	}
 
@@ -627,6 +655,3 @@ void SoundplaneView::nextPage()
 		goToPage(page + 1);
 	}
 }
-
-
-

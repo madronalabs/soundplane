@@ -46,6 +46,7 @@
 \documentclass[nofonts, justified, marginnote=raggedright,  caption=raggedright]{tufte-book}	% gave up getting symmetric to work
 \usepackage{arev}		% use arev font for math.
 \usepackage{graphicx}
+\usepackage{pdfpages}
 \usepackage{amsmath}
 \usepackage{color}
 \usepackage{lipsum}	% for providing filler text
@@ -195,48 +196,9 @@
 
 % --------------------------------------------------------------------------------------------------------------------------------
 %  title page
+% requires \usepackage{pdfpages}
 
-\thispagestyle{empty}
-
-% background image
-%\begin{textblock*}{297mm}(-1in, 0.5in) % 
-%\includegraphics[width=8in]{images/Aalto-CoverWaveCablesWhite.png}
-%\end{textblock*}
-
-%\begin{textblock*}{297mm}(0.75in, 0.5in) 
-%{
-%\noindent 
-%\parbox{7in}
-%{
-%\madronachapfont \fontsize{16}{180} \addfontfeature{LetterSpace=-1.0} \color{darkC}Making and organizing sounds with
-%\\
-%\centering
-%\madronachapfont \fontsize{110}{162} \addfontfeature{LetterSpace=-1.0}\color{lightC} AALTO }
-%}
-%\end{textblock*}
-\begin{textblock*}{6in}(0in, 0.5in)
-{
-\centering
-\madronachapfont \fontsize{80}{80} \addfontfeature{LetterSpace=-1.0} \color{lightC}Soundplane\\
-}
-\end{textblock*}
-
-\begin{textblock*}{5in}(0.25in, 0.25in)
-{
-\madronachapfont \fontsize{16}{16} \addfontfeature{LetterSpace=-1.0} \color{darkC} How to play and maintain your
-}
-\end{textblock*}
-
-\begin{textblock*}{6in}(0in, 4.5in)
-{
-\centering
-\madronachapfont \fontsize{14}{22} \addfontfeature{LetterSpace=-1.0} \color{darkC}version 0.9 by 
-\\
-\madronalogofont \fontsize{18}{24} \addfontfeature{LetterSpace=10.0} \color{darkC}Madrona Labs\\
-}
-\end{textblock*}
-
-\clearpage
+\includepdf{images/SoundplaneManualCover.pdf}
 
 % --------------------------------------------------------------------------------------------------------------------------------
 %license and colophon page

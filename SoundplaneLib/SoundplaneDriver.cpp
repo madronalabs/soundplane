@@ -118,7 +118,11 @@ void SoundplaneDriver::shutdown()
 
 	setDeviceState(kDeviceIsTerminating);
 	
-	IONotificationPortDestroy(notifyPort);
+	if(notifyPort)
+	{
+		IONotificationPortDestroy(notifyPort);
+	}
+	
 	if (matchedIter) 
 	{
         IOObjectRelease(matchedIter);
@@ -1658,10 +1662,7 @@ void *soundplaneProcessThread(void *arg)
 							k1->startupCtr++;
 						}
 						
-						memcpy(pPrevFrame, pWorkingFrame, outputFrameSize);
-						
-						// TODO if there is a small constant difference like an offset across the surface, 
-						// store it and correct.  						
+						memcpy(pPrevFrame, pWorkingFrame, outputFrameSize);						
 					}
 				}
 			

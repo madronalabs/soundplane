@@ -222,9 +222,9 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				mTracker.setThresh(v);
 			}
-			else if (p == "z_max")
+			else if (p == "z_scale")
 			{
-				mTracker.setMaxForce(v);
+				mTracker.setZScale(v);
 			}
 			else if (p == "z_curve")
 			{
@@ -256,11 +256,15 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				mMIDIOutput.setActive(bool(v));
 			}
-			else if (p == "midi_multi_chan")
+			else if (p == "midi_mpe")
 			{
-				mMIDIOutput.setMultiChannel(bool(v));
+				mMIDIOutput.setMPE(bool(v));
 			}
-			else if (p == "midi_start_chan")
+			else if (p == "midi_mpe_extended")
+			{
+				mMIDIOutput.setMPEExtended(bool(v));
+			}
+			else if (p == "midi_channel")
 			{
 				mMIDIOutput.setStartChannel(int(v));
 			}
@@ -303,9 +307,9 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				mTracker.setUseTestSignal(b);
 				mTesting = b;
 			}
-			else if (p == "retrig")
+			else if (p == "glissando")
 			{
-				mMIDIOutput.setRetrig(bool(v));
+				mMIDIOutput.setGlissando(bool(v));
 				sendParametersToZones();
 			}
 			else if (p == "hysteresis")
@@ -423,7 +427,7 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("lopass", 100.);
 	
 	setProperty("z_thresh", 0.01);
-	setProperty("z_max", 0.05);
+	setProperty("z_scale", 1.);
 	setProperty("z_curve", 0.25);
 	setProperty("display_scale", 1.);
 	
@@ -436,8 +440,9 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("t_thresh", 0.2);
 	
 	setProperty("midi_active", 0);
-	setProperty("midi_multi_chan", 1);
-	setProperty("midi_start_chan", 1);
+	setProperty("midi_mpe", 1);
+	setProperty("midi_mpe_extended", 0);
+	setProperty("midi_channel", 1);
 	setProperty("data_freq_midi", 250.);
 	
 	setProperty("kyma_poll", 0);
@@ -529,7 +534,6 @@ void SoundplaneModel::didResolveAddress(NetService *pNetService)
 	static const char* kymaStr = "beslime";
 	int len = strlen(kymaStr);
 	bool isProbablyKyma = !strncmp(serviceName.c_str(), kymaStr, len);
-	debug() << "kyma mode " << isProbablyKyma << "\n";
 	setKymaMode(isProbablyKyma);
 }
 
@@ -568,7 +572,6 @@ void SoundplaneModel::initialize()
 	mMIDIOutput.initialize();
 	addListener(&mMIDIOutput);
 	
-	mOSCOutput.initialize();
 	addListener(&mOSCOutput);
 	
 	mpDriver = new SoundplaneDriver();
@@ -612,6 +615,7 @@ int SoundplaneModel::getDeviceState(void)
 	PaUtil_ReadMemoryBarrier(); 
 	return mDeviceState;
 }
+
 void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 {
 	unsigned long instrumentModel = 1; // Soundplane A
@@ -901,7 +905,7 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
             
             pz->mName = getJSONString(pNode, "name");
             pz->mStartNote = getJSONInt(pNode, "note");
-            pz->mChannel = getJSONInt(pNode, "channel");
+            pz->mOffset = getJSONInt(pNode, "offset");
             pz->mControllerNum1 = getJSONInt(pNode, "ctrl1");
             pz->mControllerNum2 = getJSONInt(pNode, "ctrl2");
             pz->mControllerNum3 = getJSONInt(pNode, "ctrl3");
@@ -972,10 +976,11 @@ void SoundplaneModel::sendParametersToZones()
 // send raw touches to zones in order to generate note and controller events.
 void SoundplaneModel::sendTouchDataToZones()
 {
+	const float kTouchScaleToModel = 20.f;
 	float x, y, z, dz;
 	int age;
     
-	const float zmax = getFloatProperty("z_max");
+	const float zscale = getFloatProperty("z_scale");
 	const float zcurve = getFloatProperty("z_curve");
 	const int maxTouches = getFloatProperty("max_touches");
 	const float hysteresis = getFloatProperty("hysteresis");
@@ -992,8 +997,8 @@ void SoundplaneModel::sendTouchDataToZones()
         dz = mTouchFrame(dzColumn, i);
 		if(age > 0)
 		{            
- 			// apply adjustable force curve for z over [z_thresh, z_max] and clamp
-			z /= zmax;
+ 			// apply adjustable force curve for z and clamp
+			z *= zscale * kTouchScaleToModel;
 			z = (1.f - zcurve)*z + zcurve*z*z*z;		
 			z = clamp(z, 0.f, 1.f);
 			mTouchFrame(zColumn, i) = z;
@@ -1041,16 +1046,20 @@ void SoundplaneModel::sendTouchDataToZones()
 	sendMessageToListeners();
     
     // process note offs for each zone
+	// this happens before processTouches() to allow voices to be freed
     int zones = mZones.size();
+	std::vector<bool> freedTouches;
+	freedTouches.resize(kSoundplaneMaxTouches);
+	
     for(int i=0; i<zones; ++i)
 	{
-        mZones[i]->processTouchesNoteOffs();
+        mZones[i]->processTouchesNoteOffs(freedTouches);
     }
-    
+
     // process touches for each zone
-    for(int i=0; i<zones; ++i)
+	for(int i=0; i<zones; ++i)
 	{
-        mZones[i]->processTouches();
+        mZones[i]->processTouches(freedTouches);
     }
     
     // send optional calibrated matrix
@@ -1189,8 +1198,10 @@ void SoundplaneModel::testCallback()
 		}
 	}
 	
+
 	mTracker.doNormalize(false);
 	filterAndSendData();
+
 }
 
 // called by the process thread in a tight loop to receive data from the driver.

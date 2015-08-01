@@ -14,9 +14,6 @@ SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
 {
 	MLReporter::listenTo(mpSoundplaneModel);
 	
-	// listen to the model's zone presets, for creating menus
-	mpSoundplaneModel->getZonePresetsCollection().addListener(this);
-	
 	startTimer(250);
 }
 

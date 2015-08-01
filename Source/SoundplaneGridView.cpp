@@ -109,6 +109,7 @@ void SoundplaneGridView::setupOrthoView()
 
 void SoundplaneGridView::drawSurfaceOverlay()
 {
+
 	float dotSize = fabs(mKeyRangeY(0.08f) - mKeyRangeY(0.f));
 	const MLSignal* calSignal = mpModel->getSignalForViewMode("calibrated");
 	if(!calSignal) return;
@@ -123,7 +124,7 @@ void SoundplaneGridView::drawSurfaceOverlay()
 	Vec4 gray(0.2f, 0.2f, 0.2f, 0.5f);
 	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
-	
+
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glDisable(GL_LINE_SMOOTH);
@@ -750,5 +751,3 @@ void SoundplaneGridView::renderOpenGL()
         renderZGrid();
     }
 }
-
-

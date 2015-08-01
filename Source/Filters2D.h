@@ -10,51 +10,9 @@
 #include "MLDebug.h"
 #include "MLDSPUtils.h"
 
-// quick and dirty filters code, for when we are not including the whole signal library.
+// quick and dirty filters code.
 
-// a biquad filter with scalar coefficients.
-class Biquad
-{
-public:
-	Biquad();	
-	~Biquad();
-	
-	MLBiquad mCoeffs;
-	
-	MLSample mIn, mX1, mX2, mY1, mY2;	
-
-	MLSample* mpIn;
-	MLSample* mpOut;
-	
-	void setInput(MLSample* pIn)
-		{ mpIn = pIn; }
-	void setOutput(MLSample* pOut)
-		{ mpOut = pOut; }
-	float getOutput() { return *mpOut; }
-	void clear() 
-	{
-		mIn = mX1 = mX2 = mY1 = mY2 = 0.f;
-	}
-	void setSampleRate(float sr) 
-		{ mCoeffs.setSampleRate(sr); }
-	void setNotch(float f, float q)
-		{ mCoeffs.setNotch(f, q); }
-	void setLopass(float f, float q)
-		{ mCoeffs.setLopass(f, q); }
-	void setHipass(float f, float q)
-		{ mCoeffs.setHipass(f, q); }
-	void setOnePole(float f)
-		{ mCoeffs.setOnePole(f); }
-	void setDifferentiate(void)
-		{ mCoeffs.setDifferentiate(); }
-
-	void setState(float f);
-	void process(int frames);
-
-	void dump();
-	void dumpCoeffs();
-};
-
+// TODO clean up, remove redundant bits, and subsume into MLSignal, MLDSPUtils.
 
 // a biquad filter applied to each cell of a 2d signal with scalar coefficients.
 class Biquad2D

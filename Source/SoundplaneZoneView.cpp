@@ -135,12 +135,15 @@ void SoundplaneZoneView::renderZones()
         int t = zone.getType();
         MLRect zr = zone.getBounds();
         const char * name = zone.getName().c_str();
+		int offset = zone.getOffset();
         
         // affine transforms TODO for better syntax: MLRect zrd = zr.xform(gridToView);
         
         MLRect zoneRectInView(xRange.convert(zr.x()), yRange.convert(zr.y()), xRange.convert(zr.width()), yRange.convert(zr.height()));
         zoneRectInView.shrink(lineWidth);
-        Vec4 zoneStroke(MLGL::getIndicatorColor(t));
+		
+		// color idx = type + port offset.
+        Vec4 zoneStroke(MLGL::getIndicatorColor(t + offset));
         Vec4 zoneFill(zoneStroke);
         zoneFill[3] = 0.1f;
         Vec4 activeFill(zoneStroke);

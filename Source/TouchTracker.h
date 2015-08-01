@@ -211,10 +211,8 @@ public:
 	void setBackgroundFilter(float v) { mBackgroundFilterFreq = v; }
 	void setLopass(float k); 	
 	void setForceCurve(float f) { mForceCurve = f; }
-
-	float getMaxForce(){ return mMaxForce; }
-	void setMaxForce(float f) { mMaxForce = f; }
-
+	void setZScale(float f) { mZScale = f; }
+	
 	// process input and get touches. creates one frame of touch data in buffer.
 	void process(int);
 	
@@ -284,7 +282,7 @@ private:
 	float mTemplateSizeY;
 
 	float mMatchDistance;
-	float mMaxForce;
+	float mZScale;
 	int mTaxelsThresh;
 	
 	float mSmoothing;
