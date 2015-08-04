@@ -384,7 +384,7 @@ void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 	// Check if the transfer was successful
 	if (transfer.transfer->status != LIBUSB_TRANSFER_COMPLETED)
 	{
-		fprintf(stderr, "Failed USB transfer failed: %s\n", libusb_error_name(transfer.transfer->status));
+		fprintf(stderr, "Failed USB transfer: %s\n", libusb_error_name(transfer.transfer->status));
 		mUsbFailed = true;
 		return;
 	}
