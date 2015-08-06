@@ -300,7 +300,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "test_signal")
 			{
 				bool b = v;
-				mTracker.setUseTestSignal(b);
 				mTesting = b;
 			}
 			else if (p == "glissando")
