@@ -166,15 +166,18 @@ void SoundplaneDriverLibusb::enableCarriers(unsigned long mask)
 		new unsigned long(mask), std::memory_order_release);
 }
 
-libusb_error SoundplaneDriverLibusb::sendControl(
+void SoundplaneDriverLibusb::processThreadControlTransferCallback(struct libusb_transfer *xfr) {
+	SoundplaneDriverLibusb* driver = static_cast<SoundplaneDriverLibusb*>(xfr->user_data);
+	driver->mOutstandingTransfers--;
+}
+
+libusb_error SoundplaneDriverLibusb::processThreadSendControl(
 	libusb_device_handle *device,
 	uint8_t request,
 	uint16_t value,
 	uint16_t index,
 	const unsigned char *data,
-	size_t dataSize,
-	libusb_transfer_cb_fn cb,
-	void *userData)
+	size_t dataSize)
 {
 	unsigned char *buf = static_cast<unsigned char*>(malloc(LIBUSB_CONTROL_SETUP_SIZE + dataSize));
 	struct libusb_transfer *transfer;
@@ -195,12 +198,17 @@ libusb_error SoundplaneDriverLibusb::sendControl(
 
 	static constexpr auto kCtrlOut = LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_ENDPOINT_OUT;
 	libusb_fill_control_setup(buf, kCtrlOut, request, value, index, dataSize);
-	libusb_fill_control_transfer(transfer, device, buf, cb, userData, 1000);
+	libusb_fill_control_transfer(transfer, device, buf, &SoundplaneDriverLibusb::processThreadControlTransferCallback, this, 1000);
 
 	transfer->flags = LIBUSB_TRANSFER_SHORT_NOT_OK
 		| LIBUSB_TRANSFER_FREE_BUFFER
 		| LIBUSB_TRANSFER_FREE_TRANSFER;
-	return static_cast<libusb_error>(libusb_submit_transfer(transfer));
+	const auto result = static_cast<libusb_error>(libusb_submit_transfer(transfer));
+	if (result >= 0)
+	{
+		mOutstandingTransfers++;
+	}
+	return result;
 }
 
 bool SoundplaneDriverLibusb::processThreadWait(int ms) const
@@ -332,7 +340,7 @@ bool SoundplaneDriverLibusb::processThreadSelectIsochronousInterface(libusb_devi
 	return true;
 }
 
-bool SoundplaneDriverLibusb::processThreadScheduleTransfer(Transfer &transfer) const
+bool SoundplaneDriverLibusb::processThreadScheduleTransfer(Transfer &transfer)
 {
 	libusb_fill_iso_transfer(
 		transfer.transfer,
@@ -354,11 +362,15 @@ bool SoundplaneDriverLibusb::processThreadScheduleTransfer(Transfer &transfer) c
 		fprintf(stderr, "Failed to submit USB transfer: %s\n", libusb_error_name(result));
 		return false;
 	}
-	return true;
+	else
+	{
+		mOutstandingTransfers++;
+		return true;
+	}
 }
 
 bool SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
-	Transfers &transfers) const
+	Transfers &transfers)
 {
 	for (int endpoint = 0; endpoint < kSoundplaneANumEndpoints; endpoint++)
 	{
@@ -376,6 +388,7 @@ bool SoundplaneDriverLibusb::processThreadScheduleInitialTransfers(
 void SoundplaneDriverLibusb::processThreadTransferCallbackStatic(struct libusb_transfer *xfr)
 {
 	Transfer *transfer = static_cast<Transfer*>(xfr->user_data);
+	transfer->parent->mOutstandingTransfers--;
 	transfer->parent->processThreadTransferCallback(*transfer);
 }
 
@@ -412,15 +425,13 @@ void SoundplaneDriverLibusb::processThreadTransferCallback(Transfer &transfer)
 libusb_error SoundplaneDriverLibusb::processThreadSetCarriers(
 	libusb_device_handle *device, const unsigned char *carriers, size_t carriersSize)
 {
-	return sendControl(
+	return processThreadSendControl(
 		device,
 		kRequestMask,
 		0,
 		kRequestCarriersIndex,
 		carriers,
-		carriersSize,
-		nullptr,
-		nullptr);
+		carriersSize);
 }
 
 bool SoundplaneDriverLibusb::processThreadHandleRequests(libusb_device_handle *device)
@@ -429,15 +440,13 @@ bool SoundplaneDriverLibusb::processThreadHandleRequests(libusb_device_handle *d
 	if (carrierMask)
 	{
 		unsigned long mask = *carrierMask;
-		sendControl(
+		processThreadSendControl(
 			device,
 			kRequestMask,
 			mask >> 16,
 			mask,
 			nullptr,
-			0,
-			nullptr,
-			nullptr);
+			0);
 		delete carrierMask;
 	}
 	const auto carriers = mSetCarriersRequest.exchange(nullptr, std::memory_order_acquire);
@@ -456,6 +465,8 @@ void SoundplaneDriverLibusb::processThread()
 	while (!mQuitting.load(std::memory_order_acquire))
 	{
 		mUsbFailed = false;
+		mOutstandingTransfers = 0;
+
 		Transfers transfers;
 		LibusbClaimedDevice handle;
 		auto anomalyFilter = makeAnomalyFilter(
@@ -494,7 +505,7 @@ void SoundplaneDriverLibusb::processThread()
 				fprintf(stderr, "Libusb error!\n");
 				break;
 			}
-			if (mUsbFailed)
+			if (mUsbFailed && mOutstandingTransfers == 0)
 			{
 				break;
 			}

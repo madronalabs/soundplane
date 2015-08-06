@@ -222,15 +222,14 @@ private:
 
 	using Transfers = std::array<std::array<Transfer, kBuffersPerEndpoint>, kSoundplaneANumEndpoints>;
 
-	static libusb_error sendControl(
+	static void processThreadControlTransferCallback(struct libusb_transfer *xfr);
+	libusb_error processThreadSendControl(
 		libusb_device_handle *device,
 		uint8_t request,
 		uint16_t value,
 		uint16_t index,
 		const unsigned char *data,
-		size_t dataSize,
-		libusb_transfer_cb_fn cb,
-		void *userData);
+		size_t dataSize);
 
 	/**
 	 * Returns false if the process thread should quit.
@@ -277,11 +276,11 @@ private:
 	/**
 	 * Returns false if scheduling the transfer failed.
 	 */
-	bool processThreadScheduleTransfer(Transfer &transfer) const;
+	bool processThreadScheduleTransfer(Transfer &transfer);
 	/**
 	 * Returns false if scheduling of any of the initial transfers failed.
 	 */
-	bool processThreadScheduleInitialTransfers(Transfers &transfers) const;
+	bool processThreadScheduleInitialTransfers(Transfers &transfers);
 	static void processThreadTransferCallbackStatic(struct libusb_transfer *xfr);
 	void processThreadTransferCallback(Transfer& transfer);
 	libusb_error processThreadSetCarriers(
@@ -341,6 +340,18 @@ private:
 	 * Accessed only from the processing thread.
 	 */
 	bool						mUsbFailed;
+
+	/**
+	 * The number of outstanding transfers. This is used during shutdown to
+	 * ensure that libusb isn't torn down before transfers have finished.
+	 * Failure to do so results in crashes (do_close in core.c of libusb NULLs
+	 * out the dev_handle of all transfers, and darwin_async_io_callback
+	 * attempts to read it). Accessed only by the processing thread.
+	 *
+	 * I believe this should not be needed. See
+	 * https://github.com/libusb/libusb/issues/84
+	 */
+	size_t						mOutstandingTransfers;
 
 	/**
 	 * Ring buffer is read by one reader (the client of the driver) and written
