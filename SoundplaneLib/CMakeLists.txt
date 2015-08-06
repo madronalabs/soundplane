@@ -23,10 +23,11 @@ endif()
 
 add_library(soundplanelib ${SP_DRIVER_SOURCES})
 target_link_libraries(soundplanelib portaudio)
-target_link_libraries(soundplanelib "-framework IOKit")
 target_include_directories(soundplanelib PUBLIC .)
 
 if(SP_USE_LIBUSB)
   add_subdirectory(../external/libusb libusb)
   target_link_libraries(soundplanelib libusb)
+else()
+  target_link_libraries(soundplanelib "-framework IOKit")
 endif()

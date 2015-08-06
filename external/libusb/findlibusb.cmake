@@ -94,7 +94,3 @@ else (LIBUSB_1_LIBRARIES AND LIBUSB_1_INCLUDE_DIRS)
   mark_as_advanced(LIBUSB_1_INCLUDE_DIRS LIBUSB_1_LIBRARIES)
 
 endif (LIBUSB_1_LIBRARIES AND LIBUSB_1_INCLUDE_DIRS)
-
-add_library(libusb empty.c)
-target_link_libraries(libusb ${LIBUSB_1_LIBRARIES})
-target_include_directories(libusb PUBLIC ${LIBUSB_1_INCLUDE_DIRS})
