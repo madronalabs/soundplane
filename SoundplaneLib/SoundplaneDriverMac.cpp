@@ -1169,7 +1169,9 @@ void SoundplaneDriverMac::processThread()
 
 							// finally, we have sync.
 							//
-							setCarriers(kDefaultCarriers);
+							Carriers carriers;
+							std::copy(kDefaultCarriers, kDefaultCarriers + sizeof(kDefaultCarriers), carriers.begin());
+							setCarriers(carriers);
 							setDeviceState(kDeviceHasIsochSync);
 							lost = false;
 						}
