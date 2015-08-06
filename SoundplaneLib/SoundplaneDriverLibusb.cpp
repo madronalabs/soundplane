@@ -40,7 +40,7 @@ public:
 			{
 				// Possible sensor glitch.  also occurs when changing carriers.
 				mGlitchCallback(mStartupCtr, df, mPreviousFrame, frame);
-				mStartupCtr = 0;
+				reset();
 			}
 		}
 		else
