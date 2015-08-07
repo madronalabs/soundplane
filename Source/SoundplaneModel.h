@@ -186,6 +186,7 @@ private:
 	MLSignal mTouchFrame;
 	MLSignal mTouchHistory;
 
+	bool mTesting;
 	bool mCalibrating;
 	bool mSelectingCarriers;
 	bool mRaw;

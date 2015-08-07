@@ -65,6 +65,7 @@ SoundplaneModel::SoundplaneModel() :
 	mCookedSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTestSignal(kSoundplaneWidth, kSoundplaneHeight),
 
+	mTesting(false),
 	mCalibrating(false),
 	mSelectingCarriers(false),
 	mDynamicCarriers(true),
@@ -850,6 +851,13 @@ const char* SoundplaneModel::getClientStr()
 
 void SoundplaneModel::setTesting(bool testing)
 {
+	if (mTesting == testing)
+	{
+		// Avoid unnecessarily tearing down drivers
+		return;
+	}
+	mTesting = testing;
+
 	// First, replace the driver with an inert driver. This is a necessary step
 	// because if mpDriver was replaced with another "real" driver immediately,
 	// there would be two simultaneous processing threads, one for the old
