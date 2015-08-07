@@ -1,4 +1,6 @@
 set(SP_DRIVER_SOURCES
+  InertSoundplaneDriver.cpp
+  InertSoundplaneDriver.h
   SoundplaneDriver.cpp
   SoundplaneDriver.h
   SoundplaneModelA.cpp
