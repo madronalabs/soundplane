@@ -605,10 +605,10 @@ int SoundplaneModel::getClientState(void)
 
 int SoundplaneModel::getDeviceState(void)
 {
-	return mpDriver->getDeviceState();
+	return mpDriver ? mpDriver->getDeviceState() : kNoDevice;
 }
 
-void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
+void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneState s)
 {
 	unsigned long instrumentModel = 1; // Soundplane A
 
@@ -624,7 +624,7 @@ void SoundplaneModel::deviceStateChanged(MLSoundplaneState s)
 		break;
 		case kDeviceHasIsochSync:
 			// get serial number and auto calibrate noise on sync detect
-			mOSCOutput.setSerialNumber((instrumentModel << 16) | mpDriver->getSerialNumber());
+			mOSCOutput.setSerialNumber((instrumentModel << 16) | driver.getSerialNumber());
 			mNeedsCarriersSet = true;
 			// output will be enabled at end of calibration.
 			mNeedsCalibrate = true;
@@ -1201,7 +1201,7 @@ void SoundplaneModel::processCallback()
 
 	// read from driver's ring buffer to incoming surface
 	MLSample* pSurfaceData = mSurface.getBuffer();
-	if(mpDriver->readSurface(pSurfaceData) != 1) return;
+	// if(mpDriver->readSurface(pSurfaceData) != 1) return; FIXME(peck)
 
 	// store surface for raw output
 	mRawSignal.copy(mSurface);
@@ -1272,6 +1272,7 @@ void SoundplaneModel::processCallback()
 
 void SoundplaneModel::doInfrequentTasks()
 {
+	assert(mpDriver);
 	PollNetServices();
     mOSCOutput.doInfrequentTasks();
 
@@ -1279,13 +1280,13 @@ void SoundplaneModel::doInfrequentTasks()
 	{
 		enableCarriers(mCarriersMask);
 	}
-	else if (mpDriver && mNeedsCarriersSet)
+	else if (mNeedsCarriersSet)
 	{
 		mNeedsCarriersSet = false;
 		setCarriers(mCarriers);
 		mNeedsCalibrate = true;
 	}
-	else if (mpDriver && mNeedsCalibrate)
+	else if (mNeedsCalibrate)
 	{
 		mNeedsCalibrate = false;
 		beginCalibrate();
@@ -1356,7 +1357,7 @@ void SoundplaneModel::clear()
 //
 void SoundplaneModel::beginCalibrate()
 {
-	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
+	if(getDeviceState() == kDeviceHasIsochSync)
 	{
 		clear();
 
@@ -1431,7 +1432,7 @@ void SoundplaneModel::beginSelectCarriers()
 	// has the lowest overall noise.
 	// each step collects kSoundplaneCalibrateSize frames of data.
 	//
-	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
+	if(getDeviceState() == kDeviceHasIsochSync)
 	{
 		mSelectCarriersStep = 0;
 		mCalibrateCount = 0;
@@ -1628,7 +1629,7 @@ bool SoundplaneModel::isWithinTrackerCalibrateArea(int i, int j)
 
 void SoundplaneModel::beginNormalize()
 {
-	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
+	if(getDeviceState() == kDeviceHasIsochSync)
 	{
 		mTracker.beginCalibrate();
 	}
@@ -1636,7 +1637,7 @@ void SoundplaneModel::beginNormalize()
 
 void SoundplaneModel::cancelNormalize()
 {
-	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
+	if(getDeviceState() == kDeviceHasIsochSync)
 	{
 		mTracker.cancelCalibrate();
 	}
@@ -1645,7 +1646,7 @@ void SoundplaneModel::cancelNormalize()
 bool SoundplaneModel::trackerIsCalibrating()
 {
 	int r = 0;
-	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
+	if(getDeviceState() == kDeviceHasIsochSync)
 	{
 		r = mTracker.isCalibrating();
 	}
@@ -1655,7 +1656,7 @@ bool SoundplaneModel::trackerIsCalibrating()
 bool SoundplaneModel::trackerIsCollectingMap()
 {
 	int r = 0;
-	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
+	if(getDeviceState() == kDeviceHasIsochSync)
 	{
 		r = mTracker.isCollectingNormalizeMap();
 	}
@@ -1664,7 +1665,7 @@ bool SoundplaneModel::trackerIsCollectingMap()
 
 void SoundplaneModel::setDefaultNormalize()
 {
-	if(mpDriver->getDeviceState() == kDeviceHasIsochSync)
+	if(getDeviceState() == kDeviceHasIsochSync)
 	{
 		mTracker.setDefaultNormalizeMap();
 	}

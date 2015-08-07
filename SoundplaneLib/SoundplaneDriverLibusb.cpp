@@ -309,7 +309,7 @@ bool SoundplaneDriverLibusb::processThreadSetDeviceState(MLSoundplaneState newSt
 {
 	mState.store(newState, std::memory_order_release);
 	if (mListener) {
-		mListener->deviceStateChanged(newState);
+		mListener->deviceStateChanged(*this, newState);
 	}
 	return !mQuitting.load(std::memory_order_acquire);
 }

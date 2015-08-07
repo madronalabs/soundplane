@@ -26,6 +26,8 @@ typedef enum
   kDeviceResume = 5  // Seems to be unused (?)
 } MLSoundplaneState;
 
+class SoundplaneDriver;
+
 class SoundplaneDriverListener
 {
 public:
@@ -46,7 +48,7 @@ public:
 	 * s, the SoundplaneDriver might already have moved to another state, so
 	 * it might be that s != driver->getDeviceState().
 	 */
-	virtual void deviceStateChanged(MLSoundplaneState s) {}
+	virtual void deviceStateChanged(SoundplaneDriver &driver, MLSoundplaneState s) {}
 
 	/**
 	 * Invoked whenever the SoundplaneDriver receives a frame of data from the

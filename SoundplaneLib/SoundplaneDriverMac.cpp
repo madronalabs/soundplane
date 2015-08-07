@@ -1411,7 +1411,7 @@ void SoundplaneDriverMac::setDeviceState(MLSoundplaneState n)
 {
 	mState.store(n, std::memory_order_release);
 	if (mListener) {
-		mListener->deviceStateChanged(n);
+		mListener->deviceStateChanged(*this, n);
 	}
 }
 
