@@ -72,7 +72,6 @@ public:
 
 	MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
 
-	void testCallback();
 	float getSampleHistory(int x, int y);
 
 	void getHistoryStats(float& mean, float& stdDev);
@@ -232,8 +231,6 @@ private:
 	char mClientStr[miscStrSize];
 
 	TouchTracker mTracker;
-
-	pthread_t	mProcessThread;
 
 	int mHistoryCtr;
 

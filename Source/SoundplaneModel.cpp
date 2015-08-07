@@ -9,13 +9,9 @@
 
 #include "pa_memorybarrier.h"
 
-#include "ThreadUtility.h"
-
 static const std::string kOSCDefaultStr("localhost:3123 (default)");
 const char *kUDPType      =   "_osc._udp";
 const char *kLocalDotDomain   =   "local.";
-
-void *soundplaneModelProcessThreadStart(void *arg);
 
 const int kModelDefaultCarriersSize = 40;
 const unsigned char kModelDefaultCarriers[kModelDefaultCarriersSize] =
@@ -83,7 +79,6 @@ SoundplaneModel::SoundplaneModel() :
 
 	mHistoryCtr(0),
 
-	mProcessThread(0),
 	mLastTimeDataWasSent(0),
 	mZoneModeTemp(0),
 	mCarrierMaskDirty(false),
@@ -155,10 +150,6 @@ SoundplaneModel::SoundplaneModel() :
 SoundplaneModel::~SoundplaneModel()
 {
 	notifyListeners(0);
-
-	// delete driver -- this will cause process thread to terminate.
-	//
-	mpDriver.reset(nullptr);
 }
 
 void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newVal)
@@ -574,15 +565,6 @@ void SoundplaneModel::initialize()
 	mTouchFrame.setDims(kTouchWidth, kSoundplaneMaxTouches);
 	mTouchHistory.setDims(kTouchWidth, kSoundplaneMaxTouches, kSoundplaneHistorySize);
 
-	// create process thread
-	OSErr err;
-	pthread_attr_t attr;
-	err = pthread_attr_init(&attr);
-	assert(!err);
-	err = pthread_create(&mProcessThread, &attr, soundplaneModelProcessThreadStart, this);
-	assert(!err);
-	setThreadPriority(mProcessThread, 96, true);
-
 	// make zone presets collection
 	File zoneDir = getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets");
 	debug() << "LOOKING for zones in " << zoneDir.getFileName() << "\n";
@@ -599,7 +581,7 @@ int SoundplaneModel::getClientState(void)
 
 int SoundplaneModel::getDeviceState(void)
 {
-	return mpDriver ? mpDriver->getDeviceState() : kNoDevice;
+	return mpDriver->getDeviceState();
 }
 
 void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneState s)
@@ -624,14 +606,6 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 			mNeedsCalibrate = true;
 		break;
 		case kDeviceIsTerminating:
-			// shutdown processing
-			if (mProcessThread)
-			{
-				int exitResult = pthread_join(mProcessThread, NULL); // TODO this can hang here
-				printf("SoundplaneModel:: process thread terminated.  Returned %d \n", exitResult);
-				mProcessThread = 0;
-			}
-
 		break;
 		case kDeviceSuspend:
 		break;
@@ -642,8 +616,6 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 
 void SoundplaneModel::receivedFrame(const float* data, int size)
 {
-	if (!mpDriver) return;
-
 	UInt64 now = getMicroseconds();
     // once per second
 	if(now - mLastInfrequentTaskTime > 1000*1000)
@@ -1169,34 +1141,6 @@ void SoundplaneModel::sendMessageToListeners()
     }
 }
 
-void *soundplaneModelProcessThreadStart(void *arg)
-{
-	SoundplaneModel* m = static_cast<SoundplaneModel*>(arg);
-	int waitTimeMicrosecs;
-
-	// wait for data
-	while((m->getDeviceState() != kDeviceHasIsochSync) && (m->getDeviceState() != kDeviceIsTerminating))
-	{
-		waitTimeMicrosecs = 1000;
-		usleep(waitTimeMicrosecs);
-		if(m->isTesting())
-		{
-			m->testCallback();
-		}
-	}
-
-	while(m->getDeviceState() != kDeviceIsTerminating)
-	{
-		if(m->isTesting())
-		{
-			m->testCallback();
-		}
-		waitTimeMicrosecs = 250;
-		usleep(waitTimeMicrosecs);
-	}
-	return 0;
-}
-
 void SoundplaneModel::setKymaMode(bool m)
 {
 	mOSCOutput.setKymaMode(m);
@@ -1215,52 +1159,8 @@ void SoundplaneModel::setKymaMode(bool m)
 //
 #pragma mark -
 
-void SoundplaneModel::testCallback()
-{
-	// make test surface (placeholder!)
-	{
-		int h = mSurface.getWidth();
-		int v = mSurface.getHeight();
-
-		for(int j=0; j< v; j++)
-		{
-			for(int i=0; i < h; i++)
-			{
-				mSurface(i, j) = fabs(MLRand())*0.1f;
-			}
-		}
-	}
-
-	{
-		// filter 2D data in time
-		mNotchFilter.setInputSignal(&mSurface);
-		mNotchFilter.setOutputSignal(&mSurface);
-		mNotchFilter.process(1);
-		mLopassFilter.setInputSignal(&mSurface);
-		mLopassFilter.setOutputSignal(&mSurface);
-		mLopassFilter.process(1);
-
-		// send filtered data to touch tracker.
-		mTracker.setInputSignal(&mSurface);
-		mTracker.setOutputSignal(&mTouchFrame);
-		mTracker.process(1);
-
-		// get calibrated and cooked signals for viewing
-		mCalibratedSignal = mTracker.getCalibratedSignal();
-		mCookedSignal = mTracker.getCookedSignal();
-		mTestSignal = mTracker.getTestSignal();
-
-		sendTouchDataToZones();
-
-		mHistoryCtr++;
-		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
-		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
-	}
-}
-
 void SoundplaneModel::doInfrequentTasks()
 {
-	assert(mpDriver);
 	PollNetServices();
     mOSCOutput.doInfrequentTasks();
 
@@ -1284,29 +1184,22 @@ void SoundplaneModel::doInfrequentTasks()
 
 void SoundplaneModel::setDefaultCarriers()
 {
-	if (mpDriver)
+	MLSignal cSig(kSoundplaneSensorWidth);
+	for (int car=0; car<kSoundplaneSensorWidth; ++car)
 	{
-		MLSignal cSig(kSoundplaneSensorWidth);
-		for (int car=0; car<kSoundplaneSensorWidth; ++car)
-		{
-			cSig[car] = kModelDefaultCarriers[car];
-		}
-		setProperty("carriers", cSig);
+		cSig[car] = kModelDefaultCarriers[car];
 	}
+	setProperty("carriers", cSig);
 }
 
 void SoundplaneModel::setCarriers(const SoundplaneDriver::Carriers& c)
 {
-	if (mpDriver)
-	{
-		enableOutput(false);
-		mpDriver->setCarriers(c);
-	}
+	enableOutput(false);
+	mpDriver->setCarriers(c);
 }
 
 int SoundplaneModel::enableCarriers(unsigned long mask)
 {
-	if (!mpDriver) return 0;
 	mpDriver->enableCarriers(~mask);
 	if (mask != mCarriersMask)
 	{
@@ -1566,15 +1459,12 @@ void SoundplaneModel::endSelectCarriers()
 
 	// set chosen carriers as model parameter so they will be saved
 	// this will trigger a recalibrate
-	if (mpDriver)
+	MLSignal cSig(kSoundplaneSensorWidth);
+	for (int car=0; car<kSoundplaneSensorWidth; ++car)
 	{
-		MLSignal cSig(kSoundplaneSensorWidth);
-		for (int car=0; car<kSoundplaneSensorWidth; ++car)
-		{
-			cSig[car] = mCarriers[car];
-		}
-		setProperty("carriers", cSig);
+		cSig[car] = mCarriers[car];
 	}
+	setProperty("carriers", cSig);
 	MLConsole() << "carrier select done.\n";
 
 	mSelectingCarriers = false;
