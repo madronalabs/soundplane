@@ -3,6 +3,8 @@ set(SP_DRIVER_SOURCES
   SoundplaneDriver.h
   SoundplaneModelA.cpp
   SoundplaneModelA.h
+  TestSoundplaneDriver.cpp
+  TestSoundplaneDriver.h
   ThreadUtility.cpp
   ThreadUtility.h
   )
@@ -22,7 +24,7 @@ else(SP_USE_LIBUSB)
 endif()
 
 add_library(soundplanelib ${SP_DRIVER_SOURCES})
-target_link_libraries(soundplanelib portaudio)
+target_link_libraries(soundplanelib madronalib)
 target_include_directories(soundplanelib PUBLIC .)
 
 if(SP_USE_LIBUSB)
