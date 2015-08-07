@@ -99,7 +99,6 @@ public:
 	bool getRaw(){ return mRaw; }
 
 	void beginCalibrate();
-	bool isTesting() { return mTesting; }
 	bool isCalibrating() { return mCalibrating; }
 	float getCalibrateProgress();
 	void endCalibrate();
@@ -150,7 +149,7 @@ public:
 	Vec2 xyToKeyGrid(Vec2 xy);
 
 private:
-    void dumpZoneMap();
+	void setTesting(bool testing);
 
 	void addListener(SoundplaneDataListener* pL) { mListeners.push_back(pL); }
 	SoundplaneListenerList mListeners;
@@ -240,7 +239,6 @@ private:
 	bool mNeedsCalibrate;
 	unsigned long mCarriersMask;
 	int mTest;
-	bool mTesting;
 
 	std::vector<float> mMaxNoiseByCarrierSet;
 	std::vector<float> mMaxNoiseFreqByCarrierSet;

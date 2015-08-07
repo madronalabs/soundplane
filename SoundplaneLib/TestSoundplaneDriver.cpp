@@ -9,7 +9,8 @@
 
 TestSoundplaneDriver::TestSoundplaneDriver(SoundplaneDriverListener* listener) :
 	mQuitting(false),
-	mListener(listener)
+	mListener(listener),
+	mProcessThread(std::thread(&TestSoundplaneDriver::processThread, this))
 {
 	assert(listener);
 }

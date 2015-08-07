@@ -9,6 +9,9 @@
 
 #include "pa_memorybarrier.h"
 
+#include "InertSoundplaneDriver.h"
+#include "TestSoundplaneDriver.h"
+
 static const std::string kOSCDefaultStr("localhost:3123 (default)");
 const char *kUDPType      =   "_osc._udp";
 const char *kLocalDotDomain   =   "local.";
@@ -84,7 +87,6 @@ SoundplaneModel::SoundplaneModel() :
 	mCarrierMaskDirty(false),
 	mNeedsCarriersSet(true),
 	mNeedsCalibrate(true),
-	mTesting(false),
 	mLastInfrequentTaskTime(0),
 	mCarriersMask(0xFFFFFFFF),
 	//
@@ -285,7 +287,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "test_signal")
 			{
 				bool b = v;
-				mTesting = b;
+				setTesting(b);
 			}
 			else if (p == "glissando")
 			{
@@ -844,6 +846,27 @@ const char* SoundplaneModel::getClientStr()
 			break;
 	}
 	return mClientStr;
+}
+
+void SoundplaneModel::setTesting(bool testing)
+{
+	// First, replace the driver with an inert driver. This is a necessary step
+	// because if mpDriver was replaced with another "real" driver immediately,
+	// there would be two simultaneous processing threads, one for the old
+	// driver that's shutting down and one for the new driver.
+	//
+	// When done like this, the old driver's thread will be fully torn down
+	// before the call to mpDriver.reset returns. Then it's safe to replace
+	// it with a new "real" driver.
+	mpDriver.reset(new InertSoundplaneDriver());
+	if (testing)
+	{
+		mpDriver.reset(new TestSoundplaneDriver(this));
+	}
+	else
+	{
+		mpDriver = SoundplaneDriver::create(this);
+	}
 }
 
 // remove all zones from the zone list.
