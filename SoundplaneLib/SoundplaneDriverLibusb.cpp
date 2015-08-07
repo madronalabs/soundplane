@@ -87,6 +87,7 @@ SoundplaneDriverLibusb::SoundplaneDriverLibusb(SoundplaneDriverListener* listene
 	mQuitting(false),
 	mListener(listener)
 {
+	assert(listener);
 }
 
 SoundplaneDriverLibusb::~SoundplaneDriverLibusb()
@@ -308,9 +309,7 @@ bool SoundplaneDriverLibusb::processThreadSetInitialCarriers(
 bool SoundplaneDriverLibusb::processThreadSetDeviceState(MLSoundplaneState newState)
 {
 	mState.store(newState, std::memory_order_release);
-	if (mListener) {
-		mListener->deviceStateChanged(*this, newState);
-	}
+	mListener->deviceStateChanged(*this, newState);
 	return !mQuitting.load(std::memory_order_acquire);
 }
 
@@ -455,19 +454,13 @@ void SoundplaneDriverLibusb::processThread()
 		auto anomalyFilter = makeAnomalyFilter(
 			[this](int startupCtr, float df, const SoundplaneOutputFrame& previousFrame, const SoundplaneOutputFrame& frame)
 			{
-				if (mListener)
-				{
-					mListener->handleDeviceError(kDevDataDiffTooLarge, startupCtr, 0, df, 0.);
-					mListener->handleDeviceDataDump(previousFrame.data(), previousFrame.size());
-					mListener->handleDeviceDataDump(frame.data(), frame.size());
-				}
+				mListener->handleDeviceError(kDevDataDiffTooLarge, startupCtr, 0, df, 0.);
+				mListener->handleDeviceDataDump(previousFrame.data(), previousFrame.size());
+				mListener->handleDeviceDataDump(frame.data(), frame.size());
 			},
 			[this](const SoundplaneOutputFrame& frame)
 			{
-				if (mListener)
-				{
-					mListener->receivedFrame(frame.data(), frame.size());
-				}
+				mListener->receivedFrame(frame.data(), frame.size());
 			});
 		LibusbUnpacker unpacker(anomalyFilter);
 

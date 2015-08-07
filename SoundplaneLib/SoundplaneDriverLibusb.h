@@ -20,9 +20,6 @@
 class SoundplaneDriverLibusb : public SoundplaneDriver
 {
 public:
-	/**
-	 * listener may be nullptr
-	 */
 	SoundplaneDriverLibusb(SoundplaneDriverListener* listener);
 	~SoundplaneDriverLibusb();
 
