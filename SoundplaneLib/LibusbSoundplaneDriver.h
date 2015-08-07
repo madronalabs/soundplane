@@ -266,6 +266,7 @@ private:
 	 * Returns false if selecting the isochronous failed.
 	 */
 	bool processThreadSelectIsochronousInterface(libusb_device_handle *device) const;
+	bool processThreadShouldStopTransfers() const;
 	/**
 	 * Returns false if scheduling the transfer failed.
 	 */

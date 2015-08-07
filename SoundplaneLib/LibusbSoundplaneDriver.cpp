@@ -165,6 +165,11 @@ libusb_error LibusbSoundplaneDriver::processThreadSendControl(
 	const unsigned char *data,
 	size_t dataSize)
 {
+	if (processThreadShouldStopTransfers())
+	{
+		return LIBUSB_ERROR_OTHER;
+	}
+
 	unsigned char *buf = static_cast<unsigned char*>(malloc(LIBUSB_CONTROL_SETUP_SIZE + dataSize));
 	struct libusb_transfer *transfer;
 
@@ -324,8 +329,18 @@ bool LibusbSoundplaneDriver::processThreadSelectIsochronousInterface(libusb_devi
 	return true;
 }
 
+bool LibusbSoundplaneDriver::processThreadShouldStopTransfers() const
+{
+	return mUsbFailed || mQuitting.load(std::memory_order_acquire);
+}
+
 bool LibusbSoundplaneDriver::processThreadScheduleTransfer(Transfer &transfer)
 {
+	if (processThreadShouldStopTransfers())
+	{
+		return false;
+	}
+
 	libusb_fill_iso_transfer(
 		transfer.transfer,
 		transfer.device,
@@ -335,7 +350,7 @@ bool LibusbSoundplaneDriver::processThreadScheduleTransfer(Transfer &transfer)
 		transfer.numPackets(),
 		processThreadTransferCallbackStatic,
 		&transfer,
-		200);
+		1000);
 	libusb_set_iso_packet_lengths(
 		transfer.transfer,
 		sizeof(transfer.packets) / transfer.numPackets());
@@ -480,7 +495,7 @@ void LibusbSoundplaneDriver::processThread()
 		// FIXME: Handle debugger interruptions
 
 		/// Run the main event loop
-		while ((!mUsbFailed && !mQuitting.load(std::memory_order_acquire)) || mOutstandingTransfers != 0) {
+		while (!processThreadShouldStopTransfers() || mOutstandingTransfers != 0) {
 			if (libusb_handle_events(mLibusbContext) != LIBUSB_SUCCESS)
 			{
 				fprintf(stderr, "Libusb error!\n");
