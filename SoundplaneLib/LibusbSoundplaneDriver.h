@@ -3,8 +3,8 @@
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
-#ifndef __SOUNDPLANE_DRIVER_LIBUSB__
-#define __SOUNDPLANE_DRIVER_LIBUSB__
+#ifndef __LIBUSB_SOUNDPLANE_DRIVER__
+#define __LIBUSB_SOUNDPLANE_DRIVER__
 
 #include <array>
 #include <condition_variable>
@@ -17,11 +17,11 @@
 #include "SoundplaneModelA.h"
 #include "Unpacker.h"
 
-class SoundplaneDriverLibusb : public SoundplaneDriver
+class LibusbSoundplaneDriver : public SoundplaneDriver
 {
 public:
-	SoundplaneDriverLibusb(SoundplaneDriverListener* listener);
-	~SoundplaneDriverLibusb();
+	LibusbSoundplaneDriver(SoundplaneDriverListener* listener);
+	~LibusbSoundplaneDriver();
 
 	void init();
 
@@ -144,7 +144,7 @@ private:
 	};
 
 	/**
-	 * SoundplaneDriverLibusb holds an integer multiple >= 2 of the buffers that
+	 * LibusbSoundplaneDriver holds an integer multiple >= 2 of the buffers that
 	 * are in flight. This is because buffers that have been received might not
 	 * be immediately processable, since the separate Soundplane USB endpoints
 	 * can be slightly out of sync. The buffers that are not in flight are kept
@@ -189,7 +189,7 @@ private:
 		 */
 		int endpointAddress = 0;
 		libusb_device_handle* device = nullptr;
-		SoundplaneDriverLibusb* parent = nullptr;
+		LibusbSoundplaneDriver* parent = nullptr;
 		struct libusb_transfer* const transfer;
 		LibusbUnpacker* unpacker = nullptr;
 		SoundplaneADataPacket packets[kSoundplaneANumIsochFrames];
@@ -199,7 +199,7 @@ private:
 		 * to reconstruct messages even though the different Soundplane
 		 * endpoints can be out of sync.
 		 *
-		 * When a transfer is done, SoundplaneDriverLibusb needs to queue one
+		 * When a transfer is done, LibusbSoundplaneDriver needs to queue one
 		 * more transfer. Since the transfer that was just done has to be kept
 		 * for a while before being re-submitted, some other transfer has to be
 		 * submitted instead. nextTransfer points to that packet.
@@ -354,7 +354,7 @@ private:
 
 	/**
 	 * Neither read nor written to by the processing thread. This is only a
-	 * copy of the values for use by the clients of SoundplaneDriverLibusb.
+	 * copy of the values for use by the clients of LibusbSoundplaneDriver.
 	 */
 	Carriers					mCurrentCarriers;
 
@@ -365,4 +365,4 @@ private:
 	std::atomic<const unsigned long*> mEnableCarriersRequest;
 };
 
-#endif // __SOUNDPLANE_DRIVER_LIBUSB__
+#endif // __LIBUSB_SOUNDPLANE_DRIVER__

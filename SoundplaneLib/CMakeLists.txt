@@ -14,8 +14,8 @@ set(SP_DRIVER_SOURCES
 if(SP_USE_LIBUSB)
   set(SP_DRIVER_SOURCES
     ${SP_DRIVER_SOURCES}
-    SoundplaneDriverLibusb.cpp
-    SoundplaneDriverLibusb.h
+    LibusbSoundplaneDriver.cpp
+    LibusbSoundplaneDriver.h
     )
 else(SP_USE_LIBUSB)
   set(SP_DRIVER_SOURCES
