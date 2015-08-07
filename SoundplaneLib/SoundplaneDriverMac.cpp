@@ -94,6 +94,8 @@ SoundplaneDriverMac::SoundplaneDriverMac(SoundplaneDriverListener* listener) :
 	mState(kNoDevice),
 	mListener(listener)
 {
+	assert(listener);
+
 	for(int i=0; i<kSoundplaneANumEndpoints; ++i)
 	{
 		busFrameNumber[i] = 0;
@@ -1402,31 +1404,23 @@ void SoundplaneDriverMac::reclockFrameToBuffer(const SoundplaneOutputFrame& fram
 {
 	// currently, clock is ignored and we simply ship out data as quickly as possible.
 	// TODO timestamps that will allow reconstituting the data with lower jitter.
-	if (mListener) {
-		mListener->receivedFrame(frame.data(), frame.size());
-	}
+	mListener->receivedFrame(frame.data(), frame.size());
 }
 
 void SoundplaneDriverMac::setDeviceState(MLSoundplaneState n)
 {
 	mState.store(n, std::memory_order_release);
-	if (mListener) {
-		mListener->deviceStateChanged(*this, n);
-	}
+	mListener->deviceStateChanged(*this, n);
 }
 
 void SoundplaneDriverMac::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
 {
-	if (mListener) {
-		mListener->handleDeviceError(errCode, d1, d2, df1, df2);
-	}
+	mListener->handleDeviceError(errCode, d1, d2, df1, df2);
 }
 
 void SoundplaneDriverMac::dumpDeviceData(float* pData, int size)
 {
-	if (mListener) {
-		mListener->handleDeviceDataDump(pData, size);
-	}
+	mListener->handleDeviceDataDump(pData, size);
 }
 
 // -------------------------------------------------------------------------------

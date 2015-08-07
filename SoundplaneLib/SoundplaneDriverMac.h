@@ -26,9 +26,6 @@
 class SoundplaneDriverMac : public SoundplaneDriver
 {
 public:
-	/**
-	 * listener may be nullptr
-	 */
 	SoundplaneDriverMac(SoundplaneDriverListener* listener);
 	~SoundplaneDriverMac();
 
