@@ -172,7 +172,7 @@ private:
 	void doInfrequentTasks();
 	UInt64 mLastInfrequentTaskTime;
 
-	SoundplaneDriver* mpDriver;
+	std::unique_ptr<SoundplaneDriver> mpDriver;
 	int mSerialNumber;
 
 	SoundplaneMIDIOutput mMIDIOutput;

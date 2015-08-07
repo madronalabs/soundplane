@@ -60,8 +60,6 @@ SoundplaneModel::SoundplaneModel() :
 	mOutputEnabled(false),
 	mSurface(kSoundplaneWidth, kSoundplaneHeight),
 
-	mpDriver(0),
-
 	mRawSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mCalibratedSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTempSignal(kSoundplaneWidth, kSoundplaneHeight),
@@ -160,11 +158,7 @@ SoundplaneModel::~SoundplaneModel()
 
 	// delete driver -- this will cause process thread to terminate.
 	//
-	if (mpDriver)
-	{
-		delete mpDriver;
-		mpDriver = 0;
-	}
+	mpDriver.reset(nullptr);
 }
 
 void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newVal)
@@ -569,7 +563,7 @@ void SoundplaneModel::initialize()
 
 	addListener(&mOSCOutput);
 
-	mpDriver = SoundplaneDriver::create(this).release();
+	mpDriver = SoundplaneDriver::create(this);
 
 	// TODO mem err handling
 	if (!mCalibrateData.setDims(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneCalibrateSize))
