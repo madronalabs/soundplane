@@ -480,14 +480,10 @@ void SoundplaneDriverLibusb::processThread()
 		// FIXME: Handle debugger interruptions
 
 		/// Run the main event loop
-		while (!mQuitting.load(std::memory_order_acquire)) {
+		while ((!mUsbFailed && !mQuitting.load(std::memory_order_acquire)) || mOutstandingTransfers != 0) {
 			if (libusb_handle_events(mLibusbContext) != LIBUSB_SUCCESS)
 			{
 				fprintf(stderr, "Libusb error!\n");
-				break;
-			}
-			if (mUsbFailed && mOutstandingTransfers == 0)
-			{
 				break;
 			}
 			if (processThreadHandleRequests(handle.get()))
