@@ -24,7 +24,7 @@ public:
 		mSurface(kSoundplaneWidth, kSoundplaneHeight),
 		mCalibration(kSoundplaneWidth, kSoundplaneHeight) {}
 
-	virtual void deviceStateChanged(MLSoundplaneState s) override
+	virtual void deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneState s) override
 	{
 		std::cout << "Device state changed: " << s << std::endl;
 	}
