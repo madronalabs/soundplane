@@ -9,7 +9,7 @@
 // the process thread reclocks them and pushes them to a ring buffer where they
 // can be read by clients.
 
-#include "SoundplaneDriverMac.h"
+#include "MacSoundplaneDriver.h"
 
 #include <vector>
 
@@ -77,16 +77,16 @@ void show_kern_err(const char *msg, kern_return_t kr)
 }
 
 // -------------------------------------------------------------------------------
-#pragma mark SoundplaneDriverMac
+#pragma mark MacSoundplaneDriver
 
 std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListener *listener)
 {
-	auto *driver = new SoundplaneDriverMac(listener);
+	auto *driver = new MacSoundplaneDriver(listener);
 	driver->init();
-	return std::unique_ptr<SoundplaneDriverMac>(driver);
+	return std::unique_ptr<MacSoundplaneDriver>(driver);
 }
 
-SoundplaneDriverMac::SoundplaneDriverMac(SoundplaneDriverListener* listener) :
+MacSoundplaneDriver::MacSoundplaneDriver(SoundplaneDriverListener* listener) :
 	mTransactionsInFlight(0),
 	startupCtr(0),
 	dev(0),
@@ -107,7 +107,7 @@ SoundplaneDriverMac::SoundplaneDriverMac(SoundplaneDriverListener* listener) :
 	}
 }
 
-SoundplaneDriverMac::~SoundplaneDriverMac()
+MacSoundplaneDriver::~MacSoundplaneDriver()
 {
 	printf("SoundplaneDriver shutting down...\n");
 
@@ -191,25 +191,25 @@ SoundplaneDriverMac::~SoundplaneDriverMac()
 		intf = NULL;
 	}}
 
-void SoundplaneDriverMac::init()
+void MacSoundplaneDriver::init()
 {
 	// create device grab thread
-	mGrabThread = std::thread(&SoundplaneDriverMac::grabThread, this);
+	mGrabThread = std::thread(&MacSoundplaneDriver::grabThread, this);
 	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
 
 	// create isochronous read and process thread
-	mProcessThread = std::thread(&SoundplaneDriverMac::processThread, this);
+	mProcessThread = std::thread(&MacSoundplaneDriver::processThread, this);
 
 	// set thread to real time priority
 	setThreadPriority(mProcessThread.native_handle(), 96, true);
 }
 
-MLSoundplaneState SoundplaneDriverMac::getDeviceState() const
+MLSoundplaneState MacSoundplaneDriver::getDeviceState() const
 {
 	return mState.load(std::memory_order_acquire);
 }
 
-UInt16 SoundplaneDriverMac::getFirmwareVersion() const
+UInt16 MacSoundplaneDriver::getFirmwareVersion() const
 {
 	if(getDeviceState() < kDeviceConnected) return 0;
 	UInt16 r = 0;
@@ -226,7 +226,7 @@ UInt16 SoundplaneDriverMac::getFirmwareVersion() const
 	return r;
 }
 
-std::string SoundplaneDriverMac::getSerialNumberString() const
+std::string MacSoundplaneDriver::getSerialNumberString() const
 {
 	if (getDeviceState() < kDeviceConnected) return 0;
 	char buffer[64];
@@ -255,11 +255,11 @@ std::string SoundplaneDriverMac::getSerialNumberString() const
 // -------------------------------------------------------------------------------
 #pragma mark carriers
 
-const unsigned char *SoundplaneDriverMac::getCarriers() const {
+const unsigned char *MacSoundplaneDriver::getCarriers() const {
 	return mCurrentCarriers;
 }
 
-void SoundplaneDriverMac::setCarriers(const Carriers& cData)
+void MacSoundplaneDriver::setCarriers(const Carriers& cData)
 {
 	if (!dev) return;
 	if (getDeviceState() < kDeviceConnected) return;
@@ -279,7 +279,7 @@ void SoundplaneDriverMac::setCarriers(const Carriers& cData)
 	(*dev)->DeviceRequest(dev, &request);
 }
 
-void SoundplaneDriverMac::enableCarriers(unsigned long mask)
+void MacSoundplaneDriver::enableCarriers(unsigned long mask)
 {
 	if (!dev) return;
     IOUSBDevRequest	request;
@@ -300,14 +300,14 @@ void SoundplaneDriverMac::enableCarriers(unsigned long mask)
 // --------------------------------------------------------------------------------
 #pragma mark K1IsocTransaction
 
-UInt16 SoundplaneDriverMac::K1IsocTransaction::getTransactionSequenceNumber(int f)
+UInt16 MacSoundplaneDriver::K1IsocTransaction::getTransactionSequenceNumber(int f)
 {
 	if (!payloads) return 0;
 	SoundplaneADataPacket* p = (SoundplaneADataPacket*)payloads;
 	return p[f].seqNum;
 }
 
-void SoundplaneDriverMac::K1IsocTransaction::setSequenceNumber(int f, UInt16 s)
+void MacSoundplaneDriver::K1IsocTransaction::setSequenceNumber(int f, UInt16 s)
 {
 	SoundplaneADataPacket* p = (SoundplaneADataPacket*)payloads;
 	p[f].seqNum = s;
@@ -352,7 +352,7 @@ number has already passed. This is normal.
 // LowLatencyCreateBuffer() to manage communication with the kernel.
 // These are made in deviceAdded() when a Soundplane is connected.
 //
-IOReturn SoundplaneDriverMac::scheduleIsoch(K1IsocTransaction *t)
+IOReturn MacSoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
 {
 	if (!dev) return kIOReturnNoDevice;
 	MLSoundplaneState state = getDeviceState();
@@ -394,12 +394,12 @@ IOReturn SoundplaneDriverMac::scheduleIsoch(K1IsocTransaction *t)
 // Since this is called at main interrupt time, it must return as quickly as possible.
 // It is only responsible for scheduling the next transfer into the next transaction buffer.
 //
-void SoundplaneDriverMac::isochComplete(void *refCon, IOReturn result, void *arg0)
+void MacSoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg0)
 {
 	IOReturn err;
 
 	K1IsocTransaction *t = (K1IsocTransaction *)refCon;
-	SoundplaneDriverMac *k1 = t->parent;
+	MacSoundplaneDriver *k1 = t->parent;
 	assert(k1);
 
 	k1->mTransactionsInFlight--;
@@ -451,7 +451,7 @@ void SoundplaneDriverMac::isochComplete(void *refCon, IOReturn result, void *arg
 
 // add a positive or negative offset to the current (buffer, frame) position.
 //
-void SoundplaneDriverMac::addOffset(int& buffer, int& frame, int offset)
+void MacSoundplaneDriver::addOffset(int& buffer, int& frame, int offset)
 {
 	// add offset to (buffer, frame) position
 	if(!offset) return;
@@ -470,7 +470,7 @@ void SoundplaneDriverMac::addOffset(int& buffer, int& frame, int offset)
 	}
 }
 
-UInt16 SoundplaneDriverMac::getTransferBytesReceived(int endpoint, int buffer, int frame, int offset)
+UInt16 MacSoundplaneDriver::getTransferBytesReceived(int endpoint, int buffer, int frame, int offset)
 {
 	if(getDeviceState() < kDeviceConnected) return 0;
 	UInt16 b = 0;
@@ -485,7 +485,7 @@ UInt16 SoundplaneDriverMac::getTransferBytesReceived(int endpoint, int buffer, i
 	return b;
 }
 
-AbsoluteTime SoundplaneDriverMac::getTransferTimeStamp(int endpoint, int buffer, int frame, int offset)
+AbsoluteTime MacSoundplaneDriver::getTransferTimeStamp(int endpoint, int buffer, int frame, int offset)
 {
 	if(getDeviceState() < kDeviceConnected) return AbsoluteTime();
 	AbsoluteTime b;
@@ -500,7 +500,7 @@ AbsoluteTime SoundplaneDriverMac::getTransferTimeStamp(int endpoint, int buffer,
 	return b;
 }
 
-IOReturn SoundplaneDriverMac::getTransferStatus(int endpoint, int buffer, int frame, int offset)
+IOReturn MacSoundplaneDriver::getTransferStatus(int endpoint, int buffer, int frame, int offset)
 {
 	if(getDeviceState() < kDeviceConnected) return kIOReturnNoDevice;
 	IOReturn b = kIOReturnSuccess;
@@ -515,7 +515,7 @@ IOReturn SoundplaneDriverMac::getTransferStatus(int endpoint, int buffer, int fr
 	return b;
 }
 
-UInt16 SoundplaneDriverMac::getSequenceNumber(int endpoint, int buffer, int frame, int offset)
+UInt16 MacSoundplaneDriver::getSequenceNumber(int endpoint, int buffer, int frame, int offset)
 {
 	if(getDeviceState() < kDeviceConnected) return 0;
 	UInt16 s = 0;
@@ -530,7 +530,7 @@ UInt16 SoundplaneDriverMac::getSequenceNumber(int endpoint, int buffer, int fram
 	return s;
 }
 
-unsigned char* SoundplaneDriverMac::getPayloadPtr(int endpoint, int buffer, int frame, int offset)
+unsigned char* MacSoundplaneDriver::getPayloadPtr(int endpoint, int buffer, int frame, int offset)
 {
 	if(getDeviceState() < kDeviceConnected) return 0;
 	unsigned char* p = 0;
@@ -632,7 +632,7 @@ IOReturn SelectIsochronousInterface(IOUSBInterfaceInterface192 **intf, int n)
 
 }
 
-IOReturn SoundplaneDriverMac::setBusFrameNumber()
+IOReturn MacSoundplaneDriver::setBusFrameNumber()
 {
 	IOReturn err;
 	AbsoluteTime atTime;
@@ -649,7 +649,7 @@ IOReturn SoundplaneDriverMac::setBusFrameNumber()
 }
 
 
-void SoundplaneDriverMac::removeDevice()
+void MacSoundplaneDriver::removeDevice()
 {
 	IOReturn err;
 	kern_return_t	kr;
@@ -694,9 +694,9 @@ void SoundplaneDriverMac::removeDevice()
 
 // deviceAdded() is called by the callback set up in the grab thread when a new Soundplane device is found.
 //
-void SoundplaneDriverMac::deviceAdded(void *refCon, io_iterator_t iterator)
+void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 {
-	SoundplaneDriverMac			*k1 = static_cast<SoundplaneDriverMac *>(refCon);
+	MacSoundplaneDriver			*k1 = static_cast<MacSoundplaneDriver *>(refCon);
 	kern_return_t				kr;
 	IOReturn					err;
 	io_service_t				usbDeviceRef;
@@ -983,9 +983,9 @@ release:
 
 // if device is unplugged, remove device and go back to waiting.
 //
-void SoundplaneDriverMac::deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument)
+void MacSoundplaneDriver::deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument)
 {
-	SoundplaneDriverMac *k1 = static_cast<SoundplaneDriverMac *>(refCon);
+	MacSoundplaneDriver *k1 = static_cast<MacSoundplaneDriver *>(refCon);
 
 	if (kIOMessageServiceIsTerminated == messageType)
 	{
@@ -999,7 +999,7 @@ void SoundplaneDriverMac::deviceNotifyGeneral(void *refCon, io_service_t service
 // This thread is responsible for finding and adding USB devices matching the Soundplane.
 // Execution is controlled by a Core Foundation (Cocoa) run loop.
 //
-void SoundplaneDriverMac::grabThread()
+void MacSoundplaneDriver::grabThread()
 {
 	bool OK = true;
 	kern_return_t				kr;
@@ -1062,7 +1062,7 @@ void SoundplaneDriverMac::grabThread()
 // with successive sequence numbers. When a matching pair of endpoints is found, reclockFrameToBuffer()
 // is called to send the data to any listeners.
 //
-void SoundplaneDriverMac::processThread()
+void MacSoundplaneDriver::processThread()
 {
 	UInt16 curSeqNum0, curSeqNum1;
 	UInt16 maxSeqNum0, maxSeqNum1;
@@ -1400,25 +1400,25 @@ void SoundplaneDriverMac::processThread()
 // write frame to buffer, reconstructing a constant clock from the data.
 // this may involve interpolating frames.
 //
-void SoundplaneDriverMac::reclockFrameToBuffer(const SoundplaneOutputFrame& frame)
+void MacSoundplaneDriver::reclockFrameToBuffer(const SoundplaneOutputFrame& frame)
 {
 	// currently, clock is ignored and we simply ship out data as quickly as possible.
 	// TODO timestamps that will allow reconstituting the data with lower jitter.
 	mListener->receivedFrame(frame.data(), frame.size());
 }
 
-void SoundplaneDriverMac::setDeviceState(MLSoundplaneState n)
+void MacSoundplaneDriver::setDeviceState(MLSoundplaneState n)
 {
 	mState.store(n, std::memory_order_release);
 	mListener->deviceStateChanged(*this, n);
 }
 
-void SoundplaneDriverMac::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
+void MacSoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
 {
 	mListener->handleDeviceError(errCode, d1, d2, df1, df2);
 }
 
-void SoundplaneDriverMac::dumpDeviceData(float* pData, int size)
+void MacSoundplaneDriver::dumpDeviceData(float* pData, int size)
 {
 	mListener->handleDeviceDataDump(pData, size);
 }
@@ -1426,7 +1426,7 @@ void SoundplaneDriverMac::dumpDeviceData(float* pData, int size)
 // -------------------------------------------------------------------------------
 #pragma mark transfer utilities
 
-int SoundplaneDriverMac::getStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang)
+int MacSoundplaneDriver::getStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang)
 {
     IOUSBDevRequest req;
     UInt8 		desc[256]; // Max possible descriptor length
@@ -1475,7 +1475,7 @@ int SoundplaneDriverMac::getStringDescriptor(IOUSBDeviceInterface187 **dev, UInt
     return destLen;
 }
 
-void SoundplaneDriverMac::dumpTransactions(int bufferIndex, int frameIndex)
+void MacSoundplaneDriver::dumpTransactions(int bufferIndex, int frameIndex)
 {
 	for (int j=0; j<kSoundplaneABuffers; ++j)
 	{

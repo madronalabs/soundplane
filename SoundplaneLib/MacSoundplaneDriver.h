@@ -3,8 +3,8 @@
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
-#ifndef __SOUNDPLANE_DRIVER_MAC__
-#define __SOUNDPLANE_DRIVER_MAC__
+#ifndef __MAC_SOUNDPLANE_DRIVER__
+#define __MAC_SOUNDPLANE_DRIVER__
 
 #include <thread>
 
@@ -23,11 +23,11 @@
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
 
-class SoundplaneDriverMac : public SoundplaneDriver
+class MacSoundplaneDriver : public SoundplaneDriver
 {
 public:
-	SoundplaneDriverMac(SoundplaneDriverListener* listener);
-	~SoundplaneDriverMac();
+	MacSoundplaneDriver(SoundplaneDriverListener* listener);
+	~MacSoundplaneDriver();
 
 	void init();
 
@@ -43,7 +43,7 @@ private:
 	struct K1IsocTransaction
 	{
 		UInt64						busFrameNumber = 0;
-		SoundplaneDriverMac			*parent = 0;
+		MacSoundplaneDriver			*parent = 0;
 		IOUSBLowLatencyIsocFrame	*isocFrames = nullptr;
 		unsigned char				*payloads = nullptr;
 		UInt8						endpointNum = 0;
@@ -105,4 +105,4 @@ private:
 	SoundplaneDriverListener* const mListener;
 };
 
-#endif // __SOUNDPLANE_DRIVER_MAC__
+#endif // __MAC_SOUNDPLANE_DRIVER__

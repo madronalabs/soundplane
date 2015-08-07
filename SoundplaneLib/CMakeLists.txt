@@ -20,8 +20,8 @@ if(SP_USE_LIBUSB)
 else(SP_USE_LIBUSB)
   set(SP_DRIVER_SOURCES
     ${SP_DRIVER_SOURCES}
-    SoundplaneDriverMac.cpp
-    SoundplaneDriverMac.h
+    MacSoundplaneDriver.cpp
+    MacSoundplaneDriver.h
     )
 endif()
 
