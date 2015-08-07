@@ -13,8 +13,6 @@
 
 #include <libusb.h>
 
-#include "pa_ringbuffer.h"
-
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
 #include "Unpacker.h"
@@ -30,7 +28,6 @@ public:
 
 	void init();
 
-	virtual int readSurface(float* pDest) override;
 	virtual MLSoundplaneState getDeviceState() const override;
 	virtual UInt16 getFirmwareVersion() const override;
 	virtual std::string getSerialNumberString() const override;
@@ -351,13 +348,6 @@ private:
 	 * https://github.com/libusb/libusb/issues/84
 	 */
 	size_t						mOutstandingTransfers;
-
-	/**
-	 * Ring buffer is read by one reader (the client of the driver) and written
-	 * to by the processing thread.
-	 */
-	float mpOutputData[kSoundplaneOutputFrameLength * kSoundplaneOutputBufFrames];
-	PaUtilRingBuffer mOutputBuf;
 
 	/**
 	 * Set to a value (allocated with new) by setCarriers. Read (and deleted)

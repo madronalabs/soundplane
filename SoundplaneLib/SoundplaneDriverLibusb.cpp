@@ -87,7 +87,6 @@ SoundplaneDriverLibusb::SoundplaneDriverLibusb(SoundplaneDriverListener* listene
 	mQuitting(false),
 	mListener(listener)
 {
-	PaUtil_InitializeRingBuffer(&mOutputBuf, sizeof(mpOutputData) / kSoundplaneOutputBufFrames, kSoundplaneOutputBufFrames, mpOutputData);
 }
 
 SoundplaneDriverLibusb::~SoundplaneDriverLibusb()
@@ -111,17 +110,6 @@ void SoundplaneDriverLibusb::init()
 
 	// create device grab thread
 	mProcessThread = std::thread(&SoundplaneDriverLibusb::processThread, this);
-}
-
-int SoundplaneDriverLibusb::readSurface(float* pDest)
-{
-	// FIXME: Change to a push based interface
-	int result = 0;
-	if(PaUtil_GetRingBufferReadAvailable(&mOutputBuf) >= 1)
-	{
-		result = PaUtil_ReadRingBuffer(&mOutputBuf, pDest, 1);
-	}
-	return result;
 }
 
 MLSoundplaneState SoundplaneDriverLibusb::getDeviceState() const
@@ -476,7 +464,10 @@ void SoundplaneDriverLibusb::processThread()
 			},
 			[this](const SoundplaneOutputFrame& frame)
 			{
-				PaUtil_WriteRingBuffer(&mOutputBuf, frame.data(), 1);
+				if (mListener)
+				{
+					mListener->receivedFrame(frame.data(), frame.size());
+				}
 			});
 		LibusbUnpacker unpacker(anomalyFilter);
 
