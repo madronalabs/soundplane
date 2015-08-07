@@ -640,6 +640,92 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 	}
 }
 
+void SoundplaneModel::receivedFrame(const float* data, int size)
+{
+	if (!mpDriver) return;
+
+	UInt64 now = getMicroseconds();
+    // once per second
+	if(now - mLastInfrequentTaskTime > 1000*1000)
+	{
+		doInfrequentTasks();
+		mLastInfrequentTaskTime = now;
+	}
+
+	// make sure driver is set up
+	if (mpDriver->getDeviceState() != kDeviceHasIsochSync) return;
+
+	// read from driver's ring buffer to incoming surface
+	MLSample* pSurfaceData = mSurface.getBuffer();
+	memcpy(pSurfaceData, data, size * sizeof(float));
+
+	// store surface for raw output
+	mRawSignal.copy(mSurface);
+
+	if (mCalibrating)
+	{
+		// copy surface to a frame of 3D calibration buffer
+		mCalibrateData.setFrame(mCalibrateCount++, mSurface);
+		if (mCalibrateCount >= kSoundplaneCalibrateSize)
+		{
+			endCalibrate();
+		}
+	}
+	else if (mSelectingCarriers)
+	{
+		// copy surface to a frame of 3D calibration buffer
+		mCalibrateData.setFrame(mCalibrateCount++, mSurface);
+		if (mCalibrateCount >= kSoundplaneCalibrateSize)
+		{
+			nextSelectCarriersStep();
+		}
+	}
+	else if(mOutputEnabled)
+	{
+		// scale incoming data
+		float in, cmean, cout;
+		float epsilon = 0.000001;
+		if (mHasCalibration)
+		{
+			for(int j=0; j<mSurface.getHeight(); ++j)
+			{
+				for(int i=0; i<mSurface.getWidth(); ++i)
+				{
+					// scale to 1/z curve
+					in = mSurface(i, j);
+					cmean = mCalibrateMean(i, j);
+					cout = (1.f - ((cmean + epsilon) / (in + epsilon)));
+					mSurface(i, j) = cout;
+				}
+			}
+		}
+
+		// filter data in time
+		mNotchFilter.setInputSignal(&mSurface);
+		mNotchFilter.setOutputSignal(&mSurface);
+		mNotchFilter.process(1);
+		mLopassFilter.setInputSignal(&mSurface);
+		mLopassFilter.setOutputSignal(&mSurface);
+		mLopassFilter.process(1);
+
+		// send filtered data to touch tracker.
+		mTracker.setInputSignal(&mSurface);
+		mTracker.setOutputSignal(&mTouchFrame);
+		mTracker.process(1);
+
+		// get calibrated and cooked signals for viewing
+		mCalibratedSignal = mTracker.getCalibratedSignal();
+		mCookedSignal = mTracker.getCookedSignal();
+		mTestSignal = mTracker.getTestSignal();
+
+ 		sendTouchDataToZones();
+
+		mHistoryCtr++;
+		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
+		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
+	}
+}
+
 void SoundplaneModel::handleDeviceError(int errorType, int data1, int data2, float fd1, float fd2)
 {
 	switch(errorType)
@@ -1105,10 +1191,6 @@ void *soundplaneModelProcessThreadStart(void *arg)
 		{
 			m->testCallback();
 		}
-		else
-		{
-			m->processCallback();
-		}
 		waitTimeMicrosecs = 250;
 		usleep(waitTimeMicrosecs);
 	}
@@ -1169,94 +1251,6 @@ void SoundplaneModel::testCallback()
 		mTestSignal = mTracker.getTestSignal();
 
 		sendTouchDataToZones();
-
-		mHistoryCtr++;
-		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
-		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
-	}
-}
-
-// called by the process thread in a tight loop to receive data from the driver.
-//
-void SoundplaneModel::processCallback()
-{
-	if (!mpDriver) return;
-
-	UInt64 now = getMicroseconds();
-    // once per second
-	if(now - mLastInfrequentTaskTime > 1000*1000)
-	{
-		doInfrequentTasks();
-		mLastInfrequentTaskTime = now;
-	}
-
-	// make sure driver is set up
-	if (mpDriver->getDeviceState() != kDeviceHasIsochSync) return;
-
-	// read from driver's ring buffer to incoming surface
-	MLSample* pSurfaceData = mSurface.getBuffer();
-	// if(mpDriver->readSurface(pSurfaceData) != 1) return; FIXME(peck)
-
-	// store surface for raw output
-	mRawSignal.copy(mSurface);
-
-	if (mCalibrating)
-	{
-		// copy surface to a frame of 3D calibration buffer
-		mCalibrateData.setFrame(mCalibrateCount++, mSurface);
-		if (mCalibrateCount >= kSoundplaneCalibrateSize)
-		{
-			endCalibrate();
-		}
-	}
-	else if (mSelectingCarriers)
-	{
-		// copy surface to a frame of 3D calibration buffer
-		mCalibrateData.setFrame(mCalibrateCount++, mSurface);
-		if (mCalibrateCount >= kSoundplaneCalibrateSize)
-		{
-			nextSelectCarriersStep();
-		}
-	}
-	else if(mOutputEnabled)
-	{
-		// scale incoming data
-		float in, cmean, cout;
-		float epsilon = 0.000001;
-		if (mHasCalibration)
-		{
-			for(int j=0; j<mSurface.getHeight(); ++j)
-			{
-				for(int i=0; i<mSurface.getWidth(); ++i)
-				{
-					// scale to 1/z curve
-					in = mSurface(i, j);
-					cmean = mCalibrateMean(i, j);
-					cout = (1.f - ((cmean + epsilon) / (in + epsilon)));
-					mSurface(i, j) = cout;
-				}
-			}
-		}
-
-		// filter data in time
-		mNotchFilter.setInputSignal(&mSurface);
-		mNotchFilter.setOutputSignal(&mSurface);
-		mNotchFilter.process(1);
-		mLopassFilter.setInputSignal(&mSurface);
-		mLopassFilter.setOutputSignal(&mSurface);
-		mLopassFilter.process(1);
-
-		// send filtered data to touch tracker.
-		mTracker.setInputSignal(&mSurface);
-		mTracker.setOutputSignal(&mTouchFrame);
-		mTracker.process(1);
-
-		// get calibrated and cooked signals for viewing
-		mCalibratedSignal = mTracker.getCalibratedSignal();
-		mCookedSignal = mTracker.getCookedSignal();
-		mTestSignal = mTracker.getTestSignal();
-
- 		sendTouchDataToZones();
 
 		mHistoryCtr++;
 		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
