@@ -46,28 +46,32 @@ public:
 	 * s, the SoundplaneDriver might already have moved to another state, so
 	 * it might be that s != driver->getDeviceState().
 	 */
-	virtual void deviceStateChanged(MLSoundplaneState s) = 0;
+	virtual void deviceStateChanged(MLSoundplaneState s) {}
+
+	/**
+	 * Invoked whenever the SoundplaneDriver receives a frame of data from the
+	 * Soundplane. This is invoked on a processing thread of the driver, always
+	 * from the same thread.
+	 */
+	virtual void receivedFrame(const float* data, int size) {}
+
 	/**
 	 * This callback may be invoked from an arbitrary thread, but is never
 	 * invoked in an interrupt context.
 	 */
-	virtual void handleDeviceError(int errorType, int di1, int di2, float df1, float df2) = 0;
+	virtual void handleDeviceError(int errorType, int di1, int di2, float df1, float df2) {}
+
 	/**
 	 * This callback may be invoked from an arbitrary thread, but is never
 	 * invoked in an interrupt context.
 	 */
-	virtual void handleDeviceDataDump(const float* pData, int size) = 0;
+	virtual void handleDeviceDataDump(const float* pData, int size) {}
 };
 
 class SoundplaneDriver
 {
 public:
 	virtual ~SoundplaneDriver() = default;
-
-	/**
-	 * Returns the number of elements read.
-	 */
-	virtual int readSurface(float* pDest) = 0;
 
 	virtual MLSoundplaneState getDeviceState() const = 0;
 

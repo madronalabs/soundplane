@@ -14,42 +14,31 @@
 #include "SoundplaneModelA.h"
 #include "MLSignal.h"
 
-int main(int argc, const char * argv[])
+namespace
 {
-	MLSignal mSurface(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal mCalibration(kSoundplaneWidth, kSoundplaneHeight);
-	int driverState = 0;
-	const auto driver = SoundplaneDriver::create(nullptr);
 
-	std::cout << "Hello, Soundplane?\n";
+class HelloSoundplaneDriverListener : public SoundplaneDriverListener
+{
+public:
+	HelloSoundplaneDriverListener()	:
+		mSurface(kSoundplaneWidth, kSoundplaneHeight),
+		mCalibration(kSoundplaneWidth, kSoundplaneHeight) {}
 
-	while(driverState != kDeviceHasIsochSync)
+	virtual void deviceStateChanged(MLSoundplaneState s) override
 	{
-		driverState = driver->getDeviceState();
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		std::cout << "waiting for driver, state:" << driverState << "\n";
+		std::cout << "Device state changed: " << s << std::endl;
 	}
 
-	// read a single frame as calibration snapshot
-	driver->readSurface(mCalibration.getBuffer());
-
-	int framesRead, frameCounter = 0;
-	while(1)
+	virtual void receivedFrame(const float* data, int size) override
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-		// read all available frames from driver
-		do
+		if (!mHasCalibration)
 		{
-			framesRead = driver->readSurface(mSurface.getBuffer());
-			frameCounter += framesRead;
+			memcpy(mCalibration.getBuffer(), data, sizeof(float) * size);
+			mHasCalibration = true;
 		}
-		while(framesRead);
-
-		// print snapshot of latest frame, minus calibration
-		if(frameCounter > 1000)
+		else if (mFrameCounter == 0)
 		{
-			frameCounter -= 1000;
+			memcpy(mSurface.getBuffer(), data, sizeof(float) * size);
 			mSurface.subtract(mCalibration);
 			mSurface.scale(100.f);
 			mSurface.flipVertical();
@@ -58,6 +47,30 @@ int main(int argc, const char * argv[])
 			mSurface.dumpASCII(std::cout);
 			mSurface.dump(std::cout);
 		}
+
+		mFrameCounter = (mFrameCounter + 1) % 1000;
+	}
+
+private:
+	int mFrameCounter = 0;
+	bool mHasCalibration = false;
+	MLSignal mSurface;
+	MLSignal mCalibration;
+};
+
+}
+
+int main(int argc, const char * argv[])
+{
+	HelloSoundplaneDriverListener listener;
+	const auto driver = SoundplaneDriver::create(&listener);
+
+	std::cout << "Hello, Soundplane?\n";
+	std::cout << "Initial device state: " << driver->getDeviceState() << std::endl;
+
+	for (;;)
+	{
+		sleep(1);
 	}
 
     return 0;

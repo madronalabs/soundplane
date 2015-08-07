@@ -99,8 +99,6 @@ SoundplaneDriverMac::SoundplaneDriverMac(SoundplaneDriverListener* listener) :
 		busFrameNumber[i] = 0;
 	}
 
-	PaUtil_InitializeRingBuffer(&mOutputBuf, sizeof(mpOutputData) / kSoundplaneOutputBufFrames, kSoundplaneOutputBufFrames, mpOutputData);
-
 	for(int i=0; i < kSoundplaneSensorWidth; ++i)
 	{
 		mCurrentCarriers[i] = kDefaultCarriers[i];
@@ -125,9 +123,6 @@ SoundplaneDriverMac::~SoundplaneDriverMac()
         IOObjectRelease(matchedIter);
         matchedIter = 0;
 	}
-
-	// clear output
-	PaUtil_FlushRingBuffer( &mOutputBuf );
 
 	// wait for any pending transactions to finish
 	//
@@ -205,19 +200,6 @@ void SoundplaneDriverMac::init()
 
 	// set thread to real time priority
 	setThreadPriority(mProcessThread.native_handle(), 96, true);
-}
-
-// Called by client to put one frame of data from the ring buffer into memory at pDest.
-// This mechanism assumes we have only one consumer of data.
-//
-int SoundplaneDriverMac::readSurface(float* pDest)
-{
-	int result = 0;
-	if(PaUtil_GetRingBufferReadAvailable(&mOutputBuf) >= 1)
-	{
-		result = PaUtil_ReadRingBuffer(&mOutputBuf, pDest, 1);
-	}
-	return result;
 }
 
 MLSoundplaneState SoundplaneDriverMac::getDeviceState() const
@@ -1340,7 +1322,7 @@ void SoundplaneDriverMac::processThread()
 							if (df < kMaxFrameDiff)
 							{
 								// we are OK, the data gets out normally
-								reclockFrameToBuffer(pWorkingFrame.data());
+								reclockFrameToBuffer(pWorkingFrame);
 							}
 							else
 							{
@@ -1416,11 +1398,13 @@ void SoundplaneDriverMac::processThread()
 // write frame to buffer, reconstructing a constant clock from the data.
 // this may involve interpolating frames.
 //
-void SoundplaneDriverMac::reclockFrameToBuffer(float* pFrame)
+void SoundplaneDriverMac::reclockFrameToBuffer(const SoundplaneOutputFrame& frame)
 {
 	// currently, clock is ignored and we simply ship out data as quickly as possible.
 	// TODO timestamps that will allow reconstituting the data with lower jitter.
-	PaUtil_WriteRingBuffer(&mOutputBuf, pFrame, 1);
+	if (mListener) {
+		mListener->receivedFrame(frame.data(), frame.size());
+	}
 }
 
 void SoundplaneDriverMac::setDeviceState(MLSoundplaneState n)

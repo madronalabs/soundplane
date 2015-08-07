@@ -19,7 +19,6 @@
 
 #include <sys/time.h>
 #include <list>
-#include "pa_ringbuffer.h"
 
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
@@ -35,7 +34,6 @@ public:
 
 	void init();
 
-	virtual int readSurface(float* pDest) override;
 	virtual MLSoundplaneState getDeviceState() const override;
 	virtual UInt16 getFirmwareVersion() const override;
 	virtual std::string getSerialNumberString() const override;
@@ -77,7 +75,7 @@ private:
 	void grabThread();
 	void processThread();
 
-	void reclockFrameToBuffer(float* pSurface);
+	void reclockFrameToBuffer(const SoundplaneOutputFrame& frame);
 	void setDeviceState(MLSoundplaneState n);
 	void reportDeviceError(int errCode, int d1, int d2, float df1, float df2);
 	void dumpDeviceData(float* pData, int size);
@@ -105,8 +103,6 @@ private:
 
 	std::atomic<MLSoundplaneState> mState;
 	unsigned char mCurrentCarriers[kSoundplaneSensorWidth];
-	float mpOutputData[kSoundplaneOutputFrameLength * kSoundplaneOutputBufFrames];
-	PaUtilRingBuffer mOutputBuf;
 
 	// mListener may be nullptr
 	SoundplaneDriverListener* const mListener;
