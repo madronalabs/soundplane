@@ -85,7 +85,9 @@ std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListe
 SoundplaneDriverLibusb::SoundplaneDriverLibusb(SoundplaneDriverListener* listener) :
 	mState(kNoDevice),
 	mQuitting(false),
-	mListener(listener)
+	mListener(listener),
+	mSetCarriersRequest(nullptr),
+	mEnableCarriersRequest(nullptr)
 {
 	assert(listener);
 }
