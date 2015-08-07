@@ -68,7 +68,7 @@ public:
 	 * Returns the number of elements read.
 	 */
 	virtual int readSurface(float* pDest) = 0;
-	virtual void flushOutputBuffer() = 0;
+
 	virtual MLSoundplaneState getDeviceState() const = 0;
 
 	/**

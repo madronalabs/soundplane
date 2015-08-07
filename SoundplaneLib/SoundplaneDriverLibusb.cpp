@@ -124,11 +124,6 @@ int SoundplaneDriverLibusb::readSurface(float* pDest)
 	return result;
 }
 
-void SoundplaneDriverLibusb::flushOutputBuffer()
-{
-	PaUtil_FlushRingBuffer(&mOutputBuf);
-}
-
 MLSoundplaneState SoundplaneDriverLibusb::getDeviceState() const
 {
 	return mQuitting.load(std::memory_order_acquire) ?

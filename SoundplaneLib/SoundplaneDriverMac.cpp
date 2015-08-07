@@ -220,11 +220,6 @@ int SoundplaneDriverMac::readSurface(float* pDest)
 	return result;
 }
 
-void SoundplaneDriverMac::flushOutputBuffer()
-{
-	PaUtil_FlushRingBuffer(&mOutputBuf);
-}
-
 MLSoundplaneState SoundplaneDriverMac::getDeviceState() const
 {
 	return mState.load(std::memory_order_acquire);

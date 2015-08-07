@@ -1550,8 +1550,6 @@ void SoundplaneModel::nextSelectCarriersStep()
 	{
 		endSelectCarriers();
 	}
-
-	mpDriver->flushOutputBuffer();
 }
 
 void SoundplaneModel::endSelectCarriers()
