@@ -67,7 +67,6 @@ public:
 	void initialize();
 	void clearTouchData();
 	void sendTouchDataToZones();
-	void notifyListeners(int c);
     void sendMessageToListeners();
 
 	MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }

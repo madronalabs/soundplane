@@ -152,7 +152,6 @@ SoundplaneModel::SoundplaneModel() :
 
 SoundplaneModel::~SoundplaneModel()
 {
-	notifyListeners(0);
 }
 
 void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newVal)
@@ -1150,16 +1149,6 @@ void SoundplaneModel::sendTouchDataToZones()
 	sendMessageToListeners();
 }
 
-// notify listeners of soundplane connect state
-//
-void SoundplaneModel::notifyListeners(int c)
-{
-    // setup message
-    mMessage.mType = MLSymbol("notify");
-    mMessage.mData[0] = c;
-    sendMessageToListeners();
-}
-
 void SoundplaneModel::sendMessageToListeners()
 {
  	for(SoundplaneListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
@@ -1207,7 +1196,6 @@ void SoundplaneModel::doInfrequentTasks()
 		mNeedsCalibrate = false;
 		beginCalibrate();
 	}
-	notifyListeners(mpDriver->getDeviceState() == kDeviceHasIsochSync);
 }
 
 void SoundplaneModel::setDefaultCarriers()
