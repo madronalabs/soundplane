@@ -169,6 +169,12 @@ private:
 	void doInfrequentTasks();
 	UInt64 mLastInfrequentTaskTime;
 
+	/**
+	 * Please note that it is not safe to access this member from the processing
+	 * thread: It is nulled out by the destructor before the SoundplaneDriver
+	 * is torn down. (It would not be safe to not null it out either because
+	 * then the pointer would point to an object that's being destroyed.)
+	 */
 	std::unique_ptr<SoundplaneDriver> mpDriver;
 	int mSerialNumber;
 
