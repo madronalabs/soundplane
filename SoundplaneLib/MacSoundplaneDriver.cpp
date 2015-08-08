@@ -247,7 +247,7 @@ std::string MacSoundplaneDriver::getSerialNumberString() const
 			buffer[i] = buffer[i*2 + 2];
 		}
 
-		return std::string(buffer, r);
+		return std::string(buffer, r / 2 - 1);
 	}
 	return "";
 }
