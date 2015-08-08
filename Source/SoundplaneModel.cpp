@@ -152,6 +152,10 @@ SoundplaneModel::SoundplaneModel() :
 
 SoundplaneModel::~SoundplaneModel()
 {
+	// Ensure the SoundplaneDriver is town down before anything else in this
+	// object. This is important because otherwise there might be processing
+	// thread callbacks that fly around too late.
+	mpDriver.reset(new InertSoundplaneDriver());
 }
 
 void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newVal)
