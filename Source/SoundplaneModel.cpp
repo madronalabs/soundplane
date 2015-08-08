@@ -627,9 +627,6 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		mLastInfrequentTaskTime = now;
 	}
 
-	// make sure driver is set up
-	if (mpDriver->getDeviceState() != kDeviceHasIsochSync) return;
-
 	// read from driver's ring buffer to incoming surface
 	MLSample* pSurfaceData = mSurface.getBuffer();
 	memcpy(pSurfaceData, data, size * sizeof(float));
