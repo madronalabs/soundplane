@@ -72,6 +72,14 @@ AnomalyFilter<GlitchCallback, SuccessCallback> makeAnomalyFilter(
 		std::move(glitchCallback), std::move(successCallback));
 }
 
+bool libusbTransferStatusIsFatal(libusb_transfer_status error)
+{
+	return
+		error == LIBUSB_TRANSFER_STALL ||
+		error == LIBUSB_TRANSFER_NO_DEVICE ||
+		error == LIBUSB_TRANSFER_OVERFLOW;
+}
+
 }
 
 std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListener *listener)
@@ -394,11 +402,16 @@ void LibusbSoundplaneDriver::processThreadTransferCallbackStatic(struct libusb_t
 void LibusbSoundplaneDriver::processThreadTransferCallback(Transfer &transfer)
 {
 	// Check if the transfer was successful
-	if (transfer.transfer->status != LIBUSB_TRANSFER_COMPLETED)
+	const auto status = transfer.transfer->status;
+	if (status != LIBUSB_TRANSFER_COMPLETED)
 	{
 		fprintf(stderr, "Failed USB transfer: %s\n", libusb_error_name(transfer.transfer->status));
-		mUsbFailed = true;
-		return;
+		if (libusbTransferStatusIsFatal(status))
+		{
+			fprintf(stderr, "(Transfer status caused device reconnect)\n");
+			mUsbFailed = true;
+			return;
+		}
 	}
 
 	// Report kDeviceHasIsochSync if appropriate
