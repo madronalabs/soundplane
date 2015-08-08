@@ -29,7 +29,7 @@ public:
 		std::cout << "Device state changed: " << s << std::endl;
 	}
 
-	virtual void receivedFrame(const float* data, int size) override
+	virtual void receivedFrame(SoundplaneDriver& driver, const float* data, int size) override
 	{
 		if (!mHasCalibration)
 		{

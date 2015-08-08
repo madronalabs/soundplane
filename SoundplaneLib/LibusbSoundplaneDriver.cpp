@@ -490,7 +490,7 @@ void LibusbSoundplaneDriver::processThread()
 			},
 			[this](const SoundplaneOutputFrame& frame)
 			{
-				mListener->receivedFrame(frame.data(), frame.size());
+				mListener->receivedFrame(*this, frame.data(), frame.size());
 			});
 		LibusbUnpacker unpacker(anomalyFilter);
 

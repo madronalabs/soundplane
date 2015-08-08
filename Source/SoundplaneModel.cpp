@@ -617,7 +617,7 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 	}
 }
 
-void SoundplaneModel::receivedFrame(const float* data, int size)
+void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data, int size)
 {
 	UInt64 now = getMicroseconds();
     // once per second

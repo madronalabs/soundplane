@@ -66,7 +66,7 @@ void TestSoundplaneDriver::processThread()
 			value = fabs(MLRand())*0.1f;
 		}
 
-		mListener->receivedFrame(frame.data(), frame.size());
+		mListener->receivedFrame(*this, frame.data(), frame.size());
 		sentPackets++;
 
 		UInt64 now = getMicroseconds();

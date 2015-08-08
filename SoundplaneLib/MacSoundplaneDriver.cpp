@@ -1404,7 +1404,7 @@ void MacSoundplaneDriver::reclockFrameToBuffer(const SoundplaneOutputFrame& fram
 {
 	// currently, clock is ignored and we simply ship out data as quickly as possible.
 	// TODO timestamps that will allow reconstituting the data with lower jitter.
-	mListener->receivedFrame(frame.data(), frame.size());
+	mListener->receivedFrame(*this, frame.data(), frame.size());
 }
 
 void MacSoundplaneDriver::setDeviceState(MLSoundplaneState n)

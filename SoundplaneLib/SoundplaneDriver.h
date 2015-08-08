@@ -55,7 +55,7 @@ public:
 	 * Soundplane. This is invoked on a processing thread of the driver, always
 	 * from the same thread.
 	 */
-	virtual void receivedFrame(const float* data, int size) {}
+	virtual void receivedFrame(SoundplaneDriver &driver, const float* data, int size) {}
 
 	/**
 	 * This callback may be invoked from an arbitrary thread, but is never
