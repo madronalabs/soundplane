@@ -252,11 +252,6 @@ private:
 		LibusbUnpacker *unpacker,
 		libusb_device_handle *device);
 	/**
-	 * Returns false if the operation failed.
-	 */
-	bool processThreadSetInitialCarriers(
-		libusb_device_handle *device);
-	/**
 	 * Sets mState to a new value and notifies the listener.
 	 *
 	 * Returns false if the process thread should quit.

@@ -315,12 +315,6 @@ bool LibusbSoundplaneDriver::processThreadFillTransferInformation(
 	return true;
 }
 
-bool LibusbSoundplaneDriver::processThreadSetInitialCarriers(
-	libusb_device_handle *device)
-{
-	return processThreadSetCarriers(device, kDefaultCarriers, sizeof(kDefaultCarriers)) >= 0;
-}
-
 bool LibusbSoundplaneDriver::processThreadSetDeviceState(MLSoundplaneState newState)
 {
 	mState.store(newState, std::memory_order_release);
@@ -499,7 +493,6 @@ void LibusbSoundplaneDriver::processThread()
 			processThreadGetDeviceInfo(handle.get()) &&
 			processThreadSelectIsochronousInterface(handle.get()) &&
 			processThreadFillTransferInformation(transfers, &unpacker, handle.get()) &&
-			processThreadSetInitialCarriers(handle.get()) &&
 			processThreadSetDeviceState(kDeviceConnected) &&
 			processThreadScheduleInitialTransfers(transfers);
 
@@ -514,7 +507,8 @@ void LibusbSoundplaneDriver::processThread()
 				fprintf(stderr, "Libusb error!\n");
 				break;
 			}
-			if (processThreadHandleRequests(handle.get()))
+			if (mState.load(std::memory_order_acquire) == kDeviceHasIsochSync &&
+				processThreadHandleRequests(handle.get()))
 			{
 				// Wait for data to settle after setting carriers
 				anomalyFilter.reset();
