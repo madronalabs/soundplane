@@ -27,4 +27,7 @@ else(SP_LIBUSB_DIR)
   target_include_directories(libusb PUBLIC ${LIBUSB_1_INCLUDE_DIRS})
 endif()
 
-target_link_libraries(libusb "-framework IOKit")
+if(APPLE)
+  target_link_libraries(libusb "-framework IOKit")
+endif()
+

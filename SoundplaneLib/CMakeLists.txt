@@ -39,3 +39,7 @@ if(SP_USE_LIBUSB)
 else()
   target_link_libraries(soundplanelib "-framework IOKit")
 endif()
+
+if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+  target_link_libraries(soundplanelib atomic)
+endif()
