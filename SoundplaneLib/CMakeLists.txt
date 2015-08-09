@@ -11,6 +11,10 @@ set(SP_DRIVER_SOURCES
   ThreadUtility.h
   )
 
+if(SP_LIBUSB_DIR OR NOT APPLE)
+  set(SP_USE_LIBUSB yes)
+endif()
+
 if(SP_USE_LIBUSB)
   set(SP_DRIVER_SOURCES
     ${SP_DRIVER_SOURCES}
