@@ -11,6 +11,7 @@
 
 #include "ThreadUtility.h"
 
+#ifdef __APPLE__
 #include <mach/mach.h>
 
 void setThreadPriority(pthread_t inThread, uint32_t inPriority, bool inIsFixed)
@@ -43,3 +44,17 @@ void setThreadPriority(pthread_t inThread, uint32_t inPriority, bool inIsFixed)
         thread_policy_set (pthread_mach_thread_np(inThread), THREAD_PRECEDENCE_POLICY, (thread_policy_t)&thePrecedencePolicy, THREAD_PRECEDENCE_POLICY_COUNT);
     }
 }
+
+#else
+
+void setThreadPriority(pthread_t inThread, uint32_t inPriority, bool inIsFixed)
+{
+    int policy;
+    struct sched_param param;
+
+    pthread_getschedparam(inThread, &policy, &param);
+    param.sched_priority = sched_get_priority_max(policy);
+    pthread_setschedparam(inThread, policy, &param);
+}
+
+#endif
