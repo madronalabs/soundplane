@@ -10,8 +10,6 @@
 #include <memory>
 #include <string>
 
-#include <CoreFoundation/CoreFoundation.h>
-
 #include "SoundplaneModelA.h"
 
 // device states
@@ -81,7 +79,7 @@ public:
 	 * Returns the firmware version of the connected Soundplane device. The
 	 * return value is undefined if getDeviceState() == kNoDevice
 	 */
-	virtual UInt16 getFirmwareVersion() const = 0;
+	virtual uint16_t getFirmwareVersion() const = 0;
 
 	/**
 	 * Returns the serial number of the connected Soundplane device. The return

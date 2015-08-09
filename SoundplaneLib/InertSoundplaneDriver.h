@@ -12,7 +12,7 @@ class InertSoundplaneDriver : public SoundplaneDriver
 {
 public:
 	virtual MLSoundplaneState getDeviceState() const override;
-	virtual UInt16 getFirmwareVersion() const override;
+	virtual uint16_t getFirmwareVersion() const override;
 	virtual std::string getSerialNumberString() const override;
 
 	virtual const unsigned char *getCarriers() const override;

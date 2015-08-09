@@ -13,7 +13,7 @@
 
 #include <mach/mach.h>
 
-void setThreadPriority(pthread_t inThread, UInt32 inPriority, Boolean inIsFixed)
+void setThreadPriority(pthread_t inThread, uint32_t inPriority, bool inIsFixed)
 {
     if (inPriority == 96)
     {
@@ -31,7 +31,7 @@ void setThreadPriority(pthread_t inThread, UInt32 inPriority, Boolean inIsFixed)
         // OTHER THREADS
         thread_extended_policy_data_t   theFixedPolicy;
         thread_precedence_policy_data_t   thePrecedencePolicy;
-        SInt32                relativePriority;
+        int32_t                relativePriority;
 
         // [1] SET FIXED / NOT FIXED
         theFixedPolicy.timeshare = !inIsFixed;

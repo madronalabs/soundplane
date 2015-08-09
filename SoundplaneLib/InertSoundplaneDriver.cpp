@@ -9,7 +9,7 @@ MLSoundplaneState InertSoundplaneDriver::getDeviceState() const
 	return kNoDevice;
 }
 
-UInt16 InertSoundplaneDriver::getFirmwareVersion() const
+uint16_t InertSoundplaneDriver::getFirmwareVersion() const
 {
 	return 0;
 }

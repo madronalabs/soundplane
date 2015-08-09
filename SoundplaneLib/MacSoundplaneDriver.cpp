@@ -209,14 +209,14 @@ MLSoundplaneState MacSoundplaneDriver::getDeviceState() const
 	return mState.load(std::memory_order_acquire);
 }
 
-UInt16 MacSoundplaneDriver::getFirmwareVersion() const
+uint16_t MacSoundplaneDriver::getFirmwareVersion() const
 {
 	if(getDeviceState() < kDeviceConnected) return 0;
-	UInt16 r = 0;
+	uint16_t r = 0;
 	IOReturn err;
 	if (dev)
 	{
-		UInt16 version = 0;
+		uint16_t version = 0;
 		err = (*dev)->GetDeviceReleaseNumber(dev, &version);
 		if (err == kIOReturnSuccess)
 		{
@@ -230,7 +230,7 @@ std::string MacSoundplaneDriver::getSerialNumberString() const
 {
 	if (getDeviceState() < kDeviceConnected) return 0;
 	char buffer[64];
-	UInt8 idx;
+	uint8_t idx;
 	int r = 0;
 	IOReturn err;
 	if (dev)
@@ -300,14 +300,14 @@ void MacSoundplaneDriver::enableCarriers(unsigned long mask)
 // --------------------------------------------------------------------------------
 #pragma mark K1IsocTransaction
 
-UInt16 MacSoundplaneDriver::K1IsocTransaction::getTransactionSequenceNumber(int f)
+uint16_t MacSoundplaneDriver::K1IsocTransaction::getTransactionSequenceNumber(int f)
 {
 	if (!payloads) return 0;
 	SoundplaneADataPacket* p = (SoundplaneADataPacket*)payloads;
 	return p[f].seqNum;
 }
 
-void MacSoundplaneDriver::K1IsocTransaction::setSequenceNumber(int f, UInt16 s)
+void MacSoundplaneDriver::K1IsocTransaction::setSequenceNumber(int f, uint16_t s)
 {
 	SoundplaneADataPacket* p = (SoundplaneADataPacket*)payloads;
 	p[f].seqNum = s;
@@ -470,10 +470,10 @@ void MacSoundplaneDriver::addOffset(int& buffer, int& frame, int offset)
 	}
 }
 
-UInt16 MacSoundplaneDriver::getTransferBytesReceived(int endpoint, int buffer, int frame, int offset)
+uint16_t MacSoundplaneDriver::getTransferBytesReceived(int endpoint, int buffer, int frame, int offset)
 {
 	if(getDeviceState() < kDeviceConnected) return 0;
-	UInt16 b = 0;
+	uint16_t b = 0;
 	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
 
@@ -515,10 +515,10 @@ IOReturn MacSoundplaneDriver::getTransferStatus(int endpoint, int buffer, int fr
 	return b;
 }
 
-UInt16 MacSoundplaneDriver::getSequenceNumber(int endpoint, int buffer, int frame, int offset)
+uint16_t MacSoundplaneDriver::getSequenceNumber(int endpoint, int buffer, int frame, int offset)
 {
 	if(getDeviceState() < kDeviceConnected) return 0;
-	UInt16 s = 0;
+	uint16_t s = 0;
 	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
 
@@ -550,7 +550,7 @@ namespace {
 
 IOReturn ConfigureDevice(IOUSBDeviceInterface187 **dev)
 {
-	UInt8							numConf;
+	uint8_t							numConf;
 	IOReturn						err;
 	IOUSBConfigurationDescriptorPtr	confDesc;
 
@@ -710,12 +710,12 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 	SInt32						score;
 	UInt32						powerAvailable;
 #ifdef VERBOSE
-	UInt16						vendor;
-	UInt16						product;
-	UInt16						release;
+	uint16_t					vendor;
+	uint16_t					product;
+	uint16_t					release;
 #endif
 	int							i, j;
-	UInt8						n;
+	uint8_t						n;
 
 	while ((usbDeviceRef = IOIteratorNext(iterator)))
 	{
@@ -883,11 +883,11 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 					// for each endpoint of the isochronous interface, get pipe properties
 					for (i = 1; i <= n; i++)
 					{
-						UInt8		direction;
-						UInt8		number;
-						UInt8		transferType;
-						UInt16		maxPacketSize;
-						UInt8		interval;
+						uint8_t		direction;
+						uint8_t		number;
+						uint8_t		transferType;
+						uint16_t	maxPacketSize;
+						uint8_t		interval;
 
 						err = (*intf)->GetPipeProperties(intf, i, &direction, &number, &transferType, &maxPacketSize, &interval);
 						if (kIOReturnSuccess != err)
@@ -1064,14 +1064,14 @@ void MacSoundplaneDriver::grabThread()
 //
 void MacSoundplaneDriver::processThread()
 {
-	UInt16 curSeqNum0, curSeqNum1;
-	UInt16 maxSeqNum0, maxSeqNum1;
-	UInt16 currentCompleteSequence = 0;
-	UInt16 newestCompleteSequence = 0;
+	uint16_t curSeqNum0, curSeqNum1;
+	uint16_t maxSeqNum0, maxSeqNum1;
+	uint16_t currentCompleteSequence = 0;
+	uint16_t newestCompleteSequence = 0;
 	unsigned char* pPayload0 = 0;
 	unsigned char* pPayload1 = 0;
-	UInt16 curBytes0, curBytes1;
-	UInt16 nextBytes0, nextBytes1;
+	uint16_t curBytes0, curBytes1;
+	uint16_t nextBytes0, nextBytes1;
 	SoundplaneOutputFrame pWorkingFrame;
 	SoundplaneOutputFrame pPrevFrame;
 
@@ -1426,11 +1426,11 @@ void MacSoundplaneDriver::dumpDeviceData(float* pData, int size)
 // -------------------------------------------------------------------------------
 #pragma mark transfer utilities
 
-int MacSoundplaneDriver::getStringDescriptor(IOUSBDeviceInterface187 **dev, UInt8 descIndex, char *destBuf, UInt16 maxLen, UInt16 lang)
+int MacSoundplaneDriver::getStringDescriptor(IOUSBDeviceInterface187 **dev, uint8_t descIndex, char *destBuf, uint16_t maxLen, UInt16 lang)
 {
     IOUSBDevRequest req;
-    UInt8 		desc[256]; // Max possible descriptor length
-    UInt8 		desc2[256]; // Max possible descriptor length
+    uint8_t 		desc[256]; // Max possible descriptor length
+    uint8_t 		desc2[256]; // Max possible descriptor length
     int stringLen;
     IOReturn err;
     if (lang == 0) // set default langID
@@ -1491,7 +1491,7 @@ void MacSoundplaneDriver::dumpTransactions(int bufferIndex, int frameIndex)
 		for(int f=0; f<kSoundplaneANumIsochFrames; ++f)
 		{
 			IOUSBLowLatencyIsocFrame* frame0, *frame1;
-			UInt16 seq0, seq1;
+			uint16_t seq0, seq1;
 			frame0 = &(t0->isocFrames[f]);
 			frame1 = &(t1->isocFrames[f]);
 

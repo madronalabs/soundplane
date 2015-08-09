@@ -132,7 +132,7 @@ MLSoundplaneState LibusbSoundplaneDriver::getDeviceState() const
 		mState.load(std::memory_order_acquire);
 }
 
-UInt16 LibusbSoundplaneDriver::getFirmwareVersion() const
+uint16_t LibusbSoundplaneDriver::getFirmwareVersion() const
 {
 	return mFirmwareVersion.load(std::memory_order_acquire);
 }

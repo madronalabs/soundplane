@@ -66,11 +66,11 @@ class Unpacker
 		T mData[Capacity];
 	};
 
-	static bool lessThanHandleOverflow(UInt16 a, UInt16 b)
+	static bool lessThanHandleOverflow(uint16_t a, uint16_t b)
 	{
 		// This expression is equivalent to a < b, except that it gracefully
 		// handles serial number overflows.
-		return static_cast<UInt16>(b - a) < (1 << (sizeof(a) * 8 - 1));
+		return static_cast<uint16_t>(b - a) < (1 << (sizeof(a) * 8 - 1));
 	}
 
 	/**

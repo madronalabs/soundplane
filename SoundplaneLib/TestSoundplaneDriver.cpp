@@ -31,7 +31,7 @@ MLSoundplaneState TestSoundplaneDriver::getDeviceState() const
 		kDeviceHasIsochSync;
 }
 
-UInt16 TestSoundplaneDriver::getFirmwareVersion() const
+uint16_t TestSoundplaneDriver::getFirmwareVersion() const
 {
 	return 0;
 }
@@ -58,8 +58,8 @@ void TestSoundplaneDriver::processThread()
 {
 	SoundplaneOutputFrame frame;
 
-	UInt64 startTime = getMicroseconds();
-	UInt64 sentPackets = 0;
+	uint64_t startTime = getMicroseconds();
+	uint64_t sentPackets = 0;
 
 	while (!mQuitting.load(std::memory_order_acquire))
 	{
@@ -71,8 +71,8 @@ void TestSoundplaneDriver::processThread()
 		mListener->receivedFrame(*this, frame.data(), frame.size());
 		sentPackets++;
 
-		UInt64 now = getMicroseconds();
-		UInt64 timeForNextFrame = startTime + kSoundplaneAUpdateFrequency * 1000 * sentPackets;
+		uint64_t now = getMicroseconds();
+		uint64_t timeForNextFrame = startTime + kSoundplaneAUpdateFrequency * 1000 * sentPackets;
 		if (timeForNextFrame > now)
 		{
 			usleep(timeForNextFrame - now);

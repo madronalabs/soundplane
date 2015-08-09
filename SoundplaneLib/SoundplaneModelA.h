@@ -7,8 +7,6 @@
 
 #include <array>
 
-#include <CoreFoundation/CoreFoundation.h>
-
 // Soundplane data format:
 // The Soundplane Model A sends frames of data over USB using an isochronous interface with two endpoints.
 // Each endpoint carries the data for one of the two sensor boards in the Soundplane. There is a left sensor board, endpoint 0,
@@ -44,8 +42,8 @@ const int kSoundplaneAKeyHeight = 5;
 const int kSoundplaneAMaxZones = 150;
 
 // Soundplane A hardware
-const UInt16 kSoundplaneUSBVendor = 0x0451;
-const UInt16 kSoundplaneUSBProduct = 0x5100;
+const uint16_t kSoundplaneUSBVendor = 0x0451;
+const uint16_t kSoundplaneUSBProduct = 0x5100;
 const int kSoundplaneASampleRate = 125000;
 const int kSoundplaneAFFTSize = 128;
 const int kSoundplaneANumCarriers = 32;
@@ -67,8 +65,8 @@ const int kSoundplaneAlternateSetting = 1;
 typedef struct
 {
   unsigned char packedData[kSoundplaneAPackedDataSize];
-  UInt16 seqNum;
-  UInt16 padding;
+  uint16_t seqNum;
+  uint16_t padding;
 } SoundplaneADataPacket; // 388 bytes
 
 // Soundplane A OSX client software

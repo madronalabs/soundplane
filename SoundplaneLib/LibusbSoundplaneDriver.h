@@ -27,7 +27,7 @@ public:
 	void init();
 
 	virtual MLSoundplaneState getDeviceState() const override;
-	virtual UInt16 getFirmwareVersion() const override;
+	virtual uint16_t getFirmwareVersion() const override;
 	virtual std::string getSerialNumberString() const override;
 
 	virtual const unsigned char *getCarriers() const override;
@@ -297,7 +297,7 @@ private:
 	 * Written to by the processing thread before mState is set from kNoDevice,
 	 * read by any thread.
 	 */
-	std::atomic<UInt16> mFirmwareVersion;
+	std::atomic<uint16_t> mFirmwareVersion;
 	/**
 	 * Written to by the processing thread before mState is set from kNoDevice,
 	 * read by any thread.

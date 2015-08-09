@@ -168,7 +168,7 @@ private:
     void loadZonesFromString(const std::string& zoneStr);
 
 	void doInfrequentTasks();
-	UInt64 mLastInfrequentTaskTime;
+	uint64_t mLastInfrequentTaskTime;
 
 	/**
 	 * Please note that it is not safe to access this member from the processing
@@ -183,7 +183,7 @@ private:
 	SoundplaneOSCOutput mOSCOutput;
     SoundplaneDataMessage mMessage;
 
-	UInt64 mLastTimeDataWasSent;
+	uint64_t mLastTimeDataWasSent;
 
 	MLSignal mSurface;
 	MLSignal mCalibrateData;
