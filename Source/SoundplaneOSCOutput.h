@@ -9,6 +9,7 @@
 #include <vector>
 #include <list>
 #include <memory>
+#include <stdint.h>
 
 #include "MLDebug.h"
 #include "MLTime.h"

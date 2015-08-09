@@ -4,6 +4,8 @@
 
 #include "SoundplaneModelA.h"
 
+#include <math.h>
+
 const char* kSoundplaneAName = ("Soundplane Model A");
 
 // default carriers.  avoiding 32 (always bad)

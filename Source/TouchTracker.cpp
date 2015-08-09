@@ -5,6 +5,8 @@
 
 #include "TouchTracker.h"
 
+#include <algorithm>
+
 std::ostream& operator<< (std::ostream& out, const Touch & t)
 {
 	out << std::setprecision(4);

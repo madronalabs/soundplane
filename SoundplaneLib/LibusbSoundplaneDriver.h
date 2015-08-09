@@ -7,6 +7,7 @@
 #define __LIBUSB_SOUNDPLANE_DRIVER__
 
 #include <array>
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <thread>

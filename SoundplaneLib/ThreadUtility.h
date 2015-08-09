@@ -8,6 +8,7 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <pthread.h>
+#include <stdint.h>
 
 void setThreadPriority(pthread_t inThread, UInt32 inPriority, Boolean inIsFixed);
 

@@ -8,6 +8,7 @@
 
 #include <list>
 #include <map>
+#include <stdint.h>
 
 #include "MLTime.h"
 #include "MLModel.h"

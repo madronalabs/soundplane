@@ -4,6 +4,8 @@
 
 #include "TestSoundplaneDriver.h"
 
+#include <unistd.h>
+
 #include "MLDSP.h"
 #include "MLTime.h"
 

@@ -5,8 +5,6 @@
 
 #include "SoundplaneModel.h"
 
-#include <IOKit/IOReturn.h>
-
 #include "pa_memorybarrier.h"
 
 #include "InertSoundplaneDriver.h"

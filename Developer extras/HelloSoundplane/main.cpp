@@ -9,6 +9,7 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <unistd.h>
 
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"

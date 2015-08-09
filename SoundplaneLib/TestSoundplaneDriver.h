@@ -5,6 +5,7 @@
 #ifndef __TEST_SOUNDPLANE_DRIVER__
 #define __TEST_SOUNDPLANE_DRIVER__
 
+#include <atomic>
 #include <thread>
 
 #include "SoundplaneDriver.h"
