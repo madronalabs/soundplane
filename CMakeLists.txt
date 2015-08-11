@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(soundplane)
 
-set(SP_VERSION 1.3)
+set(PROJECT_NAME Soundplane)
+set(SP_VERSION_MAJOR 1)
+set(SP_VERSION_MINOR 3)
+set(SP_VERSION "${SP_VERSION_MAJOR}.${SP_VERSION_MINOR}")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
@@ -76,11 +79,39 @@ set_target_properties(Soundplane
   MACOSX_BUNDLE_ICON_FILE soundplane.icns
   MACOSX_BUNDLE_GUI_IDENTIFIER "com.madronalabs.soundplane"
   MACOSX_BUNDLE_SHORT_VERSION_STRING "${SP_VERSION}"
-  MACOSX_BUNDLE_BUNDLE_NAME "Soundplane"
+  MACOSX_BUNDLE_BUNDLE_NAME "${PROJECT_NAME}"
   )
 target_link_libraries(Soundplane madronalib)
 target_link_libraries(Soundplane soundplanelib)
 target_include_directories(Soundplane PRIVATE "${ML_JUCE_DIR}")
 target_include_directories(Soundplane PRIVATE Data/SoundplaneBinaryData)
+install(TARGETS Soundplane DESTINATION bin)
 
 add_subdirectory("Developer extras")
+
+# Linux package generation
+set(PACKAGE_NAME ${PROJECT_NAME})
+set(PACKAGE_VERSION "${SP_VERSION}")
+set(PACKAGE_RELEASE 0)
+set(PACKAGE_MAINTAINER_NAME "Randy Jones")
+set(PACKAGE_MAINTAINER_EMAIL "randy@madronalabs.com")
+set(PACKAGE_DESCRIPTION "Client Software for the Madrona Labs Soundplane")
+set(PACKAGE_DESCRIPTION_SUMMARY "Soundplane Client")
+set(PACKAGE_DEPENDS ${hugr_dependencies})
+
+include(CPack)
+
+# Debian packages
+include(cmake/DpkgDeb.cmake)
+if(DPKG_FOUND)
+  add_debian_package(${PROJECT_NAME})
+endif()
+
+# RPM packages
+include(cmake/UseRPMTools.cmake)
+set(PACKAGE_GROUP "Applications/Multimedia")
+set(PACKAGE_LICENSE "MIT")
+
+if(RPMBUILD_FOUND)
+  add_rpm(${PROJECT_NAME})
+endif(RPMBUILD_FOUND)
