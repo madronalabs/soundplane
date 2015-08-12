@@ -90,6 +90,12 @@ install(TARGETS Soundplane DESTINATION bin)
 add_subdirectory("Developer extras")
 
 # Linux package generation
+install(FILES Data/59-soundplane.rules DESTINATION /lib/udev/rules.d)
+install(
+  FILES Data/postinst
+  PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+  DESTINATION DEBIAN)
+
 set(PACKAGE_NAME ${PROJECT_NAME})
 set(PACKAGE_VERSION "${SP_VERSION}")
 set(PACKAGE_RELEASE 0)
