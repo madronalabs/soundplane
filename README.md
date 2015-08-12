@@ -49,6 +49,14 @@ used (in a terminal)
     $ cmake ..
     $ make
 
+On Linux, the Soundplane application typically uses udev to access Soundplane
+via USB. On most stock Linux installation, the default configuration is to block
+non-superuser access to the Soundplane. In order to allow the Soundplane
+application to access the device, add a udev rule that allows it:
+
+    $ sudo cp Data/59-soundplane.rules /etc/udev/rules.d/
+    $ sudo udevadm control --reload-rules
+
 The app can now be run with
 
     $ ./Soundplane
