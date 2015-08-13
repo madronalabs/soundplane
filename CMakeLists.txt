@@ -113,12 +113,3 @@ include(cmake/DpkgDeb.cmake)
 if(DPKG_FOUND)
   add_debian_package(${PROJECT_NAME})
 endif()
-
-# RPM packages
-include(cmake/UseRPMTools.cmake)
-set(PACKAGE_GROUP "Applications/Multimedia")
-set(PACKAGE_LICENSE "MIT")
-
-if(RPMBUILD_FOUND)
-  add_rpm(${PROJECT_NAME})
-endif(RPMBUILD_FOUND)
