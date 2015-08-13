@@ -89,9 +89,16 @@ MACRO(ADD_DEBIAN_PACKAGE DEBNAME)
       )   
 
       IF ( DEFINED CPACK_DEBIAN_PACKAGE_DEPENDS )
+        # CMake "helpfully" escapes spaces by adding a backslash before each space.
+        # The problem is that it doesn't escape parens, which are often present
+        # in Depends: declarations. In order to work around this escaping, convert
+        # the string to a CMake "list" (ie a semicolon separated string) and enclose
+        # the string in quotation marks instead. (This won't work if the original
+        # string contains quotation marks but that's not as common)
+        STRING(REPLACE " " ";" CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_DEPENDS})
         ADD_CUSTOM_COMMAND( OUTPUT ${CONTROL_FILE}
           COMMAND   ${CMAKE_COMMAND} -E echo
-           "Depends: ${CPACK_DEBIAN_PACKAGE_DEPENDS}" >> ${CONTROL_FILE}
+           Depends: \"${CPACK_DEBIAN_PACKAGE_DEPENDS}\" >> ${CONTROL_FILE}
           APPEND )   
       ENDIF ( DEFINED CPACK_DEBIAN_PACKAGE_DEPENDS )
 
@@ -239,3 +246,4 @@ MACRO(ADD_DEBIAN_PACKAGE DEBNAME)
   ADD_DEPENDENCIES(${DEBNAME}_deb deb_destdir_install)
 
 ENDMACRO(ADD_DEBIAN_PACKAGE DEBNAME)
+

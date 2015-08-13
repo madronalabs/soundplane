@@ -103,7 +103,8 @@ set(PACKAGE_MAINTAINER_NAME "Randy Jones")
 set(PACKAGE_MAINTAINER_EMAIL "randy@madronalabs.com")
 set(PACKAGE_DESCRIPTION "Client Software for the Madrona Labs Soundplane")
 set(PACKAGE_DESCRIPTION_SUMMARY "Soundplane Client")
-set(PACKAGE_DEPENDS ${hugr_dependencies})
+set(CPACK_DEBIAN_PACKAGE_DEPENDS
+  "libx11-6 (>= 1.6.2), libusb-1.0-0 (>= 1.0.17), libfreetype6 (>= 2.5.2), libxrandr2 (>= 1.4.2), libxinerama1 (>= 1.1.3), libxcursor1 (>= 1.1.14), libasound2 (>= 1.0.27), freeglut3 (>= 2.8.1), libavahi-compat-libdnssd1 (>= 0.6.31)")
 
 include(CPack)
 
