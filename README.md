@@ -59,4 +59,8 @@ application to access the device, add a udev rule that allows it:
 
 The app can now be run with
 
-    $ ./Soundplane
+    $ ./soundplane
+
+If desired, it is possible to build a Debian package with the command
+
+    $ make Soundplane_deb

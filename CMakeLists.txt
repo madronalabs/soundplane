@@ -6,6 +6,12 @@ set(SP_VERSION_MAJOR 1)
 set(SP_VERSION_MINOR 3)
 set(SP_VERSION "${SP_VERSION_MAJOR}.${SP_VERSION_MINOR}")
 
+if(APPLE)
+  set(EXECUTABLE_NAME Soundplane)
+else(APPLE)
+  set(EXECUTABLE_NAME soundplane)
+endif()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
@@ -67,12 +73,12 @@ set(SP_DATA
 set(SP_CODE_SIGN_IDENTITY "" CACHE STRING "Code sign identity")
 
 add_executable(
-  Soundplane
+  ${EXECUTABLE_NAME}
   MACOSX_BUNDLE
   ${SP_DATA}
   ${SP_SOURCES})
 set_source_files_properties(${ICON_FULL_PATH} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-set_target_properties(Soundplane
+set_target_properties(${EXECUTABLE_NAME}
   PROPERTIES
   XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${SP_CODE_SIGN_IDENTITY}"
   MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/${PLIST_FULL_PATH}"
@@ -81,11 +87,11 @@ set_target_properties(Soundplane
   MACOSX_BUNDLE_SHORT_VERSION_STRING "${SP_VERSION}"
   MACOSX_BUNDLE_BUNDLE_NAME "${PROJECT_NAME}"
   )
-target_link_libraries(Soundplane madronalib)
-target_link_libraries(Soundplane soundplanelib)
-target_include_directories(Soundplane PRIVATE "${ML_JUCE_DIR}")
-target_include_directories(Soundplane PRIVATE Data/SoundplaneBinaryData)
-install(TARGETS Soundplane DESTINATION usr/bin)
+target_link_libraries(${EXECUTABLE_NAME} madronalib)
+target_link_libraries(${EXECUTABLE_NAME} soundplanelib)
+target_include_directories(${EXECUTABLE_NAME} PRIVATE "${ML_JUCE_DIR}")
+target_include_directories(${EXECUTABLE_NAME} PRIVATE Data/SoundplaneBinaryData)
+install(TARGETS ${EXECUTABLE_NAME} DESTINATION usr/bin)
 
 add_subdirectory("Developer extras")
 
