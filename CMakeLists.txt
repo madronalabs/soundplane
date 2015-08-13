@@ -85,7 +85,7 @@ target_link_libraries(Soundplane madronalib)
 target_link_libraries(Soundplane soundplanelib)
 target_include_directories(Soundplane PRIVATE "${ML_JUCE_DIR}")
 target_include_directories(Soundplane PRIVATE Data/SoundplaneBinaryData)
-install(TARGETS Soundplane DESTINATION bin)
+install(TARGETS Soundplane DESTINATION usr/bin)
 
 add_subdirectory("Developer extras")
 
