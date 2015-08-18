@@ -50,7 +50,7 @@ used (in a terminal)
     $ make
 
 On Linux, the Soundplane application typically uses udev to access Soundplane
-via USB. On most stock Linux installation, the default configuration is to block
+via USB. On most stock Linux installations, the default configuration is to block
 non-superuser access to the Soundplane. In order to allow the Soundplane
 application to access the device, add a udev rule that allows it:
 
