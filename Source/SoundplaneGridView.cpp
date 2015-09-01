@@ -382,12 +382,11 @@ void SoundplaneGridView::renderPings()
 		float z = p.z();
 
 		Vec4 dotColor = darkBlue;
-		dotColor[3] = z*60.f;
+		dotColor[3] = z*10.f;
 		glColor4fv(&dotColor[0]);
 		
 		// draw dot on surface
 		MLGL::drawDot(Vec2(x, y), dotSize);
-		
 	}	
 }
 

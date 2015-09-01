@@ -821,7 +821,7 @@ void TouchTracker::fitCurves()
 	
 	if(mCount == 0)
 	if(mSpans.size() > 0)
-		debug() << "\npings: ";
+		debug() << "pings: ";
 	
 	for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
 	{
@@ -883,15 +883,8 @@ void TouchTracker::fitCurves()
 		float keyWidth = 2.0f;		
 		int keySpan = (spanLength - minSpanLength)/keyWidth;
 		
-		
-		
-		
-		
 		if(mCount == 0)
 			debug() << " " << keySpan;
-		
-		
-
 		
 		// distance of max dz points from center of ideal touch. 
 		// touchy, important, depends on preprocessing
@@ -900,10 +893,6 @@ void TouchTracker::fitCurves()
 //		dzMaxPos += touchXOffset;
 		
 		// get offset for entire span by centering the key span between mindz-maxdz
-		
-		
-		
-
 		// also if match is OK			
 		
 		if(within(dzMinPos, a, b) && within(dzMaxPos, a, b) && (dzMaxPos < dzMinPos))
@@ -951,11 +940,8 @@ void TouchTracker::fitCurves()
 						mPings.push_back(Vec3(pingX, row, pingZ));
 					}
 				}
-				
 			}
-			
 		}
-		
 		
 		// special cases for spans of 1 and 2 based on distance between left and right max dz
 		
@@ -973,8 +959,6 @@ void TouchTracker::fitCurves()
 		// make test signal to display stages of curve fitting for spans on row 3.
 		if(row == 3)
 		{
-			int stages = 4;
-			
 			// put successive stages on rows, 0, 1, 2, 3 of test signal
 	//		for(int c = 0; c<stages; ++c)
 			{
