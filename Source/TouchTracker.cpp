@@ -5,6 +5,8 @@
 
 #include "TouchTracker.h"
 
+#include <algorithm>
+
 std::ostream& operator<< (std::ostream& out, const Touch & t)
 {
 	out << std::setprecision(4);
@@ -50,8 +52,7 @@ TouchTracker::TouchTracker(int w, int h) :
 	mBackgroundFilterFreq(0.125f),
 	mPrevTouchForRotate(0),
 	mRotate(false),
-	mDoNormalize(true),
-	mUseTestSignal(false)
+	mDoNormalize(true)
 {
 	mTouches.resize(kTrackerMaxTouches);	
 	mTouchesToSort.resize(kTrackerMaxTouches);	

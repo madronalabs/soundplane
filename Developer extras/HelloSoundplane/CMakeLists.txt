@@ -1,0 +1,3 @@
+add_executable(HelloSoundplane main.cpp)
+target_link_libraries(HelloSoundplane soundplanelib)
+target_link_libraries(HelloSoundplane madronalib)

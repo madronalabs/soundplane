@@ -258,7 +258,6 @@ public:
 	void setListener(Listener* pL) { mpListener = pL; }
 	void setDefaultNormalizeMap();
 	void setRotate(bool b);
-	void setUseTestSignal(bool b) { mUseTestSignal = b; }
 
 private:	
 
@@ -345,7 +344,6 @@ private:
 	int mPrevTouchForRotate;
 	bool mRotate;
 	bool mDoNormalize;
-	bool mUseTestSignal;
 	
 	std::vector<Vec3> mPeaks;
 	std::vector<Touch> mTouches;

@@ -198,9 +198,9 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
     
     if(type == startFrameSym)
     {
-        const UInt64 dataPeriodMicrosecs = 1000*1000 / mDataFreq;
+        const uint64_t dataPeriodMicrosecs = 1000*1000 / mDataFreq;
         mCurrFrameStartTime = getMicroseconds();
-        if (mCurrFrameStartTime > mLastFrameStartTime + (UInt64)dataPeriodMicrosecs)
+        if (mCurrFrameStartTime > mLastFrameStartTime + (uint64_t)dataPeriodMicrosecs)
         {
             mLastFrameStartTime = mCurrFrameStartTime;
             mTimeToSendNewFrame = true;
