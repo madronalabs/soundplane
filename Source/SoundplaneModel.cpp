@@ -106,8 +106,8 @@ SoundplaneModel::SoundplaneModel() :
 
 	// setup fixed notch
 	mNotchFilter.setSampleRate(kSoundplaneSampleRate);
-	mNotchFilter.setNotch(300., 0.1);
-
+	mNotchFilter.setNotch(150., 0.707);
+	
 	// setup fixed lopass.
 	mLopassFilter.setSampleRate(kSoundplaneSampleRate);
 	mLopassFilter.setLopass(50, 0.707);
@@ -1320,6 +1320,7 @@ void SoundplaneModel::endCalibrate()
 	mCalibrating = false;
 	mHasCalibration = true;
 
+	mBoxFilter.clear();
 	mNotchFilter.clear();
 	mLopassFilter.clear();
 
