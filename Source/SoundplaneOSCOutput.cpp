@@ -28,14 +28,13 @@ OSCVoice::~OSCVoice()
 SoundplaneOSCOutput::SoundplaneOSCOutput() :
 	mDataFreq(250.),
 	mLastFrameStartTime(0),
-//	mUDPSockets(0),
+	mCurrentBaseUDPPort(kDefaultUDPPort),
 	mFrameId(0),
 	mSerialNumber(0),
 	lastInfrequentTaskTime(0),
 	mKymaMode(false),
     mGotNoteChangesThisFrame(false),
-    mGotMatrixThisFrame(false),
-	mCurrentBaseUDPPort(kDefaultUDPPort)
+    mGotMatrixThisFrame(false)
 {
 	// create buffers for UDP packet streams
 	mUDPBuffers.resize(kNumUDPPorts);

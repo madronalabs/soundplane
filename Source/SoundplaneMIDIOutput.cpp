@@ -81,11 +81,10 @@ juce::MidiOutput* MIDIDevice::getDevice()
 
 SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mpCurrentDevice(0),
-	mPressureActive(false),
 	mDataFreq(250.),
-	mLastTimeNRPNWasSent(0),
-	mLastTimeVerbosePrint(0),
 	mGotControllerChanges(false),
+	mPressureActive(false),
+	mLastTimeNRPNWasSent(0),
 	mBendRange(36),
 	mTranspose(0),
 	mHysteresis(0.5f),
@@ -94,7 +93,8 @@ SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mMPEChannels(0),
 	mChannel(1),
 	mKymaPoll(true),
-	mVerbose(false)
+	mVerbose(false),
+	mLastTimeVerbosePrint(0)
 {
 #ifdef DEBUG
 	//mVerbose = true;
@@ -557,13 +557,17 @@ void SoundplaneMIDIOutput::sendMIDIVoiceMessages()
 	{
 		MIDIVoice* pVoice = &mMIDIVoices[i];
 		int chan = pVoice->mMIDIChannel;
+				
+		if(pVoice->mSendNoteOff)
+		{
+			mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mPreviousMIDINote));
+		}
 		
 		if(pVoice->mSendNoteOn)
 		{
 			mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
 		}
 		
-
 		if(pVoice->mSendPitchBend)
 		{		
 			mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, pVoice->mMIDIBend));
@@ -602,12 +606,6 @@ void SoundplaneMIDIOutput::sendMIDIVoiceMessages()
 		{
 //			debug() << "y: " << pVoice->mMIDIYCtrl << "\n";
 			mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 74, pVoice->mMIDIYCtrl));
-		}
-
-		
-		if(pVoice->mSendNoteOff)
-		{
-			mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mPreviousMIDINote));
 		}
 	}
 }

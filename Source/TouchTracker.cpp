@@ -1218,7 +1218,6 @@ void TouchTracker::process(int)
 	}
 	
 #if DEBUG	
-	// TEMP	
 	if (mCount++ > 1000) 
 	{
 		mCount = 0;
