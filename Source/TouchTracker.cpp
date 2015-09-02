@@ -5,6 +5,8 @@
 
 #include "TouchTracker.h"
 
+#include <algorithm>
+
 std::ostream& operator<< (std::ostream& out, const Touch & t)
 {
 	out << std::setprecision(4);
@@ -88,7 +90,7 @@ TouchTracker::TouchTracker(int w, int h) :
 	mBackgroundFilter.setDims(w, h);
 	mBackgroundFilter.setSampleRate(mSampleRate);
 	mTemplateScaled.setDims (kTemplateSize, kTemplateSize);
-	
+
 	// new
 	mRegions.setDims(w, h); 
 	mRowPeaks.setDims(w, h); 
@@ -124,7 +126,7 @@ TouchTracker::TouchTracker(int w, int h) :
 	mTemplateSpanSum = mTemplateSpan;
 	mTemplateSpanSum.clear();
 
-}
+	}
 		
 TouchTracker::~TouchTracker()
 {
@@ -503,7 +505,7 @@ void TouchTracker::makeFrequencyMask()
 	for(int j=0; j<h; ++j)
 	{
 		for(int i=0; i<w; ++i)
-		{
+		{			
 			// distance from 0 with wrap
 			float px = min((float)i, (float)(w - i));
 			float f;			
@@ -511,31 +513,31 @@ void TouchTracker::makeFrequencyMask()
 			{
 				// get rid of DC, which sharpens edges
 				f = 0.;
-			}
+				}
 			else if(px < c)
-			{
+				{
 				// keep other frequencies below cutoff
 				f = 1.f;
-			}
-			else
-			{
+				}
+		else
+		{
 				// get rid of high frequencies
 				f = 0.;
-			}
-			
+		}
+
 			mTouchFrequencyMask(i, j) = f;
 			sum += f;
-		}
-	}
-	
+						}
+					}
+
 	// normalize
 	sum /= h;
 	mTouchFrequencyMask.scale((float)w/sum);
 	mTouchFrequencyMask.dump(std::cout, true);
-}
+				}
 
 #pragma mark process
-
+	
 void TouchTracker::process(int)
 {	
 	if (!mpIn) return;
@@ -679,7 +681,7 @@ void TouchTracker::process(int)
 			fitCurves();	
 			//collectPings();
 			//matchTouchesToPrevious();
-			
+
 		}
 
 		filterAndOutputTouches();
@@ -688,41 +690,41 @@ void TouchTracker::process(int)
 #if DEBUG	
 	// TEMP	
 	if (mCount++ > 1000) 
-	{
+			{
 		mCount = 0;
 		//dumpTouches();
 		
 		/*
 		debug() << "\n SPANS: \n";
 		for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
-		{
+				{
 			Vec3 s = *it;
 			debug() << s.y() - s.x() << " ";
-		}
+				}
 		 */
-	}
+			}	
 #endif	
 }
-
+			
 // find spans where pressure on a given row exceeds kSpanThreshold at the start and end, 
 // end exceeds mOnThreshold at some point during the span.
 void TouchTracker::findSpans()
 {
 	// constant span start / end threshold, chosen so that span lengths will stay as constant as possible. 
 	const float t = kSpanThreshold;
-	
+
 	// some point on the span must be over this larger threshold to be recognized.
 	const float zThresh = mOnThreshold;
-	
+			
 	const float minSpanLength = 3.f;
-	
+			
 	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
 	int h = in.getHeight();
-	
+			
 	std::lock_guard<std::mutex> lock(mSpansMutex);
 	mSpans.clear();
- 
+
 	for(int j=0; j<h; ++j)
 	{
 		bool spanActive = false;
@@ -757,11 +759,11 @@ void TouchTracker::findSpans()
 				zb = t - z2;
 				a = za/(za + zb);
 				spanEnd = i - 1. + a;
-				
+
 				if(spanExceedsThreshold)
 				{
 					pushSpan = true;
-				}
+ 		}
 				spanActive = false;
 				spanExceedsThreshold = false;
 			}
@@ -769,7 +771,7 @@ void TouchTracker::findSpans()
 			{
 				if(z2 > zThresh) spanExceedsThreshold = true;
 			}
-			
+		
 			// get row end spans
 			if(i == w - 1)
 			{
@@ -780,7 +782,7 @@ void TouchTracker::findSpans()
 					pushSpan = true;
 				}				
 			}
-			
+		
 			if(pushSpan)
 			{
 				spanStart = clamp(spanStart, 1.f, w - 2.f);
@@ -793,7 +795,7 @@ void TouchTracker::findSpans()
 		}
 	}
 }
-
+		
 // fit touch curves over spans to get pings. 
 // A ping is our best guess at where a touch lies directly over a sensor row, 
 // given just the information in the span.
@@ -802,7 +804,7 @@ void TouchTracker::fitCurves()
 	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
 	int h = in.getHeight();
-	
+		
 	// get centered partial diff dzdx
 	MLSignal dzdx(w, h);
 	dzdx = in;
@@ -824,7 +826,7 @@ void TouchTracker::fitCurves()
 		debug() << "pings: ";
 	
 	for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
-	{
+		{
 		Vec3 s = *it;
 		float a = s.x(); // x1 
 		float b = s.y(); // not really y, rather x2
@@ -842,7 +844,7 @@ void TouchTracker::fitCurves()
 			{
 				dzMaxPosInt = i;
 				dzMax = dzi;
-			}
+		}
 		}
 		// find max negative slope to right of max positive slope
 		float dzMin = 0.;
@@ -856,7 +858,7 @@ void TouchTracker::fitCurves()
 				dzMin = dzi;
 			}
 		}
-		
+
 		// parabolic peak interpolate (TODO put in MLSignal)
 		float dzMaxPos;
 		float alpha, beta, gamma, px;
@@ -876,7 +878,7 @@ void TouchTracker::fitCurves()
 		// z at px if needed:
 		// zp = beta - 0.25f*(alpha - gamma)*p;	
 		dzMinPos = dzMinPosInt + px;
-				
+		
 		// get guess at int distance of keys spanned by mindz-maxdz region (one key = 0)
 		float spanLength = dzMinPos - dzMaxPos;
 		float minSpanLength = 3.0f;
@@ -907,7 +909,7 @@ void TouchTracker::fitCurves()
 				{
 					//float inputZ = in.getInterpolatedLinear(pingX, row);
 					mPings.push_back(Vec3(pingX, row, pingZ));
-				}			
+		}
 			}
 			else
 			{
@@ -915,11 +917,11 @@ void TouchTracker::fitCurves()
 				int ik = keyWidth;
 				int firstKeyInt = ia/ik*ik;
 				float firstKeyCenter = firstKeyInt + 0.5f;
-				
+		
 				/*
 				// center guess at number of keys in span within span 
 				float firstPingInMaxMinX = dzMaxPos + (spanLength - keyWidth*keySpan)/2.;
-				
+
 				// get first possible ping using same key offset
 				int keysFromStart = (int)((firstPingInMaxMinX - a) / keyWidth);			
 				float firstPing = firstPingInMaxMinX - keysFromStart*keyWidth;
@@ -983,34 +985,34 @@ void TouchTracker::fitCurves()
 void TouchTracker::filterAndOutputTouches()
 {
 	
-	// filter touches
-	// filter x and y for output
-	// filter touches and write touch data to one frame of output signal.
-	//
-	MLSignal& out = *mpOut;
-	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
-	{
-		Touch& t = mTouches[i];			
-		if(t.age > 1)
+		// filter touches
+		// filter x and y for output
+		// filter touches and write touch data to one frame of output signal.
+		//
+		MLSignal& out = *mpOut;
+		for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 		{
-			float xyc = 1.0f - powf(2.71828f, -kMLTwoPi * mLopass*0.1f / (float)mSampleRate);
-			t.xf += (t.x - t.xf)*xyc;
-			t.yf += (t.y - t.yf)*xyc;
+			Touch& t = mTouches[i];			
+			if(t.age > 1)
+			{
+				float xyc = 1.0f - powf(2.71828f, -kMLTwoPi * mLopass*0.1f / (float)mSampleRate);
+				t.xf += (t.x - t.xf)*xyc;
+				t.yf += (t.y - t.yf)*xyc;
+			}
+			else if(t.age == 1)
+			{
+				t.xf = t.x;
+				t.yf = t.y;
+			}
+			out(xColumn, i) = t.xf;
+			out(yColumn, i) = t.yf;
+			out(zColumn, i) = (t.age > 0) ? t.zf : 0.;			
+			out(dzColumn, i) = t.dz;
+			out(ageColumn, i) = t.age;
+			out(dtColumn, i) = t.tDist;
 		}
-		else if(t.age == 1)
-		{
-			t.xf = t.x;
-			t.yf = t.y;
-		}
-		out(xColumn, i) = t.xf;
-		out(yColumn, i) = t.yf;
-		out(zColumn, i) = (t.age > 0) ? t.zf : 0.;			
-		out(dzColumn, i) = t.dz;
-		out(ageColumn, i) = t.age;
-		out(dtColumn, i) = t.tDist;
 	}
-}
-
+	
 void TouchTracker::setDefaultNormalizeMap()
 {
 	mCalibrator.setDefaultNormalizeMap();

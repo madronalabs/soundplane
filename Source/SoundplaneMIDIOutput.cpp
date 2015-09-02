@@ -381,9 +381,9 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
     if(type == startFrameSym)
     {
 		setupVoiceChannels();
-        const UInt64 dataPeriodMicrosecs = 1000*1000 / mDataFreq;		
+        const uint64_t dataPeriodMicrosecs = 1000*1000 / mDataFreq;		
         mCurrFrameStartTime = getMicroseconds();
-        if (mCurrFrameStartTime > mLastFrameStartTime + (UInt64)dataPeriodMicrosecs)
+        if (mCurrFrameStartTime > mLastFrameStartTime + (uint64_t)dataPeriodMicrosecs)
         {
             mLastFrameStartTime = mCurrFrameStartTime;
             mTimeToSendNewFrame = true;
@@ -680,7 +680,7 @@ void SoundplaneMIDIOutput::sendMIDIControllerMessages()
 void SoundplaneMIDIOutput::pollKyma()
 {
 	// send NRPN with Soundplane identifier every few secs. for Kyma.
-	const UInt64 nrpnPeriodMicrosecs = 1000*1000*4;
+	const uint64_t nrpnPeriodMicrosecs = 1000*1000*4;
 	if (mCurrFrameStartTime > mLastTimeNRPNWasSent + nrpnPeriodMicrosecs)
 	{
 		mLastTimeNRPNWasSent = mCurrFrameStartTime;
@@ -768,7 +768,7 @@ void SoundplaneMIDIOutput::sendPitchbendRange()
 
 void SoundplaneMIDIOutput::dumpVoices()
 {
-	const UInt64 verbosePeriodMicrosecs = 1000*1000*1;
+	const uint64_t verbosePeriodMicrosecs = 1000*1000*1;
 	if (mCurrFrameStartTime > mLastTimeVerbosePrint + verbosePeriodMicrosecs)
 	{
 		// dump voices

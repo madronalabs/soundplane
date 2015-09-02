@@ -1,0 +1,3 @@
+[submodule "external/madronalib"]
+	path = external/madronalib
+	url = git@bitbucket.org:per_eckerdal/madronalib.git

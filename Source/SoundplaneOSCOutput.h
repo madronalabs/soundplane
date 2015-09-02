@@ -9,6 +9,7 @@
 #include <vector>
 #include <list>
 #include <memory>
+#include <stdint.h>
 
 #include "MLDebug.h"
 #include "MLTime.h"
@@ -89,8 +90,8 @@ private:
     SoundplaneDataMessage mMessagesByZone[kSoundplaneAMaxZones];
     
 	float mDataFreq;
-	UInt64 mCurrFrameStartTime;
-	UInt64 mLastFrameStartTime;
+	uint64_t mCurrFrameStartTime;
+	uint64_t mLastFrameStartTime;
     bool mTimeToSendNewFrame;
 
 	std::vector< std::vector < char > > mUDPBuffers;
@@ -102,7 +103,7 @@ private:
 	osc::int32 mFrameId;
 	int mSerialNumber;
 	
-	UInt64 lastInfrequentTaskTime;
+	uint64_t lastInfrequentTaskTime;
 	bool mKymaMode;
     bool mGotNoteChangesThisFrame;
     bool mGotMatrixThisFrame;

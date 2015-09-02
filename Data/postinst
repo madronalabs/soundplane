@@ -1,0 +1,6 @@
+#!/bin/sh
+#
+# Post-installation script for the Soundplane debian package
+#
+
+udevadm control --reload-rules

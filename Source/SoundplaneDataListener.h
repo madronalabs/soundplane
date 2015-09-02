@@ -9,6 +9,7 @@
 #include "MLSignal.h"
 #include "MLModel.h"
 #include "SoundplaneDriver.h"
+#include "SoundplaneModelA.h"
 
 const int kSoundplaneMaxControllerNumber = 127;
 
@@ -30,7 +31,7 @@ struct SoundplaneDataMessage
     float mMatrix[kSoundplaneWidth*kSoundplaneHeight];
 };
 
-class SoundplaneDataListener 
+class SoundplaneDataListener
 {
 public:
 	SoundplaneDataListener() : mActive(false) {}

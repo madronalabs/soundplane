@@ -151,6 +151,7 @@ public:
 		Vec2 mVisPeak;
 		float mAvgDistance;
 		
+	private:	
 		void makeDefaultTemplate();
 		float makeNormalizeMap();
 		
@@ -241,7 +242,7 @@ public:
 	void setRotate(bool b);
 	void setUseTestSignal(bool b) { mUseTestSignal = b; }
 	void doNormalize(bool b) { mDoNormalize = b; }
-	
+
 	// new
 	std::vector<Vec3> getSpans() { std::lock_guard<std::mutex> lock(mSpansMutex); return mSpans; }
 	std::vector<Vec3> getPings() { std::lock_guard<std::mutex> lock(mPingsMutex); return mPings; }
@@ -261,7 +262,7 @@ private:
 	void dumpTouches();
 	int countActiveTouches();
 	void makeFrequencyMask();
-
+	
 	int mWidth;
 	int mHeight;
 	MLSignal* mpIn;
@@ -318,7 +319,7 @@ private:
 	MLSignal mTemplateMask;	
 	MLSignal mDzSignal;	
 	MLSignal mRetrigTimer;
-	
+
 	// new
 	void findSpans();
 	void collectTemplate();
@@ -360,7 +361,6 @@ private:
 	int mPrevTouchForRotate;
 	bool mRotate;
 	bool mDoNormalize;
-	bool mUseTestSignal;
 	
 
 	std::vector<Touch> mTouches;
