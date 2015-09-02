@@ -6,6 +6,8 @@
 #ifndef __FILTERS2D__
 #define __FILTERS2D__
 
+#include <vector>
+
 #include "MLSignal.h"
 #include "MLDebug.h"
 #include "MLDSPUtils.h"
@@ -24,7 +26,6 @@ public:
 	void setDims(int w, int h);
 	
 	MLBiquad mCoeffs;
-	MLSignal mIn;
 	MLSignal mX1;
 	MLSignal mX2;
 	MLSignal mY1;
@@ -35,12 +36,11 @@ public:
 	MLSignal* mpOut;
 	
 	void setInputSignal(const MLSignal* pIn)
-		{ mpIn = pIn; }
+	{ mpIn = pIn; }
 	void setOutputSignal(MLSignal* pOut)
-		{ mpOut = pOut; }
+	{ mpOut = pOut; }
 	void clear() 
 	{
-		mIn.clear(); 
 		mX1.clear(); 
 		mX2.clear(); 
 		mY1.clear(); 
@@ -49,18 +49,20 @@ public:
 		mAccum.clear(); 
 	}
 	void setSampleRate(float sr) 
-		{ mCoeffs.setSampleRate(sr); }
+	{ mCoeffs.setSampleRate(sr); }
 	void setNotch(float f, float q)
-		{ mCoeffs.setNotch(f, q); }
+	{ mCoeffs.setNotch(f, q); }
 	void setLopass(float f, float q)
-		{ mCoeffs.setLopass(f, q); }
+	{ mCoeffs.setLopass(f, q); }
 	void setHipass(float f, float q)
-		{ mCoeffs.setHipass(f, q); }
+	{ mCoeffs.setHipass(f, q); }
 	void setOnePole(float f)
-		{ mCoeffs.setOnePole(f); }
+	{ mCoeffs.setOnePole(f); }
 	void setDifferentiate(void)
-		{ mCoeffs.setDifferentiate(); }
-
+	{ mCoeffs.setDifferentiate(); }
+	void setCoefficients(float a0, float a1, float a2, float b1, float b2)
+	{ mCoeffs.setCoefficients(a0, a1, a2, b1, b2); }
+	
 	void process(int frames);
 	void dumpCoeffs();
 };
@@ -75,7 +77,6 @@ public:
 	
 	MLBiquad mCoeffs;
 	MLSignal mCoeffsMatrix;
-	MLSignal mIn;
 	MLSignal mX1;
 	MLSignal mX2;
 	MLSignal mY1;
@@ -96,7 +97,6 @@ public:
 		{ mpOut = pOut; }
 	void clear() 
 	{
-		mIn.clear(); 
 		mX1.clear(); 
 		mX2.clear(); 
 		mY1.clear(); 
@@ -172,5 +172,34 @@ public:
 	void setCoeffs(const MLSignal& fa);
 	void process(int frames);
 };
+
+
+class BoxFilter2D
+{
+public:
+	static const int kMaxN;
+	
+	BoxFilter2D(int w = 0, int h = 0);	
+	~BoxFilter2D();
+	
+	void setDims(int w, int h);
+	void setInputSignal(const MLSignal* pIn)
+	{ mpIn = pIn; }
+	void setOutputSignal(MLSignal* pOut)
+	{ mpOut = pOut; }
+	void clear() ;
+	void setSampleRate(float sr) {  }
+	void setN(int n);
+	
+	std::vector<MLSignal> mDelay; 
+	MLSignal mAccum;
+	const MLSignal* mpIn;
+	MLSignal* mpOut;
+	void process(int frames);
+	int mN;
+	int mDelayIdx;
+	float mScale;
+};
+
 
 #endif // __FILTERS2D__

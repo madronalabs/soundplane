@@ -225,6 +225,7 @@ private:
 
 	Biquad2D mNotchFilter;
 	Biquad2D mLopassFilter;
+	BoxFilter2D mBoxFilter;
 
     // store current key for each touch to implement hysteresis.
 	int mCurrentKeyX[kSoundplaneMaxTouches];

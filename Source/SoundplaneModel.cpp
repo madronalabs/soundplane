@@ -74,6 +74,7 @@ SoundplaneModel::SoundplaneModel() :
 	//
 	mNotchFilter(kSoundplaneWidth, kSoundplaneHeight),
 	mLopassFilter(kSoundplaneWidth, kSoundplaneHeight),
+	mBoxFilter(kSoundplaneWidth, kSoundplaneHeight),
 	//
 	mHasCalibration(false),
 	//
@@ -98,6 +99,10 @@ SoundplaneModel::SoundplaneModel() :
 	// setup geometry
 	mSurfaceWidthInv = 1.f / (float)mSurface.getWidth();
 	mSurfaceHeightInv = 1.f / (float)mSurface.getHeight();
+	
+	// setup box filter.
+	mBoxFilter.setSampleRate(kSoundplaneSampleRate);
+	mBoxFilter.setN(7);
 
 	// setup fixed notch
 	mNotchFilter.setSampleRate(kSoundplaneSampleRate);
@@ -106,7 +111,8 @@ SoundplaneModel::SoundplaneModel() :
 	// setup fixed lopass.
 	mLopassFilter.setSampleRate(kSoundplaneSampleRate);
 	mLopassFilter.setLopass(50, 0.707);
-
+	mLopassFilter.setCoefficients(1, 0, 0, 0., 0.);
+	
 	for(int i=0; i<kSoundplaneMaxTouches; ++i)
 	{
 		mCurrentKeyX[i] = -1;
@@ -674,6 +680,9 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		}
 
 		// filter data in time
+		mBoxFilter.setInputSignal(&mSurface);
+		mBoxFilter.setOutputSignal(&mSurface);
+		mBoxFilter.process(1);		
 		mNotchFilter.setInputSignal(&mSurface);
 		mNotchFilter.setOutputSignal(&mSurface);
 		mNotchFilter.process(1);
