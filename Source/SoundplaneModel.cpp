@@ -111,7 +111,6 @@ SoundplaneModel::SoundplaneModel() :
 	// setup fixed lopass.
 	mLopassFilter.setSampleRate(kSoundplaneSampleRate);
 	mLopassFilter.setLopass(50, 0.707);
-	mLopassFilter.setCoefficients(1, 0, 0, 0., 0.);
 	
 	for(int i=0; i<kSoundplaneMaxTouches; ++i)
 	{
@@ -641,6 +640,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 	// store surface for raw output
 	mRawSignal.copy(mSurface);
 
+	
 	if (mCalibrating)
 	{
 		// copy surface to a frame of 3D calibration buffer
@@ -678,11 +678,11 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 				}
 			}
 		}
-
+		
 		// filter data in time
 		mBoxFilter.setInputSignal(&mSurface);
 		mBoxFilter.setOutputSignal(&mSurface);
-		mBoxFilter.process(1);		
+		mBoxFilter.process(1);	
 		mNotchFilter.setInputSignal(&mSurface);
 		mNotchFilter.setOutputSignal(&mSurface);
 		mNotchFilter.process(1);
