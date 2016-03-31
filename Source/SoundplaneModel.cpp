@@ -318,8 +318,17 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "kyma_poll")
 			{
 				bool b = v;
-				mMIDIOutput.setKymaPoll(bool(v));
+				
+				// MLTEST
+				MLConsole() << "SoundplaneModel: kyma_poll " << b << "\n";
+				
+				mMIDIOutput.setKymaPoll(b);
 				listenToOSC(b ? kDefaultUDPReceivePort : 0);
+				
+				if(b)
+				{
+					MLConsole() << "     listening for OSC on port " << kDefaultUDPReceivePort << ".\n";
+				}
 			}
 		}
 		break;
@@ -465,6 +474,11 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 //
 void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndpointName& remoteEndpoint)
 {
+	// MLTEST - kyma debugging
+	char endpointStr[256];
+	remoteEndpoint.AddressAndPortAsString(endpointStr);
+	MLConsole() << "OSC: " << m.AddressPattern() << " from " << endpointStr << "\n";
+	
 	osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
 	osc::int32 a1;
 	try
@@ -472,6 +486,10 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 		if( std::strcmp( m.AddressPattern(), "/osc/response_from" ) == 0 )
 		{
 			args >> a1 >> osc::EndMessage;
+			
+			// MLTEST
+			MLConsole() << " arg = " << a1 << "\n";
+
 			// set Kyma mode
 			if (mOSCOutput.getKymaMode())
 			{
@@ -481,6 +499,11 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 		else if (std::strcmp( m.AddressPattern(), "/osc/notify/midi/Soundplane" ) == 0 )
 		{
 			args >> a1 >> osc::EndMessage;
+
+			// MLTEST
+			MLConsole() << " arg = " << a1 << "\n";
+			
+			
 			// set voice count to a1
 			int newTouches = clamp((int)a1, 0, kSoundplaneMaxTouches);
 			if(mKymaIsConnected)
@@ -516,7 +539,8 @@ void SoundplaneModel::didResolveAddress(NetService *pNetService)
 	const char* hostNameStr = hostName.c_str();
 	int port = pNetService->getPort();
 
-	debug() << "SoundplaneModel::didResolveAddress: RESOLVED net service to " << hostName << ", port " << port << "\n";
+	// MLTEST
+	MLConsole() << "SoundplaneModel::didResolveAddress: RESOLVED net service to " << hostName << ", service " << serviceName << ", port " << port << "\n";
 	mOSCOutput.connect(hostNameStr, port);
 
 	// if we are talking to a kyma, set kyma mode
@@ -560,7 +584,6 @@ void SoundplaneModel::initialize()
 {
 	mMIDIOutput.initialize();
 	addListener(&mMIDIOutput);
-
 	addListener(&mOSCOutput);
 
 	mpDriver = SoundplaneDriver::create(this);
