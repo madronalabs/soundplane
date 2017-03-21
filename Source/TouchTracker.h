@@ -371,6 +371,7 @@ private:
 	int mCount;
 	
 	bool mNeedsClear;
+	bool mUseTestSignal;
 
 	Calibrator mCalibrator;
 

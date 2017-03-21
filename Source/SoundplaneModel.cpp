@@ -698,7 +698,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		// get calibrated and cooked signals for viewing
 		mCalibratedSignal = mTracker.getCalibratedSignal();
 		mCookedSignal = mTracker.getCookedSignal();
-		mTestSignal = mTracker.getTestSignal();
+		mTestSignal2 = mTracker.getTestSignal();
 
  		sendTouchDataToZones();
 
