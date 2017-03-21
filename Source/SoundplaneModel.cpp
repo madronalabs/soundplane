@@ -1,4 +1,4 @@
-
+	
 // Part of the Soundplane client software by Madrona Labs.
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
@@ -89,6 +89,7 @@ SoundplaneModel::SoundplaneModel() :
 	mNeedsCalibrate(true),
 	mLastInfrequentTaskTime(0),
 	mCarriersMask(0xFFFFFFFF),
+	mDoOverrideCarriers(false),
 	//
 	//mOSCListenerThread(0),
 	//mpUDPReceiveSocket(nullptr),
@@ -330,6 +331,27 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 					MLConsole() << "     listening for OSC on port " << kDefaultUDPReceivePort << ".\n";
 				}
 			}
+			else if (p == "override_carriers")
+			{
+				bool b = v;				
+				if(b)
+				{
+					setCarriers(mOverrideCarriers);
+				}
+				else
+				{
+					setCarriers(mCarriers);
+				}
+				mDoOverrideCarriers = b;
+			}
+			else if (p == "override_carrier_set")
+			{
+				makeStandardCarrierSet(mOverrideCarriers, v);
+				if(mDoOverrideCarriers)
+				{
+					setCarriers(mOverrideCarriers);
+				}
+			}			
 		}
 		break;
 		case MLProperty::kStringProperty:
@@ -1246,6 +1268,9 @@ void SoundplaneModel::setCarriers(const SoundplaneDriver::Carriers& c)
 {
 	enableOutput(false);
 	mpDriver->setCarriers(c);
+	
+	// MLTEST
+	dumpCarriers(c);
 }
 
 int SoundplaneModel::enableCarriers(unsigned long mask)
@@ -1259,13 +1284,13 @@ int SoundplaneModel::enableCarriers(unsigned long mask)
 	return 0;
 }
 
-void SoundplaneModel::dumpCarriers()
+void SoundplaneModel::dumpCarriers(const SoundplaneDriver::Carriers& carriers)
 {
 	debug() << "\n------------------\n";
 	debug() << "carriers: \n";
 	for(int i=0; i<kSoundplaneSensorWidth; ++i)
 	{
-		int c = mCarriers[i];
+		int c = carriers[i];
 		debug() << i << ": " << c << " ["<< SoundplaneDriver::carrierToFrequency(c) << "Hz] \n";
 	}
 }
@@ -1517,7 +1542,7 @@ void SoundplaneModel::endSelectCarriers()
 	}
 	setProperty("carriers", cSig);
 	MLConsole() << "carrier select done.\n";
-
+	
 	mSelectingCarriers = false;
 
 	enableOutput(true);

@@ -368,6 +368,12 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 		sprintf(numBuf, "%d", i);	
 		mpCarrierLabels[i] = page1->addLabel(numBuf, toggleRectTiny.withCenter(i*0.3 + 1., 4.75));
 	}
+	
+	mpCarriersOverrideToggle = page1->addToggleButton("override", toggleRect.withCenter(12, 5), "override_carriers", c2);
+	mpCarriersOverrideDial = page1->addDial("with set", dialRectSmall.withCenter(13, 5), "override_carrier_set", c2);
+	mpCarriersOverrideDial->setRange(0., 7., 1);	
+	mpCarriersOverrideDial->setDefault(0);
+
 //	page1->addToggleButton("all", toggleRectTiny.withCenter(0*0.3 + 1., 6.), "all_toggle", c2);
 
 	// controls
@@ -455,7 +461,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD = page2->addDial("template", dialRect.withCenter(3.5, dialY), "t_thresh", c2);
 	pD->setRange(0., 1., 0.001);	
 	pD->setDefault(0.2);
-    
+	
 	pB = page2->addToggleButton("kyma", toggleRect.withCenter(12, dialY), "kyma_poll", c2);
 	pB = page2->addToggleButton("test", toggleRect.withCenter(13, dialY), "test_signal", c2);
 
@@ -600,7 +606,10 @@ void SoundplaneView::makeCarrierTogglesVisible(int v)
 			pL->setWidgetVisible(v);
 		}
 	}
-}			
+	mpCarriersOverrideToggle->setWidgetVisible(v);
+	mpCarriersOverrideDial->setWidgetVisible(v);
+}
+
 
 // TODO make this code part of menus!!!
 

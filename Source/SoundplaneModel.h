@@ -82,7 +82,7 @@ public:
 	void setCarriers(const SoundplaneDriver::Carriers& c);
 	int enableCarriers(unsigned long mask);
 	int getNumCarriers() { return kSoundplaneSensorWidth; }
-	void dumpCarriers();
+	void dumpCarriers(const SoundplaneDriver::Carriers& carriers);
 
 	void enableOutput(bool b);
 
@@ -246,6 +246,11 @@ private:
 	bool mNeedsCarriersSet;
 	bool mNeedsCalibrate;
 	unsigned long mCarriersMask;
+	
+	bool mDoOverrideCarriers;
+	SoundplaneDriver::Carriers mOverrideCarriers;
+	
+	
 	int mTest;
 
 	std::vector<float> mMaxNoiseByCarrierSet;
