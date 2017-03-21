@@ -31,7 +31,7 @@ void SoundplaneZoneView::renderGrid()
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
     
-    MLGL::orthoView2(viewW, viewH);
+    MLGL::orthoView(viewW, viewH);
 
 	int gridWidth = 30; // Soundplane A TODO get from tracker
 	int gridHeight = 5;
@@ -113,7 +113,7 @@ void SoundplaneZoneView::renderZones()
     // int margin = lineWidth*2;
     
     // put origin in lower left. 
-    MLGL::orthoView2(viewW, viewH);
+    MLGL::orthoView(viewW, viewH);
     MLRange xRange(0, gridWidth, 1, viewW);
 	MLRange yRange(0, gridHeight, 1, viewH);
 

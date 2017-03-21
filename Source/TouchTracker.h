@@ -17,22 +17,6 @@
 #include <thread>
 #include <mutex>
 
-#define	MAX_PEAKS	64			// number of potential centroids gathered before sorting.
-#define Z_BIAS	1.0f						// multiplier for z component in distance calc
-
-typedef unsigned char e_pixdata;
-#define	PIX_RIGHT 	0x01
-#define	PIX_UP		0x02
-#define	PIX_LEFT	0x04
-#define	PIX_DOWN	0x08
-#define	PIX_ALL		0x0F
-#define PIX_DONE	0x10
-#define PIX_OFF		0x00
-#define PIX_ON		0xFF
-
-#define NO_MATCH	-1
-
-const int kHysteresisSamples = 25;
 const int kTemplateRadius = 3;
 const int kTemplateSize = kTemplateRadius*2 + 1;
 const int kTouchHistorySize = 128;
@@ -273,8 +257,6 @@ private:
 	
 	bool mQuantizeToKey;
 	
-	e_pixdata *	mpInputMap;
-
 	int mNumPeaks;
 	int mNumNewCentroids;
 	int mNumCurrentCentroids;

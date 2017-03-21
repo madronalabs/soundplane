@@ -30,7 +30,6 @@ TouchTracker::TouchTracker(int w, int h) :
 	mWidth(w),
 	mHeight(h),
 	mpIn(0),
-	mpInputMap(0),
 	mNumNewCentroids(0),
 	mNumCurrentCentroids(0),
 	mNumPreviousCentroids(0),
@@ -59,14 +58,6 @@ TouchTracker::TouchTracker(int w, int h) :
 	mTouches.resize(kTrackerMaxTouches);	
 	mTouchesToSort.resize(kTrackerMaxTouches);	
 
-	// TODO checks
-	if(mpInputMap) 
-	{
-		delete[] mpInputMap;
-		mpInputMap = 0;
-	}
-	mpInputMap = new e_pixdata[w*h];
-	
 	mTestSignal.setDims(w, h);
 	mFitTestSignal.setDims(w, h);
 	mTestSignal2.setDims(w, h);
@@ -130,7 +121,6 @@ TouchTracker::TouchTracker(int w, int h) :
 		
 TouchTracker::~TouchTracker()
 {
-	if(mpInputMap) delete[] mpInputMap;
 }
 
 void TouchTracker::setInputSignal(MLSignal* pIn)
@@ -584,7 +574,8 @@ void TouchTracker::process(int)
 	else
 	{
 		// TODO separate calibrator from Tracker and own in Model so test input can bypass calibration more cleanly
-		if(mDoNormalize)
+		bool doNormalize = false;
+		if(doNormalize)
 		{
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
@@ -592,52 +583,59 @@ void TouchTracker::process(int)
 		// TODO filter data in time just a bit, box filter
 		
 		// TODO elastic hysteresis filter
-		
-		// forward FFT -> FFT1
-		mFFT1 = mFilteredInput;	
-		mFFT1i.clear();
-		FFTEachRow(mFFT1, mFFT1i);
-		
-		// make touch kernel duplicated on each row
-		mTouchKernel.clear();
-		mTouchKerneli.clear();
-		for(int j=0; j<h; ++j)
+		bool doFFT = false;
+		if(doFFT)
 		{
-			// put template span in kernel row centered at 0 = DC
-			int kw = mTemplateSpan.getWidth();
-			int xOffset = kw/2;
-			for(int i = 0; i < kw; ++i)
+			// forward FFT -> FFT1
+			mFFT1 = mFilteredInput;	
+			mFFT1i.clear();
+			FFTEachRow(mFFT1, mFFT1i);
+			
+			// make touch kernel duplicated on each row
+			mTouchKernel.clear();
+			mTouchKerneli.clear();
+			for(int j=0; j<h; ++j)
 			{
-				mTouchKernel((i - xOffset)%w, j) = mTemplateSpan[i];
-			}		
+				// put template span in kernel row centered at 0 = DC
+				int kw = mTemplateSpan.getWidth();
+				int xOffset = kw/2;
+				for(int i = 0; i < kw; ++i)
+				{
+					mTouchKernel((i - xOffset)%w, j) = mTemplateSpan[i];
+				}		
+			}
+			float kernelRowSum = mTouchKernel.getSum() / h;
+			mTouchKernel.scale(2.f * w / kernelRowSum);
+			// OK
+			
+			// convert touch kernel to freq. domain
+			FFTEachRow(mTouchKernel, mTouchKerneli);
+			// zero complex components
+			mTouchKerneli.clear();
+			// TODO store
+			
+			// deconvolve, dividing by touch kernel in the freq. domain
+			// question: no imaginary component in freq domain at this point?
+			
+			// remove high freqs. and DC in the freq. domain
+			mFFT1.multiply(mTouchFrequencyMask);
+			mFFT1i.multiply(mTouchFrequencyMask);
+
+			// sharpen
+			// temp? baaaad syntax
+			// could be MLSignal::complexDivide();
+			// divide in frequency domain by touch kernel and put results in (mFFT1, mFFT1i)
+	//		FFTEachRowDivide(mFFT1, mFFT1i, mTouchKernel, mTouchKerneli);
+			
+			// back to spatial domain
+			FFTEachRowInverse(mFFT1, mFFT1i);
+
+			mFFT2 = mFFT1;
 		}
-		float kernelRowSum = mTouchKernel.getSum() / h;
-		mTouchKernel.scale(2.f * w / kernelRowSum);
-		// OK
-		
-		// convert touch kernel to freq. domain
-		FFTEachRow(mTouchKernel, mTouchKerneli);
-		// zero complex components
-		mTouchKerneli.clear();
-		// TODO store
-		
-		// deconvolve, dividing by touch kernel in the freq. domain
-		// question: no imaginary component in freq domain at this point?
-		
-		// remove high freqs. and DC in the freq. domain
-		mFFT1.multiply(mTouchFrequencyMask);
-		mFFT1i.multiply(mTouchFrequencyMask);
-
-		// sharpen
-		// temp? baaaad syntax
-		// could be MLSignal::complexDivide();
-		// divide in frequency domain by touch kernel and put results in (mFFT1, mFFT1i)
-//		FFTEachRowDivide(mFFT1, mFFT1i, mTouchKernel, mTouchKerneli);
-		
-		// back to spatial domain
-		FFTEachRowInverse(mFFT1, mFFT1i);
-
-		mFFT2 = mFFT1;
+		else
+		{
+			mFFT2 = mFilteredInput;
+		}
 		
 		// MLTEST
 		// TODO rows only
@@ -763,7 +761,7 @@ void TouchTracker::findSpans()
 				if(spanExceedsThreshold)
 				{
 					pushSpan = true;
- 		}
+				}
 				spanActive = false;
 				spanExceedsThreshold = false;
 			}
@@ -909,7 +907,7 @@ void TouchTracker::fitCurves()
 				{
 					//float inputZ = in.getInterpolatedLinear(pingX, row);
 					mPings.push_back(Vec3(pingX, row, pingZ));
-		}
+				}
 			}
 			else
 			{

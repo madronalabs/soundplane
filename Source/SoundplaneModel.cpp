@@ -1235,10 +1235,8 @@ void SoundplaneModel::testCallback()
 		}
 	}
 	
-
 	mTracker.doNormalize(false);
 	filterAndSendData();
-
 }
 
 void SoundplaneModel::filterAndSendData()
