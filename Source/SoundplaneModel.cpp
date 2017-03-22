@@ -137,7 +137,9 @@ SoundplaneModel::SoundplaneModel() :
 	mViewModeToSignalMap["regions"] = &mRegionSignal;
 	mViewModeToSignalMap["cooked"] = &mCookedSignal;
 	mViewModeToSignalMap["xy"] = &mCalibratedSignal;
-
+	
+	mViewModeToSignalMap["spans"] = &mCalibratedSignal;
+	
 	mViewModeToSignalMap["fit test"] = &mFitTestSignal;
 	
 	mViewModeToSignalMap["test2"] = &mTestSignal2;
@@ -627,6 +629,8 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 	}
 }
 
+#pragma mark 
+
 void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data, int size)
 {
 	uint64_t now = getMicroseconds();
@@ -665,19 +669,18 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 	else if(mOutputEnabled)
 	{
 		// scale incoming data
-		float in, cmean, cout;
-		float epsilon = 0.000001;
+		float in, cmean;
+		const float kInputScale = 8.0f;
 		if (mHasCalibration)
 		{
 			for(int j=0; j<mSurface.getHeight(); ++j)
 			{
 				for(int i=0; i<mSurface.getWidth(); ++i)
 				{
-					// scale to 1/z curve
+					// subtract calibrated zero
 					in = mSurface(i, j);
 					cmean = mCalibrateMean(i, j);
-					cout = (1.f - ((cmean + epsilon) / (in + epsilon)));
-					mSurface(i, j) = cout;
+					mSurface(i, j) = (in - cmean)*kInputScale;
 				}
 			}
 		}

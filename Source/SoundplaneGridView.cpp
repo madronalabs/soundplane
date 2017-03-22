@@ -339,6 +339,76 @@ void SoundplaneGridView::renderRegions()
 }
 
 
+void SoundplaneGridView::renderSpans()
+{
+	setupOrthoView();
+	
+	// draw stuff in immediate mode. 
+	// TODO don't use fixed function pipeline.
+	//
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 darkRed(0.5f, 0.3f, 0.3f, 1.f);
+	Vec4 white(1.f, 1.f, 1.f, 1.f);
+	float ph = 0.4;
+	const float kGraphAmp = 4.0f;
+	float displayScale = mpModel->getFloatProperty("display_scale");
+	
+	// draw spans
+	std::vector<Vec3> spans = mpModel->getSpans();
+	if(spans.size() > 0)
+		for(auto it = spans.begin(); it != spans.end(); it++)
+		{
+			Vec3 p = *it;
+			
+			// span: (xStart, xEnd, y)
+			float x1 = mSensorRangeX.convert(p.x());
+			float x2 = mSensorRangeX.convert(p.y());
+			float y1 = mSensorRangeY.convert(p.z() - ph);	
+			float y2 = mSensorRangeY.convert(p.z() + ph);	
+			
+			glColor4fv(&darkBlue[0]);
+			
+			MLRect tr(x1, y1, x2 - x1, y2 - y1);
+			MLGL::strokeRect(tr, 1.0*mViewScale);
+
+		}	
+	
+	// draw calibrated data
+
+	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
+	if(!viewSignal) return;
+	
+	// draw line graph
+	
+	glLineWidth(2.0*mViewScale);
+
+	
+	for(int j=0; j<mSensorHeight; ++j)
+	{
+		float y = mSensorRangeY.convert(j);
+		float y1 = mSensorRangeY.convert(j - ph);	
+		float y2 = mSensorRangeY.convert(j + ph);	
+		
+		glBegin(GL_LINE_STRIP);
+		
+		for(int i=0; i<mSensorWidth; ++i)
+		{
+			float x = mSensorRangeX.convert(i);
+			
+			float amp = clamp((*viewSignal)(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
+			float yAmp = lerp(y1, y2, amp);
+			
+
+			glColor4fv(&darkRed[0]);
+
+			glVertex2f(x, yAmp);
+		}
+		glEnd();
+	}
+}
+
+
+
 void SoundplaneGridView::renderPings()
 {
 	setupOrthoView();
@@ -348,28 +418,28 @@ void SoundplaneGridView::renderPings()
 	//
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
-
+	
 	float displayScale = mpModel->getFloatProperty("display_scale");
-
+	
 	// draw spans
 	std::vector<Vec3> spans = mpModel->getSpans();
 	if(spans.size() > 0)
-	for(auto it = spans.begin(); it != spans.end(); it++)
-	{
-		Vec3 p = *it;
-		
-		float ph = 0.4;
-		float x1 = mSensorRangeX.convert(p.x());
-		float x2 = mSensorRangeX.convert(p.y());
-		float y1 = mSensorRangeY.convert(p.z() - ph);	
-		float y2 = mSensorRangeY.convert(p.z() + ph);	
-
-		glColor4fv(&darkBlue[0]);
-		
-		MLRect tr(x1, y1, x2 - x1, y2 - y1);
-		MLGL::strokeRect(tr, 1.0*mViewScale);
-	}	
-
+		for(auto it = spans.begin(); it != spans.end(); it++)
+		{
+			Vec3 p = *it;
+			
+			float ph = 0.4;
+			float x1 = mSensorRangeX.convert(p.x());
+			float x2 = mSensorRangeX.convert(p.y());
+			float y1 = mSensorRangeY.convert(p.z() - ph);	
+			float y2 = mSensorRangeY.convert(p.z() + ph);	
+			
+			glColor4fv(&darkBlue[0]);
+			
+			MLRect tr(x1, y1, x2 - x1, y2 - y1);
+			MLGL::strokeRect(tr, 1.0*mViewScale);
+		}	
+	
 	// draw pings
 	float dotSize = fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
 	std::vector<Vec3> pings = mpModel->getPings();
@@ -380,7 +450,7 @@ void SoundplaneGridView::renderPings()
 		float x = mSensorRangeX.convert(p.x());
 		float y = mSensorRangeY.convert(p.y());
 		float z = p.z();
-
+		
 		Vec4 dotColor = darkBlue;
 		dotColor[3] = z*10.f;
 		glColor4fv(&dotColor[0]);
@@ -442,9 +512,6 @@ void SoundplaneGridView::renderFittingTest()
 			MLGL::drawDot(Vec2(x, y + z), dotSize*0.5f);
 		}
 	}
-
-
-	
 }
 
 
@@ -627,11 +694,6 @@ void SoundplaneGridView::renderZGrid()
 }
 
 
-void SoundplaneGridView::renderBarChart()
-{
-
-}
-
 void SoundplaneGridView::renderBarChartRaw()
 {
 	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
@@ -726,6 +788,10 @@ void SoundplaneGridView::renderOpenGL()
 		renderRegions();
 		drawSurfaceOverlay();
 	}
+	else if (viewMode == "spans")
+	{
+		renderSpans();
+	}
 	else if (viewMode == "pings")
 	{
 		renderPings();
@@ -737,7 +803,7 @@ void SoundplaneGridView::renderOpenGL()
 	}
 	else if (viewMode == "norm map")
 	{
-		renderBarChart();
+		renderBarChartRaw();
 		drawSurfaceOverlay();
 	}
 	else if ((viewMode == "test1") || (viewMode == "test2"))

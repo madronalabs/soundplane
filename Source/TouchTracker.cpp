@@ -555,7 +555,11 @@ void TouchTracker::process(int)
 	// filter out any negative values. negative values can shows up from capacitive coupling near edges,
 	// from motion or bending of the whole instrument, 
 	// from the elastic layer deforming and pushing up on the sensors near a touch. 
-	mFilteredInput.sigMax(0.);		
+	bool doClamp = true;
+	if(doClamp)
+	{
+		mFilteredInput.sigMax(0.f);
+	}
 	
 	if (mCalibrator.isCalibrating())
 	{		
@@ -579,11 +583,8 @@ void TouchTracker::process(int)
 		{
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
-		
-		// TODO filter data in time just a bit, box filter
-		
-		// TODO elastic hysteresis filter
-		bool doFFT = false;
+				
+		bool doFFT = true;
 		if(doFFT)
 		{
 			// forward FFT -> FFT1
@@ -591,7 +592,7 @@ void TouchTracker::process(int)
 			mFFT1i.clear();
 			FFTEachRow(mFFT1, mFFT1i);
 			
-			// make touch kernel duplicated on each row
+			// make touch kernel duplicated on each- row
 			mTouchKernel.clear();
 			mTouchKerneli.clear();
 			for(int j=0; j<h; ++j)
@@ -709,7 +710,7 @@ void TouchTracker::process(int)
 void TouchTracker::findSpans()
 {
 	// constant span start / end threshold, chosen so that span lengths will stay as constant as possible. 
-	const float t = kSpanThreshold;
+	const float t = 0.01f;// MLTEST kSpanThreshold;
 
 	// some point on the span must be over this larger threshold to be recognized.
 	const float zThresh = mOnThreshold;
@@ -1249,7 +1250,9 @@ float TouchTracker::Calibrator::makeNormalizeMap()
     
 	float mean = sum/(float)samples;
 	mNormalizeMap.scale(mean);	
-
+	
+	// TODO analyze normal map! edges look BAD
+	// MLTEST
 	// constrain output values
 	mNormalizeMap.sigMin(3.f);
 	mNormalizeMap.sigMax(0.125f);	
@@ -1397,6 +1400,18 @@ int TouchTracker::Calibrator::addSample(const MLSignal& m)
 			mWaitSamplesAfterNormalize = 0;
 			mVisSignal.clear();
 			mStartupSum = 0;
+			
+			// MLTEST bail after normalize
+			mHasCalibration = true;
+			mActive = false;	
+			r = 1;	
+			
+			MLConsole() << "\n****************************************************************\n\n";
+			MLConsole() << "TEST: Normalization is now complete and will be auto-saved in the file \n";
+			MLConsole() << "SoundplaneAppState.txt. \n";
+			MLConsole() << "\n****************************************************************\n\n";
+			
+			
 		}
 	}
 	else

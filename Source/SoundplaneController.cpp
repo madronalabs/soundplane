@@ -198,6 +198,7 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("raw data");
 	viewMenu->addItem("calibrated");
 	viewMenu->addItem("regions");
+	viewMenu->addItem("spans");
 	viewMenu->addItem("pings");
 	viewMenu->addItem("fit test");
 	viewMenu->addItem("cooked");

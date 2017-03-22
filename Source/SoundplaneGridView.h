@@ -41,10 +41,10 @@ private:
 	void drawSurfaceOverlay();
 	void renderXYGrid();
 	void renderRegions();
+	void renderSpans();
 	void renderPings();
 	void renderFittingTest();
 	void renderZGrid();
-	void renderBarChart();
 	void renderBarChartRaw();
  	
 	Vec2 worldToScreen(const Vec3& world); 
