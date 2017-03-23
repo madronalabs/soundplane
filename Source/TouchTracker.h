@@ -304,6 +304,7 @@ private:
 
 	// new
 	void findSpans();
+	void findSpans2();
 	void collectTemplate();
 	void fitCurves();
 	void filterAndOutputTouches();

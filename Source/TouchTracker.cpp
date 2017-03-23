@@ -587,7 +587,7 @@ void TouchTracker::process(int)
 		bool doFFT = true;
 		if(doFFT)
 		{
-			// forward FFT -> FFT1
+			// forward FFT
 			mFFT1 = mFilteredInput;	
 			mFFT1i.clear();
 			FFTEachRow(mFFT1, mFFT1i);
@@ -611,26 +611,19 @@ void TouchTracker::process(int)
 			
 			// convert touch kernel to freq. domain
 			FFTEachRow(mTouchKernel, mTouchKerneli);
+			
 			// zero complex components
 			mTouchKerneli.clear();
 			// TODO store
-			
-			// deconvolve, dividing by touch kernel in the freq. domain
-			// question: no imaginary component in freq domain at this point?
 			
 			// remove high freqs. and DC in the freq. domain
 			mFFT1.multiply(mTouchFrequencyMask);
 			mFFT1i.multiply(mTouchFrequencyMask);
 
-			// sharpen
-			// temp? baaaad syntax
-			// could be MLSignal::complexDivide();
-			// divide in frequency domain by touch kernel and put results in (mFFT1, mFFT1i)
-	//		FFTEachRowDivide(mFFT1, mFFT1i, mTouchKernel, mTouchKerneli);
-			
 			// back to spatial domain
 			FFTEachRowInverse(mFFT1, mFFT1i);
 
+			// use real part
 			mFFT2 = mFFT1;
 		}
 		else
@@ -676,8 +669,8 @@ void TouchTracker::process(int)
 		
 		if(mMaxTouchesPerFrame > 0)
 		{
-			findSpans();
-			fitCurves();	
+			findSpans2();
+			//fitCurves();	
 			//collectPings();
 			//matchTouchesToPrevious();
 
@@ -689,41 +682,39 @@ void TouchTracker::process(int)
 #if DEBUG	
 	// TEMP	
 	if (mCount++ > 1000) 
-			{
+	{
 		mCount = 0;
 		//dumpTouches();
-		
-		/*
+				
 		debug() << "\n SPANS: \n";
 		for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
-				{
+		{
 			Vec3 s = *it;
 			debug() << s.y() - s.x() << " ";
-				}
-		 */
-			}	
+		}
+	}	
 #endif	
 }
-			
+
 // find spans where pressure on a given row exceeds kSpanThreshold at the start and end, 
 // end exceeds mOnThreshold at some point during the span.
 void TouchTracker::findSpans()
 {
 	// constant span start / end threshold, chosen so that span lengths will stay as constant as possible. 
 	const float t = 0.01f;// MLTEST kSpanThreshold;
-
+	
 	// some point on the span must be over this larger threshold to be recognized.
 	const float zThresh = mOnThreshold;
-			
+	
 	const float minSpanLength = 3.f;
-			
+	
 	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
 	int h = in.getHeight();
-			
+	
 	std::lock_guard<std::mutex> lock(mSpansMutex);
 	mSpans.clear();
-
+	
 	for(int j=0; j<h; ++j)
 	{
 		bool spanActive = false;
@@ -758,7 +749,7 @@ void TouchTracker::findSpans()
 				zb = t - z2;
 				a = za/(za + zb);
 				spanEnd = i - 1. + a;
-
+				
 				if(spanExceedsThreshold)
 				{
 					pushSpan = true;
@@ -770,7 +761,7 @@ void TouchTracker::findSpans()
 			{
 				if(z2 > zThresh) spanExceedsThreshold = true;
 			}
-		
+			
 			// get row end spans
 			if(i == w - 1)
 			{
@@ -781,12 +772,146 @@ void TouchTracker::findSpans()
 					pushSpan = true;
 				}				
 			}
-		
+			
 			if(pushSpan)
 			{
 				spanStart = clamp(spanStart, 1.f, w - 2.f);
 				spanEnd = clamp(spanEnd, 1.f, w - 2.f);
 				if(spanEnd - spanStart > minSpanLength)
+				{
+					mSpans.push_back(Vec3(spanStart, spanEnd, j)); 				
+				}
+			}
+		}
+	}
+}
+
+// find spans where pressure on a given row exceeds kSpanThreshold at the start and end, 
+// end exceeds mOnThreshold at some point during the span.
+void TouchTracker::findSpans2()
+{
+	const float t = 0.0f;// MLTEST kSpanThreshold; ?
+	
+	// some point on the span must be over this larger threshold to be recognized.
+	const float zThresh = mOnThreshold;
+	
+	//const float minSpanLength = 3.f;
+	
+	const MLSignal& in = mFFT2;
+	int w = in.getWidth();
+	int h = in.getHeight();
+	
+	std::lock_guard<std::mutex> lock(mSpansMutex);
+	mSpans.clear();
+	
+	for(int j=0; j<h; ++j)
+	{
+		bool spanActive = false;
+		bool spanExceedsThreshold = false;
+		float spanStart, spanEnd;
+		float z = 0.f;
+		float zm1 = 0.f;
+//		float zm2 = 0.f;
+		float i1, i2;
+		float a, za, zb;
+		float dz = 0.f;
+		float dzm1 = 0.f;
+		float ddz = 0.f;
+		float ddzm1 = 0.f;
+		float ddzm2 = 0.f;
+		bool pushSpan = false;
+		
+		for(int i=0; i < w; ++i)
+		{
+			pushSpan = false;
+			i1 = i - 1.f;
+			i2 = i;
+			
+//			zm2 = zm1; // unused
+			zm1 = z;
+			z = in(i, j);
+			dzm1 = dz;
+			dz = z - zm1;
+			ddzm2 = ddzm1;
+			ddzm1 = ddz;
+			ddz = dz - dzm1;
+			
+			// a span is active while ddz < 0	
+			
+			bool linear = true;
+			
+			if((ddz < 0)&&(ddzm1 > 0)) // start span
+			{
+				// quadratic does not look more accurate than linear. 
+				// check all this in then remove quadratic...
+				if(linear)
+				{
+					float m = ddz - ddzm1;	
+					float xa = -ddz/m;
+					spanStart = i - 1.f + xa; //i - 2.f + px;
+				}
+				else
+				{
+					// quadratic - get dddz
+					float d2 = ddz - 2.0f*(ddzm1) + ddzm2;
+					float d1 = 0.5f*(ddz - ddzm2);
+					//float xc1 = (-d1 + sqrtf(d1*d1 - 2.f*d2*ddzm1))/d2; 
+					float xc2 = (-d1 - sqrtf(d1*d1 - 2.f*d2*ddzm1))/d2; 
+					spanStart = i - 2.f + xc2; //i - 2.f + px;		
+				}
+					
+				spanActive = true;
+				if(z > zThresh) spanExceedsThreshold = true;
+			}
+			else if((ddz > 0)&&(ddzm1 < 0)) // end span
+			{
+				// linear
+				if(linear)
+				{
+					float m = ddz - ddzm1;				
+					float xa = -ddz/m;
+					spanEnd = i - 1.f + xa; //i - 2.f + px;
+				}
+				else
+				{
+					// quadratic - get dddz
+					float d2 = ddz - 2.0f*(ddzm1) + ddzm2;
+					float d1 = 0.5f*(ddz - ddzm2);
+					float xc1 = (-d1 + sqrtf(d1*d1 - 2.f*d2*ddzm1))/d2; 
+					//float xc2 = (-d1 - sqrtf(d1*d1 - 2.f*d2*ddzm1))/d2; 
+					spanEnd = i - 2.f + xc1; //i - 2.f + px;
+				}
+				
+				if(spanExceedsThreshold)
+				{
+					pushSpan = true;
+				}
+				spanActive = false;
+				spanExceedsThreshold = false;
+			}
+			else if(spanActive) 
+			{
+				if(z > zThresh) spanExceedsThreshold = true;
+			}
+			
+			// TODO row start and end spans
+			
+			// get row end spans
+			if(i == w - 1)
+			{
+				// end row
+				if(spanActive && spanExceedsThreshold)
+				{
+					spanEnd = w - 1;
+					pushSpan = true;
+				}				
+			}
+			
+			if(pushSpan)
+			{
+				spanStart = clamp(spanStart, 1.f, w - 2.f);
+				spanEnd = clamp(spanEnd, 1.f, w - 2.f);
+		//		if(spanEnd - spanStart > minSpanLength)
 				{
 					mSpans.push_back(Vec3(spanStart, spanEnd, j)); 				
 				}
@@ -825,7 +950,7 @@ void TouchTracker::fitCurves()
 		debug() << "pings: ";
 	
 	for(auto it = mSpans.begin(); it != mSpans.end(); ++it)
-		{
+	{
 		Vec3 s = *it;
 		float a = s.x(); // x1 
 		float b = s.y(); // not really y, rather x2
