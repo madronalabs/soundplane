@@ -41,7 +41,8 @@ private:
 	void drawSurfaceOverlay();
 	void renderXYGrid();
 	void renderRegions();
-	void renderSpans();
+	void renderSpansHoriz();
+	void renderSpansVert();
 	void renderPings();
 	void renderFittingTest();
 	void renderZGrid();

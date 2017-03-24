@@ -226,11 +226,19 @@ public:
 	void setRotate(bool b);
 	void setUseTestSignal(bool b) { mUseTestSignal = b; }
 	void doNormalize(bool b) { mDoNormalize = b; }
-
+	
+	void setSpanCorrect(float v) { mSpanCorrect = v; }
+	
 	// new
-	std::vector<Vec3> getSpans() { std::lock_guard<std::mutex> lock(mSpansMutex); return mSpans; }
-	std::vector<Vec3> getPings() { std::lock_guard<std::mutex> lock(mPingsMutex); return mPings; }
-
+	
+	// returning by value - MLTEST
+	std::vector<Vec3> getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizMutex); return mSpansHoriz; }
+	std::vector<Vec3> getSpansVert() { std::lock_guard<std::mutex> lock(mSpansVertMutex); return mSpansVert; }
+	
+	std::vector<Vec3> getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizMutex); return mPingsHoriz; }
+	
+	std::vector<Vec3> getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertMutex); return mPingsVert; }
+	
 private:	
 
 	Listener* mpListener;
@@ -303,8 +311,11 @@ private:
 	MLSignal mRetrigTimer;
 
 	// new
-	void findSpans();
-	void findSpans2();
+	void findSpansHoriz();
+	void correctSpansHoriz();
+	void findSpansVert();
+	void correctSpansVert();
+
 	void collectTemplate();
 	void fitCurves();
 	void filterAndOutputTouches();
@@ -314,12 +325,19 @@ private:
 	MLSignal mRowPeaks; 
 
 	
-	std::vector<Vec3> mSpans;
-	std::mutex mSpansMutex;
-	// a ping is a guess at where a touch is over a particular row.
-	std::vector<Vec3> mPings;
-	std::mutex mPingsMutex;
+	std::vector<Vec3> mSpansHoriz;
+	std::mutex mSpansHorizMutex;
 
+	std::vector<Vec3> mSpansVert;
+	std::mutex mSpansVertMutex;
+
+	// a ping is a guess at where a touch is over a particular row.
+	std::vector<Vec3> mPingsHoriz;
+	std::mutex mPingsHorizMutex;
+	
+	std::vector<Vec3> mPingsVert;
+	std::mutex mPingsVertMutex;
+	
 
 	AsymmetricOnepoleMatrix mBackgroundFilter;
 	MLSignal mBackgroundFilterFrequency;
@@ -345,6 +363,7 @@ private:
 	bool mRotate;
 	bool mDoNormalize;
 	
+	float mSpanCorrect;
 
 	std::vector<Touch> mTouches;
 	std::vector<Touch> mTouchesToSort;

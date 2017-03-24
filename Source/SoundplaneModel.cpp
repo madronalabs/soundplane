@@ -138,7 +138,10 @@ SoundplaneModel::SoundplaneModel() :
 	mViewModeToSignalMap["cooked"] = &mCookedSignal;
 	mViewModeToSignalMap["xy"] = &mCalibratedSignal;
 	
-	mViewModeToSignalMap["spans"] = &mCalibratedSignal;
+	mViewModeToSignalMap["spans_horiz"] = &mCalibratedSignal;
+	mViewModeToSignalMap["spans_vert"] = &mCalibratedSignal;
+	
+	mViewModeToSignalMap["pings"] = &mCalibratedSignal;
 	
 	mViewModeToSignalMap["fit test"] = &mFitTestSignal;
 	
@@ -216,6 +219,10 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "z_thresh")
 			{
 				mTracker.setThresh(v);
+			}
+			else if (p == "span_correct")
+			{
+				mTracker.setSpanCorrect(v);
 			}
 			else if (p == "z_scale")
 			{

@@ -339,7 +339,7 @@ void SoundplaneGridView::renderRegions()
 }
 
 
-void SoundplaneGridView::renderSpans()
+void SoundplaneGridView::renderSpansHoriz()
 {
 	setupOrthoView();
 	
@@ -354,7 +354,7 @@ void SoundplaneGridView::renderSpans()
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	// draw spans
-	std::vector<Vec3> spans = mpModel->getSpans();
+	std::vector<Vec3> spans = mpModel->getSpansHoriz();
 	if(spans.size() > 0)
 		for(auto it = spans.begin(); it != spans.end(); it++)
 		{
@@ -370,18 +370,18 @@ void SoundplaneGridView::renderSpans()
 			
 			MLRect tr(x1, y1, x2 - x1, y2 - y1);
 			MLGL::strokeRect(tr, 1.0*mViewScale);
-
+			
 		}	
 	
 	// draw calibrated data
-
+	
 	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
 	if(!viewSignal) return;
 	
 	// draw line graph
 	
 	glLineWidth(2.0*mViewScale);
-
+	
 	
 	for(int j=0; j<mSensorHeight; ++j)
 	{
@@ -398,10 +398,81 @@ void SoundplaneGridView::renderSpans()
 			float amp = clamp((*viewSignal)(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
 			float yAmp = lerp(y1, y2, amp);
 			
-
+			
 			glColor4fv(&darkRed[0]);
-
+			
 			glVertex2f(x, yAmp);
+		}
+		glEnd();
+	}
+}
+
+
+void SoundplaneGridView::renderSpansVert()
+{
+	setupOrthoView();
+	
+	// draw stuff in immediate mode. 
+	// TODO don't use fixed function pipeline.
+	//
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 darkRed(0.5f, 0.3f, 0.3f, 1.f);
+	Vec4 white(1.f, 1.f, 1.f, 1.f);
+	float ph = 0.4;
+	const float kGraphAmp = 4.0f;
+	float displayScale = mpModel->getFloatProperty("display_scale");
+	
+	// draw spans
+	std::vector<Vec3> spans = mpModel->getSpansVert();
+	if(spans.size() > 0)
+	{
+		for(auto it = spans.begin(); it != spans.end(); it++)
+		{
+			Vec3 p = *it;
+			
+			// span: (yStart, yEnd, x)
+			float y1 = mSensorRangeY.convert(p.x());
+			float y2 = mSensorRangeY.convert(p.y());
+			float x1 = mSensorRangeX.convert(p.z() - ph);	
+			float x2 = mSensorRangeX.convert(p.z() + ph);	
+			
+			glColor4fv(&darkBlue[0]);
+			
+			MLRect tr(x1, y1, x2 - x1, y2 - y1);
+			MLGL::strokeRect(tr, 1.0*mViewScale);
+			
+		}	
+	}
+	
+	// draw calibrated data
+	
+	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
+	if(!viewSignal) return;
+	
+	// draw line graph
+	
+	glLineWidth(2.0*mViewScale);
+	
+	
+	for(int i=0; i<mSensorWidth; ++i)
+	{
+		float x = mSensorRangeX.convert(i);
+		float x1 = mSensorRangeX.convert(i - ph);	
+		float x2 = mSensorRangeX.convert(i + ph);	
+		
+		glBegin(GL_LINE_STRIP);
+		
+		for(int j=0; j<mSensorHeight; ++j)
+		{
+			float y = mSensorRangeY.convert(j);
+			
+			float amp = clamp((*viewSignal)(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
+			float xAmp = lerp(x1, x2, amp);
+			
+			
+			glColor4fv(&darkRed[0]);
+			
+			glVertex2f(xAmp, y);
 		}
 		glEnd();
 	}
@@ -422,7 +493,7 @@ void SoundplaneGridView::renderPings()
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	// draw spans
-	std::vector<Vec3> spans = mpModel->getSpans();
+	std::vector<Vec3> spans = mpModel->getSpansHoriz();
 	if(spans.size() > 0)
 		for(auto it = spans.begin(); it != spans.end(); it++)
 		{
@@ -442,7 +513,7 @@ void SoundplaneGridView::renderPings()
 	
 	// draw pings
 	float dotSize = fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
-	std::vector<Vec3> pings = mpModel->getPings();
+	std::vector<Vec3> pings = mpModel->getPingsHoriz();
 	for(auto it = pings.begin(); it != pings.end(); it++)
 	{
 		Vec3 p = *it;
@@ -788,9 +859,13 @@ void SoundplaneGridView::renderOpenGL()
 		renderRegions();
 		drawSurfaceOverlay();
 	}
-	else if (viewMode == "spans")
+	else if (viewMode == "spans_horiz")
 	{
-		renderSpans();
+		renderSpansHoriz();
+	}
+	else if (viewMode == "spans_vert")
+	{
+		renderSpansVert();
 	}
 	else if (viewMode == "pings")
 	{

@@ -402,6 +402,11 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setDefault(100.);	
 	
 	pB = page1->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
+
+	
+	pD = page1->addDial("spancorr", dialRect.withCenter(10.0, dialY), "span_correct", c2);
+	pD->setRange(-0.4, 0.4, 0.001);	
+	pD->setDefault(0.0);	
 	
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 
