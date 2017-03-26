@@ -488,18 +488,20 @@ void SoundplaneGridView::renderPings()
 	// TODO don't use fixed function pipeline.
 	//
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	
-	float displayScale = mpModel->getFloatProperty("display_scale");
+	//float displayScale = mpModel->getFloatProperty("display_scale");
+	glLineWidth(2.0*mViewScale);
 	
-	// draw spans
+	// draw horiz spans
 	std::vector<Vec3> spans = mpModel->getSpansHoriz();
 	if(spans.size() > 0)
 		for(auto it = spans.begin(); it != spans.end(); it++)
 		{
 			Vec3 p = *it;
 			
-			float ph = 0.4;
+			float ph = 0.;
 			float x1 = mSensorRangeX.convert(p.x());
 			float x2 = mSensorRangeX.convert(p.y());
 			float y1 = mSensorRangeY.convert(p.z() - ph);	
@@ -523,6 +525,46 @@ void SoundplaneGridView::renderPings()
 		float z = p.z();
 		
 		Vec4 dotColor = darkBlue;
+		dotColor[3] = z*10.f;
+		glColor4fv(&dotColor[0]);
+		
+		// draw dot on surface
+		MLGL::drawDot(Vec2(x, y), dotSize);
+	}		
+	
+	// draw spans
+	std::vector<Vec3> spansVert = mpModel->getSpansVert();
+	if(spansVert.size() > 0)
+		for(auto it = spansVert.begin(); it != spansVert.end(); it++)
+		{
+
+			Vec3 p = *it;
+			
+			float ph = 0.;			
+			// span: (yStart, yEnd, x)
+			float y1 = mSensorRangeY.convert(p.x());
+			float y2 = mSensorRangeY.convert(p.y());
+			float x1 = mSensorRangeX.convert(p.z() - ph);	
+			float x2 = mSensorRangeX.convert(p.z() + ph);	
+
+
+			glColor4fv(&darkRed[0]);
+			
+			MLRect tr(x1, y1, x2 - x1, y2 - y1);
+			MLGL::strokeRect(tr, 1.0*mViewScale);
+		}	
+	
+	// draw pings
+	std::vector<Vec3> pingsVert = mpModel->getPingsVert();
+	for(auto it = pingsVert.begin(); it != pingsVert.end(); it++)
+	{
+		Vec3 p = *it;
+		
+		float x = mSensorRangeX.convert(p.x());
+		float y = mSensorRangeY.convert(p.y());
+		float z = p.z();
+		
+		Vec4 dotColor = darkRed;
 		dotColor[3] = z*10.f;
 		glColor4fv(&dotColor[0]);
 		

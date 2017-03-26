@@ -315,8 +315,11 @@ private:
 	void correctSpansHoriz();
 	void findSpansVert();
 	void correctSpansVert();
+	
+	void findPingsHoriz();
+	void findPingsVert();
+	void findTouches();
 
-	void collectTemplate();
 	void fitCurves();
 	void filterAndOutputTouches();
 	
@@ -351,11 +354,7 @@ private:
 	MLSignal mTouchFrequencyMask;
 	MLSignal mTouchKernel;
 	MLSignal mTouchKerneli;
-	
-	MLSignal mTemplateSpan;
-	MLSignal mTemplateSpanSum;
-	int mTemplateSamples;
-	
+		
 	int mRetrigClock;
 	
 	int mMaxTouchesPerFrame;
