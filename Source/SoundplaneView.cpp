@@ -405,7 +405,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 
 	
 	pD = page1->addDial("spancorr", dialRect.withCenter(10.0, dialY), "span_correct", c2);
-	pD->setRange(-0.4, 0.4, 0.001);	
+	pD->setRange(-1.0, 1.0, 0.001);	
 	pD->setDefault(0.0);	
 	
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");

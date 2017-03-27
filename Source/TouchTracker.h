@@ -312,8 +312,8 @@ private:
 
 	// new
 	void findSpansHoriz();
-	void correctSpansHoriz();
 	void findSpansVert();
+	void correctSpansHoriz();
 	void correctSpansVert();
 	
 	void findPingsHoriz();

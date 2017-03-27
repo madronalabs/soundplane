@@ -570,7 +570,7 @@ void TouchTracker::process(int)
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
 				
-		bool doFFT = true;
+		bool doFFT = false;
 		if(doFFT)
 		{
 			// forward FFT
@@ -590,35 +590,14 @@ void TouchTracker::process(int)
 		}
 		else
 		{
+			// MLTEST convolve
 			mFFT2 = mFilteredInput;
-		}
+			
+			float kc, kex, key, kk;
+			kc = 16/16.; kex = 8/16.; key = 4./16.; kk=2./16.;			
+			mFFT2.convolve3x3xy(kc, kex, key, kk);
+		}				
 		
-		// MLTEST
-		// TODO rows only
-		/*
-			const float* inputRow = in.getBuffer() + in.row(row);
-			{
-		 float b1, b2, b3, b4, b5;
-		 float k1 = -0.25;
-		 float k2 = -0;
-		 float k3 = 1;
-		 float k4 = -0;
-		 float k5 = -0.25;
-		 for(int i=ia; i<=ib; ++i)
-		 {
-		 b1 = inputRow[i - 2];
-		 b2 = inputRow[i - 1];
-		 b3 = inputRow[i];
-		 b4 = inputRow[i + 1];
-		 b5 = inputRow[i + 2];
-		 
-		 dz[i] = b1*k1 + b2*k2 + b3*k3 + b4*k4 + b5*k5;
-		 //dz[i] = c;
-		 }
-			}
-			*/
-
-				
 		mTestSignal = mFilteredInput;
 		mTestSignal.scale(50.);
 		
@@ -635,6 +614,7 @@ void TouchTracker::process(int)
 			correctSpansHoriz(); // Soundplane A only. see if we can do without this.
 			
 			findSpansVert();
+			// correctSpansVert(); // seems not useful for Soundplane A
 			
 			findPingsHoriz();
 			findPingsVert();
@@ -758,7 +738,6 @@ void TouchTracker::findSpansHoriz()
 					float m = ddz - ddzm1;				
 					float xa = -ddz/m;
 					spanEnd = i - 1.f + xa; 
-
 					pushSpan = true;
 				}				
 			}
@@ -775,45 +754,6 @@ void TouchTracker::findSpansHoriz()
 		}
 	}
 }
-
-// piecewise triangle wave fn with period 2
-float triangle(float x)
-{
-	float m = x - 0.5f;
-	float t = m - floor(m);
-	float a = ((0.5f*x - floor(0.5f*x)) > 0.5) ? -1.f : 1.f;
-	float u = fabs(2.0f*(t - 0.5f));
-	return u*a;
-}
-		
-void TouchTracker::correctSpansHoriz()
-{
-	// Soundplane A - specific correction for key mechanicals
-	for(auto it = mSpansHoriz.begin(); it != mSpansHoriz.end(); ++it)
-	{
-		Vec3 s = *it;
-		float a = s.x(); // x1 
-		float b = s.y(); // not really y, rather x2
-		int row = s.z();
-		
-		// TODO  variable finger width
-		float fingerWidth = 1.5f;
-		float ca = a + fingerWidth;
-		float cb = b - fingerWidth;
-		
-//		float k = -0.12f; // by inspection 
-		float k = -mSpanCorrect;
-//		float ra = k*sinf(kMLPi*ca); 
-//		float rb = k*sinf(kMLPi*cb); 
-		
-		// will be lookup table for optimized version
-		float ra = k*triangle(ca); 
-		float rb = k*triangle(cb); 
-			
-		*it = Vec3(a + ra, b - rb, row);
-	}
-}
-
 // TODO combine this and Horiz vrsion with a direction argument
 // smooth data differently for each direction
 
@@ -922,6 +862,61 @@ void TouchTracker::findSpansVert()
 	}
 }
 
+// piecewise triangle wave fn with period 2
+float triangle(float x)
+{
+	float m = x - 0.5f;
+	float t = m - floor(m);
+	float a = ((0.5f*x - floor(0.5f*x)) > 0.5) ? -1.f : 1.f;
+	float u = fabs(2.0f*(t - 0.5f));
+	return u*a;
+}
+
+void TouchTracker::correctSpansHoriz()
+{
+	// Soundplane A - specific correction for key mechanicals
+	// specific to smoothing kernel
+	for(auto it = mSpansHoriz.begin(); it != mSpansHoriz.end(); ++it)
+	{
+		Vec3 s = *it;
+		float a = s.x(); // x1 
+		float b = s.y(); // not really y, rather x2
+		int row = s.z();
+		float c = (a + b)/2.f;
+		
+		float k = 0.25f; // by inspection //-mSpanCorrect;
+		
+		// can be lookup table for optimized version
+		float ra = k*triangle(c); 
+		float rb = k*triangle(c); 
+		
+		*it = Vec3(a + ra, b - rb, row);
+	}	
+}
+
+void TouchTracker::correctSpansVert()
+{
+	// Soundplane A - specific correction for key mechanicals
+	// specific to smoothing kernel
+	for(auto it = mSpansVert.begin(); it != mSpansVert.end(); ++it)
+	{
+		Vec3 s = *it;
+		float a = s.x(); // y1 
+		float b = s.y(); // not really y, rather y2
+		int col = s.z();
+		float c = (a + b)/2.f;
+		
+		float k = -mSpanCorrect;
+		
+		// can be lookup table for optimized version
+		float ra = k*triangle(c); 
+		float rb = k*triangle(c); 
+		
+		*it = Vec3(a + ra, b - rb, col);
+	}	
+}
+
+
 void TouchTracker::findPingsHoriz()
 {
 	const float k1 = 4.0f;
@@ -962,12 +957,14 @@ void TouchTracker::findPingsHoriz()
 
 void TouchTracker::findPingsVert()
 {
-	const float k1 = 3.0f;
-	const float fingerWidth = k1 / 2.f;
+	const float k1 = 3.f;
+	const float fingerHeight = k1 / 2.f;
 	
 	const MLSignal& in = mFFT2;
 	std::lock_guard<std::mutex> lock(mPingsVertMutex);
 	mPingsVert.clear();
+	
+	// TODO add tweak for top + bottom
 	
 	for(auto it = mSpansVert.begin(); it != mSpansVert.end(); ++it)
 	{
@@ -987,11 +984,11 @@ void TouchTracker::findPingsVert()
 		}
 		else
 		{
-			pingY = a + fingerWidth;
+			pingY = a + fingerHeight;
 			pingZ = in.getInterpolatedLinear(col, pingY);
 			mPingsVert.push_back(Vec3(col, pingY, pingZ));			
 			
-			pingY = b - fingerWidth;
+			pingY = b - fingerHeight;
 			pingZ = in.getInterpolatedLinear(col, pingY);
 			mPingsVert.push_back(Vec3(col, pingY, pingZ));			
 		}
