@@ -578,8 +578,11 @@ void SoundplaneGridView::renderLineSegments()
 {
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
 	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
+	Vec4 purpl(0.6f, 0.0f, 0.6f, 0.5f);
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
-	
+
+	float dotSize = fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+
 	// draw horiz spans
 	std::vector<Vec3> segsHoriz = mpModel->getLineSegmentsHoriz();
 	
@@ -615,6 +618,25 @@ void SoundplaneGridView::renderLineSegments()
 		
 		MLGL::drawLine(x1, y1, x2, y2, 2.0*mViewScale);
 	}	
+	
+	
+	// draw intersections
+	std::vector<Vec3> xs = mpModel->getIntersections();	
+	for(auto it = xs.begin(); it != xs.end(); it++)
+	{
+		Vec3 p = *it;
+		
+		float x = mSensorRangeX.convert(p.x());
+		float y = mSensorRangeY.convert(p.y());
+		
+		Vec4 dotColor = purpl;
+		dotColor[3] = 0.5f;
+		glColor4fv(&dotColor[0]);
+		
+		// draw dot on surface
+		Vec2 pos(x, y);
+		MLGL::drawDot(pos, dotSize);
+	}	
 }
 
 void SoundplaneGridView::renderIntersections()
@@ -625,7 +647,7 @@ void SoundplaneGridView::renderIntersections()
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	
 	setupOrthoView();
-	float dotSize = fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	float dotSize = 10.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
 	
 	const std::string& viewMode = getStringProperty("viewmode");
 	const MLSignal* viewSignal = mpModel->getSignalForViewMode(viewMode);
@@ -644,15 +666,13 @@ void SoundplaneGridView::renderIntersections()
 
 	
 	// draw intersections
-	std::vector<Vec3> xs = mpModel->getIntersections();
-	
+	std::vector<Vec3> xs = mpModel->getIntersections();	
 	for(auto it = xs.begin(); it != xs.end(); it++)
 	{
-		Vec2 p = *it;
+		Vec3 p = *it;
 		
 		float x = mSensorRangeX.convert(p.x());
 		float y = mSensorRangeY.convert(p.y());
-		float z = 0.f;
 		
 		Vec4 dotColor = darkRed;
 		//	dotColor[3] = z*10.f;
@@ -660,7 +680,9 @@ void SoundplaneGridView::renderIntersections()
 		glColor4fv(&dotColor[0]);
 		
 		// draw dot on surface
-		MLGL::drawDot(Vec2(x, y), dotSize);
+		Vec2 pos(x, y);
+		float z = viewSignal->getInterpolatedLinear(p);
+		MLGL::drawDot(pos, z*dotSize);
 	}
 }
 

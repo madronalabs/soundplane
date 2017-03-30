@@ -46,34 +46,6 @@ Vec2 intersect(const LineSegment& a, const LineSegment& b)
 	return Vec2(a.start + Vec2(sectX*cosTheta, sectX*-sinTheta));
 }
 
-// line intersect, but with some optimizations because segments are of known width, height
-Vec2 horizAndVertSegmentsIntersect(const LineSegment& a, const LineSegment& b)
-{	
-	if( (a.start == b.start) || (a.start == b.end) || 
-	   (a.end == b.start) || (a.end == b.end) )
-	{
-		return Vec2::null();
-	}
-	
-	LineSegment a2 = translate(a, -a.start);
-	LineSegment b2 = translate(b, -a.start);
-	
-	float aLen = length(a2);
-	float cosTheta = a2.end.x()/aLen;
-	float sinTheta = -(a2.end.y()/aLen);
-	
-	LineSegment b3 = multiply(Mat22(cosTheta, -sinTheta, sinTheta, cosTheta), b2);
-	
-	if(sign(b3.start.y()) == sign(b3.end.y())) return Vec2::null();
-	
-	// b3 y span is knonwn to be 1
-	float sectX = b3.end.x() + (b3.start.x() - b3.end.x())*b3.end.y();
-	
-	if(!within(sectX, 0.f, aLen)) return Vec2::null();
-	
-	return Vec2(a.start + Vec2(sectX*cosTheta, sectX*-sinTheta));	
-}
-
 Touch::Touch() : 
 	x(0), y(0), z(0), dz(0), zf(0), zf10(0.), dzf(0.), 
 	key(-1), age(0), retrig(0), releaseCtr(0)
@@ -1184,7 +1156,7 @@ void TouchTracker::findIntersections()
 		
 		// mayIntersect: does the column of vert segment v contain one of our x coordinate ends?
 		auto mayIntersect = [&](Vec3 &v)
-		{ return within(ax1, v.z(), v.z() + 1) || within(ax2, v.z(), v.z() + 1); };
+			{ return within(ax1, v.z(), v.z() + 1) || within(ax2, v.z(), v.z() + 1); };
 		
 		auto itV = std::find_if(mSegmentsVert.begin(), mSegmentsVert.end(), mayIntersect); 
 		
@@ -1199,7 +1171,7 @@ void TouchTracker::findIntersections()
 			float by1 = itV->x();
 			float by2 = itV->y();
 			
-			Vec2 w = horizAndVertSegmentsIntersect(LineSegment(Vec2(ax1, ay1), Vec2(ax2, ay2)), LineSegment(Vec2(bx1, by1), Vec2(bx2, by2)));
+			Vec2 w = intersect(LineSegment(Vec2(ax1, ay1), Vec2(ax2, ay2)), LineSegment(Vec2(bx1, by1), Vec2(bx2, by2)));
 			
 			if(w)
 			{
@@ -1209,9 +1181,6 @@ void TouchTracker::findIntersections()
 			itV++;
 		}
 	}
-
-//	auto itColA = std::find_if(mSegmentsVert(), mSegmentsVert(), [&](Vec3 &v){ return v.x() == i; }); 
-
 }
 
 void TouchTracker::findTouches()

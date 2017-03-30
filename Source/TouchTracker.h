@@ -125,8 +125,6 @@ inline float length(LineSegment a)
 }
 
 Vec2 intersect(const LineSegment& a, const LineSegment& b);
-Vec2 horizAndVertSegmentsIntersect(const LineSegment& a, const LineSegment& b);
-
 
 class TouchTracker
 {
