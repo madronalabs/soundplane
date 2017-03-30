@@ -3,8 +3,7 @@
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
-#ifndef __TOUCH_TRACKER__
-#define __TOUCH_TRACKER__
+#pragma once
 
 #include "Filters2D.h"
 #include "MLVector.h"
@@ -86,6 +85,48 @@ public:
 };
 
 std::ostream& operator<< (std::ostream& out, const Touch & t);
+
+struct LineSegment
+{
+	LineSegment(Vec2 a, Vec2 b) : start(a), end(b) {}
+	Vec2 start;
+	Vec2 end;
+};
+
+struct Mat22
+{
+	Mat22(float a, float b, float c, float d) : a00(a), a10(b), a01(c), a11(d) {}
+	float a00, a10, a01, a11;
+};
+
+inline Vec2 multiply(Mat22 m, Vec2 a)
+{
+	return Vec2(m.a00*a.x() + m.a10*a.y(), m.a01*a.x() + m.a11*a.y());
+}
+
+inline LineSegment multiply(Mat22 m, LineSegment a)
+{
+	return LineSegment(multiply(m, a.start), multiply(m, a.end));
+}
+
+inline LineSegment translate(LineSegment a, Vec2 p)
+{
+	return LineSegment(a.start + p, a.end + p);
+}
+
+inline bool lengthIsZero(LineSegment a)
+{
+	return((a.start.x() == a.end.x())&&(a.start.y() == a.end.y()));
+}
+
+inline float length(LineSegment a)
+{
+	return (a.end - a.start).magnitude();
+}
+
+Vec2 intersect(const LineSegment& a, const LineSegment& b);
+Vec2 horizAndVertSegmentsIntersect(const LineSegment& a, const LineSegment& b);
+
 
 class TouchTracker
 {
@@ -236,10 +277,15 @@ public:
 	std::vector<Vec3> getSpansVert() { std::lock_guard<std::mutex> lock(mSpansVertMutex); return mSpansVert; }
 	
 	std::vector<Vec3> getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizMutex); return mPingsHoriz; }
-	
 	std::vector<Vec3> getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertMutex); return mPingsVert; }
+
+	std::vector<Vec3> getLineSegmentsHoriz() { std::lock_guard<std::mutex> lock(mSegmentsHorizMutex); return mSegmentsHoriz; }
+	std::vector<Vec3> getLineSegmentsVert() { std::lock_guard<std::mutex> lock(mSegmentsVertMutex); return mSegmentsVert; }
+	
+	std::vector<Vec3> getIntersections() { std::lock_guard<std::mutex> lock(mIntersectionsMutex); return mIntersections; }
 	
 private:	
+
 
 	Listener* mpListener;
 
@@ -318,15 +364,18 @@ private:
 	
 	void findPingsHoriz();
 	void findPingsVert();
+	
+	void findLineSegmentsHoriz();
+	void findLineSegmentsVert();
+	
+	void findIntersections();
 	void findTouches();
 
-	void fitCurves();
 	void filterAndOutputTouches();
 	
 	// new
 	MLSignal mRegions; 
 	MLSignal mRowPeaks; 
-
 	
 	std::vector<Vec3> mSpansHoriz;
 	std::mutex mSpansHorizMutex;
@@ -340,6 +389,15 @@ private:
 	
 	std::vector<Vec3> mPingsVert;
 	std::mutex mPingsVertMutex;
+
+	std::vector<Vec3> mSegmentsHoriz;
+	std::mutex mSegmentsHorizMutex;
+
+	std::vector<Vec3> mSegmentsVert;
+	std::mutex mSegmentsVertMutex;
+	
+	std::vector<Vec3> mIntersections;
+	std::mutex mIntersectionsMutex;
 	
 
 	AsymmetricOnepoleMatrix mBackgroundFilter;
@@ -378,6 +436,4 @@ private:
 
 };
 
-
-#endif // __TOUCH_TRACKER__
 

@@ -141,6 +141,8 @@ SoundplaneModel::SoundplaneModel() :
 	mViewModeToSignalMap["spans_horiz"] = &mCalibratedSignal;
 	mViewModeToSignalMap["spans_vert"] = &mCalibratedSignal;
 	
+	mViewModeToSignalMap["intersections"] = &mCalibratedSignal;
+	
 	mViewModeToSignalMap["pings"] = &mCalibratedSignal;
 	
 	mViewModeToSignalMap["fit test"] = &mFitTestSignal;

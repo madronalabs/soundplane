@@ -14,6 +14,66 @@ std::ostream& operator<< (std::ostream& out, const Touch & t)
 	return out;
 }
 
+
+Vec2 intersect(const LineSegment& a, const LineSegment& b)
+{
+	if((lengthIsZero(a)) || (lengthIsZero(b)))
+	{
+		return Vec2::null();
+	}
+	
+	if( (a.start == b.start) || (a.start == b.end) || 
+	   (a.end == b.start) || (a.end == b.end) )
+	{
+		return Vec2::null();
+	}
+	
+	LineSegment a2 = translate(a, -a.start);
+	LineSegment b2 = translate(b, -a.start);
+
+	float aLen = length(a2);
+	float cosTheta = a2.end.x()/aLen;
+	float sinTheta = -(a2.end.y()/aLen);
+	
+	LineSegment b3 = multiply(Mat22(cosTheta, -sinTheta, sinTheta, cosTheta), b2);
+	
+	if(sign(b3.start.y()) == sign(b3.end.y())) return Vec2::null();
+	
+	float sectX = b3.end.x() + (b3.start.x() - b3.end.x())*b3.end.y()/(b3.end.y() - b3.start.y());
+	
+	if(!within(sectX, 0.f, aLen)) return Vec2::null();
+	   	   
+	return Vec2(a.start + Vec2(sectX*cosTheta, sectX*-sinTheta));
+}
+
+// line intersect, but with some optimizations because segments are of known width, height
+Vec2 horizAndVertSegmentsIntersect(const LineSegment& a, const LineSegment& b)
+{	
+	if( (a.start == b.start) || (a.start == b.end) || 
+	   (a.end == b.start) || (a.end == b.end) )
+	{
+		return Vec2::null();
+	}
+	
+	LineSegment a2 = translate(a, -a.start);
+	LineSegment b2 = translate(b, -a.start);
+	
+	float aLen = length(a2);
+	float cosTheta = a2.end.x()/aLen;
+	float sinTheta = -(a2.end.y()/aLen);
+	
+	LineSegment b3 = multiply(Mat22(cosTheta, -sinTheta, sinTheta, cosTheta), b2);
+	
+	if(sign(b3.start.y()) == sign(b3.end.y())) return Vec2::null();
+	
+	// b3 y span is knonwn to be 1
+	float sectX = b3.end.x() + (b3.start.x() - b3.end.x())*b3.end.y();
+	
+	if(!within(sectX, 0.f, aLen)) return Vec2::null();
+	
+	return Vec2(a.start + Vec2(sectX*cosTheta, sectX*-sinTheta));	
+}
+
 Touch::Touch() : 
 	x(0), y(0), z(0), dz(0), zf(0), zf10(0.), dzf(0.), 
 	key(-1), age(0), retrig(0), releaseCtr(0)
@@ -594,7 +654,8 @@ void TouchTracker::process(int)
 			mFFT2 = mFilteredInput;
 			
 			float kc, kex, key, kk;
-			kc = 16/16.; kex = 8/16.; key = 4./16.; kk=2./16.;			
+			kc = 16/16.; kex = 8/16.; key = 2./16.; kk=4./16.;			
+			mFFT2.convolve3x3xy(kc, kex, key, kk);
 			mFFT2.convolve3x3xy(kc, kex, key, kk);
 		}				
 		
@@ -611,20 +672,19 @@ void TouchTracker::process(int)
 		if(mMaxTouchesPerFrame > 0)
 		{
 			findSpansHoriz();
-			correctSpansHoriz(); // Soundplane A only. see if we can do without this.
-			
 			findSpansVert();
+
+			correctSpansHoriz(); // Soundplane A only. 
 			// correctSpansVert(); // seems not useful for Soundplane A
 			
 			findPingsHoriz();
 			findPingsVert();
 			
+			findLineSegmentsHoriz();
+			findLineSegmentsVert();
+			findIntersections();
 			findTouches();
 			
-			//fitCurves();	
-			//collectPings();
-			//matchTouchesToPrevious();
-
 		}
 
 		filterAndOutputTouches();
@@ -635,20 +695,7 @@ void TouchTracker::process(int)
 	if (mCount++ > 1000) 
 	{
 		mCount = 0;
-		//dumpTouches();
-				
-		debug() << "\n SPANS HORIZ: \n";
-		for(auto it = mSpansHoriz.begin(); it != mSpansHoriz.end(); ++it)
-		{
-			Vec3 s = *it;
-			debug() << s.y() - s.x() << " ";
-		}
-		debug() << "\n SPANS VERT: \n";
-		for(auto it = mSpansVert.begin(); it != mSpansVert.end(); ++it)
-		{
-			Vec3 s = *it;
-			debug() << s.y() - s.x() << " ";
-		}
+		dumpTouches();
 	}	
 #endif	
 }
@@ -995,228 +1042,215 @@ void TouchTracker::findPingsVert()
 	}
 }
 
+void TouchTracker::findLineSegmentsHoriz()
+{
+	std::lock_guard<std::mutex> lock(mSegmentsHorizMutex);
+	mSegmentsHoriz.clear();
+	
+	const MLSignal& in = mFFT2; // unused but for dims, fix
+	int w = in.getWidth();
+	int h = in.getHeight();
+	
+	
+	// declarative:
+	//
+	// for each row i
+	// for each ping a in row i
+	// b = closest ping in row(i + 1) to a
+	// if fabs(a.x() - b.x()) < kMaxDist
+	// make a line segment from a to b
+	
+	
+	// functional:
+	//
+	// pingsA = pingsInRow(i);
+	// pingsB = pingsInRow(i + 1);
+	// pingsBClosestToA = map(pingsA, [](ping p){ findClosest(p, pingsB); };
+	// makeLineSegments(reduce(makePairs(pingsA, pingsBClosestToA), [](pair<pings> r){ fabs(r.first().x() - r.second().x()) < kMaxDist; };
+	
+	
+	// bespoke: known ordered data
+	//
+	// for each row i
+	// iteratorA = start of row i
+	// iteratorB = start of row i + 1
+	// while not (done(iteratorA) || done(iteratorB))
+	// if fabs(a.x() - b.x()) < kMaxDist
+	// makeLineSegment(a, b)
+	// if a.x() < b.x()
+	// advance iteratorA
+	// else
+	// advance iteratorB
+	
+	
+	//	debug() << std::setprecision(4);
+	const float kMaxDist = 2.0f;
+	for(int i=0; i<h - 1; ++i)
+	{
+		//	debug() << "ROW " << i << "\n";
+		auto itRowA = std::find_if(mPingsHoriz.begin(), mPingsHoriz.end(), [&](Vec3 &v){ return v.y() == i; }); 
+		auto itRowB = std::find_if(mPingsHoriz.begin(), mPingsHoriz.end(), [&](Vec3 &v){ return v.y() == i + 1; }); 
+		
+		while( 
+			  (itRowA != mPingsHoriz.end()) && (itRowB != mPingsHoriz.end())			  
+			  && (itRowA->y() == i) && (itRowB->y() == i + 1) )
+		{
+			//			debug() << "[ " << *itRowA << *itRowB << " ] ";
+			float ax = itRowA->x();
+			float bx = itRowB->x();
+			float ab = bx - ax;
+			if(fabs(ab) < kMaxDist)
+			{
+				mSegmentsHoriz.push_back(Vec3(ax, bx, i));
+				//			debug() << Vec3(ax, bx, i);
+				itRowA++;
+				itRowB++;
+			}
+			else
+			{
+			if(ab > 0)
+			{
+				itRowA++;
+			}
+			else
+			{
+				itRowB++;
+			}
+			}
+		}
+		//	debug() << "\n";
+	}
+}
+
+void TouchTracker::findLineSegmentsVert()
+{
+	std::lock_guard<std::mutex> lock(mSegmentsVertMutex);
+	mSegmentsVert.clear();
+	
+	const MLSignal& in = mFFT2; // unused but for dims, fix
+	int w = in.getWidth();
+	int h = in.getHeight();
+	
+	const float kMaxDist = 1.f;
+	for(int i=0; i<w - 1; ++i)
+	{
+		auto itColA = std::find_if(mPingsVert.begin(), mPingsVert.end(), [&](Vec3 &v){ return v.x() == i; }); 
+		auto itColB = std::find_if(mPingsVert.begin(), mPingsVert.end(), [&](Vec3 &v){ return v.x() == i + 1; }); 
+		
+		while( 
+			  (itColA != mPingsVert.end()) && (itColB != mPingsVert.end())			  
+			  && (itColA->x() == i) && (itColB->x() == i + 1) )
+		{
+			float ay = itColA->y();
+			float by = itColB->y();
+			float ab = by - ay;
+			if(fabs(ab) < kMaxDist)
+			{
+				mSegmentsVert.push_back(Vec3(ay, by, i));
+				itColA++;
+				itColB++;
+			}
+			else
+			{
+				if(ab > 0)
+				{
+					itColA++;
+				}
+				else
+				{
+					itColB++;
+				}
+			}
+		}
+	}
+}
+
+
+void TouchTracker::findIntersections()
+{
+	// TODO all these are just needed for the debug printing and can go away
+	std::lock_guard<std::mutex> lock(mIntersectionsMutex);
+	mIntersections.clear();
+	
+	// TODO pre-index into vert segments for efficiency
+	debug() << std::setprecision(4);
+	
+	for(auto itH = mSegmentsHoriz.begin(); itH != mSegmentsHoriz.end(); ++itH)
+	{
+		float ax1 = itH->x();
+		float ax2 = itH->y();
+		float ay1 = itH->z();
+		float ay2 = ay1 + 1.f;
+		
+		// mayIntersect: does the column of vert segment v contain one of our x coordinate ends?
+		auto mayIntersect = [&](Vec3 &v)
+		{ return within(ax1, v.z(), v.z() + 1) || within(ax2, v.z(), v.z() + 1); };
+		
+		auto itV = std::find_if(mSegmentsVert.begin(), mSegmentsVert.end(), mayIntersect); 
+		
+		// segments vert are already ordered by row, so having found one we can just iterate through them
+		while( (itV != mSegmentsVert.end()) && mayIntersect(*itV) )
+		{
+			//debug() << "(" << ax1 << ", " << ax2 << ")" << *itV;
+			
+			// todo make segments vec of LineSegments
+			float bx1 = itV->z();
+			float bx2 = itV->z() + 1.f;
+			float by1 = itV->x();
+			float by2 = itV->y();
+			
+			Vec2 w = horizAndVertSegmentsIntersect(LineSegment(Vec2(ax1, ay1), Vec2(ax2, ay2)), LineSegment(Vec2(bx1, by1), Vec2(bx2, by2)));
+			
+			if(w)
+			{
+				mIntersections.push_back(Vec3(w.x(), w.y(), 1.f));
+			}
+			
+			itV++;
+		}
+	}
+
+//	auto itColA = std::find_if(mSegmentsVert(), mSegmentsVert(), [&](Vec3 &v){ return v.x() == i; }); 
+
+}
+
 void TouchTracker::findTouches()
 {
 	
 }
 
-// fit touch curves over spans to get pings. 
-// A ping is our best guess at where a touch lies directly over a sensor row, 
-// given just the information in the span.
-void TouchTracker::fitCurves()
-{	
-	const MLSignal& in = mFFT2;
-	int w = in.getWidth();
-	int h = in.getHeight();
-		
-	// get centered partial diff dzdx
-	MLSignal dzdx(w, h);
-	dzdx = in;
-	dzdx.partialDiffX();
-
-	// get input sharpened along rows so that pressure from a touch will be approximately 0 
-	// at the distance of neighboring touches.
-	MLSignal zSharp(w, h);
-	zSharp = in;
-	zSharp.convolve5x1(-0.5, 0, 1., 0, -0.5);
-
-	std::lock_guard<std::mutex> lock(mPingsHorizMutex);
-	mPingsHoriz.clear();
-	
-	mFitTestSignal.clear();
-	
-	if(mCount == 0)
-	if(mSpansHoriz.size() > 0)
-		debug() << "pings: ";
-	
-	for(auto it = mSpansHoriz.begin(); it != mSpansHoriz.end(); ++it)
-	{
-		Vec3 s = *it;
-		float a = s.x(); // x1 
-		float b = s.y(); // not really y, rather x2
-		int row = s.z();
-		int ia = floorf(a);
-		int ib = ceilf(b);
-		
-		// find maximum positive slope over entire span
-		float dzMax = 0.;
-		int dzMaxPosInt = ia;
-		for(int i=ia; i<ib; ++i)
-		{
-			float dzi = dzdx(i, row);
-			if(dzi > dzMax)
-			{
-				dzMaxPosInt = i;
-				dzMax = dzi;
-		}
-		}
-		// find max negative slope to right of max positive slope
-		float dzMin = 0.;
-		int dzMinPosInt = ia;
-		for(int i=dzMaxPosInt; i<ib; ++i)
-		{
-			float dzi = dzdx(i, row);
-			if(dzi < dzMin)
-			{
-				dzMinPosInt = i;
-				dzMin = dzi;
-			}
-		}
-
-		// parabolic peak interpolate (TODO put in MLSignal)
-		float dzMaxPos;
-		float alpha, beta, gamma, px;
-		alpha = dzdx(dzMaxPosInt - 1, row);
-		beta = dzdx(dzMaxPosInt, row);
-		gamma = dzdx(dzMaxPosInt + 1, row);
-		px = 0.5f*(alpha - gamma)/(alpha - 2.0f*beta + gamma);
-		// z at px if needed:
-		// zp = beta - 0.25f*(alpha - gamma)*p;	
-		dzMaxPos = dzMaxPosInt + px;
-		
-		float dzMinPos;
-		alpha = dzdx(dzMinPosInt - 1, row);
-		beta = dzdx(dzMinPosInt, row);
-		gamma = dzdx(dzMinPosInt + 1, row);
-		px = 0.5f*(alpha - gamma)/(alpha - 2.0f*beta + gamma);
-		// z at px if needed:
-		// zp = beta - 0.25f*(alpha - gamma)*p;	
-		dzMinPos = dzMinPosInt + px;
-		
-		// get guess at int distance of keys spanned by mindz-maxdz region (one key = 0)
-		float spanLength = dzMinPos - dzMaxPos;
-		float minSpanLength = 3.0f;
-		float keyWidth = 2.0f;		
-		int keySpan = (spanLength - minSpanLength)/keyWidth;
-		
-		if(mCount == 0)
-			debug() << " " << keySpan;
-		
-		// distance of max dz points from center of ideal touch. 
-		// touchy, important, depends on preprocessing
-//		const float kTouchShoulder = 1.6f; 
-//		float touchXOffset = (dzMax > 0.) ? kTouchShoulder : -kTouchShoulder;
-//		dzMaxPos += touchXOffset;
-		
-		// get offset for entire span by centering the key span between mindz-maxdz
-		// also if match is OK			
-		
-		if(within(dzMinPos, a, b) && within(dzMaxPos, a, b) && (dzMaxPos < dzMinPos))
-		{
-			if(keySpan == 0)
-			{
-				float pingX = (dzMinPos + dzMaxPos)/2.;
-				float pingZ = zSharp.getInterpolatedLinear(pingX, row);
-				
-				// let smaller nonzero pings influence touches for smoother results
-				if(pingZ > kSpanThreshold) // or mOnThreshold
-				{
-					//float inputZ = in.getInterpolatedLinear(pingX, row);
-					mPingsHoriz.push_back(Vec3(pingX, row, pingZ));
-				}
-			}
-			else
-			{
-				// get pings over key centers, ignoring dz stuff
-				int ik = keyWidth;
-				int firstKeyInt = ia/ik*ik;
-				float firstKeyCenter = firstKeyInt + 0.5f;
-		
-				/*
-				// center guess at number of keys in span within span 
-				float firstPingInMaxMinX = dzMaxPos + (spanLength - keyWidth*keySpan)/2.;
-
-				// get first possible ping using same key offset
-				int keysFromStart = (int)((firstPingInMaxMinX - a) / keyWidth);			
-				float firstPing = firstPingInMaxMinX - keysFromStart*keyWidth;
-				*/
-				
-				// get z at each possible key location with offset and make ping if above threshold
-				int possiblePings = (ib - ia)/ik;			
-				
-				for(int p=0; p<possiblePings; ++p)
-				{
-					float pingX = firstKeyCenter + p*keyWidth;
-					float pingZ = zSharp.getInterpolatedLinear(pingX, row);
-					
-					// let smaller nonzero pings influence touches for smoother results
-					if(pingZ > kSpanThreshold) // or mOnThreshold
-					{
-						//float inputZ = in.getInterpolatedLinear(pingX, row);
-						mPingsHoriz.push_back(Vec3(pingX, row, pingZ));
-					}
-				}
-			}
-		}
-		
-		// special cases for spans of 1 and 2 based on distance between left and right max dz
-		
-		// pingZ: use smoothest data - less noisy - to get z
-	//	float pingZ = in.getInterpolatedLinear(dzMaxPos, row);
-	//	if(pingZ > kSpanThreshold)
-		{
-			
-			
-	//		mPings.push_back(Vec3(dzMaxPos, row, 1.));
-	//		mPings.push_back(Vec3(dzMinPos, row, 1.));
-		}
-
-
-		// make test signal to display stages of curve fitting for spans on row 3.
-		if(row == 3)
-		{
-			// put successive stages on rows, 0, 1, 2, 3 of test signal
-	//		for(int c = 0; c<stages; ++c)
-			{
-				for(int i=ia; i<=ib; ++i)
-				{
-					//float z = (in(i, row));
-					
-					mFitTestSignal(i, 0) = in(i, row); 
-					mFitTestSignal(i, 1) = dzdx(i, row); 
-					mFitTestSignal(i, 2) = zSharp(i, row);
-				}
-			}			
-		}
-	}
-	
-	
-	if(mCount == 0)
-	if(mSpansHoriz.size() > 0)
-		debug() << "\n";
-}
 
 void TouchTracker::filterAndOutputTouches()
 {
-	
-		// filter touches
-		// filter x and y for output
-		// filter touches and write touch data to one frame of output signal.
-		//
-		MLSignal& out = *mpOut;
-		for(int i = 0; i < mMaxTouchesPerFrame; ++i)
+
+	// filter touches
+	// filter x and y for output
+	// filter touches and write touch data to one frame of output signal.
+	//
+	MLSignal& out = *mpOut;
+	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
+	{
+		Touch& t = mTouches[i];			
+		if(t.age > 1)
 		{
-			Touch& t = mTouches[i];			
-			if(t.age > 1)
-			{
-				float xyc = 1.0f - powf(2.71828f, -kMLTwoPi * mLopass*0.1f / (float)mSampleRate);
-				t.xf += (t.x - t.xf)*xyc;
-				t.yf += (t.y - t.yf)*xyc;
-			}
-			else if(t.age == 1)
-			{
-				t.xf = t.x;
-				t.yf = t.y;
-			}
-			out(xColumn, i) = t.xf;
-			out(yColumn, i) = t.yf;
-			out(zColumn, i) = (t.age > 0) ? t.zf : 0.;			
-			out(dzColumn, i) = t.dz;
-			out(ageColumn, i) = t.age;
-			out(dtColumn, i) = t.tDist;
+			float xyc = 1.0f - powf(2.71828f, -kMLTwoPi * mLopass*0.1f / (float)mSampleRate);
+			t.xf += (t.x - t.xf)*xyc;
+			t.yf += (t.y - t.yf)*xyc;
 		}
+		else if(t.age == 1)
+		{
+			t.xf = t.x;
+			t.yf = t.y;
+		}
+		out(xColumn, i) = t.xf;
+		out(yColumn, i) = t.yf;
+		out(zColumn, i) = (t.age > 0) ? t.zf : 0.;			
+		out(dzColumn, i) = t.dz;
+		out(ageColumn, i) = t.age;
+		out(dtColumn, i) = t.tDist;
 	}
-	
+}
+
 void TouchTracker::setDefaultNormalizeMap()
 {
 	mCalibrator.setDefaultNormalizeMap();
@@ -1992,6 +2026,4 @@ int TouchTracker::countActiveTouches()
 	}
 	return c;
 }
-
-
 

@@ -514,7 +514,9 @@ void SoundplaneGridView::renderPings()
 		}	
 	
 	// draw pings
-	float dotSize = fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
+	float kDotSize = 10.f;
+	float dotSize = kDotSize*fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
+	
 	std::vector<Vec3> pings = mpModel->getPingsHoriz();
 	for(auto it = pings.begin(); it != pings.end(); it++)
 	{
@@ -525,11 +527,11 @@ void SoundplaneGridView::renderPings()
 		float z = p.z();
 		
 		Vec4 dotColor = darkBlue;
-		dotColor[3] = z*10.f;
+		dotColor[3] = 0.5f;
 		glColor4fv(&dotColor[0]);
 		
 		// draw dot on surface
-		MLGL::drawDot(Vec2(x, y), dotSize);
+		MLGL::drawDot(Vec2(x, y), z*dotSize);
 	}		
 	
 	// draw spans
@@ -537,7 +539,6 @@ void SoundplaneGridView::renderPings()
 	if(spansVert.size() > 0)
 		for(auto it = spansVert.begin(); it != spansVert.end(); it++)
 		{
-
 			Vec3 p = *it;
 			
 			float ph = 0.;			
@@ -546,7 +547,6 @@ void SoundplaneGridView::renderPings()
 			float y2 = mSensorRangeY.convert(p.y());
 			float x1 = mSensorRangeX.convert(p.z() - ph);	
 			float x2 = mSensorRangeX.convert(p.z() + ph);	
-
 
 			glColor4fv(&darkRed[0]);
 			
@@ -565,18 +565,64 @@ void SoundplaneGridView::renderPings()
 		float z = p.z();
 		
 		Vec4 dotColor = darkRed;
-		dotColor[3] = z*10.f;
+	//	dotColor[3] = z*10.f;
+		dotColor[3] = 0.5f;
 		glColor4fv(&dotColor[0]);
 		
 		// draw dot on surface
-		MLGL::drawDot(Vec2(x, y), dotSize);
+		MLGL::drawDot(Vec2(x, y), z*dotSize);
 	}	
 }
 
-void SoundplaneGridView::renderFittingTest()
+void SoundplaneGridView::renderLineSegments()
+{
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
+	Vec4 white(1.f, 1.f, 1.f, 1.f);
+	
+	// draw horiz spans
+	std::vector<Vec3> segsHoriz = mpModel->getLineSegmentsHoriz();
+	
+	for(auto it = segsHoriz.begin(); it != segsHoriz.end(); it++)
+	{
+		Vec3 p = *it;
+		
+		float x1 = mSensorRangeX.convert(p.x());
+		float x2 = mSensorRangeX.convert(p.y());
+		int row = p.z();
+		float y1 = mSensorRangeY.convert(row);	
+		float y2 = mSensorRangeY.convert(row + 1);	
+		
+		glColor4fv(&darkBlue[0]);
+		
+		MLGL::drawLine(x1, y1, x2, y2, 2.0*mViewScale);
+	}	
+	
+	// draw vert spans
+	std::vector<Vec3> segsVert = mpModel->getLineSegmentsVert();
+	
+	for(auto it = segsVert.begin(); it != segsVert.end(); it++)
+	{
+		Vec3 p = *it;
+		
+		float y1 = mSensorRangeY.convert(p.x());
+		float y2 = mSensorRangeY.convert(p.y());
+		int col = p.z();
+		float x1 = mSensorRangeX.convert(col);	
+		float x2 = mSensorRangeX.convert(col + 1);	
+		
+		glColor4fv(&darkRed[0]);
+		
+		MLGL::drawLine(x1, y1, x2, y2, 2.0*mViewScale);
+	}	
+}
+
+void SoundplaneGridView::renderIntersections()
 {
 	if (!mpModel) return;
-	bool zeroClip = false;
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
+	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	
 	setupOrthoView();
 	float dotSize = fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
@@ -596,34 +642,25 @@ void SoundplaneGridView::renderFittingTest()
 	glDisable(GL_LINE_SMOOTH);
 	glLineWidth(1.0*mViewScale);
 
-	for(int j=0; j<4; ++j)
+	
+	// draw intersections
+	std::vector<Vec3> xs = mpModel->getIntersections();
+	
+	for(auto it = xs.begin(); it != xs.end(); it++)
 	{
-		// show stages in fitting from top down.
-		// positive z is UP
-		float y = mSensorRangeY.convert(mSensorHeight - j*1.5f - 2.f);
-
-		Vec4 lineColor(MLGL::getIndicatorColor(j));
-		glColor4fv(&lineColor[0]);
+		Vec2 p = *it;
 		
-		glBegin(GL_LINE_STRIP);
-		for(int i=leftEdge; i<rightEdge; ++i)
-		{
-			float x = mSensorRangeX.convert(i);
-			float z0 = (*viewSignal)(i, j);
-			if(zeroClip) { z0 = max(z0, 0.f); }
-			float z = z0*zScale;
-			glVertex3f(x, y + z, 0);
-		}
-		glEnd();
+		float x = mSensorRangeX.convert(p.x());
+		float y = mSensorRangeY.convert(p.y());
+		float z = 0.f;
 		
-		for(int i=leftEdge; i<rightEdge; ++i)
-		{
-			float x = mSensorRangeX.convert(i);
-			float z0 = (*viewSignal)(i, j);
-			if(zeroClip) { z0 = max(z0, 0.f); }
-			float z = z0*zScale;
-			MLGL::drawDot(Vec2(x, y + z), dotSize*0.5f);
-		}
+		Vec4 dotColor = darkRed;
+		//	dotColor[3] = z*10.f;
+		dotColor[3] = 0.5f;
+		glColor4fv(&dotColor[0]);
+		
+		// draw dot on surface
+		MLGL::drawDot(Vec2(x, y), dotSize);
 	}
 }
 
@@ -914,9 +951,15 @@ void SoundplaneGridView::renderOpenGL()
 		renderPings();
 		drawSurfaceOverlay();
 	}
-	else if (viewMode == "fit test")
+	else if (viewMode == "segments")
 	{
-		renderFittingTest();
+		renderLineSegments();
+		drawSurfaceOverlay();
+	}
+	else if (viewMode == "intersections")
+	{
+		renderIntersections();
+		drawSurfaceOverlay();
 	}
 	else if (viewMode == "norm map")
 	{

@@ -135,7 +135,11 @@ public:
 	std::vector<Vec3> getSpansVert() { return mTracker.getSpansVert(); }
 	std::vector<Vec3> getPingsHoriz() { return mTracker.getPingsHoriz(); }
 	std::vector<Vec3> getPingsVert() { return mTracker.getPingsVert(); }
-
+	std::vector<Vec3> getLineSegmentsHoriz() { return mTracker.getLineSegmentsHoriz(); }
+	std::vector<Vec3> getLineSegmentsVert() { return mTracker.getLineSegmentsVert(); }
+	
+	std::vector<Vec3> getIntersections() { return mTracker.getIntersections(); }
+	
 	const MLSignal* getSignalForViewMode(const std::string& m);
 
     const std::vector<ZonePtr>& getZones(){ return mZones; }

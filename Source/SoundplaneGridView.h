@@ -44,7 +44,8 @@ private:
 	void renderSpansHoriz();
 	void renderSpansVert();
 	void renderPings();
-	void renderFittingTest();
+	void renderLineSegments();
+	void renderIntersections();
 	void renderZGrid();
 	void renderBarChartRaw();
  	

@@ -201,10 +201,9 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("spans_horiz");
 	viewMenu->addItem("spans_vert");
 	viewMenu->addItem("pings");
-	viewMenu->addItem("fit test");
-	viewMenu->addItem("cooked");
-	viewMenu->addItem("xy");
-	viewMenu->addItem("test2");
+	viewMenu->addItem("segments");
+	viewMenu->addItem("intersections");
+
 	viewMenu->addItem("norm map");
 	
 	mMenuMap["midi_device"] = MLMenuPtr(new MLMenu("midi_device"));
