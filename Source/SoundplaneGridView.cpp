@@ -103,8 +103,14 @@ void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
 
 void SoundplaneGridView::setupOrthoView()
 {
-	// orthographic view with origin in lower left.
-	MLGL::orthoView2(mViewWidth, mViewHeight);
+	int viewW = getBackingLayerWidth();
+	int viewH = getBackingLayerHeight();	
+	if(mBackingLayerSize != Vec2(viewW, viewH))
+	{
+		mBackingLayerSize = Vec2(viewW, viewH);
+		doResize();
+	}
+	MLGL::orthoView(viewW, viewH);
 }
 
 void SoundplaneGridView::drawSurfaceOverlay()
@@ -342,7 +348,7 @@ void SoundplaneGridView::renderRegions()
 void SoundplaneGridView::renderSpansHoriz()
 {
 	setupOrthoView();
-	
+
 	// draw stuff in immediate mode. 
 	// TODO don't use fixed function pipeline.
 	//
@@ -355,23 +361,19 @@ void SoundplaneGridView::renderSpansHoriz()
 	
 	// draw spans
 	std::vector<Vec3> spans = mpModel->getSpansHoriz();
-	if(spans.size() > 0)
-		for(auto it = spans.begin(); it != spans.end(); it++)
-		{
-			Vec3 p = *it;
-			
-			// span: (xStart, xEnd, y)
-			float x1 = mSensorRangeX.convert(p.x());
-			float x2 = mSensorRangeX.convert(p.y());
-			float y1 = mSensorRangeY.convert(p.z() - ph);	
-			float y2 = mSensorRangeY.convert(p.z() + ph);	
-			
-			glColor4fv(&darkBlue[0]);
-			
-			MLRect tr(x1, y1, x2 - x1, y2 - y1);
-			MLGL::strokeRect(tr, 1.0*mViewScale);
-			
-		}	
+	for(auto p : spans)
+	{
+		// span: (xStart, xEnd, y)
+		float x1 = mSensorRangeX.convert(p.x());
+		float x2 = mSensorRangeX.convert(p.y());
+		float y1 = mSensorRangeY.convert(p.z() - ph);	
+		float y2 = mSensorRangeY.convert(p.z() + ph);	
+		
+		glColor4fv(&darkBlue[0]);
+		
+		MLRect tr(x1, y1, x2 - x1, y2 - y1);
+		MLGL::strokeRect(tr, 1.0*mViewScale);
+	}	
 	
 	// draw calibrated data
 	
@@ -379,9 +381,7 @@ void SoundplaneGridView::renderSpansHoriz()
 	if(!viewSignal) return;
 	
 	// draw line graph
-	
-	glLineWidth(2.0*mViewScale);
-	
+	glLineWidth(mViewScale);
 	
 	for(int j=0; j<mSensorHeight; ++j)
 	{
@@ -424,25 +424,19 @@ void SoundplaneGridView::renderSpansVert()
 	
 	// draw spans
 	std::vector<Vec3> spans = mpModel->getSpansVert();
-	if(spans.size() > 0)
+	for(auto p : spans)
 	{
-		for(auto it = spans.begin(); it != spans.end(); it++)
-		{
-			Vec3 p = *it;
-			
-			// span: (yStart, yEnd, x)
-			float y1 = mSensorRangeY.convert(p.x());
-			float y2 = mSensorRangeY.convert(p.y());
-			float x1 = mSensorRangeX.convert(p.z() - ph);	
-			float x2 = mSensorRangeX.convert(p.z() + ph);	
-			
-			glColor4fv(&darkBlue[0]);
-			
-			MLRect tr(x1, y1, x2 - x1, y2 - y1);
-			MLGL::strokeRect(tr, 1.0*mViewScale);
-			
-		}	
-	}
+		// span: (yStart, yEnd, x)
+		float y1 = mSensorRangeY.convert(p.x());
+		float y2 = mSensorRangeY.convert(p.y());
+		float x1 = mSensorRangeX.convert(p.z() - ph);	
+		float x2 = mSensorRangeX.convert(p.z() + ph);	
+		
+		glColor4fv(&darkBlue[0]);
+		
+		MLRect tr(x1, y1, x2 - x1, y2 - y1);
+		MLGL::strokeRect(tr, 1.0*mViewScale);
+	}	
 	
 	// draw calibrated data
 	
@@ -450,9 +444,7 @@ void SoundplaneGridView::renderSpansVert()
 	if(!viewSignal) return;
 	
 	// draw line graph
-	
-	glLineWidth(2.0*mViewScale);
-	
+	glLineWidth(mViewScale);
 	
 	for(int i=0; i<mSensorWidth; ++i)
 	{
@@ -576,6 +568,7 @@ void SoundplaneGridView::renderPings()
 
 void SoundplaneGridView::renderLineSegments()
 {
+	setupOrthoView();
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
 	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
 	Vec4 purpl(0.6f, 0.0f, 0.6f, 0.5f);
@@ -647,6 +640,10 @@ void SoundplaneGridView::renderIntersections()
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	
 	setupOrthoView();
+	int gridWidth = 30; // Soundplane A TODO get from tracker
+	int gridHeight = 5;
+
+
 	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
 	
 	const std::string& viewMode = getStringProperty("viewmode");
@@ -664,7 +661,6 @@ void SoundplaneGridView::renderIntersections()
 	glDisable(GL_LINE_SMOOTH);
 	glLineWidth(1.0*mViewScale);
 
-	
 	// draw intersections
 	std::vector<Vec3> xs = mpModel->getIntersections();	
 	for(auto it = xs.begin(); it != xs.end(); it++)
@@ -905,7 +901,11 @@ void SoundplaneGridView::renderBarChartRaw()
 void SoundplaneGridView::resizeWidget(const MLRect& b, const int u)
 {
 	MLWidget::resizeWidget(b, u);
+	doResize();
+}
 
+void SoundplaneGridView::doResize()
+{
 	mKeyWidth = 30;
 	mKeyHeight = 5;
 	
@@ -981,7 +981,7 @@ void SoundplaneGridView::renderOpenGL()
 	else if (viewMode == "intersections")
 	{
 		renderIntersections();
-		drawSurfaceOverlay();
+	//	drawSurfaceOverlay();
 	}
 	else if (viewMode == "norm map")
 	{

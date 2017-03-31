@@ -602,12 +602,12 @@ void TouchTracker::process(int)
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
 				
-		// MLTEST convolve
 		mFFT2 = mFilteredInput;
 		float kc, kex, key, kk;			
-		kc = 16./16.; kex = 8./16.; key = 4./16.; kk=2./16.;						
+		kc = 16./16.; kex = 4./16.; key = 2./16.; kk=1./16.;	
+		// convolve with 3x3 smoothing kernel, twice.
 		mFFT2.convolve3x3xy(kc, kex, key, kk);
-		
+		mFFT2.convolve3x3xy(kc, kex, key, kk);
 		
 		mTestSignal = mFilteredInput;
 		mTestSignal.scale(50.);
@@ -646,7 +646,7 @@ void TouchTracker::process(int)
 		mCount = 0;
 		//dumpTouches();
 		
-		/*
+		
 		debug() << "\n SPANS HORIZ: \n";
 		for(auto it = mSpansHoriz.begin(); it != mSpansHoriz.end(); ++it)
 		{
@@ -659,7 +659,7 @@ void TouchTracker::process(int)
 			Vec3 s = *it;
 			debug() << s.y() - s.x() << " ";
 		}
-		 */
+		 
 	}   
 #endif  
 }

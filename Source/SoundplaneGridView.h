@@ -35,6 +35,7 @@ public:
 private:
  
 	void resizeWidget(const MLRect& b, const int);
+	void doResize();
 	
 	void renderOpenGL();
 	void setupOrthoView();
@@ -57,6 +58,7 @@ private:
 	bool mInitialized;
 	bool mResized;
 	
+	Vec2 mBackingLayerSize; // a hack
 	MLRange mKeyRangeX, mKeyRangeY;
 	MLRange mSensorRangeX, mSensorRangeY;
 	MLRect mKeyRect, mSensorRect;

@@ -30,9 +30,8 @@ void SoundplaneZoneView::renderGrid()
 {
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
-    
     MLGL::orthoView(viewW, viewH);
-
+	
 	int gridWidth = 30; // Soundplane A TODO get from tracker
 	int gridHeight = 5;
    // int margin = viewW / 50;
