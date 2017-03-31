@@ -647,7 +647,7 @@ void SoundplaneGridView::renderIntersections()
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	
 	setupOrthoView();
-	float dotSize = 10.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
 	
 	const std::string& viewMode = getStringProperty("viewmode");
 	const MLSignal* viewSignal = mpModel->getSignalForViewMode(viewMode);
@@ -681,8 +681,8 @@ void SoundplaneGridView::renderIntersections()
 		
 		// draw dot on surface
 		Vec2 pos(x, y);
-		float z = viewSignal->getInterpolatedLinear(p);
-		MLGL::drawDot(pos, z*dotSize);
+		//float z = viewSignal->getInterpolatedLinear(p);
+		MLGL::drawDot(pos, p.z()*dotSize);
 	}
 }
 

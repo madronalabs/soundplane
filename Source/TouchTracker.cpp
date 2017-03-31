@@ -602,34 +602,12 @@ void TouchTracker::process(int)
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
 				
-		bool doFFT = false;
-		if(doFFT)
-		{
-			// forward FFT
-			mFFT1 = mFilteredInput;	
-			mFFT1i.clear();
-			FFTEachRow(mFFT1, mFFT1i);
-						
-			// remove high freqs. and DC in the freq. domain
-			mFFT1.multiply(mTouchFrequencyMask);
-			mFFT1i.multiply(mTouchFrequencyMask);
-
-			// back to spatial domain
-			FFTEachRowInverse(mFFT1, mFFT1i);
-
-			// use real part
-			mFFT2 = mFFT1;
-		}
-		else
-		{
-			// MLTEST convolve
-			mFFT2 = mFilteredInput;
-			
-			float kc, kex, key, kk;
-			kc = 16/16.; kex = 8/16.; key = 2./16.; kk=4./16.;			
-			mFFT2.convolve3x3xy(kc, kex, key, kk);
-			mFFT2.convolve3x3xy(kc, kex, key, kk);
-		}				
+		// MLTEST convolve
+		mFFT2 = mFilteredInput;
+		float kc, kex, key, kk;			
+		kc = 16./16.; kex = 8./16.; key = 4./16.; kk=2./16.;						
+		mFFT2.convolve3x3xy(kc, kex, key, kk);
+		
 		
 		mTestSignal = mFilteredInput;
 		mTestSignal.scale(50.);
@@ -638,7 +616,7 @@ void TouchTracker::process(int)
 		mTestSignal2.scale(50.);
 
 		// MLTEST
-		mFilteredInput = mFFT2;
+		// mFilteredInput = mFFT2;
 		mCalibratedSignal = mFFT2;
 		
 		if(mMaxTouchesPerFrame > 0)
@@ -661,15 +639,29 @@ void TouchTracker::process(int)
 
 		filterAndOutputTouches();
 	}
-	
-#if DEBUG	
-	// TEMP	
+#if DEBUG   
+	// TEMP 
 	if (mCount++ > 1000) 
 	{
 		mCount = 0;
-		dumpTouches();
-	}	
-#endif	
+		//dumpTouches();
+		
+		/*
+		debug() << "\n SPANS HORIZ: \n";
+		for(auto it = mSpansHoriz.begin(); it != mSpansHoriz.end(); ++it)
+		{
+			Vec3 s = *it;
+			debug() << s.y() - s.x() << " ";
+		}
+		debug() << "\n SPANS VERT: \n";
+		for(auto it = mSpansVert.begin(); it != mSpansVert.end(); ++it)
+		{
+			Vec3 s = *it;
+			debug() << s.y() - s.x() << " ";
+		}
+		 */
+	}   
+#endif  
 }
 
 // find spans over which the 2nd derivative of z is negative,
@@ -774,7 +766,6 @@ void TouchTracker::findSpansHoriz()
 	}
 }
 // TODO combine this and Horiz vrsion with a direction argument
-// smooth data differently for each direction
 
 // find vertical spans over which the 2nd derivative of z is negative,
 // and during which the pressure exceeds mOnThreshold at some point.
@@ -903,7 +894,8 @@ void TouchTracker::correctSpansHoriz()
 		int row = s.z();
 		float c = (a + b)/2.f;
 		
-		float k = 0.25f; // by inspection //-mSpanCorrect;
+		float k = 0.2f; // by inspection //-mSpanCorrect;
+		// k = -mSpanCorrect;
 		
 		// can be lookup table for optimized version
 		float ra = k*triangle(c); 
@@ -938,7 +930,7 @@ void TouchTracker::correctSpansVert()
 
 void TouchTracker::findPingsHoriz()
 {
-	const float k1 = 4.0f;
+	const float k1 = 3.5f;
 	const float fingerWidth = k1 / 2.f;
 
 	const MLSignal& in = mFFT2;
@@ -976,7 +968,7 @@ void TouchTracker::findPingsHoriz()
 
 void TouchTracker::findPingsVert()
 {
-	const float k1 = 3.f;
+	const float k1 = 2.5f; // by inspection. could use calibration.
 	const float fingerHeight = k1 / 2.f;
 	
 	const MLSignal& in = mFFT2;
@@ -995,7 +987,7 @@ void TouchTracker::findPingsVert()
 		int col = s.z();
 		
 		float d = b - a;
-		if(d < k1)
+		if(d < k1) // could be location-variant
 		{
 			pingY = (a + b)/2.f;
 			pingZ = in.getInterpolatedLinear(col, pingY);
@@ -1172,10 +1164,10 @@ void TouchTracker::findIntersections()
 			float by2 = itV->y();
 			
 			Vec2 w = intersect(LineSegment(Vec2(ax1, ay1), Vec2(ax2, ay2)), LineSegment(Vec2(bx1, by1), Vec2(bx2, by2)));
-			
+			float z = mFilteredInput.getInterpolatedLinear(w);
 			if(w)
 			{
-				mIntersections.push_back(Vec3(w.x(), w.y(), 1.f));
+				mIntersections.push_back(Vec3(w.x(), w.y(), z));
 			}
 			
 			itV++;
@@ -1184,6 +1176,15 @@ void TouchTracker::findIntersections()
 }
 
 void TouchTracker::findTouches()
+{
+	// cluster intersections to get touches. 
+	// light intersections cluster more easily. 
+	// diagonals of dig. pairs need work
+	
+	
+}
+
+void TouchTracker::matchTouches()
 {
 	
 }

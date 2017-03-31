@@ -368,8 +368,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 		sprintf(numBuf, "%d", i);	
 		mpCarrierLabels[i] = page1->addLabel(numBuf, toggleRectTiny.withCenter(i*0.3 + 1., 4.75));
 	}
-//	page1->addToggleButton("all", toggleRectTiny.withCenter(0*0.3 + 1., 6.), "all_toggle", c2);
-
+//	page1->addToggleButton("all", toggleRectTiny.withCenter(0*0.3 + 1., 6.), "all_toggle", c2);\\\
+	
+	
 	// controls
 	//
 

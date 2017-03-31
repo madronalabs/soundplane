@@ -368,7 +368,9 @@ private:
 	
 	void findIntersections();
 	void findTouches();
-
+	
+	void matchTouches();
+	
 	void filterAndOutputTouches();
 	
 	// new
@@ -403,7 +405,7 @@ private:
 	MLSignal mBackgroundFilterFrequency2;
 	MLSignal mBackground;
 	
-	// new
+	// new MLTEST clean all this up!
 	MLSignal mFFT1;
 	MLSignal mFFT1i;
 	MLSignal mFFT2;
