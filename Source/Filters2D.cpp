@@ -318,3 +318,65 @@ void OnepoleMatrix::process(int)
 	mY1.add(mDx);
 	mpOut->copy(mY1);
 }
+
+#pragma mark BoxFilter2D
+
+const int BoxFilter2D::kMaxN = 50;
+
+BoxFilter2D::BoxFilter2D(int w, int h) 
+{
+	mDelay.resize(kMaxN);
+	setDims(w, h);
+	mDelayIdx = 0;
+}
+
+BoxFilter2D::~BoxFilter2D()
+{
+}
+
+void BoxFilter2D::clear() 
+{
+	for(int i=0; i<mDelay.size(); ++i)
+	{
+		mDelay[i].clear();
+	}
+	mAccum.clear(); 
+	mDelayIdx = 0;
+}
+
+void BoxFilter2D::setDims(int w, int h) 
+{
+	for(int i=0; i<mDelay.size(); ++i)
+	{
+		mDelay[i] = MLSignal(w, h);
+	}
+	
+	mAccum.setDims(w, h);
+	mDelayIdx = 0;
+}
+
+void BoxFilter2D::setN(int n)
+{ 
+	mN = clamp(n, 1, kMaxN); 
+	mScale = 1.0f / static_cast<float>(n); 
+}
+
+void BoxFilter2D::process(int)
+{
+	mDelayIdx++;
+	if(mDelayIdx >= mN)
+	{
+		mDelayIdx = 0;
+	}
+	mDelay[mDelayIdx].copy(*mpIn);
+	
+	mAccum.clear();
+	for(int i=0; i<mN; ++i)
+	{
+		mAccum.add(mDelay[i]);
+	}
+	
+	mAccum.scale(mScale);
+	
+	mpOut->copy(mAccum);
+}

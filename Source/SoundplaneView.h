@@ -137,6 +137,8 @@ private:
 	// misc
 	std::vector<MLWidget*> mpCarrierToggles; // TEMP TODO use getWidget()
 	std::vector<MLWidget*> mpCarrierLabels; // TEMP TODO use getWidget()
+	MLWidget* mpCarriersOverrideToggle;
+	MLDial* mpCarriersOverrideDial;
 	
 	int mCalibrateState;
 	int mSoundplaneClientState;

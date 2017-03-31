@@ -257,11 +257,16 @@ void Zone::processTouchesNoteOffs(std::vector<bool>& freedTouches)
         
         float t2x = t2.pos.x();
         float xPos = mXRange(t2x) - mBounds.left();
-        float scaleNote = mScaleMap.getInterpolatedLinear(xPos - 0.5f);
+		xPos = clamp(xPos, 0.f, mBounds.width());
+		float scaleNote;
         if(mQuantize)
         {
             scaleNote = mScaleMap[(int)xPos];
-        }      
+        }    
+		else
+		{
+			scaleNote = mScaleMap.getInterpolatedLinear(xPos - 0.5f);  
+		}
         if(!isActive && wasActive)
         {
 			// on note off, retain last note for release

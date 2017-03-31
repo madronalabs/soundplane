@@ -111,7 +111,7 @@ public:
 	void setMPEExtended(bool v);
 	void setMPE(bool v);
 	void setStartChannel(int v);
-	void setKymaPoll(bool v) { mKymaPoll = v; }
+	void setKymaPoll(bool v);
 	
 private:
 	int getMPEMainChannel();
@@ -135,7 +135,7 @@ private:
 	void updateVoiceStates();
 	void sendMIDIVoiceMessages();
 	void sendMIDIControllerMessages();
-	void pollKyma();
+	void pollKymaViaMIDI();
 	void dumpVoices();
 
 	

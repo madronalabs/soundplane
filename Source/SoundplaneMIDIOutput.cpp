@@ -81,11 +81,10 @@ juce::MidiOutput* MIDIDevice::getDevice()
 
 SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mpCurrentDevice(0),
-	mPressureActive(false),
 	mDataFreq(250.),
-	mLastTimeNRPNWasSent(0),
-	mLastTimeVerbosePrint(0),
 	mGotControllerChanges(false),
+	mPressureActive(false),
+	mLastTimeNRPNWasSent(0),
 	mBendRange(36),
 	mTranspose(0),
 	mHysteresis(0.5f),
@@ -94,7 +93,8 @@ SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mMPEChannels(0),
 	mChannel(1),
 	mKymaPoll(true),
-	mVerbose(false)
+	mVerbose(false),
+	mLastTimeVerbosePrint(0)
 {
 #ifdef DEBUG
 	//mVerbose = true;
@@ -271,6 +271,13 @@ void SoundplaneMIDIOutput::setStartChannel(int v)
 	mChannel = v;
 	if (!mpCurrentDevice) return;
 	sendAllMIDINotesOff();
+}
+
+void SoundplaneMIDIOutput::setKymaPoll(bool v)
+{ 
+	// MLTEST
+	MLConsole() << "kyma poll: " << v << "\n";
+	mKymaPoll = v; 
 }
 
 // MPE spec defines a split mode using main channels 1 and 16. We ignore this for now and use only channel 1
@@ -533,7 +540,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
     {
         sendMIDIVoiceMessages();
 		if(mGotControllerChanges && mTimeToSendNewFrame) sendMIDIControllerMessages();
-		if(mKymaPoll) pollKyma();
+		if(mKymaPoll) pollKymaViaMIDI();
 		if(mVerbose) dumpVoices();
 		updateVoiceStates();
     }
@@ -557,13 +564,17 @@ void SoundplaneMIDIOutput::sendMIDIVoiceMessages()
 	{
 		MIDIVoice* pVoice = &mMIDIVoices[i];
 		int chan = pVoice->mMIDIChannel;
+				
+		if(pVoice->mSendNoteOff)
+		{
+			mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mPreviousMIDINote));
+		}
 		
 		if(pVoice->mSendNoteOn)
 		{
 			mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOn(chan, pVoice->mMIDINote, (unsigned char)pVoice->mMIDIVel));
 		}
 		
-
 		if(pVoice->mSendPitchBend)
 		{		
 			mpCurrentDevice->sendMessageNow(juce::MidiMessage::pitchWheel(chan, pVoice->mMIDIBend));
@@ -602,12 +613,6 @@ void SoundplaneMIDIOutput::sendMIDIVoiceMessages()
 		{
 //			debug() << "y: " << pVoice->mMIDIYCtrl << "\n";
 			mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 74, pVoice->mMIDIYCtrl));
-		}
-
-		
-		if(pVoice->mSendNoteOff)
-		{
-			mpCurrentDevice->sendMessageNow(juce::MidiMessage::noteOff(chan, pVoice->mPreviousMIDINote));
 		}
 	}
 }
@@ -677,7 +682,7 @@ void SoundplaneMIDIOutput::sendMIDIControllerMessages()
 	mGotControllerChanges = false;
 }
 
-void SoundplaneMIDIOutput::pollKyma()
+void SoundplaneMIDIOutput::pollKymaViaMIDI()
 {
 	// send NRPN with Soundplane identifier every few secs. for Kyma.
 	const uint64_t nrpnPeriodMicrosecs = 1000*1000*4;
@@ -693,7 +698,10 @@ void SoundplaneMIDIOutput::pollKyma()
 		
 		// null NRPN
 		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0xFF));
-		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0xFF));                
+		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0xFF));  
+		
+		// MLTEST Kyma debug
+		MLConsole() << "polling Kyma via MIDI: " << mVoices << " voices.\n";
 	}
 }
 

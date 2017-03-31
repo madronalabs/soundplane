@@ -1,4 +1,4 @@
-
+	
 // Part of the Soundplane client software by Madrona Labs.
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
@@ -77,6 +77,7 @@ SoundplaneModel::SoundplaneModel() :
 	//
 	mNotchFilter(kSoundplaneWidth, kSoundplaneHeight),
 	mLopassFilter(kSoundplaneWidth, kSoundplaneHeight),
+	mBoxFilter(kSoundplaneWidth, kSoundplaneHeight),
 	//
 	mHasCalibration(false),
 	//
@@ -92,6 +93,7 @@ SoundplaneModel::SoundplaneModel() :
 	mNeedsCalibrate(true),
 	mLastInfrequentTaskTime(0),
 	mCarriersMask(0xFFFFFFFF),
+	mDoOverrideCarriers(false),
 	//
 	//mOSCListenerThread(0),
 	//mpUDPReceiveSocket(nullptr),
@@ -102,15 +104,19 @@ SoundplaneModel::SoundplaneModel() :
 	// setup geometry
 	mSurfaceWidthInv = 1.f / (float)mSurface.getWidth();
 	mSurfaceHeightInv = 1.f / (float)mSurface.getHeight();
+	
+	// setup box filter.
+	mBoxFilter.setSampleRate(kSoundplaneSampleRate);
+	mBoxFilter.setN(7);
 
 	// setup fixed notch
 	mNotchFilter.setSampleRate(kSoundplaneSampleRate);
-	mNotchFilter.setNotch(300., 0.1);
-
+	mNotchFilter.setNotch(150., 0.707);
+	
 	// setup fixed lopass.
 	mLopassFilter.setSampleRate(kSoundplaneSampleRate);
 	mLopassFilter.setLopass(50, 0.707);
-
+	
 	for(int i=0; i<kSoundplaneMaxTouches; ++i)
 	{
 		mCurrentKeyX[i] = -1;
@@ -333,9 +339,39 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "kyma_poll")
 			{
 				bool b = v;
-				mMIDIOutput.setKymaPoll(bool(v));
+				
+				// MLTEST
+				MLConsole() << "SoundplaneModel: kyma_poll " << b << "\n";
+				
+				mMIDIOutput.setKymaPoll(b);
 				listenToOSC(b ? kDefaultUDPReceivePort : 0);
+				
+				if(b)
+				{
+					MLConsole() << "     listening for OSC on port " << kDefaultUDPReceivePort << ".\n";
+				}
 			}
+			else if (p == "override_carriers")
+			{
+				bool b = v;				
+				if(b)
+				{
+					setCarriers(mOverrideCarriers);
+				}
+				else
+				{
+					setCarriers(mCarriers);
+				}
+				mDoOverrideCarriers = b;
+			}
+			else if (p == "override_carrier_set")
+			{
+				makeStandardCarrierSet(mOverrideCarriers, v);
+				if(mDoOverrideCarriers)
+				{
+					setCarriers(mOverrideCarriers);
+				}
+			}			
 		}
 		break;
 		case MLProperty::kStringProperty:
@@ -480,6 +516,11 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 //
 void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndpointName& remoteEndpoint)
 {
+	// MLTEST - kyma debugging
+	char endpointStr[256];
+	remoteEndpoint.AddressAndPortAsString(endpointStr);
+	MLConsole() << "OSC: " << m.AddressPattern() << " from " << endpointStr << "\n";
+	
 	osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
 	osc::int32 a1;
 	try
@@ -487,6 +528,10 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 		if( std::strcmp( m.AddressPattern(), "/osc/response_from" ) == 0 )
 		{
 			args >> a1 >> osc::EndMessage;
+			
+			// MLTEST
+			MLConsole() << " arg = " << a1 << "\n";
+
 			// set Kyma mode
 			if (mOSCOutput.getKymaMode())
 			{
@@ -496,6 +541,11 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 		else if (std::strcmp( m.AddressPattern(), "/osc/notify/midi/Soundplane" ) == 0 )
 		{
 			args >> a1 >> osc::EndMessage;
+
+			// MLTEST
+			MLConsole() << " arg = " << a1 << "\n";
+			
+			
 			// set voice count to a1
 			int newTouches = clamp((int)a1, 0, kSoundplaneMaxTouches);
 			if(mKymaIsConnected)
@@ -531,7 +581,8 @@ void SoundplaneModel::didResolveAddress(NetService *pNetService)
 	const char* hostNameStr = hostName.c_str();
 	int port = pNetService->getPort();
 
-	debug() << "SoundplaneModel::didResolveAddress: RESOLVED net service to " << hostName << ", port " << port << "\n";
+	// MLTEST
+	MLConsole() << "SoundplaneModel::didResolveAddress: RESOLVED net service to " << hostName << ", service " << serviceName << ", port " << port << "\n";
 	mOSCOutput.connect(hostNameStr, port);
 
 	// if we are talking to a kyma, set kyma mode
@@ -575,7 +626,6 @@ void SoundplaneModel::initialize()
 {
 	mMIDIOutput.initialize();
 	addListener(&mMIDIOutput);
-
 	addListener(&mOSCOutput);
 
 	mpDriver = SoundplaneDriver::create(this);
@@ -657,6 +707,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 	// store surface for raw output
 	mRawSignal.copy(mSurface);
 
+	
 	if (mCalibrating)
 	{
 		// copy surface to a frame of 3D calibration buffer
@@ -693,8 +744,11 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 				}
 			}
 		}
-
+		
 		// filter data in time
+		mBoxFilter.setInputSignal(&mSurface);
+		mBoxFilter.setOutputSignal(&mSurface);
+		mBoxFilter.process(1);	
 		mNotchFilter.setInputSignal(&mSurface);
 		mNotchFilter.setOutputSignal(&mSurface);
 		mNotchFilter.process(1);
@@ -1318,6 +1372,9 @@ void SoundplaneModel::setCarriers(const SoundplaneDriver::Carriers& c)
 {
 	enableOutput(false);
 	mpDriver->setCarriers(c);
+	
+	// MLTEST
+	dumpCarriers(c);
 }
 
 int SoundplaneModel::enableCarriers(unsigned long mask)
@@ -1331,13 +1388,13 @@ int SoundplaneModel::enableCarriers(unsigned long mask)
 	return 0;
 }
 
-void SoundplaneModel::dumpCarriers()
+void SoundplaneModel::dumpCarriers(const SoundplaneDriver::Carriers& carriers)
 {
 	debug() << "\n------------------\n";
 	debug() << "carriers: \n";
 	for(int i=0; i<kSoundplaneSensorWidth; ++i)
 	{
-		int c = mCarriers[i];
+		int c = carriers[i];
 		debug() << i << ": " << c << " ["<< SoundplaneDriver::carrierToFrequency(c) << "Hz] \n";
 	}
 }
@@ -1415,6 +1472,7 @@ void SoundplaneModel::endCalibrate()
 	mCalibrating = false;
 	mHasCalibration = true;
 
+	mBoxFilter.clear();
 	mNotchFilter.clear();
 	mLopassFilter.clear();
 
@@ -1588,7 +1646,7 @@ void SoundplaneModel::endSelectCarriers()
 	}
 	setProperty("carriers", cSig);
 	MLConsole() << "carrier select done.\n";
-
+	
 	mSelectingCarriers = false;
 
 	enableOutput(true);

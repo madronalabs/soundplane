@@ -1091,6 +1091,7 @@ void TouchTracker::findLineSegmentsVert()
 	std::lock_guard<std::mutex> lock(mSegmentsVertMutex);
 	mSegmentsVert.clear();
 	
+
 	const MLSignal& in = mFFT2; // unused but for dims, fix
 	int w = in.getWidth();
 	int h = in.getHeight();
