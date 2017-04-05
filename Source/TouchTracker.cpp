@@ -634,7 +634,6 @@ void TouchTracker::process(int)
 			findLineSegmentsVert();
 			findIntersections();
 			findTouches();
-			
 		}
 
 		filterAndOutputTouches();
@@ -659,6 +658,12 @@ void TouchTracker::process(int)
 			Vec3 s = *it;
 			debug() << s.y() - s.x() << " ";
 		}
+		debug() << "\n INTERSECTIONS: " << mIntersections.size() << "\n";
+		for(auto it = mIntersections.begin(); it != mIntersections.end(); ++it)
+		{
+			Vec3 s = *it;
+			debug() << s.z() << " ";
+		}
 		 
 	}   
 #endif  
@@ -671,7 +676,7 @@ void TouchTracker::findSpansHoriz()
 	// some point on the span must be over this larger threshold to be recognized.
 	const float zThresh = mOnThreshold;
 	
-	const float kMinSpanLength = 2.f;
+	const float kMinSpanLength = 1.f;
 	
 	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
@@ -679,6 +684,9 @@ void TouchTracker::findSpansHoriz()
 	
 	std::lock_guard<std::mutex> lock(mSpansHorizMutex);
 	mSpansHoriz.clear();
+	
+	// loop runs past column ends using zeros as input
+	int right = w + 2;
 	
 	for(int j=0; j<h; ++j)
 	{
@@ -688,8 +696,8 @@ void TouchTracker::findSpansHoriz()
 		float z = 0.f;
 		float zm1 = 0.f;
 //		float zm2 = 0.f;
-		float i1, i2;
-		float a, za, zb;
+//		float i1, i2;
+//		float a, za, zb;
 		float dz = 0.f;
 		float dzm1 = 0.f;
 		float ddz = 0.f;
@@ -697,29 +705,34 @@ void TouchTracker::findSpansHoriz()
 		float ddzm2 = 0.f;
 		bool pushSpan = false;
 		
-		for(int i=0; i < w; ++i)
+		for(int i=0; i < right; ++i)
 		{
 			pushSpan = false;
-			i1 = i - 1.f;
-			i2 = i;
-			
-//			zm2 = zm1; // unused
 			zm1 = z;
-			z = in(i, j);
+			
+			z = (within(i, 0, w)) ? in(i, j) : 0.f;
+			
 			dzm1 = dz;
 			dz = z - zm1;
+			
 			ddzm2 = ddzm1;
 			ddzm1 = ddz;
 			ddz = dz - dzm1;
+
 			
-			// a span is active while ddz < 0	
-			if((ddz < 0)&&(ddzm1 > 0)) // start span
+			// near top or right there is not enough data for getting ddz, so relax criteria for start
+			bool startNearTop = ((i >= w - 2) && (!spanActive) && (dzm1 > 0));
+			
+			if( ( (ddz < 0)&&(ddzm1 > 0) ) || (startNearTop) ) // start span
 			{
 				float m = ddz - ddzm1;	
 				float xa = -ddz/m;
 				spanStart = i - 1.f + xa; 				
 				spanActive = true;
 				if(z > zThresh) spanExceedsThreshold = true;
+				
+				// MLTEST
+				spanExceedsThreshold = true;
 			}
 			else if((ddz > 0)&&(ddzm1 < 0)) // end span
 			{
@@ -734,6 +747,8 @@ void TouchTracker::findSpansHoriz()
 				spanActive = false;
 				spanExceedsThreshold = false;
 			}
+			
+			
 			else if(spanActive) 
 			{
 				if(z > zThresh) spanExceedsThreshold = true;
@@ -774,7 +789,7 @@ void TouchTracker::findSpansVert()
 	// some point on the span must be over this larger threshold to be recognized.
 	const float zThresh = mOnThreshold;
 	
-	const float kMinSpanLength = 0.f;
+	const float kMinSpanLength = 0.5f;
 	
 	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
@@ -826,6 +841,9 @@ void TouchTracker::findSpansVert()
 				
 				spanActive = true;
 				if(z > zThresh) spanExceedsThreshold = true;
+				
+				// MLTEST
+				spanExceedsThreshold = true;
 			}
 			else if( (ddz > 0)&&(ddzm1 < 0) )
 			{
@@ -863,7 +881,7 @@ void TouchTracker::findSpansVert()
 			if(pushSpan)
 			{
 				// DO allow span ends outside [0, h - 1]. 
-				if(spanEnd - spanStart > kMinSpanLength)
+		//		if(spanEnd - spanStart > kMinSpanLength)
 				{
 					mSpansVert.push_back(Vec3(spanStart, spanEnd, i)); 				
 				}
@@ -1048,7 +1066,7 @@ void TouchTracker::findLineSegmentsHoriz()
 	
 	
 	//	debug() << std::setprecision(4);
-	const float kMaxDist = 2.0f;
+	const float kMaxDist = 1.0f;
 	for(int i=0; i<h - 1; ++i)
 	{
 		//	debug() << "ROW " << i << "\n";
@@ -1096,7 +1114,7 @@ void TouchTracker::findLineSegmentsVert()
 	int w = in.getWidth();
 	int h = in.getHeight();
 	
-	const float kMaxDist = 1.f;
+	const float kMaxDist = 0.25f;
 	for(int i=0; i<w - 1; ++i)
 	{
 		auto itColA = std::find_if(mPingsVert.begin(), mPingsVert.end(), [&](Vec3 &v){ return v.x() == i; }); 
@@ -1137,9 +1155,6 @@ void TouchTracker::findIntersections()
 	std::lock_guard<std::mutex> lock(mIntersectionsMutex);
 	mIntersections.clear();
 	
-	// TODO pre-index into vert segments for efficiency
-	debug() << std::setprecision(4);
-	
 	for(auto itH = mSegmentsHoriz.begin(); itH != mSegmentsHoriz.end(); ++itH)
 	{
 		float ax1 = itH->x();
@@ -1168,7 +1183,7 @@ void TouchTracker::findIntersections()
 			float z = mFilteredInput.getInterpolatedLinear(w);
 			if(w)
 			{
-				mIntersections.push_back(Vec3(w.x(), w.y(), z));
+				mIntersections.push_back(Vec4(w.x(), w.y(), z, 0));
 			}
 			
 			itV++;
@@ -1182,14 +1197,97 @@ void TouchTracker::findTouches()
 	// light intersections cluster more easily. 
 	// diagonals of dig. pairs need work
 	
+	int currentGroup = 1;
+	int n = mIntersections.size();
 	
+	// sort by z
+	std::sort(mIntersections.begin(), mIntersections.end(), [](Vec4 va, Vec4 vb){return va.z() > vb.z();});
+	
+	for(int i=0; i<n; ++i)
+	{
+		Vec4 a = mIntersections[i];
+		
+		// get radius we can move this touch to combine with others
+		const float rMin = 1.f;
+		const float rMax = 4.f;
+		const float zrMin = 0.1f;		
+		float r = 2.f;//clamp(rMax - a.z()*rMax/zrMin, rMin, rMax);
+		
+		Vec4 c;
+		float maxZ = 0.f;
+		bool found = false;
+		int foundIdx = -1;
+		
+		// get blob of maximum z within radius maxDist
+		for(int j=0; j<n; ++j)
+		{
+			if(j != i)
+			{
+				Vec4 b = mIntersections[j];
+				Vec2 ab = a.xy() - b.xy();
+				float dist = ab.magnitude(); // TODO magnitude(ab);
+				if(dist < r)
+				{
+					if(b.z() > maxZ)
+					{
+						found = true;
+						foundIdx = j;
+						maxZ = b.z();
+					}
+				}
+			}
+		}
+
+		// set groups
+		if((found) && (maxZ > a.z()))
+		{
+			int groupOfB = mIntersections[foundIdx].w();
+			if(!groupOfB)
+			{
+				mIntersections[foundIdx].setW(currentGroup++);
+			}
+			mIntersections[i].setW(mIntersections[foundIdx].w());
+		}
+		else
+		{
+			mIntersections[i].setW(currentGroup++);
+		}
+	}
+	
+	// collect groups into touch sums
+	std::lock_guard<std::mutex> lock(mTouchSumsMutex);
+	mTouchSums.clear();	
+	
+	for(int g=1; g<currentGroup; ++g)
+	{
+		Vec4 centroid;
+		for(int i=0; i<n; ++i)
+		{
+			if(mIntersections[i].w() == g)
+			{
+				Vec3 a = mIntersections[i];
+				a.setX(a.x()*a.z());
+				a.setY(a.y()*a.z());
+				centroid += a;
+			}
+		}
+		float tz = centroid.z();
+		centroid /= tz;
+		
+		float zFromInput = mFFT2.getInterpolatedLinear(Vec2(centroid.x(), centroid.y()));
+		centroid.setZ(zFromInput);
+		centroid.setW(g);
+		if(tz > mOnThreshold)
+		{
+			mTouchSums.push_back(centroid);
+		}
+	}
 }
 
 void TouchTracker::matchTouches()
 {
 	
 }
-
 
 void TouchTracker::filterAndOutputTouches()
 {

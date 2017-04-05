@@ -47,6 +47,7 @@ private:
 	void renderPings();
 	void renderLineSegments();
 	void renderIntersections();
+	void renderTouches();
 	void renderZGrid();
 	void renderBarChartRaw();
  	

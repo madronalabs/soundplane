@@ -280,7 +280,9 @@ public:
 	std::vector<Vec3> getLineSegmentsHoriz() { std::lock_guard<std::mutex> lock(mSegmentsHorizMutex); return mSegmentsHoriz; }
 	std::vector<Vec3> getLineSegmentsVert() { std::lock_guard<std::mutex> lock(mSegmentsVertMutex); return mSegmentsVert; }
 	
-	std::vector<Vec3> getIntersections() { std::lock_guard<std::mutex> lock(mIntersectionsMutex); return mIntersections; }
+	std::vector<Vec4> getIntersections() { std::lock_guard<std::mutex> lock(mIntersectionsMutex); return mIntersections; }
+	
+	std::vector<Vec3> getTouchSums() { std::lock_guard<std::mutex> lock(mTouchSumsMutex); return mTouchSums; }
 	
 private:	
 
@@ -396,8 +398,11 @@ private:
 	std::vector<Vec3> mSegmentsVert;
 	std::mutex mSegmentsVertMutex;
 	
-	std::vector<Vec3> mIntersections;
+	std::vector<Vec4> mIntersections;
 	std::mutex mIntersectionsMutex;
+	
+	std::vector<Vec3> mTouchSums;
+	std::mutex mTouchSumsMutex;
 	
 
 	AsymmetricOnepoleMatrix mBackgroundFilter;

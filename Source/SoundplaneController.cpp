@@ -203,6 +203,8 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("pings");
 	viewMenu->addItem("segments");
 	viewMenu->addItem("intersections");
+	viewMenu->addItem("clusters");
+	viewMenu->addItem("touches");
 
 	viewMenu->addItem("norm map");
 	

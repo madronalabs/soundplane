@@ -151,7 +151,7 @@ SoundplaneModel::SoundplaneModel() :
 	
 	mViewModeToSignalMap["pings"] = &mCalibratedSignal;
 	
-	mViewModeToSignalMap["fit test"] = &mFitTestSignal;
+	mViewModeToSignalMap["clusters"] = &mCalibratedSignal;
 	
 	mViewModeToSignalMap["test2"] = &mTestSignal2;
 	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());
@@ -755,6 +755,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		mLopassFilter.setInputSignal(&mSurface);
 		mLopassFilter.setOutputSignal(&mSurface);
 		mLopassFilter.process(1);
+
 
 		// send filtered data to touch tracker.
 		mTracker.setInputSignal(&mSurface);

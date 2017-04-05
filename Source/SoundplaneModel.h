@@ -138,7 +138,9 @@ public:
 	std::vector<Vec3> getLineSegmentsHoriz() { return mTracker.getLineSegmentsHoriz(); }
 	std::vector<Vec3> getLineSegmentsVert() { return mTracker.getLineSegmentsVert(); }
 	
-	std::vector<Vec3> getIntersections() { return mTracker.getIntersections(); }
+	std::vector<Vec4> getIntersections() { return mTracker.getIntersections(); }
+	
+	std::vector<Vec3> getTouchSums() { return mTracker.getTouchSums(); }
 	
 	const MLSignal* getSignalForViewMode(const std::string& m);
 

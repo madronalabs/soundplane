@@ -614,7 +614,7 @@ void SoundplaneGridView::renderLineSegments()
 	
 	
 	// draw intersections
-	std::vector<Vec3> xs = mpModel->getIntersections();	
+	std::vector<Vec4> xs = mpModel->getIntersections();	
 	for(auto it = xs.begin(); it != xs.end(); it++)
 	{
 		Vec3 p = *it;
@@ -661,16 +661,17 @@ void SoundplaneGridView::renderIntersections()
 	glDisable(GL_LINE_SMOOTH);
 	glLineWidth(1.0*mViewScale);
 
-	// draw intersections
-	std::vector<Vec3> xs = mpModel->getIntersections();	
+	// draw intersections colored by group
+	std::vector<Vec4> xs = mpModel->getIntersections();	
 	for(auto it = xs.begin(); it != xs.end(); it++)
 	{
-		Vec3 p = *it;
+		Vec4 p = *it;
 		
 		float x = mSensorRangeX.convert(p.x());
 		float y = mSensorRangeY.convert(p.y());
 		
-		Vec4 dotColor = darkRed;
+		int group = p.w();		
+		Vec4 dotColor(MLGL::getIndicatorColor(group));
 		//	dotColor[3] = z*10.f;
 		dotColor[3] = 0.5f;
 		glColor4fv(&dotColor[0]);
@@ -682,6 +683,42 @@ void SoundplaneGridView::renderIntersections()
 	}
 }
 
+
+void SoundplaneGridView::renderTouches()
+{
+	if (!mpModel) return;
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
+	Vec4 white(1.f, 1.f, 1.f, 1.f);
+	
+	setupOrthoView();
+	int gridWidth = 30; // Soundplane A TODO get from tracker
+	int gridHeight = 5;
+	
+	
+	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	
+	// draw touch sums colored by group
+	std::vector<Vec3> xs = mpModel->getTouchSums();	
+	for(auto it = xs.begin(); it != xs.end(); it++)
+	{
+		Vec4 p = *it;
+		
+		float x = mSensorRangeX.convert(p.x());
+		float y = mSensorRangeY.convert(p.y());
+		
+		int group = p.w();		
+		Vec4 dotColor(MLGL::getIndicatorColor(group));
+		dotColor[3] = 0.5f;
+		glColor4fv(&dotColor[0]);
+		
+		// draw dot on surface
+		Vec2 pos(x, y);
+		//float z = viewSignal->getInterpolatedLinear(p);
+		MLGL::drawDot(pos, p.z()*dotSize);
+	}
+
+}
 
 void SoundplaneGridView::renderZGrid()
 {
@@ -981,7 +1018,12 @@ void SoundplaneGridView::renderOpenGL()
 	else if (viewMode == "intersections")
 	{
 		renderIntersections();
-	//	drawSurfaceOverlay();
+		drawSurfaceOverlay();
+	}
+	else if (viewMode == "touches")
+	{
+		renderTouches();
+		drawSurfaceOverlay();
 	}
 	else if (viewMode == "norm map")
 	{
