@@ -15,6 +15,7 @@
 #include <list>
 #include <thread>
 #include <mutex>
+#include <array>
 
 const int kTemplateRadius = 3;
 const int kTemplateSize = kTemplateRadius*2 + 1;
@@ -58,6 +59,7 @@ typedef enum
 	reservedColumn = 7
 } TouchSignalColumns;
 
+/*
 class Touch
 {
 public:
@@ -82,9 +84,9 @@ public:
 	int releaseCtr;
 	float releaseSlope;
 	int unsortedIdx;
-};
+};*/
 
-std::ostream& operator<< (std::ostream& out, const Touch & t);
+//std::ostream& operator<< (std::ostream& out, const Touch & t);
 
 struct LineSegment
 {
@@ -124,11 +126,17 @@ inline float length(LineSegment a)
 	return (a.end - a.start).magnitude();
 }
 
-Vec2 intersect(const LineSegment& a, const LineSegment& b);
+Vec2 intersect(const LineSegment& a, const LineSegment& b); // TODO move to utils
+
+
 
 class TouchTracker
 {
 public:
+
+	static constexpr int kMaxSpans = 256;
+	static constexpr int kMaxTouches = 10;
+	
 	class Listener
 	{
 	public:
@@ -216,16 +224,17 @@ public:
 	void setMaxTouches(int t);
 	void makeTemplate();
 	
+	
 	int getKeyIndexAtPoint(const Vec2 p);
 	Vec2 getKeyCenterAtPoint(const Vec2 p);
 	Vec2 getKeyCenterByIndex(int i);
 	int touchOccupyingKey(int k);
 	bool keyIsOccupied(int k) { return (touchOccupyingKey(k) >= 0); }
 	
-	int addTouch(const Touch& t);
+/*	int addTouch(const Touch& t);
 	int getTouchIndexAtKey(const int k);
 	void removeTouchAtIndex(int touchIdx);
-
+*/
 	void clear();
 	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
@@ -244,7 +253,6 @@ public:
 	const MLSignal& getFitTestSignal() { return mFitTestSignal; } 
 	const MLSignal& getTestSignal2() { return mTestSignal2; } 
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; } 
-	const MLSignal& getRegionSignal() { return mRegions; } 
 	const MLSignal& getCookedSignal() { return mCookedSignal; } 
 	const MLSignal& getCalibrationProgressSignal() { return mCalibrationProgressSignal; } 
 	const MLSignal& getCalibrateSignal() { return mCalibrator.mVisSignal; }		
@@ -268,10 +276,11 @@ public:
 	
 	void setSpanCorrect(float v) { mSpanCorrect = v; }
 	
-	// new
-	
+
 	// returning by value - MLTEST
-	std::vector<Vec3> getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizMutex); return mSpansHoriz; }
+	// these should use time-stamped ringbuffers to communicate with views
+	std::array<Vec3, kMaxSpans> getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizOutMutex); return mSpansHorizOut; }
+
 	std::vector<Vec3> getSpansVert() { std::lock_guard<std::mutex> lock(mSpansVertMutex); return mSpansVert; }
 	
 	std::vector<Vec3> getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizMutex); return mPingsHoriz; }
@@ -282,7 +291,7 @@ public:
 	
 	std::vector<Vec4> getIntersections() { std::lock_guard<std::mutex> lock(mIntersectionsMutex); return mIntersections; }
 	
-	std::vector<Vec3> getTouchSums() { std::lock_guard<std::mutex> lock(mTouchSumsMutex); return mTouchSums; }
+	std::array<Vec4, kMaxTouches> getTouches() { std::lock_guard<std::mutex> lock(mTouchesOutMutex); return mTouchesOut; }
 	
 private:	
 
@@ -359,6 +368,13 @@ private:
 	// new
 	void findSpansHoriz();
 	void findSpansVert();
+	
+	void combineSpansHoriz();
+	void combineSpansVert();
+	
+	void filterSpansHoriz();
+	void filterSpansVert();
+	
 	void correctSpansHoriz();
 	void correctSpansVert();
 	
@@ -375,12 +391,10 @@ private:
 	
 	void filterAndOutputTouches();
 	
-	// new
-	MLSignal mRegions; 
-	MLSignal mRowPeaks; 
+	std::array<Vec3, kMaxSpans> mSpansHoriz;
+	std::array<Vec3, kMaxSpans> mSpansHorizOut;
+	std::mutex mSpansHorizOutMutex;	
 	
-	std::vector<Vec3> mSpansHoriz;
-	std::mutex mSpansHorizMutex;
 
 	std::vector<Vec3> mSpansVert;
 	std::mutex mSpansVertMutex;
@@ -401,8 +415,10 @@ private:
 	std::vector<Vec4> mIntersections;
 	std::mutex mIntersectionsMutex;
 	
-	std::vector<Vec3> mTouchSums;
-	std::mutex mTouchSumsMutex;
+	std::array<Vec4, kMaxTouches> mTouches;
+	std::array<Vec4, kMaxTouches> mTouches1;
+	std::array<Vec4, kMaxTouches> mTouchesOut;
+	std::mutex mTouchesOutMutex;
 	
 
 	AsymmetricOnepoleMatrix mBackgroundFilter;
@@ -427,8 +443,8 @@ private:
 	
 	float mSpanCorrect;
 
-	std::vector<Touch> mTouches;
-	std::vector<Touch> mTouchesToSort;
+//	std::vector<Touch> mTouches;
+//	std::vector<Touch> mTouchesToSort;
 	
 	int mNumKeys;
 

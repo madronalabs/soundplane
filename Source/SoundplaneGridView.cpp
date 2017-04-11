@@ -360,9 +360,11 @@ void SoundplaneGridView::renderSpansHoriz()
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	// draw spans
-	std::vector<Vec3> spans = mpModel->getSpansHoriz();
+	std::array<Vec3, TouchTracker::kMaxSpans> spans = mpModel->getSpansHoriz();
 	for(auto p : spans)
 	{
+		if(!p) break; // array of spans is null-terminated
+		
 		// span: (xStart, xEnd, y)
 		float x1 = mSensorRangeX.convert(p.x());
 		float x2 = mSensorRangeX.convert(p.y());
@@ -426,6 +428,8 @@ void SoundplaneGridView::renderSpansVert()
 	std::vector<Vec3> spans = mpModel->getSpansVert();
 	for(auto p : spans)
 	{
+		if(!p) break; // array of spans is null-terminated
+
 		// span: (yStart, yEnd, x)
 		float y1 = mSensorRangeY.convert(p.x());
 		float y2 = mSensorRangeY.convert(p.y());
@@ -487,7 +491,7 @@ void SoundplaneGridView::renderPings()
 	glLineWidth(2.0*mViewScale);
 	
 	// draw horiz spans
-	std::vector<Vec3> spans = mpModel->getSpansHoriz();
+	auto spans = mpModel->getSpansHoriz();
 	if(spans.size() > 0)
 		for(auto it = spans.begin(); it != spans.end(); it++)
 		{
@@ -698,24 +702,28 @@ void SoundplaneGridView::renderTouches()
 	
 	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
 	
-	// draw touch sums colored by group
-	std::vector<Vec3> xs = mpModel->getTouchSums();	
-	for(auto it = xs.begin(); it != xs.end(); it++)
+	// draw touch sums colored by index
+	std::array<Vec4, TouchTracker::kMaxTouches> xs = mpModel->getTouches();	
+	
+	for(int i = 0; i < TouchTracker::kMaxTouches; ++i)
 	{
-		Vec4 p = *it;
-		
-		float x = mSensorRangeX.convert(p.x());
-		float y = mSensorRangeY.convert(p.y());
-		
-		int group = p.w();		
-		Vec4 dotColor(MLGL::getIndicatorColor(group));
-		dotColor[3] = 0.5f;
-		glColor4fv(&dotColor[0]);
-		
-		// draw dot on surface
-		Vec2 pos(x, y);
-		//float z = viewSignal->getInterpolatedLinear(p);
-		MLGL::drawDot(pos, p.z()*dotSize);
+		Vec4 t = xs[i];
+		if(t.z() > 0.f)
+		{
+			float x = mSensorRangeX.convert(t.x());
+			float y = mSensorRangeY.convert(t.y());
+			
+			int age = t.w();	
+			
+			Vec4 dotColor(MLGL::getIndicatorColor(i));
+			dotColor[3] = 0.5f;
+			glColor4fv(&dotColor[0]);
+			
+			// draw dot on surface
+			Vec2 pos(x, y);
+			//float z = viewSignal->getInterpolatedLinear(p);
+			MLGL::drawDot(pos, t.z()*dotSize);
+		}
 	}
 
 }

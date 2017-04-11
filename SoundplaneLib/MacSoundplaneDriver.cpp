@@ -189,7 +189,8 @@ MacSoundplaneDriver::~MacSoundplaneDriver()
 		}
 		kr = (*intf)->Release(intf);
 		intf = NULL;
-	}}
+	}
+}
 
 void MacSoundplaneDriver::init()
 {

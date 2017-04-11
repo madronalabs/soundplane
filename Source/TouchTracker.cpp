@@ -7,13 +7,14 @@
 
 #include <algorithm>
 
+/*
 std::ostream& operator<< (std::ostream& out, const Touch & t)
 {
 	out << std::setprecision(4);
 	out << "[" << t.x << ", " << t.y << ", " << t.zf << " (" << t.age << ")]";
 	return out;
 }
-
+*/
 
 Vec2 intersect(const LineSegment& a, const LineSegment& b)
 {
@@ -46,6 +47,7 @@ Vec2 intersect(const LineSegment& a, const LineSegment& b)
 	return Vec2(a.start + Vec2(sectX*cosTheta, sectX*-sinTheta));
 }
 
+/*
 Touch::Touch() : 
 	x(0), y(0), z(0), dz(0), zf(0), zf10(0.), dzf(0.), 
 	key(-1), age(0), retrig(0), releaseCtr(0)
@@ -57,6 +59,7 @@ Touch::Touch(float px, float py, float pz, float pdz) :
 	key(-1), age(0), retrig(0), releaseCtr(0)
 {
 }
+*/
 
 TouchTracker::TouchTracker(int w, int h) :
 	mWidth(w),
@@ -86,8 +89,8 @@ TouchTracker::TouchTracker(int w, int h) :
 	mDoNormalize(true),
 	mUseTestSignal(false)
 {
-	mTouches.resize(kTrackerMaxTouches);	
-	mTouchesToSort.resize(kTrackerMaxTouches);	
+//	mTouches.resize(kTrackerMaxTouches);	
+//	mTouchesToSort.resize(kTrackerMaxTouches);	
 
 	mTestSignal.setDims(w, h);
 	mFitTestSignal.setDims(w, h);
@@ -112,10 +115,6 @@ TouchTracker::TouchTracker(int w, int h) :
 	mBackgroundFilter.setDims(w, h);
 	mBackgroundFilter.setSampleRate(mSampleRate);
 	mTemplateScaled.setDims (kTemplateSize, kTemplateSize);
-
-	// new
-	mRegions.setDims(w, h); 
-	mRowPeaks.setDims(w, h); 
 
 	
 	// allocate max number of possible peaks
@@ -259,6 +258,7 @@ Vec2 TouchTracker::getKeyCenterByIndex(int idx)
 	return Vec2(fx, fy);
 }
 
+/*
 int TouchTracker::touchOccupyingKey(int k)
 {
 	int r = -1;
@@ -276,6 +276,7 @@ int TouchTracker::touchOccupyingKey(int k)
 	}
 	return r;
 }
+*/
 
 void TouchTracker::setRotate(bool b)
 { 
@@ -289,6 +290,7 @@ void TouchTracker::setRotate(bool b)
 // add new touch at first free slot.  TODO touch allocation modes including rotate.
 // return index of new touch.
 //
+/*
 int TouchTracker::addTouch(const Touch& t)
 {
 	int newIdx = -1;
@@ -348,7 +350,9 @@ int TouchTracker::addTouch(const Touch& t)
 	}
 	return newIdx;
 }
+*/
 
+/*
 // return index of touch at key k, if any.
 //
 int TouchTracker::getTouchIndexAtKey(const int k)
@@ -378,17 +382,20 @@ void TouchTracker::removeTouchAtIndex(int touchIdx)
 	t.age = 0;
 	t.key = -1;
 }
+*/
 
 void TouchTracker::clear()
 {
-	for (int i=0; i<mMaxTouchesPerFrame; i++)	
+	for (int i=0; i<kMaxTouches; i++)	
 	{
-		mTouches[i] = Touch();	
+		mTouches[i] = Vec3();	
+		mTouches1[i] = Vec3();	
 	}
 	mBackgroundFilter.clear();
 	mNeedsClear = true;
 }
-	
+
+
 void TouchTracker::setThresh(float f) 
 { 
 	const float kHysteresis = 0.002f;
@@ -452,6 +459,7 @@ Vec2 correctTouchPosition(const MLSignal& in, int ix, int iy)
 	return pos;
 }
 
+/*
 Vec3 TouchTracker::closestTouch(Vec2 pos)
 {
 	float minDist = MAXFLOAT;
@@ -504,6 +512,7 @@ float TouchTracker::getInhibitThreshold(Vec2 a)
 	}
 	return maxInhibit;
 }
+*/
 
 void TouchTracker::makeFrequencyMask()
 {
@@ -623,35 +632,62 @@ void TouchTracker::process(int)
 		{
 			findSpansHoriz();
 			findSpansVert();
-
+			
+			combineSpansHoriz();
+			combineSpansVert();
+			
+			filterSpansHoriz();
+			filterSpansVert();
+			
 			correctSpansHoriz(); // Soundplane A only. 
 			// correctSpansVert(); // seems not useful for Soundplane A
+			
+			// copy filtered spans to output array
+			{
+				std::lock_guard<std::mutex> lock(mSpansHorizOutMutex);
+				mSpansHorizOut = mSpansHoriz;
+			}
 			
 			findPingsHoriz();
 			findPingsVert();
 			
 			findLineSegmentsHoriz();
 			findLineSegmentsVert();
+			
 			findIntersections();
 			findTouches();
+			
+			matchTouches();
+			
+
 		}
 
 		filterAndOutputTouches();
+		
+		{
+			std::lock_guard<std::mutex> lock(mTouchesOutMutex);
+			mTouchesOut = mTouches1;
+		}
+
 	}
 #if DEBUG   
-	// TEMP 
+
 	if (mCount++ > 1000) 
 	{
 		mCount = 0;
 		//dumpTouches();
 		
-		
-		debug() << "\n SPANS HORIZ: \n";
-		for(auto it = mSpansHoriz.begin(); it != mSpansHoriz.end(); ++it)
+		if(mSpansHorizOut[0])
 		{
-			Vec3 s = *it;
-			debug() << s.y() - s.x() << " ";
+			debug() << "\n SPANS HORIZ: \n";
+			for(auto s : mSpansHorizOut)
+			{
+				if(!s) break;
+				debug() << "[" << s.x() << "-" << s.y() << " (" << s.z() << ") ] ";
+			}
 		}
+		
+		/*
 		debug() << "\n SPANS VERT: \n";
 		for(auto it = mSpansVert.begin(); it != mSpansVert.end(); ++it)
 		{
@@ -659,12 +695,13 @@ void TouchTracker::process(int)
 			debug() << s.y() - s.x() << " ";
 		}
 		debug() << "\n INTERSECTIONS: " << mIntersections.size() << "\n";
+		
 		for(auto it = mIntersections.begin(); it != mIntersections.end(); ++it)
 		{
 			Vec3 s = *it;
 			debug() << s.z() << " ";
 		}
-		 
+		 */
 	}   
 #endif  
 }
@@ -681,9 +718,10 @@ void TouchTracker::findSpansHoriz()
 	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
 	int h = in.getHeight();
-	
-	std::lock_guard<std::mutex> lock(mSpansHorizMutex);
-	mSpansHoriz.clear();
+		
+	// clear
+	int spans = 0;
+	mSpansHoriz.fill(Vec3::null());
 	
 	// loop runs past column ends using zeros as input
 	int right = w + 2;
@@ -702,7 +740,7 @@ void TouchTracker::findSpansHoriz()
 		float dzm1 = 0.f;
 		float ddz = 0.f;
 		float ddzm1 = 0.f;
-		float ddzm2 = 0.f;
+
 		bool pushSpan = false;
 		
 		for(int i=0; i < right; ++i)
@@ -715,10 +753,8 @@ void TouchTracker::findSpansHoriz()
 			dzm1 = dz;
 			dz = z - zm1;
 			
-			ddzm2 = ddzm1;
 			ddzm1 = ddz;
 			ddz = dz - dzm1;
-
 			
 			// near top or right there is not enough data for getting ddz, so relax criteria for start
 			bool startNearTop = ((i >= w - 2) && (!spanActive) && (dzm1 > 0));
@@ -730,9 +766,6 @@ void TouchTracker::findSpansHoriz()
 				spanStart = i - 1.f + xa; 				
 				spanActive = true;
 				if(z > zThresh) spanExceedsThreshold = true;
-				
-				// MLTEST
-				spanExceedsThreshold = true;
 			}
 			else if((ddz > 0)&&(ddzm1 < 0)) // end span
 			{
@@ -747,15 +780,14 @@ void TouchTracker::findSpansHoriz()
 				spanActive = false;
 				spanExceedsThreshold = false;
 			}
-			
-			
+						
 			else if(spanActive) 
 			{
 				if(z > zThresh) spanExceedsThreshold = true;
 			}
 			
 			// get row end spans
-			if(i == w - 1)
+			if(i == right - 1)
 			{
 				// end row
 				if(spanActive && spanExceedsThreshold && (ddzm1 < 0))
@@ -774,12 +806,86 @@ void TouchTracker::findSpansHoriz()
 				spanEnd = clamp(spanEnd, 1.f, w - 2.f);
 				if(spanEnd - spanStart > kMinSpanLength)
 				{
-					mSpansHoriz.push_back(Vec3(spanStart, spanEnd, j)); 				
+					mSpansHoriz[spans++] = Vec3(spanStart, spanEnd, j); 				
 				}
 			}
 		}
 	}
 }
+
+
+template<class InputIt, class ValueType = typename std::iterator_traits<InputIt>::value_type, class ShouldCombineFn, class CombineFn> 
+void combineGroups(InputIt first, InputIt last, ShouldCombineFn shouldCombine, CombineFn combine)
+{
+	ValueType accum = *first;
+	
+	InputIt src = first;
+	InputIt dest = first;
+	for(src++; src != last; ++src)
+	{
+		ValueType next = *src;
+		if(next == ValueType()) break;
+		
+		if (shouldCombine(accum, next))
+		{
+			accum = combine(accum, next);
+		}
+		else
+		{
+			*dest++ = accum;
+			accum = next;
+		}
+	}	
+	
+	*dest++ = accum;
+	
+	// null-object terminate
+	if(dest != last)
+	{
+		*dest = ValueType::null();
+	}
+}
+
+void TouchTracker::combineSpansHoriz()
+{	
+	const float combineDistance = 2.f;
+	auto shouldCombineSpans = [&](Vec3 a, Vec3 b) -> bool { return (a.z() == b.z()) && (a.y() + combineDistance > b.x()) ; };
+	auto combineSpans = [&](Vec3 a, Vec3 b){ return Vec3(a.x(), b.y(), a.z()); };
+	
+	combineGroups(mSpansHoriz.begin(), mSpansHoriz.end(), shouldCombineSpans, combineSpans);
+}
+
+void TouchTracker::combineSpansVert()
+{
+	
+}
+
+void TouchTracker::filterSpansHoriz()
+{
+	// for each new span
+		// is there a current span over the same center ?
+		// if so, 
+			// run IIR filter -> current span
+		// else 
+			// reset current span to new span
+		// reset current span decay count
+	
+	// for each current span
+		// is there a new span over the same center?
+		// if not, 
+			// advance decay count
+			// if decay count has expired
+				// remove current span
+
+
+}
+
+void TouchTracker::filterSpansVert()
+{
+	
+}
+
+
 // TODO combine this and Horiz vrsion with a direction argument
 
 // find vertical spans over which the 2nd derivative of z is negative,
@@ -812,7 +918,6 @@ void TouchTracker::findSpansVert()
 		float dzm1 = 0.f;
 		float ddz = 0.f;
 		float ddzm1 = 0.f;
-		float ddzm2 = 0.f;
 		bool pushSpan = false;
 		
 		for(int j=0; j<top; ++j)
@@ -825,7 +930,6 @@ void TouchTracker::findSpansVert()
 			dzm1 = dz;
 			dz = z - zm1;
 			
-			ddzm2 = ddzm1;
 			ddzm1 = ddz;
 			ddz = dz - dzm1;
 			
@@ -841,9 +945,6 @@ void TouchTracker::findSpansVert()
 				
 				spanActive = true;
 				if(z > zThresh) spanExceedsThreshold = true;
-				
-				// MLTEST
-				spanExceedsThreshold = true;
 			}
 			else if( (ddz > 0)&&(ddzm1 < 0) )
 			{
@@ -881,7 +982,7 @@ void TouchTracker::findSpansVert()
 			if(pushSpan)
 			{
 				// DO allow span ends outside [0, h - 1]. 
-		//		if(spanEnd - spanStart > kMinSpanLength)
+				if(spanEnd - spanStart > kMinSpanLength)
 				{
 					mSpansVert.push_back(Vec3(spanStart, spanEnd, i)); 				
 				}
@@ -904,12 +1005,14 @@ void TouchTracker::correctSpansHoriz()
 {
 	// Soundplane A - specific correction for key mechanicals
 	// specific to smoothing kernel
-	for(auto it = mSpansHoriz.begin(); it != mSpansHoriz.end(); ++it)
+	for(int i = 0; i < kMaxSpans; ++i)
 	{
-		Vec3 s = *it;
-		float a = s.x(); // x1 
-		float b = s.y(); // not really y, rather x2
-		int row = s.z();
+		auto span = mSpansHoriz[i];
+		if(!span) break;
+		
+		float a = span.x(); // x1 
+		float b = span.y(); // not really y, rather x2
+		int row = span.z();
 		float c = (a + b)/2.f;
 		
 		float k = 0.2f; // by inspection //-mSpanCorrect;
@@ -919,7 +1022,7 @@ void TouchTracker::correctSpansHoriz()
 		float ra = k*triangle(c); 
 		float rb = k*triangle(c); 
 		
-		*it = Vec3(a + ra, b - rb, row);
+		mSpansHoriz[i] = Vec3(a + ra, b - rb, row);
 	}	
 }
 
@@ -1032,7 +1135,6 @@ void TouchTracker::findLineSegmentsHoriz()
 	const MLSignal& in = mFFT2; // unused but for dims, fix
 	int w = in.getWidth();
 	int h = in.getHeight();
-	
 	
 	// declarative:
 	//
@@ -1197,6 +1299,8 @@ void TouchTracker::findTouches()
 	// light intersections cluster more easily. 
 	// diagonals of dig. pairs need work
 	
+	mTouches.fill(Vec4()); 
+	
 	int currentGroup = 1;
 	int n = mIntersections.size();
 	
@@ -1254,10 +1358,8 @@ void TouchTracker::findTouches()
 		}
 	}
 	
-	// collect groups into touch sums
-	std::lock_guard<std::mutex> lock(mTouchSumsMutex);
-	mTouchSums.clear();	
-	
+	// collect groups into new touches
+	int touches = 0;
 	for(int g=1; g<currentGroup; ++g)
 	{
 		Vec4 centroid;
@@ -1274,24 +1376,112 @@ void TouchTracker::findTouches()
 		float tz = centroid.z();
 		centroid /= tz;
 		
+		// TODO get interpolated biquadratic to reduce noise 
 		float zFromInput = mFFT2.getInterpolatedLinear(Vec2(centroid.x(), centroid.y()));
+		
 		centroid.setZ(zFromInput);
-		centroid.setW(g);
+		centroid.setW(1); // age
+		
 		if(tz > mOnThreshold)
 		{
-			mTouchSums.push_back(centroid);
+			mTouches[touches++] = centroid;
+			if(touches >= kMaxTouches) break;
 		}
+	}
+	// zero-terminate
+	if(touches < kMaxTouches)
+	{
+		mTouches[touches] = Vec4();
 	}
 }
 
 void TouchTracker::matchTouches()
-{
+{		
+	// sort by age
+	std::sort(mTouches.begin(), mTouches.end(), [](Vec4 a, Vec4 b){return a.w() > b.w();});
+
+	std::array<Vec4, kMaxTouches> workingTouches;
+	workingTouches.fill(Vec4()); // needed?
 	
+//	debug() << "IDX ";
+	
+	for(int i=0; i<mMaxTouchesPerFrame; ++i)
+	{
+		Vec4 u = mTouches[i];
+		if(u == Vec4()) break;
+		
+//		debug() << "[" << i << "(" << u.w() << "):" ;
+		
+		// match with previous touches in mTouches1 
+		float minDist = MAXFLOAT;
+		int minIdx = -1;
+		
+		for(int j=0; j<mMaxTouchesPerFrame; ++j)
+		{
+			Vec4 v = mTouches1[j];
+			//if(v == Vec4()) break;
+			
+			if(workingTouches[j] == Vec4())
+			{
+				Vec3 u3(u.x(), u.y(), u.z());
+				Vec3 v3(v.x(), v.y(), v.z());
+				
+				float uvDist = (u3 - v3).magnitude();
+//				debug() << uvDist << "/";
+
+				if(uvDist < minDist)
+				{
+					minDist = uvDist;
+					minIdx = j;
+				}		
+			}
+		}
+//		debug() << minIdx << "] ";
+
+		
+		if(minIdx > -1)
+		{
+			workingTouches[minIdx] = u;
+		}
+		else
+		{
+			// find first vacant slot
+			for(int j=0; j<mMaxTouchesPerFrame; ++j)
+			{
+				if(workingTouches[j] == Vec4())
+				{
+					workingTouches[j] = u;
+				}
+			}
+		}
+	}
+	
+	mTouches = workingTouches;
+	
+	// copy / merge all touches from mTouches to mTouches1, including empty ones
+	for(int i=0; i<mMaxTouchesPerFrame; ++i)
+	{
+		// increment ages
+		Vec4 u = mTouches[i];
+		Vec4 v = mTouches1[i];
+		
+		int age = u.w();
+		int age1 = v.w();
+		int newAge = 0;
+		if(age)
+		{
+			newAge = age1 + age;
+		}
+		else
+		{
+			newAge = 0;
+		}
+		mTouches1[i] = Vec4(u.x(), u.y(), u.z(), newAge);
+	}
 }
 
 void TouchTracker::filterAndOutputTouches()
 {
-
 	// filter touches
 	// filter x and y for output
 	// filter touches and write touch data to one frame of output signal.
@@ -1299,24 +1489,15 @@ void TouchTracker::filterAndOutputTouches()
 	MLSignal& out = *mpOut;
 	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
-		Touch& t = mTouches[i];			
-		if(t.age > 1)
-		{
-			float xyc = 1.0f - powf(2.71828f, -kMLTwoPi * mLopass*0.1f / (float)mSampleRate);
-			t.xf += (t.x - t.xf)*xyc;
-			t.yf += (t.y - t.yf)*xyc;
-		}
-		else if(t.age == 1)
-		{
-			t.xf = t.x;
-			t.yf = t.y;
-		}
-		out(xColumn, i) = t.xf;
-		out(yColumn, i) = t.yf;
-		out(zColumn, i) = (t.age > 0) ? t.zf : 0.;			
-		out(dzColumn, i) = t.dz;
-		out(ageColumn, i) = t.age;
-		out(dtColumn, i) = t.tDist;
+		Vec4 t = mTouches1[i];
+		
+		out(xColumn, i) = t.x();
+		out(yColumn, i) = t.y();
+		out(zColumn, i) = t.z();
+		out(ageColumn, i) = t.w();
+
+		out(dzColumn, i) = 0.f;//t.dz;
+		out(dtColumn, i) = 0.f;//t.tDist;
 	}
 }
 
@@ -2064,6 +2245,7 @@ float TouchTracker::Calibrator::differenceFromTemplateTouchWithMask(const MLSign
 // --------------------------------------------------------------------------------
 #pragma mark utilities
 
+/*
 void TouchTracker::dumpTouches()
 {
 	int c = 0;
@@ -2081,7 +2263,9 @@ void TouchTracker::dumpTouches()
 		debug() << "\n";
 	}
 }
+*/
 
+/*
 int TouchTracker::countActiveTouches()
 {
 	int c = 0;
@@ -2095,4 +2279,5 @@ int TouchTracker::countActiveTouches()
 	}
 	return c;
 }
+*/
 

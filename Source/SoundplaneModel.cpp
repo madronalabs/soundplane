@@ -1324,7 +1324,6 @@ void SoundplaneModel::filterAndSendData()
 	// get calibrated and cooked signals for viewing
 	// TODO get rid of these copies
 	mCalibratedSignal = mTracker.getCalibratedSignal();								
-	mRegionSignal = mTracker.getRegionSignal();								
 	mCookedSignal = mTracker.getCookedSignal();
 	
 	mFitTestSignal = mTracker.getFitTestSignal();
