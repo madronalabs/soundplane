@@ -1088,11 +1088,7 @@ void SoundplaneModel::clearTouchData()
 		mTouchFrame(xColumn, i) = 0;
 		mTouchFrame(yColumn, i) = 0;
 		mTouchFrame(zColumn, i) = 0;
-		mTouchFrame(dzColumn, i) = 0;
 		mTouchFrame(ageColumn, i) = 0;
-		mTouchFrame(dtColumn, i) = 1.;
-		mTouchFrame(noteColumn, i) = -1;
-		mTouchFrame(reservedColumn, i) = 0;
 	}
 }
 
@@ -1140,7 +1136,10 @@ void SoundplaneModel::sendTouchDataToZones()
         x = mTouchFrame(xColumn, i);
         y = mTouchFrame(yColumn, i);
         z = mTouchFrame(zColumn, i);
-        dz = mTouchFrame(dzColumn, i);
+		
+		// MLTEST don't try to get dz at start of touch. delay gate + velocity by ~5ms to calc note-on vel.
+ //        dz = mTouchFrame(dzColumn, i);
+		
 		if(age > 0)
 		{
  			// apply adjustable force curve for z and clamp

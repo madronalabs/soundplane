@@ -52,11 +52,7 @@ typedef enum
 	xColumn = 0,
 	yColumn = 1,
 	zColumn = 2,
-	dzColumn = 3,
-	ageColumn = 4,
-	dtColumn = 5,
-	noteColumn = 6,
-	reservedColumn = 7
+	ageColumn = 3
 } TouchSignalColumns;
 
 /*

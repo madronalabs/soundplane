@@ -28,6 +28,7 @@ public:
     SoundplaneTouchGraphView();
     ~SoundplaneTouchGraphView();
  
+	void setupOrthoView();
     void mouseDrag (const MouseEvent& e);
     void renderTouchBarGraphs();
     void renderOpenGL();

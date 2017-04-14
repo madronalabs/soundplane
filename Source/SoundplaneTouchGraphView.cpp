@@ -26,6 +26,13 @@ void SoundplaneTouchGraphView::mouseDrag (const MouseEvent& e)
 {
 }
 
+void SoundplaneTouchGraphView::setupOrthoView()
+{
+	int viewW = getBackingLayerWidth();
+	int viewH = getBackingLayerHeight();	
+	MLGL::orthoView(viewW, viewH);
+}
+
 void SoundplaneTouchGraphView::renderTouchBarGraphs()
 {
 	if (!mpModel) return;
@@ -53,9 +60,10 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 	int frameWidth = right - left;
 	int frameOffset = (bottom - top)/frames;
 	int frameHeight = frameOffset - margin;
-	MLRect frameSize(0, 0, frameWidth, frameHeight);		
-
-    MLGL::orthoView(viewW, viewH);
+	MLRect frameSize(0, 0, frameWidth, frameHeight);	
+	
+	setupOrthoView();
+	
 	for(int j=0; j<frames; ++j)
 	{
 		// draw frames
@@ -80,7 +88,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		// draw history	
 		MLRange frameXRange(fr.left(), fr.right());
 		frameXRange.convertTo(MLRange(0, (float)kSoundplaneHistorySize));		
-		MLRange frameYRange(0, 1);
+		MLRange frameYRange(1., 0.);
 		frameYRange.convertTo(MLRange(fr.bottom(), fr.top()));
 		
 		glBegin(GL_LINES);
@@ -88,14 +96,10 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		{
 			int time = frameXRange(i);			
 			float force = touchHistory(2, j, time);
-	//		float d = touchHistory(3, j, time);
-	//		int age = touchHistory(4, j, time);
 			float y = frameYRange.convert(force);
-	//		float drawY = (age > 0) ? y : 0.;	
-	//		y = frameYRange.convert(d);
 			
 			// draw line
-			glVertex2f(i, fr.bottom());	
+			glVertex2f(i, fr.top());	
 			glVertex2f(i, y);	
 		}
 		glEnd();

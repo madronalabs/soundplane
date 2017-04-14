@@ -398,7 +398,7 @@ void TouchTracker::clear()
 
 void TouchTracker::setThresh(float f) 
 { 
-	const float kHysteresis = 0.002f;
+	const float kHysteresis = 0.001f;
 	mOffThreshold = f; 
 	mOnThreshold = mOffThreshold + kHysteresis; 
 	mOverrideThresh = mOnThreshold*5.f;
@@ -613,7 +613,7 @@ void TouchTracker::process(int)
 				
 		mFFT2 = mFilteredInput;
 		float kc, kex, key, kk;			
-		kc = 16./16.; kex = 4./16.; key = 2./16.; kk=1./16.;	
+		kc = 16./32.; kex = 4./32.; key = 2./32.; kk=1./32.;	
 		// convolve with 3x3 smoothing kernel, twice.
 		mFFT2.convolve3x3xy(kc, kex, key, kk);
 		mFFT2.convolve3x3xy(kc, kex, key, kk);
@@ -711,9 +711,11 @@ void TouchTracker::process(int)
 void TouchTracker::findSpansHoriz()
 {
 	// some point on the span must be over this larger threshold to be recognized.
-	const float zThresh = mOnThreshold;
 	
-	const float kMinSpanLength = 1.f;
+	// PROBLEM this should not be a distinction, rather a continuum somehow -- fade in? 
+	const float zThresh = 0.001f;
+	
+	const float kMinSpanLength = 1.0f;
 	
 	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
@@ -733,9 +735,6 @@ void TouchTracker::findSpansHoriz()
 		float spanStart, spanEnd;
 		float z = 0.f;
 		float zm1 = 0.f;
-//		float zm2 = 0.f;
-//		float i1, i2;
-//		float a, za, zb;
 		float dz = 0.f;
 		float dzm1 = 0.f;
 		float ddz = 0.f;
@@ -763,7 +762,7 @@ void TouchTracker::findSpansHoriz()
 			{
 				float m = ddz - ddzm1;	
 				float xa = -ddz/m;
-				spanStart = i - 1.f + xa; 				
+				spanStart = i - 1.f + xa; 	
 				spanActive = true;
 				if(z > zThresh) spanExceedsThreshold = true;
 			}
@@ -792,7 +791,6 @@ void TouchTracker::findSpansHoriz()
 				// end row
 				if(spanActive && spanExceedsThreshold && (ddzm1 < 0))
 				{
-//					spanEnd = w - 1;
 					float m = ddz - ddzm1;				
 					float xa = -ddz/m;
 					spanEnd = i - 1.f + xa; 
@@ -893,7 +891,7 @@ void TouchTracker::filterSpansVert()
 void TouchTracker::findSpansVert()
 {
 	// some point on the span must be over this larger threshold to be recognized.
-	const float zThresh = mOnThreshold;
+	const float zThresh = 0.001f;
 	
 	const float kMinSpanLength = 0.5f;
 	
@@ -1311,11 +1309,9 @@ void TouchTracker::findTouches()
 	{
 		Vec4 a = mIntersections[i];
 		
-		// get radius we can move this touch to combine with others
-		const float rMin = 1.f;
-		const float rMax = 4.f;
-		const float zrMin = 0.1f;		
-		float r = 2.f;//clamp(rMax - a.z()*rMax/zrMin, rMin, rMax);
+		// get radius we can move this touch to combine with others		
+		const float xDist = 2.0f;
+		const float yDist = 1.5f;
 		
 		Vec4 c;
 		float maxZ = 0.f;
@@ -1329,8 +1325,10 @@ void TouchTracker::findTouches()
 			{
 				Vec4 b = mIntersections[j];
 				Vec2 ab = a.xy() - b.xy();
+				ab.setX(ab.x()/xDist); 
+				ab.setY(ab.y()/yDist); 
 				float dist = ab.magnitude(); // TODO magnitude(ab);
-				if(dist < r)
+				if(dist < 1.f)
 				{
 					if(b.z() > maxZ)
 					{
@@ -1382,7 +1380,7 @@ void TouchTracker::findTouches()
 		centroid.setZ(zFromInput);
 		centroid.setW(1); // age
 		
-		if(tz > mOnThreshold)
+		if(zFromInput > mOnThreshold)
 		{
 			mTouches[touches++] = centroid;
 			if(touches >= kMaxTouches) break;
@@ -1400,17 +1398,11 @@ void TouchTracker::matchTouches()
 	// sort by age
 	std::sort(mTouches.begin(), mTouches.end(), [](Vec4 a, Vec4 b){return a.w() > b.w();});
 
-	std::array<Vec4, kMaxTouches> workingTouches;
-	workingTouches.fill(Vec4()); // needed?
-	
-//	debug() << "IDX ";
-	
+	std::array<Vec4, kMaxTouches> workingTouches;	
 	for(int i=0; i<mMaxTouchesPerFrame; ++i)
 	{
 		Vec4 u = mTouches[i];
 		if(u == Vec4()) break;
-		
-//		debug() << "[" << i << "(" << u.w() << "):" ;
 		
 		// match with previous touches in mTouches1 
 		float minDist = MAXFLOAT;
@@ -1419,7 +1411,6 @@ void TouchTracker::matchTouches()
 		for(int j=0; j<mMaxTouchesPerFrame; ++j)
 		{
 			Vec4 v = mTouches1[j];
-			//if(v == Vec4()) break;
 			
 			if(workingTouches[j] == Vec4())
 			{
@@ -1427,8 +1418,6 @@ void TouchTracker::matchTouches()
 				Vec3 v3(v.x(), v.y(), v.z());
 				
 				float uvDist = (u3 - v3).magnitude();
-//				debug() << uvDist << "/";
-
 				if(uvDist < minDist)
 				{
 					minDist = uvDist;
@@ -1436,8 +1425,6 @@ void TouchTracker::matchTouches()
 				}		
 			}
 		}
-//		debug() << minIdx << "] ";
-
 		
 		if(minIdx > -1)
 		{
@@ -1493,11 +1480,8 @@ void TouchTracker::filterAndOutputTouches()
 		
 		out(xColumn, i) = t.x();
 		out(yColumn, i) = t.y();
-		out(zColumn, i) = t.z();
+		out(zColumn, i) = t.z() - mOnThreshold;
 		out(ageColumn, i) = t.w();
-
-		out(dzColumn, i) = 0.f;//t.dz;
-		out(dtColumn, i) = 0.f;//t.tDist;
 	}
 }
 

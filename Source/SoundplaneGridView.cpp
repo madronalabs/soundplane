@@ -510,7 +510,7 @@ void SoundplaneGridView::renderPings()
 		}	
 	
 	// draw pings
-	float kDotSize = 10.f;
+	float kDotSize = 50.f;
 	float dotSize = kDotSize*fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
 	
 	std::vector<Vec3> pings = mpModel->getPingsHoriz();
@@ -699,7 +699,6 @@ void SoundplaneGridView::renderTouches()
 	int gridWidth = 30; // Soundplane A TODO get from tracker
 	int gridHeight = 5;
 	
-	
 	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
 	
 	// draw touch sums colored by index
@@ -723,6 +722,17 @@ void SoundplaneGridView::renderTouches()
 			Vec2 pos(x, y);
 			//float z = viewSignal->getInterpolatedLinear(p);
 			MLGL::drawDot(pos, t.z()*dotSize);
+			
+			// cross in center
+			float k = dotSize*0.04f;
+			dotColor[3] = 1.0f;
+			glColor4fv(&dotColor[0]);
+
+				
+			MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
+			MLGL::drawLine(x, y - k, x, y + k, 2.0f*mViewScale);
+
+			
 		}
 	}
 

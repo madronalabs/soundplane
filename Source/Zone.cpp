@@ -218,7 +218,7 @@ void Zone::processTouchesNoteRow(const std::vector<bool>& freedTouches)
 			
 			if(retrig)
 			{
-				// get retrigger velocity from current z
+				// sliding from key to key- get retrigger velocity from current z
 				t1dz = clamp(t1z * 0.01f, 0.0001f, 1.f);
 			}
 			else
