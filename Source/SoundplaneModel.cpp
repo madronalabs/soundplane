@@ -59,6 +59,8 @@ SoundplaneModel::SoundplaneModel() :
 
 	mRawSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mCalibratedSignal(kSoundplaneWidth, kSoundplaneHeight),
+	mGradientSignalX(kSoundplaneWidth, kSoundplaneHeight),
+	mGradientSignalY(kSoundplaneWidth, kSoundplaneHeight),
 	mRegionSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTempSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mCookedSignal(kSoundplaneWidth, kSoundplaneHeight),
@@ -155,6 +157,9 @@ SoundplaneModel::SoundplaneModel() :
 	
 	mViewModeToSignalMap["test2"] = &mTestSignal2;
 	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());
+	
+	mViewModeToSignalMap["gradient_x"] = &mGradientSignalX;
+	mViewModeToSignalMap["gradient_y"] = &mGradientSignalY;
 	
 	// setup OSC default
 	setProperty("osc_service_name", kOSCDefaultStr);
@@ -746,6 +751,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		}
 		
 		// filter data in time
+		/*
 		mBoxFilter.setInputSignal(&mSurface);
 		mBoxFilter.setOutputSignal(&mSurface);
 		mBoxFilter.process(1);	
@@ -755,7 +761,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		mLopassFilter.setInputSignal(&mSurface);
 		mLopassFilter.setOutputSignal(&mSurface);
 		mLopassFilter.process(1);
-
+*/
 
 		// send filtered data to touch tracker.
 		mTracker.setInputSignal(&mSurface);
@@ -763,9 +769,13 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		mTracker.process(1);
 
 		// get calibrated and cooked signals for viewing
+		// TODO elide all this copying! 
+		
 		mCalibratedSignal = mTracker.getCalibratedSignal();
 		mCookedSignal = mTracker.getCookedSignal();
 		mTestSignal2 = mTracker.getTestSignal();
+		mGradientSignalX = mTracker.getGradientSignalX();
+		mGradientSignalY = mTracker.getGradientSignalY();
 
  		sendTouchDataToZones();
 

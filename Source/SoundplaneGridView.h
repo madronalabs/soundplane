@@ -46,6 +46,7 @@ private:
 	void renderSpansVert();
 	void renderPings();
 	void renderLineSegments();
+	void renderGradient();
 	void renderIntersections();
 	void renderTouches();
 	void renderZGrid();

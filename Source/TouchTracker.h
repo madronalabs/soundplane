@@ -130,7 +130,13 @@ class TouchTracker
 {
 public:
 
-	static constexpr int kMaxSpans = 256;
+	
+	static constexpr int kSensorRows = 8;
+	static constexpr int kSensorCols = 64;
+	
+	static constexpr int kMaxSpansPerRow = 32;
+	static constexpr int kMaxSpansPerCol = 4;
+	
 	static constexpr int kMaxTouches = 10;
 	
 	class Listener
@@ -212,6 +218,8 @@ public:
 		int age;
 	};
 	
+
+	
 	TouchTracker(int w, int h);
 	~TouchTracker();
 
@@ -246,6 +254,8 @@ public:
 	void process(int);
 	
 	const MLSignal& getTestSignal() { return mTestSignal; } 
+	const MLSignal& getGradientSignalX() { return mGradientSignalX; } 
+	const MLSignal& getGradientSignalY() { return mGradientSignalY; } 
 	const MLSignal& getFitTestSignal() { return mFitTestSignal; } 
 	const MLSignal& getTestSignal2() { return mTestSignal2; } 
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; } 
@@ -272,10 +282,12 @@ public:
 	
 	void setSpanCorrect(float v) { mSpanCorrect = v; }
 	
+	typedef std::array< std::array<Vec4, kMaxSpansPerRow>, kSensorRows > HorizSpans;
+
 
 	// returning by value - MLTEST
 	// these should use time-stamped ringbuffers to communicate with views
-	std::array<Vec3, kMaxSpans> getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizOutMutex); return mSpansHorizOut; }
+	HorizSpans getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizOutMutex); return mSpansHorizOut; }
 
 	std::vector<Vec3> getSpansVert() { std::lock_guard<std::mutex> lock(mSpansVertMutex); return mSpansVert; }
 	
@@ -346,6 +358,8 @@ private:
 	MLSignal mTemp;
 	MLSignal mTempWithBorder;
 	MLSignal mTestSignal;
+	MLSignal mGradientSignalX;
+	MLSignal mGradientSignalY;
 	MLSignal mFitTestSignal;
 	MLSignal mTestSignal2;
 	MLSignal mCalibratedSignal;
@@ -387,10 +401,10 @@ private:
 	
 	void filterAndOutputTouches();
 	
-	std::array<Vec3, kMaxSpans> mSpansHoriz;
-	std::array<Vec3, kMaxSpans> mSpansHorizOut;
+	HorizSpans mSpansHoriz;
+	HorizSpans mSpansHoriz1;
+	HorizSpans mSpansHorizOut;
 	std::mutex mSpansHorizOutMutex;	
-	
 
 	std::vector<Vec3> mSpansVert;
 	std::mutex mSpansVertMutex;

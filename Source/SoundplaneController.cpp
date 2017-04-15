@@ -202,6 +202,7 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("spans_vert");
 	viewMenu->addItem("pings");
 	viewMenu->addItem("segments");
+	viewMenu->addItem("gradient");
 	viewMenu->addItem("intersections");
 	viewMenu->addItem("clusters");
 	viewMenu->addItem("touches");

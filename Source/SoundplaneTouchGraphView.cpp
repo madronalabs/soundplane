@@ -79,7 +79,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		glColor4fv(MLGL::getIndicatorColor(j));
 		MLRect r(0, 0, numSize, numSize);		
 		MLRect tr = r.translated(Vec2(margin, margin + j*frameOffset + (frameHeight - numSize)/2));				
-		int age = currentTouch(4, j);		
+		int age = currentTouch(ageColumn, j);		
 		if (age > 0)
 			MLGL::fillRect(tr);	
 		else

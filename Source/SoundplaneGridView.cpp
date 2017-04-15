@@ -360,21 +360,26 @@ void SoundplaneGridView::renderSpansHoriz()
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	// draw spans
-	std::array<Vec3, TouchTracker::kMaxSpans> spans = mpModel->getSpansHoriz();
-	for(auto p : spans)
+	TouchTracker::HorizSpans spans = mpModel->getSpansHoriz();
+	int j = 0;
+	for(auto row : spans)
 	{
-		if(!p) break; // array of spans is null-terminated
-		
-		// span: (xStart, xEnd, y)
-		float x1 = mSensorRangeX.convert(p.x());
-		float x2 = mSensorRangeX.convert(p.y());
-		float y1 = mSensorRangeY.convert(p.z() - ph);	
-		float y2 = mSensorRangeY.convert(p.z() + ph);	
-		
-		glColor4fv(&darkBlue[0]);
-		
-		MLRect tr(x1, y1, x2 - x1, y2 - y1);
-		MLGL::strokeRect(tr, 1.0*mViewScale);
+		for(auto p : row)
+		{
+			if(!p) break; // each array of spans is null-terminated
+			
+			// span: (xStart, xEnd, xVariance, yVariance)
+			float x1 = mSensorRangeX.convert(p.x());
+			float x2 = mSensorRangeX.convert(p.y());
+			float y1 = mSensorRangeY.convert(j - ph);	
+			float y2 = mSensorRangeY.convert(j + ph);	
+			
+			glColor4fv(&darkBlue[0]);
+			
+			MLRect tr(x1, y1, x2 - x1, y2 - y1);
+			MLGL::strokeRect(tr, 1.0*mViewScale);
+		}
+		j++;
 	}	
 	
 	// draw calibrated data
@@ -492,22 +497,24 @@ void SoundplaneGridView::renderPings()
 	
 	// draw horiz spans
 	auto spans = mpModel->getSpansHoriz();
-	if(spans.size() > 0)
-		for(auto it = spans.begin(); it != spans.end(); it++)
+	int rowInt = 0;
+	for(auto row : spans)
+	{
+		for(auto span : row)
 		{
-			Vec3 p = *it;
-			
 			float ph = 0.;
-			float x1 = mSensorRangeX.convert(p.x());
-			float x2 = mSensorRangeX.convert(p.y());
-			float y1 = mSensorRangeY.convert(p.z() - ph);	
-			float y2 = mSensorRangeY.convert(p.z() + ph);	
+			float x1 = mSensorRangeX.convert(span.x());
+			float x2 = mSensorRangeX.convert(span.y());
+			float y1 = mSensorRangeY.convert(rowInt - ph);	
+			float y2 = mSensorRangeY.convert(rowInt + ph);	
 			
 			glColor4fv(&darkBlue[0]);
 			
 			MLRect tr(x1, y1, x2 - x1, y2 - y1);
 			MLGL::strokeRect(tr, 1.0*mViewScale);
 		}	
+		rowInt++;
+	}
 	
 	// draw pings
 	float kDotSize = 50.f;
@@ -577,9 +584,9 @@ void SoundplaneGridView::renderLineSegments()
 	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
 	Vec4 purpl(0.6f, 0.0f, 0.6f, 0.5f);
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
-
+	
 	float dotSize = fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
-
+	
 	// draw horiz spans
 	std::vector<Vec3> segsHoriz = mpModel->getLineSegmentsHoriz();
 	
@@ -636,6 +643,43 @@ void SoundplaneGridView::renderLineSegments()
 	}	
 }
 
+void SoundplaneGridView::renderGradient()
+{
+	setupOrthoView();
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
+	Vec4 purpl(0.6f, 0.0f, 0.6f, 0.5f);
+	Vec4 white(1.f, 1.f, 1.f, 1.f);
+
+	const MLSignal* gx = mpModel->getSignalForViewMode("gradient_x");
+	const MLSignal* gy = mpModel->getSignalForViewMode("gradient_y");
+	if((!gx) || (!gy)) return;
+
+	
+	float dotSize = 0.25*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	float displayScale = 100.f* mpModel->getFloatProperty("display_scale");
+	
+	// draw vector field
+
+	glColor4fv(&darkBlue[0]);
+	for(int j=0; j<mSensorHeight; ++j)
+	{
+		for(int i=0; i<mSensorWidth; ++i)
+		{
+			float x = mSensorRangeX.convert(i);
+			float y = mSensorRangeY.convert(j);
+			
+			float zx = mSensorRangeX.convert(i - (*gx)(i, j)*displayScale);
+			float zy = mSensorRangeY.convert(j - (*gy)(i, j)*displayScale);
+
+			MLGL::drawDot(Vec2(x, y), dotSize);
+			MLGL::drawLine(x, y, zx, zy, 2.0*mViewScale);
+			
+
+		}
+	}
+}
+
 void SoundplaneGridView::renderIntersections()
 {
 	if (!mpModel) return;
@@ -644,22 +688,9 @@ void SoundplaneGridView::renderIntersections()
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	
 	setupOrthoView();
-	int gridWidth = 30; // Soundplane A TODO get from tracker
-	int gridHeight = 5;
-
 
 	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
-	
-	const std::string& viewMode = getStringProperty("viewmode");
-	const MLSignal* viewSignal = mpModel->getSignalForViewMode(viewMode);
-	if(!viewSignal) return;
-	
-	float displayScale = mpModel->getFloatProperty("display_scale");
-	const float zScale = displayScale*400.f;
-	
-	int leftEdge = 0;
-	int rightEdge = mSensorWidth;
-	
+		
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glDisable(GL_LINE_SMOOTH);
@@ -684,6 +715,15 @@ void SoundplaneGridView::renderIntersections()
 		Vec2 pos(x, y);
 		//float z = viewSignal->getInterpolatedLinear(p);
 		MLGL::drawDot(pos, p.z()*dotSize);
+		
+		
+		/*
+		// TEMP draw gradient at intersection
+		float zx = mSensorRangeX.convert(p.x() + p.z()*1000.f);
+		float zy = mSensorRangeY.convert(p.y() + p.w()*1000.f);
+		MLGL::drawDot(pos, 0.01f*dotSize);
+		MLGL::drawLine(x, y, zx, zy, 2.0*mViewScale);
+		*/
 	}
 }
 
@@ -1037,6 +1077,11 @@ void SoundplaneGridView::renderOpenGL()
 	{
 		renderIntersections();
 		drawSurfaceOverlay();
+	}
+	else if (viewMode == "gradient")
+	{
+		renderGradient();
+		// drawSurfaceOverlay();
 	}
 	else if (viewMode == "touches")
 	{

@@ -131,7 +131,7 @@ public:
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 
-	std::array<Vec3, TouchTracker::kMaxSpans> getSpansHoriz() { return mTracker.getSpansHoriz(); }
+	TouchTracker::HorizSpans getSpansHoriz() { return mTracker.getSpansHoriz(); }
 	
 	std::vector<Vec3> getSpansVert() { return mTracker.getSpansVert(); }
 	std::vector<Vec3> getPingsHoriz() { return mTracker.getPingsHoriz(); }
@@ -228,6 +228,8 @@ private:
 
 	MLSignal mRawSignal;
 	MLSignal mCalibratedSignal;
+	MLSignal mGradientSignalX;
+	MLSignal mGradientSignalY;
 	MLSignal mRegionSignal;
 	MLSignal mCookedSignal;
 
