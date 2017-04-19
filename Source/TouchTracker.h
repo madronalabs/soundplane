@@ -376,10 +376,12 @@ private:
 	MLSignal mRetrigTimer;
 
 	// new
-	void findSpansHoriz();
+	HorizSpans findSpansHoriz(const MLSignal& in);
+	HorizSpans findZ2SpansHoriz(const HorizSpans& intSpans, const MLSignal& in);
+	HorizSpans combineSpansHoriz(const HorizSpans& inSpans);
+
 	void findSpansVert();
 	
-	void combineSpansHoriz();
 	void combineSpansVert();
 	
 	void filterSpansHoriz();

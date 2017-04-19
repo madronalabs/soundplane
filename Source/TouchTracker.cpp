@@ -16,6 +16,88 @@ std::ostream& operator<< (std::ostream& out, const Touch & t)
 }
 */
 
+bool spansOverlap(Vec4 a, Vec4 b)
+{
+	return (within(b.x(), a.x(), a.y() ) || within(b.y(), a.x(), a.y()) ||
+			((b.x() < a.x()) && (b.y() > a.y()))
+			);
+}
+
+void replaceLastSpanInRow(std::array<Vec4, TouchTracker::kMaxSpansPerRow>& row, Vec4 b)
+{
+	 auto lastNonNull = std::find_if(row.rbegin(), row.rend(), [](Vec4 a){ return bool(a); });
+	 if(lastNonNull != row.rend())
+	 {
+		*lastNonNull = b;
+	 }
+	 else
+	 {
+		 *(row.begin()) = b;
+	 }
+}
+
+void appendSpanToRow(std::array<Vec4, TouchTracker::kMaxSpansPerRow>& row, Vec4 b)
+{
+	// if full (last element is not null), return
+	if(row[TouchTracker::kMaxSpansPerRow - 1]) { debug() << "!"; return; }
+	
+	auto firstNull = std::find_if(row.begin(), row.end(), [](Vec4 a){ return !bool(a); });
+	*firstNull = b;
+}
+
+
+void insertSpanIntoRow(std::array<Vec4, TouchTracker::kMaxSpansPerRow>& row, Vec4 b)
+{
+	// if full (last element is not null), return
+	if(row[TouchTracker::kMaxSpansPerRow - 1]) { debug() << "!"; return; }
+	
+	for(int i=0; i<TouchTracker::kMaxSpansPerRow; i++)
+	{
+		Vec4 a = row[i];
+		if(!a)
+		{
+			// empty, overwrite
+			row[i] = b;
+			return;
+		}
+		else if(within(b.x(), a.x(), a.y() ) || within(b.y(), a.x(), a.y() ) ||
+				( (b.x() < a.x()) && (b.y() > a.y()) )
+				)
+		{
+			// overlapping, combine
+			// row[i] = Vec4(min(a.x(), b.x()), max(a.y(), b.y()), b.z(), b.w() );
+			// overwrite
+			row[i] = b;
+			return;
+		}
+		else if(b.x() > a.y())
+		{
+			// past existing span, insert after
+			for(int j = TouchTracker::kMaxSpansPerRow - 1; j > i; j--)
+			{
+				row[j] = row[j - 1];
+			}
+			row[i] = b;
+			return;
+		}
+	}
+	
+}
+
+void removeSpanFromRow(std::array<Vec4, TouchTracker::kMaxSpansPerRow>& row, int pos)
+{
+	int spans = row.size();
+	// restore null at end in case needed 
+	row[TouchTracker::kMaxSpansPerRow - 1] = Vec4::null();
+	
+	for(int j = pos; j < spans - 1; ++j)
+	{
+		Vec4 next = row[j + 1];
+		row[j] = next;
+		if(!next) break;
+	}
+}
+
 Vec2 intersect(const LineSegment& a, const LineSegment& b)
 {
 	if((lengthIsZero(a)) || (lengthIsZero(b)))
@@ -170,6 +252,14 @@ TouchTracker::TouchTracker(int w, int h) :
 	mTouchKerneli.setDims(w, h);
 	
 	makeFrequencyMask();
+	
+	// clear previous spans
+	for(auto& row : mSpansHoriz1)
+	{
+		row.fill(Vec4::null());	
+	}
+	
+
 }
 		
 TouchTracker::~TouchTracker()
@@ -646,10 +736,11 @@ void TouchTracker::process(int)
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
 				
+		// convolve with 3x3 smoothing kernel, twice.
 		mFFT2 = mFilteredInput;
 		float kc, kex, key, kk;			
-		kc = 16./32.; kex = 4./32.; key = 2./32.; kk=1./32.;	
-		// convolve with 3x3 smoothing kernel, twice.
+//		kc = 16./32.; kex = 4./32.; key = 2./32.; kk=1./32.;	
+		kc = 16./48.; kex = 8./48.; key = 4./48.; kk=2./48.;	
 		mFFT2.convolve3x3xy(kc, kex, key, kk);
 		mFFT2.convolve3x3xy(kc, kex, key, kk);
 		
@@ -665,13 +756,23 @@ void TouchTracker::process(int)
 		// MLTEST
 		// mFilteredInput = mFFT2;
 		mCalibratedSignal = mFFT2;
-		
+				
+
 		if(mMaxTouchesPerFrame > 0)
 		{
-			findSpansHoriz();
+			HorizSpans intSpans = findSpansHoriz(mFFT2);
+			mSpansHoriz = findZ2SpansHoriz(intSpans, mFFT2);
+			
 			findSpansVert();
 			
-			combineSpansHoriz();
+			// ideas: time filter spans before correcting endpoints, or before combining.
+			// limits on making / combining spans: support from z' or z needed 
+			// use uglier correction of z to make spans. much less noisy though.
+			
+			// require bigger change in z'' than 0 crossing -- hysteresis over space?
+			
+		//	mSpansHoriz = combineSpansHoriz(mSpansHoriz);
+			
 			combineSpansVert();
 			
 		//	filterSpansHoriz();
@@ -695,7 +796,7 @@ void TouchTracker::process(int)
 			findIntersections();
 			findTouches();
 			
-			matchTouches();
+		//	matchTouches();
 		}
 
 		filterAndOutputTouches();
@@ -755,124 +856,179 @@ void TouchTracker::process(int)
 #endif  
 }
 
-// find spans over which the 2nd derivative of z is negative,
-// and during which the pressure exceeds mOnThreshold at some point.
-void TouchTracker::findSpansHoriz()
+
+// find spans over which z is higher than a small constant.
+TouchTracker::HorizSpans TouchTracker::findSpansHoriz(const MLSignal& in)
 {
-	// some point on the span must be over this larger threshold to be recognized.
+	const float zThresh = 0.002;
+	const float kMinSpanLength = 2.0f;
 	
-	// PROBLEM this should not be a distinction, rather a continuum somehow -- fade in? 
-	const float zThresh = mOnThreshold/2;
-	
-	const float kMinSpanLength = 1.0f;
-	
-	const MLSignal& in = mFFT2;
 	int w = in.getWidth();
 	int h = in.getHeight();
+	HorizSpans out;
 		
-	// clear
-	for(auto& row : mSpansHoriz)
-	{
-		row.fill(Vec4::null());	
-	}
-	
-	// loop runs past column ends using zeros as input
-	int right = w + 2;
-	
 	for(int j=0; j<h; ++j)
 	{
+		out[j].fill(Vec4::null());	
 		int spansInRow = 0;
-
-		bool spanActive = false;
-		bool spanExceedsThreshold = false;
+		
 		float spanStart, spanEnd;
 		float z = 0.f;
 		float zm1 = 0.f;
-		float dz = 0.f;
-		float dzm1 = 0.f;
-		float ddz = 0.f;
-		float ddzm1 = 0.f;
-
-		bool pushSpan = false;
-		
-		
-		for(int i=0; i < right; ++i)
-		{
-			pushSpan = false;
-			zm1 = z;
-			
-			z = (within(i, 0, w)) ? in(i, j) : 0.f;
-			
-			dzm1 = dz;
-			dz = z - zm1;
-			
-			ddzm1 = ddz;
-			ddz = dz - dzm1;
-			
-			// near top or right there is not enough data for getting ddz, so relax criteria for start
-			bool startNearTop = ((i >= w - 2) && (!spanActive) && (dzm1 > 0));
-			
-			if( ( (ddz < 0)&&(ddzm1 > 0) ) || (startNearTop) ) // start span
-			{
-				float m = ddz - ddzm1;	
-				float xa = -ddz/m;
-				spanStart = i - 1.f + xa; 	
-				spanActive = true;
-				if(z > zThresh) spanExceedsThreshold = true;
-			}
-			else if((ddz > 0)&&(ddzm1 < 0)) // end span
-			{
-				float m = ddz - ddzm1;				
-				float xa = -ddz/m;
-				spanEnd = i - 1.f + xa;
+		spanStart = spanEnd = -1;
 				
-				if(spanExceedsThreshold)
+		for(int i=0; i < w; ++i)
+		{
+			z = in(i, j);
+			if((z > zThresh) && (zm1 < zThresh)) 
+			{
+				// start span
+				spanStart = i;
+			}
+			else if((spanStart >= 0) && ((z < zThresh) || (i == w - 1)) && (zm1 > zThresh)) 
+			{
+				// end span when z goes under thresh or active at end of sensor
+				spanEnd = i;
+				if(spanEnd - spanStart > kMinSpanLength)
 				{
-					pushSpan = true;
+					if(spansInRow < kMaxSpansPerRow)
+					{
+						out[j][spansInRow++] = Vec4(spanStart, spanEnd, 0.f, 0.f); 		
+					}
 				}
-				spanActive = false;
-				spanExceedsThreshold = false;
+				spanStart = spanEnd = -1;
 			}
+			zm1 = z;
+		}
+	}
+	return out;
+}
+
+
+// for each horizontal span, find one or more subspans over which the 2nd derivative of z is negative.
+TouchTracker::HorizSpans TouchTracker::findZ2SpansHoriz(const TouchTracker::HorizSpans& intSpans, const MLSignal& in)
+{
+	const float ddzThresh = 0.002f;
+	const float kMinSpanLength = 1.f;
+	
+	int w = in.getWidth();
+	
+	HorizSpans y;
+	int j = 0;
+	for(auto row : intSpans)
+	{
+		y[j].fill(Vec4::null());
+
+		for(auto intSpan : row)
+		{
+			if(!intSpan) break;
 						
-			else if(spanActive) 
-			{
-				if(z > zThresh) spanExceedsThreshold = true;
-			}
+			float spanStart, spanEnd;
+			float spanStartZ;
+			float z = 0.f;
+			float zm1 = 0.f;
+			float dz = 0.f;
+			float dzm1 = 0.f;
+			float ddz = 0.f;
+			float ddzm1 = 0.f;
 			
-			// get row end spans
-			if(i == right - 1)
+			int left = intSpan.x();
+			int right = intSpan.y();
+			spanStart = spanEnd = -1;
+			
+			for(int i=left; i <= right; ++i)
 			{
-				// end row
-				if(spanActive && spanExceedsThreshold && (ddzm1 < 0))
+				z = in(i, j);				
+				dz = z - zm1;
+				ddz = dz - dzm1;
+				
+				if((ddz < -ddzThresh) && (ddzm1 > -ddzThresh))  // crossing negative thresh?
 				{
+	//				debug() << " [" << ddzm1 << "/" << ddz << "] ";
+					
+					// start span
+					float m = ddz - ddzm1;	
+					float xa = -ddz/m;
+					spanStart = i - 1.f + xa; 	
+					spanStartZ = z; 
+				}
+				else if((spanStart >= 0) && ((ddz > -ddzThresh) || (i == right)) && (ddzm1 < -ddzThresh)) 
+				{
+	//				debug() << " - [" << ddzm1 << "/" << ddz << "]\n";
+					
+					// end span if ddz goes back above 0 or the int span ends
 					float m = ddz - ddzm1;				
 					float xa = -ddz/m;
 					spanEnd = i - 1.f + xa; 
-					pushSpan = true;
-				}				
-			}
-			
-			if(pushSpan)
-			{
-				spanStart = clamp(spanStart, 1.f, w - 2.f);
-				spanEnd = clamp(spanEnd, 1.f, w - 2.f);
-				if(spanEnd - spanStart > kMinSpanLength)
-				{
-					// TODO variance
-					if(spansInRow < kMaxSpansPerRow)
+					
+					spanStart = clamp(spanStart, 1.f, w - 2.f);
+					spanEnd = clamp(spanEnd, 1.f, w - 2.f);
+					if(spanEnd - spanStart > kMinSpanLength)
 					{
-						mSpansHoriz[j][spansInRow++] = Vec4(spanStart, spanEnd, 0.f, 0.f); 		
+						appendSpanToRow(y[j], Vec4(spanStart, spanEnd, 0.f, 0.f));
 					}
+					spanStart = spanEnd = -1;
 				}
-			}
+				zm1 = z;
+				dzm1 = dz;
+				ddzm1 = ddz;
+			}			
+			
 		}
-		
-	//	debug() << " | " << spansInRow ;
+		j++;
 	}
-//	debug() << "\n";
-	
-
+	return y;
 }
+
+template<class InputIt, class ValueType = typename std::iterator_traits<InputIt>::value_type, class ShouldCombineFn, class CombineFn> 
+void combineGroups(InputIt first, InputIt last, ShouldCombineFn shouldCombine, CombineFn combine)
+{
+	ValueType accum = *first;
+	
+	InputIt src = first;
+	InputIt dest = first;
+	for(src++; src != last; ++src)
+	{
+		ValueType next = *src;
+		if(!next) break;
+		
+		if (shouldCombine(accum, next))
+		{
+			accum = combine(accum, next);
+		}
+		else
+		{
+			*dest++ = accum;
+			accum = next;
+		}
+	}	
+	
+	*dest++ = accum;
+	
+	// null-object terminate
+	if(dest != last)
+	{
+		*dest = ValueType::null();
+	}
+}
+
+TouchTracker::HorizSpans TouchTracker::combineSpansHoriz(const TouchTracker::HorizSpans& inSpans)
+{	
+	const float combineDistance = 0.f;
+	auto shouldCombineSpans = [&](Vec4 a, Vec4 b) -> bool { return (a.y() + combineDistance > b.x()) ; };
+	auto combineSpans = [&](Vec4 a, Vec4 b){ return Vec4(a.x(), b.y(), 0.f, 0.f); }; // TODO variance
+	
+	TouchTracker::HorizSpans y;
+	int j = 0;
+	for(auto row : inSpans)
+	{
+		combineGroups(row.begin(), row.end(), shouldCombineSpans, combineSpans);
+		y[j++] = row;
+	}
+	return y;
+}
+
+
 
 // TODO combine this and Horiz vrsion with a direction argument
 
@@ -982,50 +1138,6 @@ void TouchTracker::findSpansVert()
 
 
 
-template<class InputIt, class ValueType = typename std::iterator_traits<InputIt>::value_type, class ShouldCombineFn, class CombineFn> 
-void combineGroups(InputIt first, InputIt last, ShouldCombineFn shouldCombine, CombineFn combine)
-{
-	ValueType accum = *first;
-	
-	InputIt src = first;
-	InputIt dest = first;
-	for(src++; src != last; ++src)
-	{
-		ValueType next = *src;
-		if(!next) break;
-		
-		if (shouldCombine(accum, next))
-		{
-			accum = combine(accum, next);
-		}
-		else
-		{
-			*dest++ = accum;
-			accum = next;
-		}
-	}	
-	
-	*dest++ = accum;
-	
-	// null-object terminate
-	if(dest != last)
-	{
-		*dest = ValueType::null();
-	}
-}
-
-void TouchTracker::combineSpansHoriz()
-{	
-	const float combineDistance = 2.f;
-	auto shouldCombineSpans = [&](Vec4 a, Vec4 b) -> bool { return (a.y() + combineDistance > b.x()) ; };
-	auto combineSpans = [&](Vec4 a, Vec4 b){ return Vec4(a.x(), b.y(), 0.f, 0.f); }; // TODO variance
-	
-	for(auto& row : mSpansHoriz)
-	{
-		combineGroups(row.begin(), row.end(), shouldCombineSpans, combineSpans);
-	}
-}
-
 void TouchTracker::combineSpansVert()
 {
 	
@@ -1033,45 +1145,126 @@ void TouchTracker::combineSpansVert()
 
 void TouchTracker::filterSpansHoriz()
 {
-	// for each new span
-		// is there a current span over the same center ?	
-		// if so, 
-	
+
+	// for each new span x0
+		// is there a current span y1 over the same center ?	
+		// if so, 	
 			// combine new and current via IIR/variance filter -> current spans and reset decay count
 		// else 
 			// add new span to current spans and reset decay count
 		
-	// for each current span
-		// is there a new span over the same center?
-		// if not, 
-			// advance decay count
-			// if decay count has expired
-				// remove current span
+	// for each current span 
+	// is there a new span over the same center?
+	// if not, 
+	// advance decay count
+	// if decay count has expired
+	// remove current span
 
+	const float kP = 0.1f;
+	
+	HorizSpans y;
 
-	/*
 	// for each new span
-	for(auto span : mSpansHoriz)
+//debug() << "combine:\n";
+	for(int i = 0; i < kSensorRows; ++i)
 	{
-		float xStart = span.x();
-		float xEnd = span.y();
-		float xCenter = (xStart + xEnd)/2.f; 
-		float aRow = span.z();
+//		debug() << "row " << i << ":";
 		
-		// is there a current span over the same center ?
-		auto overCenter = [&](Vec3 &a){ 
-			return ( (a.z() == aRow) && (a.x() < xCenter) && (a.y() > xCenter) ); };		
-		auto itRowA = std::find_if(mSpansHoriz1.begin(), mSpansHoriz1.end(), overCenter); 
-
-		// if so, combine new and current spans via (IIR filter) -> current span
-		if(itRowA != mSpansHoriz1.end())
+		std::array<Vec4, kMaxSpansPerRow> yRow;
+		yRow.fill(Vec4::null());
+		
+		for(auto span : mSpansHoriz[i])
 		{
+			if(!span) break;
 			
-		}
-	}
-	*/
+			float xStart = span.x();
+			float xEnd = span.y();
+			float xCenter = (xStart + xEnd)/2.f; 
+			
+			Vec4 combinedSpan;
+			
+			// is there a current span overlapping ?
+			auto overlap = [&](Vec4 &a){ 
+				return ( (a.x() < xCenter) && (a.y() > xCenter) ); };		
+			auto itRowA = std::find_if(mSpansHoriz1[i].begin(), mSpansHoriz1[i].end(), overlap); 
 
-	mSpansHoriz1 = mSpansHoriz;
+			// if so, combine new and current spans and get running variance
+			
+			if(itRowA != mSpansHoriz1[i].end())
+			{
+				// filter start / end
+				Vec4 span1 = *itRowA;
+				combinedSpan.setX(span1.x()*(1.0f - kP) + span.x()*kP);
+				combinedSpan.setY(span1.y()*(1.0f - kP) + span.y()*kP);
+				
+	//			debug() << "C";
+
+				// get variance
+			}
+			else
+			{
+				// insert new span to current spans 
+				combinedSpan = span;
+			//	mSpansHoriz1[i][0] = span;
+	//			debug() << "+";
+		//		debug() << "new: " << i << "\n";
+			}	
+			
+			appendSpanToRow(yRow, combinedSpan);
+		}
+		
+		for(auto span1 : mSpansHoriz1[i])
+		{
+			if(!span1) break;
+			
+			float xStart = span1.x();
+			float xEnd = span1.y();
+			float xCenter = (xStart + xEnd)/2.f; 
+			
+			Vec4 combinedSpan;
+
+			// is there a new span over the same center ?
+			auto overlap = [&](Vec4 &a){ 
+				return ( (a.x() < xCenter) && (a.y() > xCenter) ); };		
+			auto itRowA = std::find_if(mSpansHoriz[i].begin(), mSpansHoriz[i].end(), overlap); 
+			
+			// if not, decay
+			if(itRowA == mSpansHoriz[i].end())
+			{
+		//		debug() << "D";
+				
+				float age = span1.z() + 1.f;
+			
+				   
+				   if(age < 100.f)
+				   {
+					   combinedSpan = Vec4(xStart, xEnd, age, 0.f);
+					   insertSpanIntoRow(yRow, combinedSpan);
+				   }
+				else
+				{
+	//				debug() << "D @ " << age << "\n";;
+				}
+			}
+			else
+			{
+	//			debug() << ".";
+	//			combinedSpan = span1;
+	//			insertSpanIntoRow(yRow, combinedSpan);
+				
+			}
+		}
+		
+		y[i] = yRow;
+//		debug() << "\n";
+	}
+//	debug() << "\n";
+
+		
+	// copy accumulator to output
+	mSpansHoriz = y;
+	mSpansHoriz1 = y;
+
 }
 
 void TouchTracker::filterSpansVert()
@@ -1143,7 +1336,7 @@ void TouchTracker::findPingsHoriz()
 	const float k1 = 3.5f;
 	const float fingerWidth = k1 / 2.f;
 
-	const MLSignal& in = mFFT2;
+	const MLSignal& in = mFilteredInput;//mFFT2;
 	std::lock_guard<std::mutex> lock(mPingsHorizMutex);
 	mPingsHoriz.clear();
 	
@@ -1406,9 +1599,8 @@ void TouchTracker::findTouches()
 		Vec4 a = mIntersections[i];
 		
 		// get radius we can move this touch to combine with others		
-		
-		const float xDist = 2.0f;
-		const float yDist = 1.5f;
+		const float xDist = 0.01f;//1.5f;
+		const float yDist = 0.01f;//1.5f;
 		
 		// TODO increase radius for light touches?
 		float distScale = 1.0f;
@@ -1534,7 +1726,6 @@ void TouchTracker::matchTouches()
 		// increment ages
 		Vec4 u = workingTouches[i];
 		Vec4 v = mTouches[i];
-		
 		int age = u.w();
 		int age1 = v.w();
 		int newAge = 0;
