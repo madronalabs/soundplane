@@ -23,7 +23,8 @@ bool spansOverlap(Vec4 a, Vec4 b)
 			);
 }
 
-void replaceLastSpanInRow(std::array<Vec4, TouchTracker::kMaxSpansPerRow>& row, Vec4 b)
+template<size_t ROW_LENGTH>
+void replaceLastSpanInRow(std::array<Vec4, ROW_LENGTH>& row, Vec4 b)
 {
 	 auto lastNonNull = std::find_if(row.rbegin(), row.rend(), [](Vec4 a){ return bool(a); });
 	 if(lastNonNull != row.rend())
@@ -36,22 +37,23 @@ void replaceLastSpanInRow(std::array<Vec4, TouchTracker::kMaxSpansPerRow>& row, 
 	 }
 }
 
-void appendSpanToRow(std::array<Vec4, TouchTracker::kMaxSpansPerRow>& row, Vec4 b)
+template<size_t ROW_LENGTH>
+void appendSpanToRow(std::array<Vec4, ROW_LENGTH>& row, Vec4 b)
 {
 	// if full (last element is not null), return
-	if(row[TouchTracker::kMaxSpansPerRow - 1]) { debug() << "!"; return; }
+	if(row[ROW_LENGTH - 1]) { debug() << "!"; return; }
 	
 	auto firstNull = std::find_if(row.begin(), row.end(), [](Vec4 a){ return !bool(a); });
 	*firstNull = b;
 }
 
-
-void insertSpanIntoRow(std::array<Vec4, TouchTracker::kMaxSpansPerRow>& row, Vec4 b)
+template<size_t ROW_LENGTH>
+void insertSpanIntoRow(std::array<Vec4, ROW_LENGTH>& row, Vec4 b)
 {
 	// if full (last element is not null), return
-	if(row[TouchTracker::kMaxSpansPerRow - 1]) { debug() << "!"; return; }
+	if(row[ROW_LENGTH - 1]) { debug() << "!"; return; }
 	
-	for(int i=0; i<TouchTracker::kMaxSpansPerRow; i++)
+	for(int i=0; i<ROW_LENGTH; i++)
 	{
 		Vec4 a = row[i];
 		if(!a)
@@ -73,22 +75,22 @@ void insertSpanIntoRow(std::array<Vec4, TouchTracker::kMaxSpansPerRow>& row, Vec
 		else if(b.x() > a.y())
 		{
 			// past existing span, insert after
-			for(int j = TouchTracker::kMaxSpansPerRow - 1; j > i; j--)
+			for(int j = ROW_LENGTH - 1; j > i; j--)
 			{
 				row[j] = row[j - 1];
 			}
 			row[i] = b;
 			return;
 		}
-	}
-	
+	}	
 }
 
-void removeSpanFromRow(std::array<Vec4, TouchTracker::kMaxSpansPerRow>& row, int pos)
+template<int ROW_LENGTH>
+void removeSpanFromRow(std::array<Vec4, ROW_LENGTH>& row, int pos)
 {
 	int spans = row.size();
 	// restore null at end in case needed 
-	row[TouchTracker::kMaxSpansPerRow - 1] = Vec4::null();
+	row[ROW_LENGTH - 1] = Vec4::null();
 	
 	for(int j = pos; j < spans - 1; ++j)
 	{
@@ -254,12 +256,10 @@ TouchTracker::TouchTracker(int w, int h) :
 	makeFrequencyMask();
 	
 	// clear previous spans
-	for(auto& row : mSpansHoriz1)
+	for(auto& row : mSpansHoriz1.data)
 	{
 		row.fill(Vec4::null());	
 	}
-	
-
 }
 		
 TouchTracker::~TouchTracker()
@@ -760,26 +760,16 @@ void TouchTracker::process(int)
 
 		if(mMaxTouchesPerFrame > 0)
 		{
-			HorizSpans intSpans = findSpansHoriz(mFFT2);
-			mSpansHoriz = findZ2SpansHoriz(intSpans, mFFT2);
+			//HorizSpans intSpans = findSpansHoriz(mFFT2);
 			
-			findSpansVert();
+			mSpansHoriz = findSpansHoriz(mFFT2);
+			mSpansHoriz = findZ2SpansHoriz(mSpansHoriz, mFFT2);
 			
-			// ideas: time filter spans before correcting endpoints, or before combining.
-			// limits on making / combining spans: support from z' or z needed 
-			// use uglier correction of z to make spans. much less noisy though.
+			mPingsHoriz = findPingsHoriz(mSpansHoriz, mFFT2);
 			
-			// require bigger change in z'' than 0 crossing -- hysteresis over space?
-			
+		//	mSpansHoriz = filterSpansHoriz(mSpansHoriz, mSpansHoriz1);
+		//	mSpansHoriz1 = mSpansHoriz;
 		//	mSpansHoriz = combineSpansHoriz(mSpansHoriz);
-			
-			combineSpansVert();
-			
-		//	filterSpansHoriz();
-			filterSpansVert();
-			
-		//	correctSpansHoriz(); // Soundplane A only. 
-			// correctSpansVert(); // seems not useful for Soundplane A
 			
 			// copy filtered spans to output array
 			{
@@ -787,16 +777,32 @@ void TouchTracker::process(int)
 				mSpansHorizOut = mSpansHoriz;
 			}
 			
-			findPingsHoriz();
+			{
+				std::lock_guard<std::mutex> lock(mPingsHorizOutMutex);
+				mPingsHorizOut = mPingsHoriz;
+			}
+			
+			
+			// TODO filter pings not spans. less work anyway!
+						
+			findSpansVert();
+						
+		//	combineSpansVert();
+			
+			filterSpansVert();
+			
+			// correctSpansVert(); // seems not useful for Soundplane A
+			
+			
 			findPingsVert();
 			
 			findLineSegmentsHoriz();
 			findLineSegmentsVert();
 			
-			findIntersections();
+	//		findIntersections();
 			findTouches();
 			
-		//	matchTouches();
+			matchTouches();
 		}
 
 		filterAndOutputTouches();
@@ -816,7 +822,7 @@ void TouchTracker::process(int)
 		
 		debug() << "\n SPANS HORIZ: \n";
 		int row = 0;
-		for(auto rowArray : mSpansHorizOut)
+		for(auto rowArray : mSpansHorizOut.data)
 		{
 			debug() << "row " << row++ << ": ";
 			for(Vec4 s : rowArray)
@@ -858,18 +864,18 @@ void TouchTracker::process(int)
 
 
 // find spans over which z is higher than a small constant.
-TouchTracker::HorizSpans TouchTracker::findSpansHoriz(const MLSignal& in)
+HorizSpans<kSensorRows, kSensorCols> TouchTracker::findSpansHoriz(const MLSignal& in)
 {
 	const float zThresh = 0.002;
 	const float kMinSpanLength = 2.0f;
 	
 	int w = in.getWidth();
 	int h = in.getHeight();
-	HorizSpans out;
+	HorizSpans<kSensorRows, kSensorCols> out;
 		
 	for(int j=0; j<h; ++j)
 	{
-		out[j].fill(Vec4::null());	
+		out.data[j].fill(Vec4::null());	
 		int spansInRow = 0;
 		
 		float spanStart, spanEnd;
@@ -893,7 +899,7 @@ TouchTracker::HorizSpans TouchTracker::findSpansHoriz(const MLSignal& in)
 				{
 					if(spansInRow < kMaxSpansPerRow)
 					{
-						out[j][spansInRow++] = Vec4(spanStart, spanEnd, 0.f, 0.f); 		
+						out.data[j][spansInRow++] = Vec4(spanStart, spanEnd, 0.f, 0.f); 		
 					}
 				}
 				spanStart = spanEnd = -1;
@@ -906,18 +912,16 @@ TouchTracker::HorizSpans TouchTracker::findSpansHoriz(const MLSignal& in)
 
 
 // for each horizontal span, find one or more subspans over which the 2nd derivative of z is negative.
-TouchTracker::HorizSpans TouchTracker::findZ2SpansHoriz(const TouchTracker::HorizSpans& intSpans, const MLSignal& in)
+HorizSpans<kSensorRows, kSensorCols> TouchTracker::findZ2SpansHoriz(const HorizSpans<kSensorRows, kSensorCols>& intSpans, const MLSignal& in)
 {
-	const float ddzThresh = 0.002f;
+	const float ddzThresh = 0.00f;
 	const float kMinSpanLength = 1.f;
 	
-	int w = in.getWidth();
-	
-	HorizSpans y;
+	HorizSpans<kSensorRows, kSensorCols> y;
 	int j = 0;
-	for(auto row : intSpans)
+	for(auto row : intSpans.data)
 	{
-		y[j].fill(Vec4::null());
+		y.data[j].fill(Vec4::null());
 
 		for(auto intSpan : row)
 		{
@@ -942,7 +946,7 @@ TouchTracker::HorizSpans TouchTracker::findZ2SpansHoriz(const TouchTracker::Hori
 				dz = z - zm1;
 				ddz = dz - dzm1;
 				
-				if((ddz < -ddzThresh) && (ddzm1 > -ddzThresh))  // crossing negative thresh?
+				if((ddz < -ddzThresh) && (ddzm1 > -ddzThresh))
 				{
 	//				debug() << " [" << ddzm1 << "/" << ddz << "] ";
 					
@@ -960,25 +964,183 @@ TouchTracker::HorizSpans TouchTracker::findZ2SpansHoriz(const TouchTracker::Hori
 					float m = ddz - ddzm1;				
 					float xa = -ddz/m;
 					spanEnd = i - 1.f + xa; 
-					
-					spanStart = clamp(spanStart, 1.f, w - 2.f);
-					spanEnd = clamp(spanEnd, 1.f, w - 2.f);
+					spanStart = clamp(spanStart, intSpan.x(), intSpan.y());
+					spanEnd = clamp(spanEnd, intSpan.x(), intSpan.y());
 					if(spanEnd - spanStart > kMinSpanLength)
 					{
-						appendSpanToRow(y[j], Vec4(spanStart, spanEnd, 0.f, 0.f));
+						
+						//template<int ROW_LENGTH>
+						//void appendSpanToRow(std::array<Vec4, ROW_LENGTH>& row, Vec4 b)
+
+						
+						appendSpanToRow(y.data[j], Vec4(spanStart, spanEnd, 0.f, 0.f));
 					}
 					spanStart = spanEnd = -1;
 				}
 				zm1 = z;
 				dzm1 = dz;
 				ddzm1 = ddz;
-			}			
-			
+			}						
 		}
 		j++;
 	}
 	return y;
 }
+
+/*
+
+// TESTING find dddz = 0 points in spans.
+TouchTracker::HorizSpans TouchTracker::findPingsHoriz(const TouchTracker::HorizSpans& inSpans, const MLSignal& in)
+{
+	HorizSpans y;
+	int j = 0;
+	for(auto row : inSpans)
+	{
+		y[j].fill(Vec4::null());
+		
+		for(auto intSpan : row)
+		{
+			if(!intSpan) break;
+			
+			float z = 0.f;
+			float zm1 = 0.f;
+			float dz = 0.f;
+			float dzm1 = 0.f;
+			float ddz = 0.f;
+			float ddzm1 = 0.f;
+			float dddz = 0.f;
+			float dddzm1 = 0.f;
+			
+			int left = intSpan.x();
+			int right = intSpan.y();
+			
+			for(int i=left; i <= right; ++i)
+			{
+				z = in(i, j);				
+				dz = z - zm1;
+				ddz = dz - dzm1;
+				dddz = ddz - ddzm1;
+				
+				//				if(((dddz > 0.f) || (i == right)) && (dddzm1 < 0.f)) 
+				if(((dddz > 0.f) || (i == right)) && (dddzm1 < 0.f)) 
+				{
+					float m = dddz - dddzm1;
+					float ya = -dddzm1;
+					float xa = ya/m;
+					
+					float pingX = i - 2.f + xa; 
+					
+					//	pingX = clamp(pingX, intSpan.x(), intSpan.y());
+					
+					// TODO not a span - fix name
+					float pingZ = in.getInterpolatedLinear(pingX, j);
+					appendSpanToRow(y[j], Vec4(pingX, 0.f, pingZ, 0.f));
+					
+				}
+				zm1 = z;
+				dzm1 = dz;
+				ddzm1 = ddz;
+				dddzm1 = dddz;
+			}						
+		}
+		j++;
+	}
+	return y;
+}
+
+*/
+
+
+HorizSpans<kSensorRows, kSensorCols> TouchTracker::findPingsHoriz(const HorizSpans<kSensorRows, kSensorCols>& inSpans, const MLSignal& in)
+{
+	// this is the maximum width of a span containing only one ping. depends on smoothing kernel.
+	const float k1 = 3.5f; 
+	const float fingerWidth = k1 / 2.f;
+
+	HorizSpans<kSensorRows, kSensorCols> y;
+	int j = 0;
+	for(auto row : inSpans.data)
+	{
+		y.data[j].fill(Vec4::null());
+		
+		for(auto s : row)
+		{
+			if(!s) break;
+								
+			float a = s.x(); // start 
+			float b = s.y(); // end
+			
+			// TODO position pings within span by centroid of z underneath 			
+			// positioning properly may take care of weighting!
+						
+			float d = b - a;
+			if(d < k1)
+			{
+				float pingX = (a + b)/2.f;
+				float pingZ = in.getInterpolatedLinear(pingX, j);
+				appendSpanToRow(y.data[j], Vec4(pingX, j, pingZ, 0.f));
+			}
+			else
+			{
+				float pingX = a + fingerWidth;
+				float pingZ = in.getInterpolatedLinear(pingX, j);
+				appendSpanToRow(y.data[j], Vec4(pingX, j, pingZ, 0.f));
+
+				pingX = b - fingerWidth;
+				pingZ = in.getInterpolatedLinear(pingX, j);
+				appendSpanToRow(y.data[j], Vec4(pingX, j, pingZ, 0.f));							
+			}
+		}
+		j++;
+	}
+	return y;
+}
+
+
+// piecewise triangle wave fn with period 2
+float triangle(float x)
+{
+	float m = x - 0.5f;
+	float t = m - floor(m);
+	float a = ((0.5f*x - floor(0.5f*x)) > 0.5) ? -1.f : 1.f;
+	float u = fabs(2.0f*(t - 0.5f));
+	return u*a;
+}
+
+
+HorizSpans<kSensorRows, kSensorCols> TouchTracker::correctSpansHoriz(const HorizSpans<kSensorRows, kSensorCols>& inSpans)
+{
+	// Soundplane A - specific correction for key mechanicals
+	// specific to smoothing kernel
+	HorizSpans<kSensorRows, kSensorCols> y;
+	int j = 0;
+	for(auto& row : inSpans.data)
+	{
+		int i = 0;
+		for(auto& span : row)
+		{
+			if(!span) break;
+			
+			float a = span.x(); // start
+			float b = span.y(); // end
+			float c = (a + b)/2.f;
+			
+			float k = 0.2f; // by inspection //-mSpanCorrect;
+			// k = -mSpanCorrect;
+			
+			// can be lookup table for optimized version
+			float ra = k*triangle(c); 
+			float rb = k*triangle(c); 
+			
+			y.data[j][i] = Vec4(a + ra, b - rb, span.z(), span.w());
+			i++;
+		}	
+		j++;
+	}
+	return y;
+}
+
+/*
 
 template<class InputIt, class ValueType = typename std::iterator_traits<InputIt>::value_type, class ShouldCombineFn, class CombineFn> 
 void combineGroups(InputIt first, InputIt last, ShouldCombineFn shouldCombine, CombineFn combine)
@@ -1012,7 +1174,7 @@ void combineGroups(InputIt first, InputIt last, ShouldCombineFn shouldCombine, C
 	}
 }
 
-TouchTracker::HorizSpans TouchTracker::combineSpansHoriz(const TouchTracker::HorizSpans& inSpans)
+HorizSpans TouchTracker::combineSpansHoriz(const TouchTracker::HorizSpans& inSpans)
 {	
 	const float combineDistance = 0.f;
 	auto shouldCombineSpans = [&](Vec4 a, Vec4 b) -> bool { return (a.y() + combineDistance > b.x()) ; };
@@ -1028,7 +1190,7 @@ TouchTracker::HorizSpans TouchTracker::combineSpansHoriz(const TouchTracker::Hor
 	return y;
 }
 
-
+*/
 
 // TODO combine this and Horiz vrsion with a direction argument
 
@@ -1143,7 +1305,8 @@ void TouchTracker::combineSpansVert()
 	
 }
 
-void TouchTracker::filterSpansHoriz()
+/*
+HorizSpans<kSensorRows, kSensorCols> TouchTracker::filterSpansHoriz(const HorizSpans<kSensorRows, kSensorCols>& inSpans, const HorizSpans<kSensorRows, kSensorCols>& inSpans1)
 {
 
 	// for each new span x0
@@ -1160,9 +1323,9 @@ void TouchTracker::filterSpansHoriz()
 	// if decay count has expired
 	// remove current span
 
-	const float kP = 0.1f;
+	const float kP = 0.01f;
 	
-	HorizSpans y;
+	HorizSpans<kSensorRows, kSensorCols> y;
 
 	// for each new span
 //debug() << "combine:\n";
@@ -1173,7 +1336,7 @@ void TouchTracker::filterSpansHoriz()
 		std::array<Vec4, kMaxSpansPerRow> yRow;
 		yRow.fill(Vec4::null());
 		
-		for(auto span : mSpansHoriz[i])
+		for(auto span : inSpans.data[i])
 		{
 			if(!span) break;
 			
@@ -1184,13 +1347,13 @@ void TouchTracker::filterSpansHoriz()
 			Vec4 combinedSpan;
 			
 			// is there a current span overlapping ?
-			auto overlap = [&](Vec4 &a){ 
+			auto overlap = [&](const Vec4 &a){ 
 				return ( (a.x() < xCenter) && (a.y() > xCenter) ); };		
-			auto itRowA = std::find_if(mSpansHoriz1[i].begin(), mSpansHoriz1[i].end(), overlap); 
+			auto itRowA = std::find_if(inSpans1.data[i].begin(), inSpans1.data[i].end(), overlap); 
 
 			// if so, combine new and current spans and get running variance
 			
-			if(itRowA != mSpansHoriz1[i].end())
+			if(itRowA != inSpans1.data[i].end())
 			{
 				// filter start / end
 				Vec4 span1 = *itRowA;
@@ -1213,7 +1376,8 @@ void TouchTracker::filterSpansHoriz()
 			appendSpanToRow(yRow, combinedSpan);
 		}
 		
-		for(auto span1 : mSpansHoriz1[i])
+		// for each current span 
+		for(auto span1 : inSpans1.data[i])
 		{
 			if(!span1) break;
 			
@@ -1224,19 +1388,19 @@ void TouchTracker::filterSpansHoriz()
 			Vec4 combinedSpan;
 
 			// is there a new span over the same center ?
-			auto overlap = [&](Vec4 &a){ 
+			auto overlap = [&](const Vec4 &a){ 
 				return ( (a.x() < xCenter) && (a.y() > xCenter) ); };		
-			auto itRowA = std::find_if(mSpansHoriz[i].begin(), mSpansHoriz[i].end(), overlap); 
+			auto itRowA = std::find_if(inSpans.data[i].begin(), inSpans.data[i].end(), overlap); 
 			
 			// if not, decay
-			if(itRowA == mSpansHoriz[i].end())
+			if(itRowA == inSpans.data[i].end())
 			{
 		//		debug() << "D";
 				
 				float age = span1.z() + 1.f;
 			
 				   
-				   if(age < 100.f)
+				   if(age < 2.f)
 				   {
 					   combinedSpan = Vec4(xStart, xEnd, age, 0.f);
 					   insertSpanIntoRow(yRow, combinedSpan);
@@ -1255,57 +1419,20 @@ void TouchTracker::filterSpansHoriz()
 			}
 		}
 		
-		y[i] = yRow;
+		y.data[i] = yRow;
 //		debug() << "\n";
 	}
 //	debug() << "\n";
 
-		
 	// copy accumulator to output
-	mSpansHoriz = y;
-	mSpansHoriz1 = y;
+	// mSpansHoriz1 = y;
 
-}
+	return y;
+}*/
 
 void TouchTracker::filterSpansVert()
 {
 	
-}
-
-// piecewise triangle wave fn with period 2
-float triangle(float x)
-{
-	float m = x - 0.5f;
-	float t = m - floor(m);
-	float a = ((0.5f*x - floor(0.5f*x)) > 0.5) ? -1.f : 1.f;
-	float u = fabs(2.0f*(t - 0.5f));
-	return u*a;
-}
-
-void TouchTracker::correctSpansHoriz()
-{
-	// Soundplane A - specific correction for key mechanicals
-	// specific to smoothing kernel
-	for(auto& row : mSpansHoriz)
-	{
-		for(auto& span : row)
-		{
-			if(!span) break;
-			
-			float a = span.x(); // start
-			float b = span.y(); // end
-			float c = (a + b)/2.f;
-			
-			float k = 0.2f; // by inspection //-mSpanCorrect;
-			// k = -mSpanCorrect;
-			
-			// can be lookup table for optimized version
-			float ra = k*triangle(c); 
-			float rb = k*triangle(c); 
-			
-			span = Vec4(a + ra, b - rb, span.z(), span.w());
-		}	
-	}
 }
 
 void TouchTracker::correctSpansVert()
@@ -1330,47 +1457,6 @@ void TouchTracker::correctSpansVert()
 	}	
 }
 
-
-void TouchTracker::findPingsHoriz()
-{
-	const float k1 = 3.5f;
-	const float fingerWidth = k1 / 2.f;
-
-	const MLSignal& in = mFilteredInput;//mFFT2;
-	std::lock_guard<std::mutex> lock(mPingsHorizMutex);
-	mPingsHoriz.clear();
-	
-	int j = 0;
-	for(auto& row : mSpansHoriz)
-	{
-		for(auto& s : row)
-		{
-			float pingX, pingZ;
-			
-			float a = s.x(); // start 
-			float b = s.y(); // end
-			
-			float d = b - a;
-			if(d < k1)
-			{
-				pingX = (a + b)/2.f;
-				pingZ = in.getInterpolatedLinear(pingX, j);
-				mPingsHoriz.push_back(Vec3(pingX, j, pingZ));			
-			}
-			else
-			{
-				pingX = a + fingerWidth;
-				pingZ = in.getInterpolatedLinear(pingX, j);
-				mPingsHoriz.push_back(Vec3(pingX, j, pingZ));			
-				
-				pingX = b - fingerWidth;
-				pingZ = in.getInterpolatedLinear(pingX, j);
-				mPingsHoriz.push_back(Vec3(pingX, j, pingZ));			
-			}
-		}
-		j++;
-	}
-}
 
 void TouchTracker::findPingsVert()
 {
@@ -1451,7 +1537,7 @@ void TouchTracker::findLineSegmentsHoriz()
 	// else
 	// advance iteratorB
 	
-	
+	/*
 	//	debug() << std::setprecision(4);
 	const float kMaxDist = 1.0f;
 
@@ -1489,7 +1575,8 @@ void TouchTracker::findLineSegmentsHoriz()
 			}
 		}
 		//	debug() << "\n";
-	}
+	}*/
+	
 }
 
 void TouchTracker::findLineSegmentsVert()
@@ -1537,6 +1624,19 @@ void TouchTracker::findLineSegmentsVert()
 }
 
 
+/*
+TouchTracker::HorizSpans findIntersections(const TouchTracker::HorizSpans& pingsHoriz, const TouchTracker::HorizSpans& pingsVert)
+{
+	
+	
+	
+}
+
+*/
+
+
+
+/*
 void TouchTracker::findIntersections()
 {
 	// TODO all these are just needed for the debug printing and can go away
@@ -1579,6 +1679,7 @@ void TouchTracker::findIntersections()
 		}
 	}
 }
+*/
 
 void TouchTracker::findTouches()
 {
@@ -1598,9 +1699,20 @@ void TouchTracker::findTouches()
 	{
 		Vec4 a = mIntersections[i];
 		
+		// TODO this creates a discontinuity! 
+		
+		
+		
+		// PROBLEM
+		
 		// get radius we can move this touch to combine with others		
-		const float xDist = 0.01f;//1.5f;
-		const float yDist = 0.01f;//1.5f;
+		const float xDist = 1.5f;
+		const float yDist = 1.5f;
+		
+		
+		
+		
+		
 		
 		// TODO increase radius for light touches?
 		float distScale = 1.0f;

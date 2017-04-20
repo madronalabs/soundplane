@@ -360,9 +360,9 @@ void SoundplaneGridView::renderSpansHoriz()
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	// draw spans
-	TouchTracker::HorizSpans spans = mpModel->getSpansHoriz();
+	HorizSpans<kSensorRows, kSensorCols> spans = mpModel->getSpansHoriz();
 	int j = 0;
-	for(auto row : spans)
+	for(auto row : spans.data)
 	{
 		for(auto p : row)
 		{
@@ -374,10 +374,16 @@ void SoundplaneGridView::renderSpansHoriz()
 			float y1 = mSensorRangeY.convert(j - ph);	
 			float y2 = mSensorRangeY.convert(j + ph);	
 			
-			glColor4fv(&darkBlue[0]);
-			
 			MLRect tr(x1, y1, x2 - x1, y2 - y1);
+
+			darkBlue[3] = 0.25f;
+			glColor4fv(&darkBlue[0]);
+			MLGL::fillRect(tr);
+
+			darkBlue[3] = 1.0f;
+			glColor4fv(&darkBlue[0]);
 			MLGL::strokeRect(tr, 1.0*mViewScale);
+
 		}
 		j++;
 	}	
@@ -441,9 +447,14 @@ void SoundplaneGridView::renderSpansVert()
 		float x1 = mSensorRangeX.convert(p.z() - ph);	
 		float x2 = mSensorRangeX.convert(p.z() + ph);	
 		
-		glColor4fv(&darkBlue[0]);
-		
 		MLRect tr(x1, y1, x2 - x1, y2 - y1);
+		
+		darkBlue[3] = 0.25f;
+		glColor4fv(&darkBlue[0]);
+		MLGL::fillRect(tr);
+		
+		darkBlue[3] = 1.0f;
+		glColor4fv(&darkBlue[0]);
 		MLGL::strokeRect(tr, 1.0*mViewScale);
 	}	
 	
@@ -454,7 +465,6 @@ void SoundplaneGridView::renderSpansVert()
 	
 	// draw line graph
 	glLineWidth(mViewScale);
-	
 	for(int i=0; i<mSensorWidth; ++i)
 	{
 		float x = mSensorRangeX.convert(i);
@@ -498,7 +508,7 @@ void SoundplaneGridView::renderPings()
 	// draw horiz spans
 	auto spans = mpModel->getSpansHoriz();
 	int rowInt = 0;
-	for(auto row : spans)
+	for(auto row : spans.data)
 	{
 		for(auto span : row)
 		{
@@ -519,22 +529,27 @@ void SoundplaneGridView::renderPings()
 	// draw pings
 	float kDotSize = 50.f;
 	float dotSize = kDotSize*fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
-	
-	std::vector<Vec3> pings = mpModel->getPingsHoriz();
-	for(auto it = pings.begin(); it != pings.end(); it++)
+
+	auto pings = mpModel->getPingsHoriz();
+	int j = 0;
+	for(auto row : pings.data)
 	{
-		Vec3 p = *it;
-		
-		float x = mSensorRangeX.convert(p.x());
-		float y = mSensorRangeY.convert(p.y());
-		float z = p.z();
-		
-		Vec4 dotColor = darkBlue;
-		dotColor[3] = 0.5f;
-		glColor4fv(&dotColor[0]);
-		
-		// draw dot on surface
-		MLGL::drawDot(Vec2(x, y), z*dotSize);
+		for(auto p : row)
+		{
+			if(!p) break; // each array of spans is null-terminated
+
+			float x = mSensorRangeX.convert(p.x());
+			float y = mSensorRangeY.convert(j);
+			float z = p.z();
+			
+			Vec4 dotColor = darkBlue;
+			dotColor[3] = 0.5f;
+			glColor4fv(&dotColor[0]);
+			
+			// draw dot on surface
+			MLGL::drawDot(Vec2(x, y), z*dotSize);
+		}
+		j++;
 	}		
 	
 	// draw spans

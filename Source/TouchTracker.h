@@ -126,13 +126,19 @@ Vec2 intersect(const LineSegment& a, const LineSegment& b); // TODO move to util
 
 
 
+constexpr int kSensorRows = 8;
+constexpr int kSensorCols = 64;
+
+template <int ARRAYS, int ARRAY_LENGTH >
+struct HorizSpans
+{ 
+	std::array< std::array<Vec4, ARRAY_LENGTH>, ARRAYS > data;
+};
+
+
 class TouchTracker
 {
 public:
-
-	
-	static constexpr int kSensorRows = 8;
-	static constexpr int kSensorCols = 64;
 	
 	static constexpr int kMaxSpansPerRow = 32;
 	static constexpr int kMaxSpansPerCol = 4;
@@ -282,16 +288,18 @@ public:
 	
 	void setSpanCorrect(float v) { mSpanCorrect = v; }
 	
-	typedef std::array< std::array<Vec4, kMaxSpansPerRow>, kSensorRows > HorizSpans;
-
-
 	// returning by value - MLTEST
 	// these should use time-stamped ringbuffers to communicate with views
-	HorizSpans getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizOutMutex); return mSpansHorizOut; }
-
+	HorizSpans<kSensorRows, kSensorCols> getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizOutMutex); return mSpansHorizOut; }
+	
+	HorizSpans<kSensorRows, kSensorCols> getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizOutMutex); return mPingsHorizOut; }
+	
+	
+	
 	std::vector<Vec3> getSpansVert() { std::lock_guard<std::mutex> lock(mSpansVertMutex); return mSpansVert; }
 	
-	std::vector<Vec3> getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizMutex); return mPingsHoriz; }
+//	std::vector<Vec3> getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizMutex); return mPingsHoriz; }
+
 	std::vector<Vec3> getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertMutex); return mPingsVert; }
 
 	std::vector<Vec3> getLineSegmentsHoriz() { std::lock_guard<std::mutex> lock(mSegmentsHorizMutex); return mSegmentsHoriz; }
@@ -376,44 +384,52 @@ private:
 	MLSignal mRetrigTimer;
 
 	// new
-	HorizSpans findSpansHoriz(const MLSignal& in);
-	HorizSpans findZ2SpansHoriz(const HorizSpans& intSpans, const MLSignal& in);
-	HorizSpans combineSpansHoriz(const HorizSpans& inSpans);
+	HorizSpans<kSensorRows, kSensorCols> findSpansHoriz(const MLSignal& in);
+	HorizSpans<kSensorRows, kSensorCols> findZ2SpansHoriz(const HorizSpans<kSensorRows, kSensorCols>& intSpans, const MLSignal& in);
+	HorizSpans<kSensorRows, kSensorCols> combineSpansHoriz(const HorizSpans<kSensorRows, kSensorCols>& inSpans);
+	HorizSpans<kSensorRows, kSensorCols> correctSpansHoriz(const HorizSpans<kSensorRows, kSensorCols>& inSpans);
+	HorizSpans<kSensorRows, kSensorCols> filterSpansHoriz(const HorizSpans<kSensorRows, kSensorCols>& inSpans, const HorizSpans<kSensorRows, kSensorCols>& inSpans1);
+	
+	HorizSpans<kSensorRows, kSensorCols> findPingsHoriz(const HorizSpans<kSensorRows, kSensorCols>& inSpans, const MLSignal& in);
+	
+//	HorizSpans findIntersections(const HorizSpans& pingsHoriz, const HorizSpans& pingsVert);
 
+	
+	
 	void findSpansVert();
 	
 	void combineSpansVert();
 	
-	void filterSpansHoriz();
 	void filterSpansVert();
 	
-	void correctSpansHoriz();
 	void correctSpansVert();
 	
-	void findPingsHoriz();
 	void findPingsVert();
 	
 	void findLineSegmentsHoriz();
 	void findLineSegmentsVert();
 	
-	void findIntersections();
 	void findTouches();
 	
 	void matchTouches();
 	
 	void filterAndOutputTouches();
 	
-	HorizSpans mSpansHoriz;
-	HorizSpans mSpansHoriz1;
-	HorizSpans mSpansHorizOut;
+	HorizSpans<kSensorRows, kSensorCols> mSpansHoriz;
+	HorizSpans<kSensorRows, kSensorCols> mSpansHoriz1;
+	HorizSpans<kSensorRows, kSensorCols> mSpansHorizOut;
 	std::mutex mSpansHorizOutMutex;	
+	
+	HorizSpans<kSensorRows, kSensorCols> mPingsHoriz;
+	HorizSpans<kSensorRows, kSensorCols> mPingsHorizOut;
+	std::mutex mPingsHorizOutMutex;	
 
 	std::vector<Vec3> mSpansVert;
 	std::mutex mSpansVertMutex;
 
 	// a ping is a guess at where a touch is over a particular row.
-	std::vector<Vec3> mPingsHoriz;
-	std::mutex mPingsHorizMutex;
+//	std::vector<Vec3> mPingsHoriz;
+//	std::mutex mPingsHorizMutex;
 	
 	std::vector<Vec3> mPingsVert;
 	std::mutex mPingsVertMutex;
