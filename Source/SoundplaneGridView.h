@@ -41,12 +41,12 @@ private:
 	void setupOrthoView();
 	void drawSurfaceOverlay();
 	void renderXYGrid();
-	void renderRegions();
+
 	void renderSpansHoriz();
 	void renderSpansVert();
 	void renderPings();
-	void renderLineSegments();
-	void renderGradient();
+
+	
 	void renderIntersections();
 	void renderTouches();
 	void renderZGrid();

@@ -59,14 +59,6 @@ SoundplaneModel::SoundplaneModel() :
 
 	mRawSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mCalibratedSignal(kSoundplaneWidth, kSoundplaneHeight),
-	mGradientSignalX(kSoundplaneWidth, kSoundplaneHeight),
-	mGradientSignalY(kSoundplaneWidth, kSoundplaneHeight),
-	mRegionSignal(kSoundplaneWidth, kSoundplaneHeight),
-	mTempSignal(kSoundplaneWidth, kSoundplaneHeight),
-	mCookedSignal(kSoundplaneWidth, kSoundplaneHeight),
-//	mTestSignal(kSoundplaneWidth, kSoundplaneHeight),
-	mFitTestSignal(kSoundplaneWidth, kSoundplaneHeight),
-	mTestSignal2(kSoundplaneWidth, kSoundplaneHeight),
 
 	mTesting(false),
 	mCalibrating(false),
@@ -142,24 +134,9 @@ SoundplaneModel::SoundplaneModel() :
 	// set up view modes map
 	mViewModeToSignalMap["raw data"] = &mRawSignal;
 	mViewModeToSignalMap["calibrated"] = &mCalibratedSignal;
-	mViewModeToSignalMap["regions"] = &mRegionSignal;
-	mViewModeToSignalMap["cooked"] = &mCookedSignal;
-	mViewModeToSignalMap["xy"] = &mCalibratedSignal;
-	
 	mViewModeToSignalMap["spans_horiz"] = &mCalibratedSignal;
 	mViewModeToSignalMap["spans_vert"] = &mCalibratedSignal;
-	
-	mViewModeToSignalMap["intersections"] = &mCalibratedSignal;
-	
-	mViewModeToSignalMap["pings"] = &mCalibratedSignal;
-	
-	mViewModeToSignalMap["clusters"] = &mCalibratedSignal;
-	
-	mViewModeToSignalMap["test2"] = &mTestSignal2;
-	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());
-	
-	mViewModeToSignalMap["gradient_x"] = &mGradientSignalX;
-	mViewModeToSignalMap["gradient_y"] = &mGradientSignalY;
+	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());	
 	
 	// setup OSC default
 	setProperty("osc_service_name", kOSCDefaultStr);
@@ -300,10 +277,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "t_thresh")
 			{
 				mTracker.setTemplateThresh(v);
-			}
-			else if (p == "bg_filter")
-			{
-				mTracker.setBackgroundFilter(v);
 			}
 			else if (p == "quantize")
 			{
@@ -735,7 +708,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 	{
 		// scale incoming data
 		float in, cmean;
-		const float kInputScale = 8.0f;
+		const float kInputScale = 1.0f;
 		if (mHasCalibration)
 		{
 			for(int j=0; j<mSurface.getHeight(); ++j)
@@ -761,7 +734,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		mLopassFilter.setInputSignal(&mSurface);
 		mLopassFilter.setOutputSignal(&mSurface);
 		mLopassFilter.process(1);
-*/
+		 */
 
 		// send filtered data to touch tracker.
 		mTracker.setInputSignal(&mSurface);
@@ -772,11 +745,8 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		// TODO elide all this copying! 
 		
 		mCalibratedSignal = mTracker.getCalibratedSignal();
-		mCookedSignal = mTracker.getCookedSignal();
-		mTestSignal2 = mTracker.getTestSignal();
-		mGradientSignalX = mTracker.getGradientSignalX();
-		mGradientSignalY = mTracker.getGradientSignalY();
 
+		
  		sendTouchDataToZones();
 
 		mHistoryCtr++;
@@ -1330,13 +1300,9 @@ void SoundplaneModel::filterAndSendData()
 	mTracker.setOutputSignal(&mTouchFrame);
 	mTracker.process(1);
 	
-	// get calibrated and cooked signals for viewing
+	// get calibrated signal for viewing
 	// TODO get rid of these copies
 	mCalibratedSignal = mTracker.getCalibratedSignal();								
-	mCookedSignal = mTracker.getCookedSignal();
-	
-	mFitTestSignal = mTracker.getFitTestSignal();
-	mTestSignal2 = mTracker.getTestSignal2();
 	
 	sendTouchDataToZones();
 	

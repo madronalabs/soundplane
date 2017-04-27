@@ -123,28 +123,19 @@ public:
 	const MLSignal& getTouchHistory() { return mTouchHistory; }
 	const MLSignal& getRawSignal() { return mRawSignal; }
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; }
-	const MLSignal& getRegionSignal() { return mRegionSignal; }
-	const MLSignal& getCookedSignal() { return mCookedSignal; }
 
 	const MLSignal& getTrackerCalibrateSignal();
 	Vec3 getTrackerCalibratePeak();
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 
-	VectorArray2D<kSensorRows, kSensorCols> getSpansHoriz() { return mTracker.getSpansHoriz(); }
-	VectorArray2D<kSensorRows, kSensorCols> getPingsHoriz() { return mTracker.getPingsHoriz(); }
+	TouchTracker::VectorsH getSpansHoriz() { return mTracker.getSpansHoriz(); }
+	TouchTracker::VectorsH getPingsHoriz() { return mTracker.getPingsHoriz(); }
 	
-	VectorArray2D<kSensorCols, kSensorRows> getSpansVert() { return mTracker.getSpansVert(); }
-	VectorArray2D<kSensorCols, kSensorRows> getPingsVert() { return mTracker.getPingsVert(); }
-
-//	std::vector<Vec3> getSpansVert() { return mTracker.getSpansVert(); }
-//	std::vector<Vec3> getPingsHoriz() { return mTracker.getPingsHoriz(); 	
-//	std::vector<Vec3> getPingsVert() { return mTracker.getPingsVert(); }
+	TouchTracker::VectorsV getSpansVert() { return mTracker.getSpansVert(); }
+	TouchTracker::VectorsV getPingsVert() { return mTracker.getPingsVert(); }
 	
-	std::vector<Vec3> getLineSegmentsHoriz() { return mTracker.getLineSegmentsHoriz(); }
-	std::vector<Vec3> getLineSegmentsVert() { return mTracker.getLineSegmentsVert(); }
-	
-	std::vector<Vec4> getIntersections() { return mTracker.getIntersections(); }
+	TouchTracker::VectorsH getIntersections() { return mTracker.getIntersections(); }
 	
 	std::array<Vec4, TouchTracker::kMaxTouches> getTouches() { return mTracker.getTouches(); }
 	
@@ -233,14 +224,6 @@ private:
 
 	MLSignal mRawSignal;
 	MLSignal mCalibratedSignal;
-	MLSignal mGradientSignalX;
-	MLSignal mGradientSignalY;
-	MLSignal mRegionSignal;
-	MLSignal mCookedSignal;
-
-	MLSignal mFitTestSignal;
-	MLSignal mTestSignal2;
-	MLSignal mTempSignal;
 
 	int mCalibrateCount; // samples in one calibrate step
 	int mCalibrateStep; // calibrate step from 0 - end

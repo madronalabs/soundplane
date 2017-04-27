@@ -40,12 +40,6 @@ const int kMaxPeaksPerFrame = 4;
 const float kSpanThreshold = 0.002f;
 //const int kTemplateSpanWidth = 9;
 
-typedef enum
-{
-	rectangularA = 0,
-	hexagonalA // etc. 
-} KeyboardTypes;
-
 const int kTouchWidth = 8; // 8 columns in touch data: [x, y, z, dz, age, dt, note, ?] for each touch.
 typedef enum
 {
@@ -84,48 +78,6 @@ public:
 
 //std::ostream& operator<< (std::ostream& out, const Touch & t);
 
-struct LineSegment
-{
-	LineSegment(Vec2 a, Vec2 b) : start(a), end(b) {}
-	Vec2 start;
-	Vec2 end;
-};
-
-struct Mat22
-{
-	Mat22(float a, float b, float c, float d) : a00(a), a10(b), a01(c), a11(d) {}
-	float a00, a10, a01, a11;
-};
-
-inline Vec2 multiply(Mat22 m, Vec2 a)
-{
-	return Vec2(m.a00*a.x() + m.a10*a.y(), m.a01*a.x() + m.a11*a.y());
-}
-
-inline LineSegment multiply(Mat22 m, LineSegment a)
-{
-	return LineSegment(multiply(m, a.start), multiply(m, a.end));
-}
-
-inline LineSegment translate(LineSegment a, Vec2 p)
-{
-	return LineSegment(a.start + p, a.end + p);
-}
-
-inline bool lengthIsZero(LineSegment a)
-{
-	return((a.start.x() == a.end.x())&&(a.start.y() == a.end.y()));
-}
-
-inline float length(LineSegment a)
-{
-	return (a.end - a.start).magnitude();
-}
-
-Vec2 intersect(const LineSegment& a, const LineSegment& b); // TODO move to utils
-
-
-
 constexpr int kSensorRows = 8;
 constexpr int kSensorCols = 64;
 
@@ -134,7 +86,6 @@ struct VectorArray2D
 { 
 	std::array< std::array<Vec4, ARRAY_LENGTH>, ARRAYS > data;
 };
-
 
 class TouchTracker
 {
@@ -222,8 +173,6 @@ public:
 		int age;
 	};
 	
-
-	
 	TouchTracker(int w, int h);
 	~TouchTracker();
 
@@ -239,17 +188,12 @@ public:
 	int touchOccupyingKey(int k);
 	bool keyIsOccupied(int k) { return (touchOccupyingKey(k) >= 0); }
 	
-/*	int addTouch(const Touch& t);
-	int getTouchIndexAtKey(const int k);
-	void removeTouchAtIndex(int touchIdx);
-*/
 	void clear();
 	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
 	void setTemplateThresh(float f) { mTemplateThresh = f; }
 	void setTaxelsThresh(int t) { mTaxelsThresh = t; }
 	void setQuantize(bool q) { mQuantizeToKey = q; }
-	void setBackgroundFilter(float v) { mBackgroundFilterFreq = v; }
 	void setLopass(float k); 	
 	void setForceCurve(float f) { mForceCurve = f; }
 	void setZScale(float f) { mZScale = f; }
@@ -257,14 +201,7 @@ public:
 	// process input and get touches. creates one frame of touch data in buffer.
 	void process(int);
 	
-	const MLSignal& getTestSignal() { return mTestSignal; } 
-	const MLSignal& getGradientSignalX() { return mGradientSignalX; } 
-	const MLSignal& getGradientSignalY() { return mGradientSignalY; } 
-	const MLSignal& getFitTestSignal() { return mFitTestSignal; } 
-	const MLSignal& getTestSignal2() { return mTestSignal2; } 
 	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; } 
-	const MLSignal& getCookedSignal() { return mCookedSignal; } 
-	const MLSignal& getCalibrationProgressSignal() { return mCalibrationProgressSignal; } 
 	const MLSignal& getCalibrateSignal() { return mCalibrator.mVisSignal; }		
 	
 	float getCalibrateAvgDistance() {return mCalibrator.mAvgDistance; }
@@ -288,32 +225,27 @@ public:
 	
 	// returning by value - MLTEST
 	// these should use time-stamped ringbuffers to communicate with views
-	VectorArray2D<kSensorRows, kSensorCols> getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizOutMutex); return mSpansHorizOut; }
-	VectorArray2D<kSensorRows, kSensorCols> getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizOutMutex); return mPingsHorizOut; }
 	
-	VectorArray2D<kSensorCols, kSensorRows> getSpansVert() { std::lock_guard<std::mutex> lock(mSpansVertOutMutex); return mSpansVertOut; }
-	VectorArray2D<kSensorCols, kSensorRows> getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertOutMutex); return mPingsVertOut; }
+	typedef VectorArray2D<kSensorRows, kSensorCols> VectorsH;
+	typedef VectorArray2D<kSensorCols, kSensorRows> VectorsV;
+
 	
-	VectorArray2D<kSensorRows, kSensorCols> getIntersections() { std::lock_guard<std::mutex> lock(mIntersectionsOutMutex); return mIntersectionsOut; }
+	VectorsH getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizOutMutex); return mSpansHorizOut; }
+	VectorsH getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizOutMutex); return mPingsHorizOut; }
+	
+	VectorsV getSpansVert() { std::lock_guard<std::mutex> lock(mSpansVertOutMutex); return mSpansVertOut; }
+	VectorsV getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertOutMutex); return mPingsVertOut; }
+	
+	VectorsH getIntersections() { std::lock_guard<std::mutex> lock(mIntersectionsOutMutex); return mIntersectionsOut; }
 		
 	std::array<Vec4, kMaxTouches> getTouches() { std::lock_guard<std::mutex> lock(mTouchesOutMutex); return mTouchesOut; }
 	
 private:	
 
-
 	Listener* mpListener;
-
-	Vec3 closestTouch(Vec2 pos);
-	float getInhibitThreshold(Vec2 a);
-	float getInhibitThresholdVerbose(Vec2 a);
-
-	Vec2 adjustPeak(const MLSignal& in, int x, int y);
-	Vec2 adjustPeakToTemplate(const MLSignal& in, int x, int y);
-	Vec2 fractionalPeakTaylor(const MLSignal& in, const int x, const int y);
 	
 	void dumpTouches();
 	int countActiveTouches();
-	void makeFrequencyMask();
 	
 	int mWidth;
 	int mHeight;
@@ -342,39 +274,15 @@ private:
 	float mOnThreshold;
 	float mOffThreshold;
 	float mOverrideThresh;
-	float mBackgroundFilterFreq;
 	float mTemplateThresh;
 		
 	int mKeyboardType;
 
 	MLSignal mFilteredInput;
-	MLSignal mResidual;
-	MLSignal mFilteredResidual;
-	MLSignal mSumOfTouches;
-	MLSignal mInhibitMask;
-	MLSignal mTemp;
-	MLSignal mTempWithBorder;
-	MLSignal mTestSignal;
-	MLSignal mGradientSignalX;
-	MLSignal mGradientSignalY;
-	MLSignal mFitTestSignal;
-	MLSignal mTestSignal2;
-	MLSignal mCalibratedSignal;
-	MLSignal mCookedSignal;
-	MLSignal mXYSignal;
-	MLSignal mInputMinusBackground;
-	MLSignal mInputMinusTouches;
-	MLSignal mCalibrationProgressSignal;
-	MLSignal mTemplate;
-	MLSignal mTemplateScaled;
-	MLSignal mNullSig;
-	MLSignal mTemplateMask;	
-	MLSignal mDzSignal;	
-	MLSignal mRetrigTimer;
-	
-	typedef VectorArray2D<kSensorRows, kSensorCols> HSpans;
 
-	// new
+	MLSignal mCalibratedSignal;
+	MLSignal mCalibrationProgressSignal;
+
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findSpans(const MLSignal& in);
 	
@@ -383,28 +291,11 @@ private:
 		
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inSpans, const MLSignal& in);
-	
-	
-	
-	VectorArray2D<kSensorRows, kSensorCols> combineSpansHoriz(const VectorArray2D<kSensorRows, kSensorCols>& inSpans);
-	VectorArray2D<kSensorRows, kSensorCols> correctSpansHoriz(const VectorArray2D<kSensorRows, kSensorCols>& inSpans);
-	VectorArray2D<kSensorRows, kSensorCols> filterSpansHoriz(const VectorArray2D<kSensorRows, kSensorCols>& inSpans, const VectorArray2D<kSensorRows, kSensorCols>& inSpans1);
-	
-	VectorArray2D<kSensorRows, kSensorCols> findPingsHorizUnused(const VectorArray2D<kSensorRows, kSensorCols>& inSpans, const MLSignal& in);
-	
-	VectorArray2D<kSensorRows, kSensorCols> findIntersections(const VectorArray2D& pingsHoriz, const VectorArray2D& pingsVert);
 
-	
-	void findSpansVert();
-	
-	void combineSpansVert();
-	
-	void filterSpansVert();
-	
-	void correctSpansVert();
-	
-	void findLineSegmentsHoriz();
-	void findLineSegmentsVert();
+	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> filterPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPingsY1);
+
+	VectorsH findIntersections(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
 	
 	void findTouches();
 	
@@ -413,26 +304,28 @@ private:
 	void filterAndOutputTouches();
 	
 	// spans of touches in x and y
-	VectorArray2D<kSensorRows, kSensorCols> mSpansHoriz;
-	VectorArray2D<kSensorRows, kSensorCols> mSpansHoriz1;
-	VectorArray2D<kSensorRows, kSensorCols> mSpansHorizOut;
+	VectorsH mSpansHoriz;
+	VectorsH mSpansHoriz1;
+	VectorsH mSpansHorizOut;
 	std::mutex mSpansHorizOutMutex;	
-	VectorArray2D<kSensorCols, kSensorRows> mSpansVert;
-	VectorArray2D<kSensorCols, kSensorRows> mSpansVert1;
-	VectorArray2D<kSensorCols, kSensorRows> mSpansVertOut;
+	VectorsV mSpansVert;
+	VectorsV mSpansVert1;
+	VectorsV mSpansVertOut;
 	std::mutex mSpansVertOutMutex;	
 	
 	// a ping is a guess at where a touch is over a particular row or column.
-	VectorArray2D<kSensorRows, kSensorCols> mPingsHoriz;
-	VectorArray2D<kSensorRows, kSensorCols> mPingsHorizOut;
+	VectorsH mPingsHoriz;
+	VectorsH mPingsHorizY1;
+	VectorsH mPingsHorizOut;
 	std::mutex mPingsHorizOutMutex;	
-	VectorArray2D<kSensorCols, kSensorRows> mPingsVert;
-	VectorArray2D<kSensorCols, kSensorRows> mPingsVertOut;
+	VectorsV mPingsVert;
+	VectorsV mPingsVertY1;
+	VectorsV mPingsVertOut;
 	std::mutex mPingsVertOutMutex;	
 	
 	// intersections of pings
-	VectorArray2D<kSensorRows, kSensorCols> mIntersections;
-	VectorArray2D<kSensorRows, kSensorCols> mIntersectionsOut;
+	VectorsH mIntersections;
+	VectorsH mIntersectionsOut;
 	std::mutex mIntersectionsOutMutex;	
 	
 	// touches
@@ -441,10 +334,6 @@ private:
 	std::array<Vec4, kMaxTouches> mTouchesOut;
 	std::mutex mTouchesOutMutex;	
 	
-	
-	AsymmetricOnepoleMatrix mBackgroundFilter;
-	MLSignal mBackgroundFilterFrequency;
-	MLSignal mBackgroundFilterFrequency2;
 	MLSignal mBackground;
 	
 		

@@ -304,47 +304,6 @@ void SoundplaneGridView::renderXYGrid()
 	}
 }
 
-void SoundplaneGridView::renderRegions()
-{
-	setupOrthoView();
-	
-	const MLSignal* regionSignal = mpModel->getSignalForViewMode("regions");
-	if(!regionSignal) return;
-	
-	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
-	
-	// fill regions
-	for(int j=0; j<mSensorHeight; ++j)
-	{
-		// Soundplane A-specific
-		for(int i=mLeftSensor; i<mRightSensor; ++i)
-		{
-			int region = (*regionSignal)(i, j);
-			if(!region)
-			{
-				glColor4fv(&gray[0]);
-			}
-			else
-			{
-				glColor4fv(MLGL::getIndicatorColor(region));
-			}
-			
-			glBegin(GL_QUADS);
-			float x1 = mSensorRangeX.convert(i - 0.5f);
-			float y1 = mSensorRangeY.convert(j - 0.5f);
-			float x2 = mSensorRangeX.convert(i + 0.5f);
-			float y2 = mSensorRangeY.convert(j + 0.5f);
-			float z = 0.;
-			glVertex3f(x1, y1, -z);
-			glVertex3f(x2, y1, -z);
-			glVertex3f(x2, y2, -z);
-			glVertex3f(x1, y2, -z);
-			glEnd();
-		}
-	}	
-}
-
-
 void SoundplaneGridView::renderSpansHoriz()
 {
 	setupOrthoView();
@@ -357,7 +316,7 @@ void SoundplaneGridView::renderSpansHoriz()
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	float ph = 0.4;
 	const float kGraphAmp = 4.0f;
-	float displayScale = mpModel->getFloatProperty("display_scale");
+	float displayScale = mpModel->getFloatProperty("display_scale")*10.f;
 	
 	// draw spans
 	VectorArray2D<kSensorRows, kSensorCols> spans = mpModel->getSpansHoriz();
@@ -398,7 +357,6 @@ void SoundplaneGridView::renderSpansHoriz()
 	
 	for(int j=0; j<mSensorHeight; ++j)
 	{
-		float y = mSensorRangeY.convert(j);
 		float y1 = mSensorRangeY.convert(j - ph);	
 		float y2 = mSensorRangeY.convert(j + ph);	
 		
@@ -433,7 +391,7 @@ void SoundplaneGridView::renderSpansVert()
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	float ph = 0.4;
 	const float kGraphAmp = 4.0f;
-	float displayScale = mpModel->getFloatProperty("display_scale");
+	float displayScale = mpModel->getFloatProperty("display_scale")*10.f;
 	
 	// draw spans
 	// draw spans
@@ -496,7 +454,6 @@ void SoundplaneGridView::renderSpansVert()
 }
 
 
-
 void SoundplaneGridView::renderPings()
 {
 	setupOrthoView();
@@ -508,8 +465,8 @@ void SoundplaneGridView::renderPings()
 	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	
-	//float displayScale = mpModel->getFloatProperty("display_scale");
-	glLineWidth(2.0*mViewScale);
+	float displayScale = mpModel->getFloatProperty("display_scale");
+	glLineWidth(4.0*mViewScale);
 	
 	// draw horiz spans
 	auto spans = mpModel->getSpansHoriz();
@@ -534,7 +491,7 @@ void SoundplaneGridView::renderPings()
 	}
 	
 	// draw horiz pings
-	float kDotSize = 50.f;
+	float kDotSize = 200.f;
 	float dotSize = kDotSize*fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
 	auto pings = mpModel->getPingsHoriz();
 	int j = 0;
@@ -553,7 +510,7 @@ void SoundplaneGridView::renderPings()
 			glColor4fv(&dotColor[0]);
 			
 			// draw dot on surface
-			MLGL::drawDot(Vec2(x, y), z*dotSize);
+			MLGL::drawDot(Vec2(x, y), z*dotSize*displayScale);
 		}
 		j++;
 	}		
@@ -596,112 +553,9 @@ void SoundplaneGridView::renderPings()
 			Vec4 dotColor = darkRed;
 			dotColor[3] = 0.5f;
 			glColor4fv(&dotColor[0]);
-			MLGL::drawDot(Vec2(x, y), z*dotSize);
+			MLGL::drawDot(Vec2(x, y), z*dotSize*displayScale);
 		}
 		colInt++;
-	}
-}
-
-void SoundplaneGridView::renderLineSegments()
-{
-	setupOrthoView();
-	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
-	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
-	Vec4 purpl(0.6f, 0.0f, 0.6f, 0.5f);
-	Vec4 white(1.f, 1.f, 1.f, 1.f);
-	
-	float dotSize = fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
-	
-	// draw horiz spans
-	std::vector<Vec3> segsHoriz = mpModel->getLineSegmentsHoriz();
-	
-	for(auto it = segsHoriz.begin(); it != segsHoriz.end(); it++)
-	{
-		Vec3 p = *it;
-		
-		float x1 = mSensorRangeX.convert(p.x());
-		float x2 = mSensorRangeX.convert(p.y());
-		int row = p.z();
-		float y1 = mSensorRangeY.convert(row);	
-		float y2 = mSensorRangeY.convert(row + 1);	
-		
-		glColor4fv(&darkBlue[0]);
-		
-		MLGL::drawLine(x1, y1, x2, y2, 2.0*mViewScale);
-	}	
-	
-	// draw vert spans
-	std::vector<Vec3> segsVert = mpModel->getLineSegmentsVert();
-	
-	for(auto it = segsVert.begin(); it != segsVert.end(); it++)
-	{
-		Vec3 p = *it;
-		
-		float y1 = mSensorRangeY.convert(p.x());
-		float y2 = mSensorRangeY.convert(p.y());
-		int col = p.z();
-		float x1 = mSensorRangeX.convert(col);	
-		float x2 = mSensorRangeX.convert(col + 1);	
-		
-		glColor4fv(&darkRed[0]);
-		
-		MLGL::drawLine(x1, y1, x2, y2, 2.0*mViewScale);
-	}	
-	
-	
-	// draw intersections
-	std::vector<Vec4> xs = mpModel->getIntersections();	
-	for(auto it = xs.begin(); it != xs.end(); it++)
-	{
-		Vec3 p = *it;
-		
-		float x = mSensorRangeX.convert(p.x());
-		float y = mSensorRangeY.convert(p.y());
-		
-		Vec4 dotColor = purpl;
-		dotColor[3] = 0.5f;
-		glColor4fv(&dotColor[0]);
-		
-		// draw dot on surface
-		Vec2 pos(x, y);
-		MLGL::drawDot(pos, dotSize);
-	}	
-}
-
-void SoundplaneGridView::renderGradient()
-{
-	setupOrthoView();
-	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
-	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
-	Vec4 purpl(0.6f, 0.0f, 0.6f, 0.5f);
-	Vec4 white(1.f, 1.f, 1.f, 1.f);
-
-	const MLSignal* gx = mpModel->getSignalForViewMode("gradient_x");
-	const MLSignal* gy = mpModel->getSignalForViewMode("gradient_y");
-	if((!gx) || (!gy)) return;
-
-	
-	float dotSize = 0.25*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
-	float displayScale = 100.f* mpModel->getFloatProperty("display_scale");
-	
-	// draw vector field
-
-	glColor4fv(&darkBlue[0]);
-	for(int j=0; j<mSensorHeight; ++j)
-	{
-		for(int i=0; i<mSensorWidth; ++i)
-		{
-			float x = mSensorRangeX.convert(i);
-			float y = mSensorRangeY.convert(j);
-			
-			float zx = mSensorRangeX.convert(i - (*gx)(i, j)*displayScale);
-			float zy = mSensorRangeY.convert(j - (*gy)(i, j)*displayScale);
-
-			MLGL::drawDot(Vec2(x, y), dotSize);
-			MLGL::drawLine(x, y, zx, zy, 2.0*mViewScale);
-			
-
-		}
 	}
 }
 
@@ -714,7 +568,8 @@ void SoundplaneGridView::renderIntersections()
 	
 	setupOrthoView();
 
-	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	float dotSize = 200.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	float displayScale = mpModel->getFloatProperty("display_scale");
 		
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
@@ -722,33 +577,37 @@ void SoundplaneGridView::renderIntersections()
 	glLineWidth(1.0*mViewScale);
 
 	// draw intersections colored by group
-	std::vector<Vec4> xs = mpModel->getIntersections();	
-	for(auto it = xs.begin(); it != xs.end(); it++)
+	auto xs = mpModel->getIntersections();
+	int rowInt = 0;
+	for(auto row : xs.data)
 	{
-		Vec4 p = *it;
-		
-		float x = mSensorRangeX.convert(p.x());
-		float y = mSensorRangeY.convert(p.y());
-		
-		int group = p.w();		
-		Vec4 dotColor(MLGL::getIndicatorColor(group));
-		//	dotColor[3] = z*10.f;
-		dotColor[3] = 0.5f;
-		glColor4fv(&dotColor[0]);
-		
-		// draw dot on surface
-		Vec2 pos(x, y);
-		//float z = viewSignal->getInterpolatedLinear(p);
-		MLGL::drawDot(pos, p.z()*dotSize);
-		
-		
-		/*
-		// TEMP draw gradient at intersection
-		float zx = mSensorRangeX.convert(p.x() + p.z()*1000.f);
-		float zy = mSensorRangeY.convert(p.y() + p.w()*1000.f);
-		MLGL::drawDot(pos, 0.01f*dotSize);
-		MLGL::drawLine(x, y, zx, zy, 2.0*mViewScale);
-		*/
+		for(auto inx : row)
+		{
+			if(!inx) break;
+			
+			float x = mSensorRangeX.convert(inx.x());
+			float y = mSensorRangeY.convert(inx.y());
+			
+			int group = inx.w();		
+			Vec4 dotColor(MLGL::getIndicatorColor(group));
+			//	dotColor[3] = z*10.f;
+			dotColor[3] = 0.5f;
+			glColor4fv(&dotColor[0]);
+			
+			// draw dot on surface
+			Vec2 pos(x, y);
+			//float z = viewSignal->getInterpolatedLinear(p);
+			MLGL::drawDot(pos, inx.z()*dotSize*displayScale);
+			
+			// cross in center
+			float k = dotSize*0.04f;
+			dotColor[3] = 1.0f;
+			glColor4fv(&dotColor[0]);
+			MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
+			MLGL::drawLine(x, y - k, x, y + k, 2.0f*mViewScale);
+			
+		}	
+		rowInt++;
 	}
 }
 
@@ -792,8 +651,6 @@ void SoundplaneGridView::renderTouches()
 			float k = dotSize*0.04f;
 			dotColor[3] = 1.0f;
 			glColor4fv(&dotColor[0]);
-
-				
 			MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
 			MLGL::drawLine(x, y - k, x, y + k, 2.0f*mViewScale);
 
@@ -834,7 +691,7 @@ void SoundplaneGridView::renderZGrid()
 	if(!viewSignal) return;
 	
 	float displayScale = mpModel->getFloatProperty("display_scale");
-	float gridScale = displayScale * 10.f;
+	float gridScale = displayScale * 100.f;
 	
 	float preOffset = 0.f;
 	bool separateSurfaces = false;
@@ -845,6 +702,7 @@ void SoundplaneGridView::renderZGrid()
 	{
 		preOffset = -0.1;
 		separateSurfaces = true;
+		gridScale *= 0.1f;
 	}
 	
 	// draw stuff in immediate mode. TODO vertex buffers and modern GL code in general.
@@ -1075,11 +933,6 @@ void SoundplaneGridView::renderOpenGL()
 		renderXYGrid();
 		drawSurfaceOverlay();
 	}
-	else if (viewMode == "regions")
-	{
-		renderRegions();
-		drawSurfaceOverlay();
-	}
 	else if (viewMode == "spans_horiz")
 	{
 		renderSpansHoriz();
@@ -1093,20 +946,10 @@ void SoundplaneGridView::renderOpenGL()
 		renderPings();
 		drawSurfaceOverlay();
 	}
-	else if (viewMode == "segments")
-	{
-		renderLineSegments();
-		drawSurfaceOverlay();
-	}
 	else if (viewMode == "intersections")
 	{
 		renderIntersections();
 		drawSurfaceOverlay();
-	}
-	else if (viewMode == "gradient")
-	{
-		renderGradient();
-		// drawSurfaceOverlay();
 	}
 	else if (viewMode == "touches")
 	{

@@ -197,14 +197,10 @@ void SoundplaneController::setupMenus()
 	mMenuMap["viewmode"] = viewMenu;
 	viewMenu->addItem("raw data");
 	viewMenu->addItem("calibrated");
-	viewMenu->addItem("regions");
 	viewMenu->addItem("spans_horiz");
 	viewMenu->addItem("spans_vert");
 	viewMenu->addItem("pings");
-	viewMenu->addItem("segments");
-	viewMenu->addItem("gradient");
 	viewMenu->addItem("intersections");
-	viewMenu->addItem("clusters");
 	viewMenu->addItem("touches");
 
 	viewMenu->addItem("norm map");
