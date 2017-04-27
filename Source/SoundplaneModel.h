@@ -131,12 +131,16 @@ public:
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 
-	HorizSpans<kSensorRows, kSensorCols> getSpansHoriz() { return mTracker.getSpansHoriz(); }
-	HorizSpans<kSensorRows, kSensorCols> getPingsHoriz() { return mTracker.getPingsHoriz(); }
+	VectorArray2D<kSensorRows, kSensorCols> getSpansHoriz() { return mTracker.getSpansHoriz(); }
+	VectorArray2D<kSensorRows, kSensorCols> getPingsHoriz() { return mTracker.getPingsHoriz(); }
 	
-	std::vector<Vec3> getSpansVert() { return mTracker.getSpansVert(); }
-//	std::vector<Vec3> getPingsHoriz() { return mTracker.getPingsHoriz(); }
-	std::vector<Vec3> getPingsVert() { return mTracker.getPingsVert(); }
+	VectorArray2D<kSensorCols, kSensorRows> getSpansVert() { return mTracker.getSpansVert(); }
+	VectorArray2D<kSensorCols, kSensorRows> getPingsVert() { return mTracker.getPingsVert(); }
+
+//	std::vector<Vec3> getSpansVert() { return mTracker.getSpansVert(); }
+//	std::vector<Vec3> getPingsHoriz() { return mTracker.getPingsHoriz(); 	
+//	std::vector<Vec3> getPingsVert() { return mTracker.getPingsVert(); }
+	
 	std::vector<Vec3> getLineSegmentsHoriz() { return mTracker.getLineSegmentsHoriz(); }
 	std::vector<Vec3> getLineSegmentsVert() { return mTracker.getLineSegmentsVert(); }
 	

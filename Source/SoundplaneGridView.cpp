@@ -360,7 +360,7 @@ void SoundplaneGridView::renderSpansHoriz()
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	// draw spans
-	HorizSpans<kSensorRows, kSensorCols> spans = mpModel->getSpansHoriz();
+	VectorArray2D<kSensorRows, kSensorCols> spans = mpModel->getSpansHoriz();
 	int j = 0;
 	for(auto row : spans.data)
 	{
@@ -436,26 +436,32 @@ void SoundplaneGridView::renderSpansVert()
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	// draw spans
-	std::vector<Vec3> spans = mpModel->getSpansVert();
-	for(auto p : spans)
+	// draw spans
+	VectorArray2D<kSensorCols, kSensorRows> spans = mpModel->getSpansVert();
+	int j = 0;
+	for(auto row : spans.data)
 	{
-		if(!p) break; // array of spans is null-terminated
+		for(auto p : row)
+		{
+			if(!p) break; // array of spans is null-terminated
 
-		// span: (yStart, yEnd, x)
-		float y1 = mSensorRangeY.convert(p.x());
-		float y2 = mSensorRangeY.convert(p.y());
-		float x1 = mSensorRangeX.convert(p.z() - ph);	
-		float x2 = mSensorRangeX.convert(p.z() + ph);	
-		
-		MLRect tr(x1, y1, x2 - x1, y2 - y1);
-		
-		darkBlue[3] = 0.25f;
-		glColor4fv(&darkBlue[0]);
-		MLGL::fillRect(tr);
-		
-		darkBlue[3] = 1.0f;
-		glColor4fv(&darkBlue[0]);
-		MLGL::strokeRect(tr, 1.0*mViewScale);
+			// span: (yStart, yEnd, x)
+			float y1 = mSensorRangeY.convert(p.x());
+			float y2 = mSensorRangeY.convert(p.y());
+			float x1 = mSensorRangeX.convert(j - ph);	
+			float x2 = mSensorRangeX.convert(j + ph);	
+			
+			MLRect tr(x1, y1, x2 - x1, y2 - y1);
+			
+			darkBlue[3] = 0.25f;
+			glColor4fv(&darkBlue[0]);
+			MLGL::fillRect(tr);
+			
+			darkBlue[3] = 1.0f;
+			glColor4fv(&darkBlue[0]);
+			MLGL::strokeRect(tr, 1.0*mViewScale);
+		}
+		j++;
 	}	
 	
 	// draw calibrated data
@@ -512,6 +518,7 @@ void SoundplaneGridView::renderPings()
 	{
 		for(auto span : row)
 		{
+			if(!span) break;
 			float ph = 0.;
 			float x1 = mSensorRangeX.convert(span.x());
 			float x2 = mSensorRangeX.convert(span.y());
@@ -526,10 +533,9 @@ void SoundplaneGridView::renderPings()
 		rowInt++;
 	}
 	
-	// draw pings
+	// draw horiz pings
 	float kDotSize = 50.f;
 	float dotSize = kDotSize*fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
-
 	auto pings = mpModel->getPingsHoriz();
 	int j = 0;
 	for(auto row : pings.data)
@@ -540,7 +546,7 @@ void SoundplaneGridView::renderPings()
 
 			float x = mSensorRangeX.convert(p.x());
 			float y = mSensorRangeY.convert(j);
-			float z = p.z();
+			float z = p.y();
 			
 			Vec4 dotColor = darkBlue;
 			dotColor[3] = 0.5f;
@@ -552,44 +558,48 @@ void SoundplaneGridView::renderPings()
 		j++;
 	}		
 	
-	// draw spans
-	std::vector<Vec3> spansVert = mpModel->getSpansVert();
-	if(spansVert.size() > 0)
-		for(auto it = spansVert.begin(); it != spansVert.end(); it++)
+	// draw vert spans
+	auto spansVert = mpModel->getSpansVert();
+	int colInt = 0;
+	for(auto col : spansVert.data)
+	{
+		for(auto span : col)
 		{
-			Vec3 p = *it;
-			
+			if(!span) break;			
 			float ph = 0.;			
 			// span: (yStart, yEnd, x)
-			float y1 = mSensorRangeY.convert(p.x());
-			float y2 = mSensorRangeY.convert(p.y());
-			float x1 = mSensorRangeX.convert(p.z() - ph);	
-			float x2 = mSensorRangeX.convert(p.z() + ph);	
+			float y1 = mSensorRangeY.convert(span.x());
+			float y2 = mSensorRangeY.convert(span.y());
+			float x1 = mSensorRangeX.convert(colInt - ph);	
+			float x2 = mSensorRangeX.convert(colInt + ph);	
 
 			glColor4fv(&darkRed[0]);
 			
 			MLRect tr(x1, y1, x2 - x1, y2 - y1);
 			MLGL::strokeRect(tr, 1.0*mViewScale);
 		}	
-	
-	// draw pings
-	std::vector<Vec3> pingsVert = mpModel->getPingsVert();
-	for(auto it = pingsVert.begin(); it != pingsVert.end(); it++)
+		colInt++;
+	}
+		
+	// draw vert pings
+	colInt = 0;
+	auto pingsVert = mpModel->getPingsVert();
+	for(auto col : pingsVert.data)
 	{
-		Vec3 p = *it;
-		
-		float x = mSensorRangeX.convert(p.x());
-		float y = mSensorRangeY.convert(p.y());
-		float z = p.z();
-		
-		Vec4 dotColor = darkRed;
-	//	dotColor[3] = z*10.f;
-		dotColor[3] = 0.5f;
-		glColor4fv(&dotColor[0]);
-		
-		// draw dot on surface
-		MLGL::drawDot(Vec2(x, y), z*dotSize);
-	}	
+		for(auto p : col)
+		{
+			if(!p) break; // each array of spans is null-terminated
+			float x = mSensorRangeX.convert(colInt);
+			float y = mSensorRangeY.convert(p.x());
+			float z = p.y();
+			
+			Vec4 dotColor = darkRed;
+			dotColor[3] = 0.5f;
+			glColor4fv(&dotColor[0]);
+			MLGL::drawDot(Vec2(x, y), z*dotSize);
+		}
+		colInt++;
+	}
 }
 
 void SoundplaneGridView::renderLineSegments()

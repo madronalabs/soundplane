@@ -707,11 +707,7 @@ void TouchTracker::process(int)
 	// filter out any negative values. negative values can shows up from capacitive coupling near edges,
 	// from motion or bending of the whole instrument, 
 	// from the elastic layer deforming and pushing up on the sensors near a touch. 
-	bool doClamp = true;
-	if(doClamp)
-	{
-		mFilteredInput.sigMax(0.f);
-	}
+	mFilteredInput.sigMax(0.f);
 	
 	if (mCalibrator.isCalibrating())
 	{		
@@ -736,12 +732,12 @@ void TouchTracker::process(int)
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
 				
-		// convolve with 3x3 smoothing kernel, twice.
+		// convolve with 3x3 smoothing kernel.
 		mFFT2 = mFilteredInput;
 		float kc, kex, key, kk;			
 //		kc = 16./32.; kex = 4./32.; key = 2./32.; kk=1./32.;	
-		kc = 16./48.; kex = 8./48.; key = 4./48.; kk=2./48.;	
-		mFFT2.convolve3x3xy(kc, kex, key, kk);
+//		kc = 16./48.; kex = 8./48.; key = 4./48.; kk=2./48.;	
+		kc = 16./88.; kex = 12./88.; key = 8./88.; kk=4./88.;	
 		mFFT2.convolve3x3xy(kc, kex, key, kk);
 		
 		mGradientSignalX = gradX(mFFT2);
@@ -760,16 +756,9 @@ void TouchTracker::process(int)
 
 		if(mMaxTouchesPerFrame > 0)
 		{
-			//HorizSpans intSpans = findSpansHoriz(mFFT2);
-			
-			mSpansHoriz = findSpansHoriz(mFFT2);
-			mSpansHoriz = findZ2SpansHoriz(mSpansHoriz, mFFT2);
-			
-			mPingsHoriz = findPingsHoriz(mSpansHoriz, mFFT2);
-			
-		//	mSpansHoriz = filterSpansHoriz(mSpansHoriz, mSpansHoriz1);
-		//	mSpansHoriz1 = mSpansHoriz;
-		//	mSpansHoriz = combineSpansHoriz(mSpansHoriz);
+			mSpansHoriz = findSpans<kSensorRows, kSensorCols, 0>(mFFT2);
+			mSpansHoriz = findZ2Spans<kSensorRows, kSensorCols, 0>(mSpansHoriz, mFFT2);			
+			mPingsHoriz = findPings<kSensorRows, kSensorCols, 0>(mSpansHoriz, mFFT2);
 			
 			// copy filtered spans to output array
 			{
@@ -782,22 +771,37 @@ void TouchTracker::process(int)
 				mPingsHorizOut = mPingsHoriz;
 			}
 			
+			mSpansVert = findSpans<kSensorCols, kSensorRows, 1>(mFFT2); 
+			mSpansVert = findZ2Spans<kSensorCols, kSensorRows, 1>(mSpansVert, mFFT2);			
+			mPingsVert = findPings<kSensorCols, kSensorRows, 1>(mSpansVert, mFFT2);
+			
+			{
+				std::lock_guard<std::mutex> lock(mSpansVertOutMutex);
+				mSpansVertOut = mSpansVert;
+			}
+			
+			{
+				std::lock_guard<std::mutex> lock(mPingsVertOutMutex);
+				mPingsVertOut = mPingsVert;
+			}
+			
+			mIntersections = findIntersections(mPingsHoriz, mPingsVert);
 			
 			// TODO filter pings not spans. less work anyway!
 						
-			findSpansVert();
+		//	findSpansVert();
 						
 		//	combineSpansVert();
 			
-			filterSpansVert();
+		//	filterSpansVert();
 			
 			// correctSpansVert(); // seems not useful for Soundplane A
 			
 			
-			findPingsVert();
+		//	findPingsVert();
 			
-			findLineSegmentsHoriz();
-			findLineSegmentsVert();
+	//		findLineSegmentsHoriz();
+	//		findLineSegmentsVert();
 			
 	//		findIntersections();
 			findTouches();
@@ -820,28 +824,24 @@ void TouchTracker::process(int)
 		mCount = 0;
 		//dumpTouches();
 		
-		debug() << "\n SPANS HORIZ: \n";
-		int row = 0;
-		for(auto rowArray : mSpansHorizOut.data)
+		/*
+		debug() << "\n PINGS VERT: \n";
+		int col = 0;
+		for(auto colArray : mPingsVertOut.data)
 		{
-			debug() << "row " << row++ << ": ";
-			for(Vec4 s : rowArray)
+			debug() << "col " << col++ << ": ";
+			for(Vec4 s : colArray)
 			{
-				if(!s) 
+				if((!s) || (s.y() < 0.01f))
 				{
 					break;	
 				}
-				else
-				{
-					bool isNull = (s == MLVec::kNullValue);
-					
-					debug() << isNull;
-				}
-				debug() << "[" << s.x() << "-" << s.y() << " " << s.z() << " " << s.w() << "] ";
+				debug() << "[" << s.x() << "-" << s.y() << "] ";
 			}
 			debug() << "\n";
 		}
 
+		*/
 		
 		/*
 		debug() << "\n SPANS VERT: \n";
@@ -863,17 +863,19 @@ void TouchTracker::process(int)
 }
 
 
-// find spans over which z is higher than a small constant.
-HorizSpans<kSensorRows, kSensorCols> TouchTracker::findSpansHoriz(const MLSignal& in)
+// find horizontal or vertical spans over which z is higher than a small constant.
+template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
+VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findSpans(const MLSignal& in)
 {
 	const float zThresh = 0.002;
-	const float kMinSpanLength = 2.0f;
+	const float kMinSpanLength = 0.0f;
 	
-	int w = in.getWidth();
-	int h = in.getHeight();
-	HorizSpans<kSensorRows, kSensorCols> out;
+	int dim1 = in.getWidth();
+	int dim2 = in.getHeight();
+	if(XY) std::swap(dim1, dim2);
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> out;
 		
-	for(int j=0; j<h; ++j)
+	for(int j=0; j<dim2; ++j)
 	{
 		out.data[j].fill(Vec4::null());	
 		int spansInRow = 0;
@@ -882,22 +884,34 @@ HorizSpans<kSensorRows, kSensorCols> TouchTracker::findSpansHoriz(const MLSignal
 		float z = 0.f;
 		float zm1 = 0.f;
 		spanStart = spanEnd = -1;
-				
-		for(int i=0; i < w; ++i)
+
+		constexpr int margin = XY ? 1 : 0;
+		int intStart = 0 - margin;
+		int intEnd = dim1 + margin;
+		
+		for(int i=intStart; i <= intEnd; ++i)
 		{
-			z = in(i, j);
-			if((z > zThresh) && (zm1 < zThresh)) 
+			if(within(i, 0, dim1))
+			{
+				z = XY ? in(j, i) : in(i, j);
+			}
+			else
+			{
+				z = 0.f;
+			}
+			
+			if((z >= zThresh) && (zm1 < zThresh))
 			{
 				// start span
 				spanStart = i;
 			}
-			else if((spanStart >= 0) && ((z < zThresh) || (i == w - 1)) && (zm1 > zThresh)) 
+			else if((spanStart >= 0) && ((z < zThresh) || (i == intEnd)) && (zm1 >= zThresh)) 
 			{
 				// end span when z goes under thresh or active at end of sensor
-				spanEnd = i;
+				spanEnd = clamp(i, 0, dim1 - 1);
 				if(spanEnd - spanStart > kMinSpanLength)
 				{
-					if(spansInRow < kMaxSpansPerRow)
+					if(spansInRow < ARRAY_LENGTH)
 					{
 						out.data[j][spansInRow++] = Vec4(spanStart, spanEnd, 0.f, 0.f); 		
 					}
@@ -911,13 +925,17 @@ HorizSpans<kSensorRows, kSensorCols> TouchTracker::findSpansHoriz(const MLSignal
 }
 
 
-// for each horizontal span, find one or more subspans over which the 2nd derivative of z is negative.
-HorizSpans<kSensorRows, kSensorCols> TouchTracker::findZ2SpansHoriz(const HorizSpans<kSensorRows, kSensorCols>& intSpans, const MLSignal& in)
+// for each horiz or vert span, find one or more subspans over which the 2nd derivative of z is negative.
+template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
+VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findZ2Spans(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& intSpans, const MLSignal& in)
 {
-	const float ddzThresh = 0.00f;
-	const float kMinSpanLength = 1.f;
-	
-	HorizSpans<kSensorRows, kSensorCols> y;
+	const float ddzThresh = -0.000f;
+	const float kMinSpanLength = 0.f;
+	int dim1 = in.getWidth();
+	int dim2 = in.getHeight();
+	if(XY) std::swap(dim1, dim2);
+
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> y;
 	int j = 0;
 	for(auto row : intSpans.data)
 	{
@@ -936,47 +954,44 @@ HorizSpans<kSensorRows, kSensorCols> TouchTracker::findZ2SpansHoriz(const HorizS
 			float ddz = 0.f;
 			float ddzm1 = 0.f;
 			
-			int left = intSpan.x();
-			int right = intSpan.y();
-			spanStart = spanEnd = -1;
+			// y dimension has little data, so we need to iterate before and after to get derivatives flowing
+			constexpr int margin = XY ? 2 : 0;
 			
-			for(int i=left; i <= right; ++i)
+			int intStart = intSpan.x() - margin;
+			int intEnd = intSpan.y() + margin;
+			spanStart = spanEnd = -1;
+			bool spanActive = false;
+			
+			for(int i = intStart; i <= intEnd; ++i)
 			{
-				z = in(i, j);				
+				z = (within(i, 0, dim1)) ? (XY ? in(j, i) : in(i, j)) : 0.f;
 				dz = z - zm1;
 				ddz = dz - dzm1;
-				
-				if((ddz < -ddzThresh) && (ddzm1 > -ddzThresh))
-				{
-	//				debug() << " [" << ddzm1 << "/" << ddz << "] ";
-					
+
+				if((ddz < ddzThresh) && (ddzm1 >= ddzThresh))
+				{ 
 					// start span
-					float m = ddz - ddzm1;	
-					float xa = -ddz/m;
-					spanStart = i - 1.f + xa; 	
+					float m = ddz - ddzm1;
+					float xa = (ddzThresh - ddzm1)/m;
+					spanStart = i - 2.f + xa; 	
 					spanStartZ = z; 
-				}
-				else if((spanStart >= 0) && ((ddz > -ddzThresh) || (i == right)) && (ddzm1 < -ddzThresh)) 
-				{
-	//				debug() << " - [" << ddzm1 << "/" << ddz << "]\n";
+					spanActive = true;
 					
-					// end span if ddz goes back above 0 or the int span ends
+				}
+				else if((spanActive) && ((ddz >= ddzThresh) || (i == intEnd)) && (ddzm1 < ddzThresh))
+				{	
+					// end span if ddz goes back above 0 or the int span ends		
 					float m = ddz - ddzm1;				
-					float xa = -ddz/m;
-					spanEnd = i - 1.f + xa; 
-					spanStart = clamp(spanStart, intSpan.x(), intSpan.y());
-					spanEnd = clamp(spanEnd, intSpan.x(), intSpan.y());
+					float xa = (ddzThresh - ddzm1)/m;
+					spanEnd = i - 2.f + xa; 
 					if(spanEnd - spanStart > kMinSpanLength)
 					{
-						
-						//template<int ROW_LENGTH>
-						//void appendSpanToRow(std::array<Vec4, ROW_LENGTH>& row, Vec4 b)
-
-						
 						appendSpanToRow(y.data[j], Vec4(spanStart, spanEnd, 0.f, 0.f));
 					}
 					spanStart = spanEnd = -1;
+					spanActive = false;
 				}
+
 				zm1 = z;
 				dzm1 = dz;
 				ddzm1 = ddz;
@@ -987,78 +1002,22 @@ HorizSpans<kSensorRows, kSensorCols> TouchTracker::findZ2SpansHoriz(const HorizS
 	return y;
 }
 
-/*
-
-// TESTING find dddz = 0 points in spans.
-TouchTracker::HorizSpans TouchTracker::findPingsHoriz(const TouchTracker::HorizSpans& inSpans, const MLSignal& in)
-{
-	HorizSpans y;
-	int j = 0;
-	for(auto row : inSpans)
-	{
-		y[j].fill(Vec4::null());
-		
-		for(auto intSpan : row)
-		{
-			if(!intSpan) break;
-			
-			float z = 0.f;
-			float zm1 = 0.f;
-			float dz = 0.f;
-			float dzm1 = 0.f;
-			float ddz = 0.f;
-			float ddzm1 = 0.f;
-			float dddz = 0.f;
-			float dddzm1 = 0.f;
-			
-			int left = intSpan.x();
-			int right = intSpan.y();
-			
-			for(int i=left; i <= right; ++i)
-			{
-				z = in(i, j);				
-				dz = z - zm1;
-				ddz = dz - dzm1;
-				dddz = ddz - ddzm1;
-				
-				//				if(((dddz > 0.f) || (i == right)) && (dddzm1 < 0.f)) 
-				if(((dddz > 0.f) || (i == right)) && (dddzm1 < 0.f)) 
-				{
-					float m = dddz - dddzm1;
-					float ya = -dddzm1;
-					float xa = ya/m;
-					
-					float pingX = i - 2.f + xa; 
-					
-					//	pingX = clamp(pingX, intSpan.x(), intSpan.y());
-					
-					// TODO not a span - fix name
-					float pingZ = in.getInterpolatedLinear(pingX, j);
-					appendSpanToRow(y[j], Vec4(pingX, 0.f, pingZ, 0.f));
-					
-				}
-				zm1 = z;
-				dzm1 = dz;
-				ddzm1 = ddz;
-				dddzm1 = dddz;
-			}						
-		}
-		j++;
-	}
-	return y;
-}
-
-*/
 
 
-HorizSpans<kSensorRows, kSensorCols> TouchTracker::findPingsHoriz(const HorizSpans<kSensorRows, kSensorCols>& inSpans, const MLSignal& in)
+template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
+VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inSpans, const MLSignal& in)
 {
 	// this is the maximum width of a span containing only one ping. depends on smoothing kernel.
-	const float k1 = 3.5f; 
+	const float k1 = XY ? 3.5f : 4.0f; 
 	const float fingerWidth = k1 / 2.f;
 
-	HorizSpans<kSensorRows, kSensorCols> y;
+	int dim1 = in.getWidth();
+	int dim2 = in.getHeight();
+	if(XY) std::swap(dim1, dim2);
+	
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> y;
 	int j = 0;
+
 	for(auto row : inSpans.data)
 	{
 		y.data[j].fill(Vec4::null());
@@ -1068,73 +1027,25 @@ HorizSpans<kSensorRows, kSensorCols> TouchTracker::findPingsHoriz(const HorizSpa
 			if(!s) break;
 								
 			float a = s.x(); // start 
-			float b = s.y(); // end
-			
-			// TODO position pings within span by centroid of z underneath 			
-			// positioning properly may take care of weighting!
-						
+			float b = s.y(); // end			
 			float d = b - a;
 			if(d < k1)
 			{
-				float pingX = (a + b)/2.f;
-				float pingZ = in.getInterpolatedLinear(pingX, j);
-				appendSpanToRow(y.data[j], Vec4(pingX, j, pingZ, 0.f));
+				float pingPos = (a + b)/2.f;
+				float pingZ = XY ? in.getInterpolatedLinear(j, pingPos) : in.getInterpolatedLinear(pingPos, j);
+				appendSpanToRow(y.data[j], Vec4(pingPos, pingZ, 0.f, 0.f));
 			}
 			else
 			{
-				float pingX = a + fingerWidth;
-				float pingZ = in.getInterpolatedLinear(pingX, j);
-				appendSpanToRow(y.data[j], Vec4(pingX, j, pingZ, 0.f));
+				float pingPos = a + fingerWidth;
+				float pingZ = XY ? in.getInterpolatedLinear(j, pingPos) : in.getInterpolatedLinear(pingPos, j);
+				appendSpanToRow(y.data[j], Vec4(pingPos, pingZ, 0.f, 0.f));
 
-				pingX = b - fingerWidth;
-				pingZ = in.getInterpolatedLinear(pingX, j);
-				appendSpanToRow(y.data[j], Vec4(pingX, j, pingZ, 0.f));							
+				pingPos = b - fingerWidth;
+				pingZ = XY ? in.getInterpolatedLinear(j, pingPos) : in.getInterpolatedLinear(pingPos, j);
+				appendSpanToRow(y.data[j], Vec4(pingPos, pingZ, 0.f, 0.f));							
 			}
 		}
-		j++;
-	}
-	return y;
-}
-
-
-// piecewise triangle wave fn with period 2
-float triangle(float x)
-{
-	float m = x - 0.5f;
-	float t = m - floor(m);
-	float a = ((0.5f*x - floor(0.5f*x)) > 0.5) ? -1.f : 1.f;
-	float u = fabs(2.0f*(t - 0.5f));
-	return u*a;
-}
-
-
-HorizSpans<kSensorRows, kSensorCols> TouchTracker::correctSpansHoriz(const HorizSpans<kSensorRows, kSensorCols>& inSpans)
-{
-	// Soundplane A - specific correction for key mechanicals
-	// specific to smoothing kernel
-	HorizSpans<kSensorRows, kSensorCols> y;
-	int j = 0;
-	for(auto& row : inSpans.data)
-	{
-		int i = 0;
-		for(auto& span : row)
-		{
-			if(!span) break;
-			
-			float a = span.x(); // start
-			float b = span.y(); // end
-			float c = (a + b)/2.f;
-			
-			float k = 0.2f; // by inspection //-mSpanCorrect;
-			// k = -mSpanCorrect;
-			
-			// can be lookup table for optimized version
-			float ra = k*triangle(c); 
-			float rb = k*triangle(c); 
-			
-			y.data[j][i] = Vec4(a + ra, b - rb, span.z(), span.w());
-			i++;
-		}	
 		j++;
 	}
 	return y;
@@ -1174,13 +1085,13 @@ void combineGroups(InputIt first, InputIt last, ShouldCombineFn shouldCombine, C
 	}
 }
 
-HorizSpans TouchTracker::combineSpansHoriz(const TouchTracker::HorizSpans& inSpans)
+VectorArray2D TouchTracker::combineSpansHoriz(const TouchTracker::VectorArray2D& inSpans)
 {	
 	const float combineDistance = 0.f;
 	auto shouldCombineSpans = [&](Vec4 a, Vec4 b) -> bool { return (a.y() + combineDistance > b.x()) ; };
 	auto combineSpans = [&](Vec4 a, Vec4 b){ return Vec4(a.x(), b.y(), 0.f, 0.f); }; // TODO variance
 	
-	TouchTracker::HorizSpans y;
+	TouchTracker::VectorArray2D y;
 	int j = 0;
 	for(auto row : inSpans)
 	{
@@ -1189,124 +1100,11 @@ HorizSpans TouchTracker::combineSpansHoriz(const TouchTracker::HorizSpans& inSpa
 	}
 	return y;
 }
-
 */
 
-// TODO combine this and Horiz vrsion with a direction argument
-
-// find vertical spans over which the 2nd derivative of z is negative,
-// and during which the pressure exceeds mOnThreshold at some point.
-void TouchTracker::findSpansVert()
-{
-	// some point on the span must be over this larger threshold to be recognized.
-	const float zThresh = mOnThreshold/2;
-	
-	const float kMinSpanLength = 0.5f;
-	
-	const MLSignal& in = mFFT2;
-	int w = in.getWidth();
-	int h = in.getHeight();
-	
-	std::lock_guard<std::mutex> lock(mSpansVertMutex);
-	mSpansVert.clear();
-	
-	// loop runs past column ends using zeros as input
-	int top = h + 2;
-	
-	for(int i=0; i < w; ++i)
-	{
-		bool spanActive = false;
-		bool spanExceedsThreshold = false;
-		float spanStart, spanEnd;
-		float z = 0.f;
-		float zm1 = 0.f;
-		float dz = 0.f;
-		float dzm1 = 0.f;
-		float ddz = 0.f;
-		float ddzm1 = 0.f;
-		bool pushSpan = false;
-		
-		for(int j=0; j<top; ++j)
-		{
-			pushSpan = false;
-			zm1 = z;
-			
-			z = (within(j, 0, h)) ? in(i, j) : 0.f;
-			
-			dzm1 = dz;
-			dz = z - zm1;
-			
-			ddzm1 = ddz;
-			ddz = dz - dzm1;
-			
-			// near top there is not enough data for getting ddz, so relax criteria for start
-			bool startNearTop = ((j >= h - 1) && (!spanActive) && (dzm1 > 0));
-			
-			if( ( (ddz < 0)&&(ddzm1 > 0) ) || (startNearTop) ) // start span
-			{
-				// get interpolated start
-				float m = ddz - ddzm1;	
-				float xa = -ddz/m;
-				spanStart = j - 1.f + xa; 
-				
-				spanActive = true;
-				if(z > zThresh) spanExceedsThreshold = true;
-			}
-			else if( (ddz > 0)&&(ddzm1 < 0) )
-			{
-				// get interpolated end
-				float m = ddz - ddzm1;				
-				float xa = -ddz/m;
-				spanEnd = j - 1.f + xa; 
-				
-				if(spanExceedsThreshold)
-				{
-					pushSpan = true;
-				}
-				spanActive = false;
-				spanExceedsThreshold = false;
-			}
-			else if(spanActive) 
-			{
-				if(z > zThresh) spanExceedsThreshold = true;
-			}
-			
-			// close spans at column end (top)
-			if(j == top - 1)
-			{
-				// end row
-				if((spanActive && spanExceedsThreshold) && (ddz < 0))
-				{
-					// get interpolated end
-					float m = ddz - ddzm1;				
-					float xa = -ddz/m;
-					spanEnd = j - 1.f + xa;				
-					pushSpan = true;
-				}				
-			}
-			
-			if(pushSpan)
-			{
-				// DO allow span ends outside [0, h - 1]. 
-				if(spanEnd - spanStart > kMinSpanLength)
-				{
-					mSpansVert.push_back(Vec3(spanStart, spanEnd, i)); 				
-				}
-			}
-		}
-	}
-}
-
-
-
-
-void TouchTracker::combineSpansVert()
-{
-	
-}
 
 /*
-HorizSpans<kSensorRows, kSensorCols> TouchTracker::filterSpansHoriz(const HorizSpans<kSensorRows, kSensorCols>& inSpans, const HorizSpans<kSensorRows, kSensorCols>& inSpans1)
+VectorArray2D<kSensorRows, kSensorCols> TouchTracker::filterSpansHoriz(const VectorArray2D<kSensorRows, kSensorCols>& inSpans, const VectorArray2D<kSensorRows, kSensorCols>& inSpans1)
 {
 
 	// for each new span x0
@@ -1325,7 +1123,7 @@ HorizSpans<kSensorRows, kSensorCols> TouchTracker::filterSpansHoriz(const HorizS
 
 	const float kP = 0.01f;
 	
-	HorizSpans<kSensorRows, kSensorCols> y;
+	VectorArray2D<kSensorRows, kSensorCols> y;
 
 	// for each new span
 //debug() << "combine:\n";
@@ -1430,210 +1228,12 @@ HorizSpans<kSensorRows, kSensorCols> TouchTracker::filterSpansHoriz(const HorizS
 	return y;
 }*/
 
-void TouchTracker::filterSpansVert()
-{
-	
-}
-
-void TouchTracker::correctSpansVert()
-{
-	// Soundplane A - specific correction for key mechanicals
-	// specific to smoothing kernel
-	for(auto it = mSpansVert.begin(); it != mSpansVert.end(); ++it)
-	{
-		Vec3 s = *it;
-		float a = s.x(); // y1 
-		float b = s.y(); // not really y, rather y2
-		int col = s.z();
-		float c = (a + b)/2.f;
-		
-		float k = -mSpanCorrect;
-		
-		// can be lookup table for optimized version
-		float ra = k*triangle(c); 
-		float rb = k*triangle(c); 
-		
-		*it = Vec3(a + ra, b - rb, col);
-	}	
-}
-
-
-void TouchTracker::findPingsVert()
-{
-	const float k1 = 3.0f; // by inspection. could use calibration.
-	const float fingerHeight = k1 / 2.f;
-	
-	const MLSignal& in = mFFT2;
-	std::lock_guard<std::mutex> lock(mPingsVertMutex);
-	mPingsVert.clear();
-	
-	// TODO add tweak for top + bottom
-	
-	for(auto it = mSpansVert.begin(); it != mSpansVert.end(); ++it)
-	{
-		float pingY, pingZ;
-		
-		Vec3 s = *it;
-		float a = s.x(); // y1
-		float b = s.y(); // y2
-		int col = s.z();
-		
-		float d = b - a;
-		if(d < k1) // threshold could be location-variant based on calibration 
-		{
-			pingY = (a + b)/2.f;
-			pingZ = in.getInterpolatedLinear(col, pingY);
-			mPingsVert.push_back(Vec3(col, pingY, pingZ));			
-		}
-		else
-		{
-			pingY = a + fingerHeight;
-			pingZ = in.getInterpolatedLinear(col, pingY);
-			mPingsVert.push_back(Vec3(col, pingY, pingZ));			
-			
-			pingY = b - fingerHeight;
-			pingZ = in.getInterpolatedLinear(col, pingY);
-			mPingsVert.push_back(Vec3(col, pingY, pingZ));			
-		}
-	}
-}
-
-void TouchTracker::findLineSegmentsHoriz()
-{
-	std::lock_guard<std::mutex> lock(mSegmentsHorizMutex);
-	mSegmentsHoriz.clear();
-	
-	const MLSignal& in = mFFT2; // unused but for dims, fix
-	int w = in.getWidth();
-	int h = in.getHeight();
-	
-	// declarative:
-	//
-	// for each row i
-	// for each ping a in row i
-	// b = closest ping in row(i + 1) to a
-	// if fabs(a.x() - b.x()) < kMaxDist
-	// make a line segment from a to b
-	
-	
-	// functional:
-	//
-	// pingsA = pingsInRow(i);
-	// pingsB = pingsInRow(i + 1);
-	// pingsBClosestToA = map(pingsA, [](ping p){ findClosest(p, pingsB); };
-	// makeLineSegments(reduce(makePairs(pingsA, pingsBClosestToA), [](pair<pings> r){ fabs(r.first().x() - r.second().x()) < kMaxDist; };
-	
-	
-	// bespoke: known ordered data
-	//
-	// for each row i
-	// iteratorA = start of row i
-	// iteratorB = start of row i + 1
-	// while not (done(iteratorA) || done(iteratorB))
-	// if fabs(a.x() - b.x()) < kMaxDist
-	// makeLineSegment(a, b)
-	// if a.x() < b.x()
-	// advance iteratorA
-	// else
-	// advance iteratorB
-	
-	/*
-	//	debug() << std::setprecision(4);
-	const float kMaxDist = 1.0f;
-
-	for(int i=0; i<h - 1; ++i)
-	{
-		//	debug() << "ROW " << i << "\n";
-		auto itRowA = std::find_if(mPingsHoriz.begin(), mPingsHoriz.end(), [&](Vec3 &v){ return v.y() == i; }); 
-		auto itRowB = std::find_if(mPingsHoriz.begin(), mPingsHoriz.end(), [&](Vec3 &v){ return v.y() == i + 1; }); 
-		
-		while( 
-			  (itRowA != mPingsHoriz.end()) && (itRowB != mPingsHoriz.end())			  
-			  && (itRowA->y() == i) && (itRowB->y() == i + 1) )
-		{
-			//			debug() << "[ " << *itRowA << *itRowB << " ] ";
-			float ax = itRowA->x();
-			float bx = itRowB->x();
-			float ab = bx - ax;
-			if(fabs(ab) < kMaxDist)
-			{
-				mSegmentsHoriz.push_back(Vec3(ax, bx, i));
-				//			debug() << Vec3(ax, bx, i);
-				itRowA++;
-				itRowB++;
-			}
-			else
-			{
-			if(ab > 0)
-			{
-				itRowA++;
-			}
-			else
-			{
-				itRowB++;
-			}
-			}
-		}
-		//	debug() << "\n";
-	}*/
-	
-}
-
-void TouchTracker::findLineSegmentsVert()
-{
-	std::lock_guard<std::mutex> lock(mSegmentsVertMutex);
-	mSegmentsVert.clear();
-	
-
-	const MLSignal& in = mFFT2; // unused but for dims, fix
-	int w = in.getWidth();
-	int h = in.getHeight();
-	
-	const float kMaxDist = 0.25f;
-	for(int i=0; i<w - 1; ++i)
-	{
-		auto itColA = std::find_if(mPingsVert.begin(), mPingsVert.end(), [&](Vec3 &v){ return v.x() == i; }); 
-		auto itColB = std::find_if(mPingsVert.begin(), mPingsVert.end(), [&](Vec3 &v){ return v.x() == i + 1; }); 
-		
-		while( 
-			  (itColA != mPingsVert.end()) && (itColB != mPingsVert.end())			  
-			  && (itColA->x() == i) && (itColB->x() == i + 1) )
-		{
-			float ay = itColA->y();
-			float by = itColB->y();
-			float ab = by - ay;
-			if(fabs(ab) < kMaxDist)
-			{
-				mSegmentsVert.push_back(Vec3(ay, by, i));
-				itColA++;
-				itColB++;
-			}
-			else
-			{
-				if(ab > 0)
-				{
-					itColA++;
-				}
-				else
-				{
-					itColB++;
-				}
-			}
-		}
-	}
-}
-
-
-/*
-TouchTracker::HorizSpans findIntersections(const TouchTracker::HorizSpans& pingsHoriz, const TouchTracker::HorizSpans& pingsVert)
+TouchTracker::VectorArray2D findIntersections(const TouchTracker::VectorArray2D& pingsHoriz, const TouchTracker::VectorArray2D& pingsVert)
 {
 	
 	
 	
 }
-
-*/
-
 
 
 /*
@@ -2653,4 +2253,63 @@ int TouchTracker::countActiveTouches()
 	return c;
 }
 */
+
+
+// UNUSED find dddz = 0 points in spans. This made sense in theory but is noisy / glitchy for Soundplane A.
+VectorArray2D<kSensorRows, kSensorCols> TouchTracker::findPingsHorizUnused(const VectorArray2D<kSensorRows, kSensorCols>& inSpans, const MLSignal& in)
+{
+	VectorArray2D<kSensorRows, kSensorCols> y;
+	
+	int j = 0;
+	for(auto row : inSpans.data)
+	{
+		y.data[j].fill(Vec4::null());
+		
+		for(auto intSpan : row)
+		{
+			if(!intSpan) break;
+			
+			float z = 0.f;
+			float zm1 = 0.f;
+			float dz = 0.f;
+			float dzm1 = 0.f;
+			float ddz = 0.f;
+			float ddzm1 = 0.f;
+			float dddz = 0.f;
+			float dddzm1 = 0.f;
+			
+			int width = in.getWidth();
+			int left = clamp((int)intSpan.x(), 0, in.getWidth());
+			int right = clamp((int)intSpan.y(), 0, in.getWidth());
+			
+			int margin = 3;
+			for(int i=left - margin; i <= right + margin; ++i)
+			{
+				z = (within(i, 0, width)) ? in(i, j) : 0.f;				
+				dz = z - zm1;
+				ddz = dz - dzm1;
+				dddz = ddz - ddzm1;
+				if(((dddz > 0.f) ) && (dddzm1 < 0.f)) 
+				{
+					float m = dddz - dddzm1;
+					float ya = -dddzm1;
+					float xa = ya/m;
+					
+					float pingX = i - 3.f + xa; 
+					if(within(pingX, left + 0.f, right + 0.f))
+					{
+						float pingZ = in.getInterpolatedLinear(pingX, j);
+						appendSpanToRow(y.data[j], Vec4(pingX, 0.f, pingZ, 0.f));
+					}
+				}
+				zm1 = z;
+				dzm1 = dz;
+				ddzm1 = ddz;
+				dddzm1 = dddz;
+			}						
+		}
+		j++;
+	}
+	return y;
+}
 
