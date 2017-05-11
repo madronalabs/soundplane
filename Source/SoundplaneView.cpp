@@ -410,11 +410,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	
 	pB = page1->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
 
-	
-	pD = page1->addDial("spancorr", dialRect.withCenter(10.0, dialY), "span_correct", c2);
-	pD->setRange(-1.0, 1.0, 0.001);	
-	pD->setDefault(0.0);	
-	
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 
 //	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
@@ -464,9 +459,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.5);
 	
-	pD = page2->addDial("template", dialRect.withCenter(3.5, dialY), "t_thresh", c2);
-	pD->setRange(0., 1., 0.001);	
-	pD->setDefault(0.2);
+//	pD = page2->addDial("template", dialRect.withCenter(3.5, dialY), "t_thresh", c2);
+//	pD->setRange(0., 1., 0.001);	
+//	pD->setDefault(0.2);
 	
 	pB = page2->addToggleButton("kyma", toggleRect.withCenter(12, dialY), "kyma_poll", c2);
 	pB = page2->addToggleButton("test", toggleRect.withCenter(13, dialY), "test_signal", c2);

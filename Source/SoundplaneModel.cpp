@@ -69,10 +69,6 @@ SoundplaneModel::SoundplaneModel() :
 	mCalibrateMeanInv(kSoundplaneWidth, kSoundplaneHeight),
 	mCalibrateStdDev(kSoundplaneWidth, kSoundplaneHeight),
 	//
-	mNotchFilter(kSoundplaneWidth, kSoundplaneHeight),
-	mLopassFilter(kSoundplaneWidth, kSoundplaneHeight),
-	mBoxFilter(kSoundplaneWidth, kSoundplaneHeight),
-	//
 	mHasCalibration(false),
 	//
 	mZoneMap(kSoundplaneAKeyWidth, kSoundplaneAKeyHeight),
@@ -99,6 +95,7 @@ SoundplaneModel::SoundplaneModel() :
 	mSurfaceWidthInv = 1.f / (float)mSurface.getWidth();
 	mSurfaceHeightInv = 1.f / (float)mSurface.getHeight();
 	
+	/*
 	// setup box filter.
 	mBoxFilter.setSampleRate(kSoundplaneSampleRate);
 	mBoxFilter.setN(7);
@@ -110,6 +107,7 @@ SoundplaneModel::SoundplaneModel() :
 	// setup fixed lopass.
 	mLopassFilter.setSampleRate(kSoundplaneSampleRate);
 	mLopassFilter.setLopass(50, 0.707);
+	*/
 	
 	for(int i=0; i<kSoundplaneMaxTouches; ++i)
 	{
@@ -273,10 +271,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				bool b = v;
 				mSendMatrixData = b;
-			}
-			else if (p == "t_thresh")
-			{
-				mTracker.setTemplateThresh(v);
 			}
 			else if (p == "quantize")
 			{
@@ -455,7 +449,6 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("snap", 250.);
 	setProperty("vibrato", 0.5);
 
-	setProperty("t_thresh", 0.2);
 
 	setProperty("midi_active", 0);
 	setProperty("midi_mpe", 1);
@@ -814,7 +807,7 @@ void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& nor
 		setProperty("tracker_normalize", norm);
 		float thresh = avgDistance * 1.75f;
 		MLConsole() << "SoundplaneModel::hasNewCalibration: calculated template threshold: " << thresh << "\n";
-		setProperty("t_thresh", thresh);
+
 	}
 	else
 	{
@@ -823,7 +816,7 @@ void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& nor
 		setProperty("tracker_normalize", norm);
 		float thresh = 0.2f;
 		MLConsole() << "SoundplaneModel::hasNewCalibration: default template threshold: " << thresh << "\n";
-		setProperty("t_thresh", thresh);
+
 	}
 }
 
@@ -1287,6 +1280,7 @@ void SoundplaneModel::testCallback()
 
 void SoundplaneModel::filterAndSendData()
 {
+	/*
 	// filter data in time
 	mNotchFilter.setInputSignal(&mSurface);
 	mNotchFilter.setOutputSignal(&mSurface);
@@ -1294,6 +1288,7 @@ void SoundplaneModel::filterAndSendData()
 	mLopassFilter.setInputSignal(&mSurface);
 	mLopassFilter.setOutputSignal(&mSurface);
 	mLopassFilter.process(1);	
+	*/
 	
 	// send filtered data to touch tracker.
 	mTracker.setInputSignal(&mSurface);					
@@ -1447,10 +1442,12 @@ void SoundplaneModel::endCalibrate()
 	mCalibrating = false;
 	mHasCalibration = true;
 
+	/*
 	mBoxFilter.clear();
 	mNotchFilter.clear();
 	mLopassFilter.clear();
-
+*/
+	
 	enableOutput(true);
 }
 

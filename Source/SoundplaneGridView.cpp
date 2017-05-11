@@ -9,7 +9,10 @@
 SoundplaneGridView::SoundplaneGridView() :
 	mpModel(nullptr),
 	mInitialized(false),
-	mResized(false)
+	mResized(false),
+	mSensorWidth(64),
+	mSensorHeight(8)
+
 {
 	setInterceptsMouseClicks (false, false);
 	MLWidget::setComponent(this);
@@ -369,13 +372,36 @@ void SoundplaneGridView::renderSpansHoriz()
 			float amp = clamp((*viewSignal)(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
 			float yAmp = lerp(y1, y2, amp);
 			
-			
 			glColor4fv(&darkRed[0]);
 			
 			glVertex2f(x, yAmp);
 		}
 		glEnd();
 	}
+	
+	// draw horiz pings as vert lines
+	auto pings = mpModel->getPingsHoriz();
+	j = 0;
+	for(auto row : pings.data)
+	{
+		for(auto p : row)
+		{
+			if(!p) break; // each array of spans is null-terminated
+
+			float x1 = mSensorRangeX.convert(p.x());
+			float x2 = x1;
+			float y1 = mSensorRangeY.convert(j - ph);	
+			float y2 = mSensorRangeY.convert(j + ph);	
+
+			Vec4 dotColor = darkRed;
+			dotColor[3] = 0.5f;
+			glColor4fv(&dotColor[0]);
+			
+			MLGL::drawLine(x1, y1, x2, y2, 2.0f*mViewScale);
+		}
+		j++;
+	}		
+
 }
 
 
@@ -443,14 +469,34 @@ void SoundplaneGridView::renderSpansVert()
 			
 			float amp = clamp((*viewSignal)(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
 			float xAmp = lerp(x1, x2, amp);
-			
-			
 			glColor4fv(&darkRed[0]);
-			
 			glVertex2f(xAmp, y);
 		}
 		glEnd();
 	}
+	
+	// draw vert pings as horiz lines
+	auto pings = mpModel->getPingsVert();
+	j = 0;
+	for(auto col : pings.data)
+	{
+		for(auto p : col)
+		{
+			if(!p) break; // each array of spans is null-terminated
+			
+			float y1 = mSensorRangeY.convert(p.x());
+			float y2 = y1;
+			float x1 = mSensorRangeX.convert(j - ph);	
+			float x2 = mSensorRangeX.convert(j + ph);	
+			
+			Vec4 dotColor = darkRed;
+			dotColor[3] = 0.5f;
+			glColor4fv(&dotColor[0]);
+			
+			MLGL::drawLine(x1, y1, x2, y2, 2.0f*mViewScale);
+		}
+		j++;
+	}		
 }
 
 
@@ -500,7 +546,7 @@ void SoundplaneGridView::renderPings()
 		for(auto p : row)
 		{
 			if(!p) break; // each array of spans is null-terminated
-
+			
 			float x = mSensorRangeX.convert(p.x());
 			float y = mSensorRangeY.convert(j);
 			float z = p.y();
@@ -529,7 +575,7 @@ void SoundplaneGridView::renderPings()
 			float y2 = mSensorRangeY.convert(span.y());
 			float x1 = mSensorRangeX.convert(colInt - ph);	
 			float x2 = mSensorRangeX.convert(colInt + ph);	
-
+			
 			glColor4fv(&darkRed[0]);
 			
 			MLRect tr(x1, y1, x2 - x1, y2 - y1);
@@ -537,7 +583,7 @@ void SoundplaneGridView::renderPings()
 		}	
 		colInt++;
 	}
-		
+	
 	// draw vert pings
 	colInt = 0;
 	auto pingsVert = mpModel->getPingsVert();
@@ -559,7 +605,67 @@ void SoundplaneGridView::renderPings()
 	}
 }
 
-void SoundplaneGridView::renderIntersections()
+void SoundplaneGridView::renderClusters()
+{
+	setupOrthoView();
+	
+	// draw stuff in immediate mode. 
+	// TODO don't use fixed function pipeline.
+	//
+	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
+	Vec4 white(1.f, 1.f, 1.f, 1.f);
+	
+	float displayScale = mpModel->getFloatProperty("display_scale");
+	glLineWidth(4.0*mViewScale);
+	
+	
+	// draw horiz pings
+	float kDotSize = 200.f;
+	float dotSize = kDotSize*fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
+	auto clusterRows = mpModel->getClustersHoriz();
+	int j = 0;
+	for(auto row : clusterRows.data)
+	{
+		for(auto p : row)
+		{
+			if(!p) break;			
+			float x = mSensorRangeX.convert(p.x());
+			float y = mSensorRangeY.convert(j);
+			float z = p.z();
+			
+			Vec4 dotColor = darkBlue;
+			dotColor[3] = 0.5f;
+			glColor4fv(&dotColor[0]);
+			
+			// draw dot on surface
+			MLGL::drawDot(Vec2(x, y), z*dotSize*displayScale);
+		}
+		j++;
+	}		
+		
+	// draw vert pings
+	int colInt = 0;
+	auto clusterCols = mpModel->getClustersVert();
+	for(auto col : clusterCols.data)
+	{
+		for(auto p : col)
+		{
+			if(!p) break; 
+			float x = mSensorRangeX.convert(colInt);
+			float y = mSensorRangeY.convert(p.x());
+			float z = p.z();
+			
+			Vec4 dotColor = darkRed;
+			dotColor[3] = 0.5f;
+			glColor4fv(&dotColor[0]);
+			MLGL::drawDot(Vec2(x, y), z*dotSize*displayScale);
+		}
+		colInt++;
+	}
+}
+
+void SoundplaneGridView::renderRawTouches()
 {
 	if (!mpModel) return;
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
@@ -577,36 +683,33 @@ void SoundplaneGridView::renderIntersections()
 	glLineWidth(1.0*mViewScale);
 
 	// draw intersections colored by group
-	auto xs = mpModel->getIntersections();
+	auto xs = mpModel->getRawTouches();
 	int rowInt = 0;
-	for(auto row : xs.data)
+	for(auto inx : xs)
 	{
-		for(auto inx : row)
-		{
-			if(!inx) break;
-			
-			float x = mSensorRangeX.convert(inx.x());
-			float y = mSensorRangeY.convert(inx.y());
-			
-			int group = inx.w();		
-			Vec4 dotColor(MLGL::getIndicatorColor(group));
-			//	dotColor[3] = z*10.f;
-			dotColor[3] = 0.5f;
-			glColor4fv(&dotColor[0]);
-			
-			// draw dot on surface
-			Vec2 pos(x, y);
-			//float z = viewSignal->getInterpolatedLinear(p);
-			MLGL::drawDot(pos, inx.z()*dotSize*displayScale);
-			
-			// cross in center
-			float k = dotSize*0.04f;
-			dotColor[3] = 1.0f;
-			glColor4fv(&dotColor[0]);
-			MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
-			MLGL::drawLine(x, y - k, x, y + k, 2.0f*mViewScale);
-			
-		}	
+		if(!inx) break;
+		
+		float x = mSensorRangeX.convert(inx.x());
+		float y = mSensorRangeY.convert(inx.y());
+		
+		int group = inx.w();		
+		Vec4 dotColor(MLGL::getIndicatorColor(group));
+		//	dotColor[3] = z*10.f;
+		dotColor[3] = 0.5f;
+		glColor4fv(&dotColor[0]);
+		
+		// draw dot on surface
+		Vec2 pos(x, y);
+		//float z = viewSignal->getInterpolatedLinear(p);
+		MLGL::drawDot(pos, inx.z()*dotSize*displayScale);
+		
+		// cross in center
+		float k = dotSize*0.04f;
+		dotColor[3] = 1.0f;
+		glColor4fv(&dotColor[0]);
+		MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
+		MLGL::drawLine(x, y - k, x, y + k, 2.0f*mViewScale);
+		
 		rowInt++;
 	}
 }
@@ -623,8 +726,9 @@ void SoundplaneGridView::renderTouches()
 	int gridWidth = 30; // Soundplane A TODO get from tracker
 	int gridHeight = 5;
 	
-	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
-	
+	float dotSize = 200.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	float displayScale = mpModel->getFloatProperty("display_scale");
+
 	// draw touch sums colored by index
 	std::array<Vec4, TouchTracker::kMaxTouches> xs = mpModel->getTouches();	
 	
@@ -645,7 +749,7 @@ void SoundplaneGridView::renderTouches()
 			// draw dot on surface
 			Vec2 pos(x, y);
 			//float z = viewSignal->getInterpolatedLinear(p);
-			MLGL::drawDot(pos, t.z()*dotSize);
+			MLGL::drawDot(pos, t.z()*dotSize*displayScale);
 			
 			// cross in center
 			float k = dotSize*0.04f;
@@ -946,9 +1050,14 @@ void SoundplaneGridView::renderOpenGL()
 		renderPings();
 		drawSurfaceOverlay();
 	}
-	else if (viewMode == "intersections")
+	else if (viewMode == "clusters")
 	{
-		renderIntersections();
+		renderClusters();
+		drawSurfaceOverlay();
+	}
+	else if (viewMode == "raw touches")
+	{
+		renderRawTouches();
 		drawSurfaceOverlay();
 	}
 	else if (viewMode == "touches")

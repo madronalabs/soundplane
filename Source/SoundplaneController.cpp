@@ -200,7 +200,8 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("spans_horiz");
 	viewMenu->addItem("spans_vert");
 	viewMenu->addItem("pings");
-	viewMenu->addItem("intersections");
+	viewMenu->addItem("clusters");
+	viewMenu->addItem("raw touches");
 	viewMenu->addItem("touches");
 
 	viewMenu->addItem("norm map");

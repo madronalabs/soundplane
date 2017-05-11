@@ -5,12 +5,10 @@
 
 #pragma once
 
-#include "Filters2D.h"
+#include "MLSignal.h"
 #include "MLVector.h"
 #include "MLDebug.h"
 #include "pa_ringbuffer.h"
-
-#include "MLFFT.h" // not production code
 
 #include <list>
 #include <thread>
@@ -92,7 +90,7 @@ class TouchTracker
 public:
 	static constexpr int kMaxSpansPerRow = 32;
 	static constexpr int kMaxSpansPerCol = 4;
-	static constexpr int kMaxTouches = 10;
+	static constexpr int kMaxTouches = 32; // more than 10, to allow raw touches that may be filtered 
 	
 	class Listener
 	{
@@ -191,7 +189,6 @@ public:
 	void clear();
 	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
-	void setTemplateThresh(float f) { mTemplateThresh = f; }
 	void setTaxelsThresh(int t) { mTaxelsThresh = t; }
 	void setQuantize(bool q) { mQuantizeToKey = q; }
 	void setLopass(float k); 	
@@ -229,19 +226,49 @@ public:
 	typedef VectorArray2D<kSensorRows, kSensorCols> VectorsH;
 	typedef VectorArray2D<kSensorCols, kSensorRows> VectorsV;
 
-	
 	VectorsH getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizOutMutex); return mSpansHorizOut; }
 	VectorsH getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizOutMutex); return mPingsHorizOut; }
+	VectorsH getClustersHoriz() { std::lock_guard<std::mutex> lock(mClustersHorizOutMutex); return mClustersHorizOut; }
 	
 	VectorsV getSpansVert() { std::lock_guard<std::mutex> lock(mSpansVertOutMutex); return mSpansVertOut; }
-	VectorsV getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertOutMutex); return mPingsVertOut; }
+	VectorsV getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertOutMutex); return mPingsVertOut; }	
+	VectorsV getClustersVert() { std::lock_guard<std::mutex> lock(mClustersVertOutMutex); return mClustersVertOut; }
 	
-	VectorsH getIntersections() { std::lock_guard<std::mutex> lock(mIntersectionsOutMutex); return mIntersectionsOut; }
+	std::array<Vec4, kMaxTouches> getRawTouches() { std::lock_guard<std::mutex> lock(mTouchesRawOutMutex); return mTouchesRawOut; }
 		
 	std::array<Vec4, kMaxTouches> getTouches() { std::lock_guard<std::mutex> lock(mTouchesOutMutex); return mTouchesOut; }
 	
 private:	
 
+	// Touch class for internal use.
+	// Externally, only x y z and age are relevant so a Vec4 is used for brevity.
+	class Touch
+	{
+	public:	
+//		Touch(Vec4 v) : x(v.x()), y(v.y()), z(v.z()), age(v.w()) {}
+		Touch() : x(0.f), y(0.f), z(0.f), age(0), minDist(MAXFLOAT), currIdx(-1), prevIdx(-1), occupied(false) {}
+		Touch(float px, float py, float pz, int pa) : x(px), y(py), z(pz), age(pa), minDist(MAXFLOAT), currIdx(-1), prevIdx(-1), occupied(false) {}
+				
+		float x;
+		float y;
+		float z;
+		int age;
+		float minDist;
+		int currIdx;
+		int prevIdx;
+		bool occupied;
+	};
+	
+	Touch vec4ToTouch(Vec4 v)
+	{
+		return Touch(v.x(), v.y(), v.z(), static_cast<int>(v.w()));
+	}
+	
+	Vec4 touchToVec4(Touch t)
+	{
+		return Vec4(t.x, t.y, t.z, static_cast<float>(t.age));
+	}
+	
 	Listener* mpListener;
 	
 	void dumpTouches();
@@ -273,8 +300,6 @@ private:
 	
 	float mOnThreshold;
 	float mOffThreshold;
-	float mOverrideThresh;
-	float mTemplateThresh;
 		
 	int mKeyboardType;
 
@@ -291,13 +316,25 @@ private:
 		
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inSpans, const MLSignal& in);
-
+	
+	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> findZ2Pings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inSpans, const MLSignal& in);
+	
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> filterPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPingsY1);
-
-	VectorsH findIntersections(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
 	
-	void findTouches();
+	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> clusterPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const MLSignal& in);
+	
+	std::array<Vec4, kMaxTouches> findTouches(const VectorsH& pingsHoriz, const VectorsV& pingsVert, const MLSignal& z);
+	
+	std::array<Vec4, kMaxTouches> findClusters(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
+
+	int getFreeIndex(std::array<Touch, kMaxTouches> t);
+
+	std::array<Vec4, kMaxTouches> filterTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, const MLSignal& z);
+
+	std::array<Vec4, kMaxTouches> filterTouchesXX(const std::array<Vec4, kMaxTouches>& t);
 	
 	void matchTouches();
 	
@@ -323,12 +360,18 @@ private:
 	VectorsV mPingsVertOut;
 	std::mutex mPingsVertOutMutex;	
 	
-	// intersections of pings
-	VectorsH mIntersections;
-	VectorsH mIntersectionsOut;
-	std::mutex mIntersectionsOutMutex;	
+	// clusters of pings
+	VectorsH mClustersHoriz;
+	VectorsH mClustersHorizOut;
+	std::mutex mClustersHorizOutMutex;	
+	VectorsV mClustersVert;
+	VectorsV mClustersVertOut;
+	std::mutex mClustersVertOutMutex;	
 	
 	// touches
+	std::array<Vec4, kMaxTouches> mTouchesRaw;
+	std::array<Vec4, kMaxTouches> mTouchesRawOut;
+	std::mutex mTouchesRawOutMutex;	
 	std::array<Vec4, kMaxTouches> mTouches;
 	std::array<Vec4, kMaxTouches> mTouches1;
 	std::array<Vec4, kMaxTouches> mTouchesOut;

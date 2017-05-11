@@ -131,11 +131,13 @@ public:
 
 	TouchTracker::VectorsH getSpansHoriz() { return mTracker.getSpansHoriz(); }
 	TouchTracker::VectorsH getPingsHoriz() { return mTracker.getPingsHoriz(); }
+	TouchTracker::VectorsH getClustersHoriz() { return mTracker.getClustersHoriz(); }
 	
 	TouchTracker::VectorsV getSpansVert() { return mTracker.getSpansVert(); }
 	TouchTracker::VectorsV getPingsVert() { return mTracker.getPingsVert(); }
+	TouchTracker::VectorsV getClustersVert() { return mTracker.getClustersVert(); }
 	
-	TouchTracker::VectorsH getIntersections() { return mTracker.getIntersections(); }
+	std::array<Vec4, TouchTracker::kMaxTouches> getRawTouches() { return mTracker.getRawTouches(); }
 	
 	std::array<Vec4, TouchTracker::kMaxTouches> getTouches() { return mTracker.getTouches(); }
 	
@@ -232,10 +234,6 @@ private:
 
 	float mSurfaceWidthInv;
 	float mSurfaceHeightInv;
-
-	Biquad2D mNotchFilter;
-	Biquad2D mLopassFilter;
-	BoxFilter2D mBoxFilter;
 
     // store current key for each touch to implement hysteresis.
 	int mCurrentKeyX[kSoundplaneMaxTouches];

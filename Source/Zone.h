@@ -9,6 +9,7 @@
 #ifndef __Soundplane__SoundplaneZone__
 #define __Soundplane__SoundplaneZone__
 
+#include "MLDSPUtils.h"
 #include "MLTime.h"
 #include "MLModel.h"
 #include "SoundplaneModelA.h"
@@ -23,8 +24,10 @@
 #include "MLSymbol.h"
 #include "MLParameter.h"
 #include "MLFileCollection.h"
+
 #include <list>
 #include <map>
+
 #include "cJSON.h"
 
 enum ZoneType

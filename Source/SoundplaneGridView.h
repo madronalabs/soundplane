@@ -45,9 +45,10 @@ private:
 	void renderSpansHoriz();
 	void renderSpansVert();
 	void renderPings();
+	void renderClusters();
 
 	
-	void renderIntersections();
+	void renderRawTouches();
 	void renderTouches();
 	void renderZGrid();
 	void renderBarChartRaw();
