@@ -134,6 +134,7 @@ SoundplaneModel::SoundplaneModel() :
 	mViewModeToSignalMap["calibrated"] = &mCalibratedSignal;
 	mViewModeToSignalMap["spans_horiz"] = &mCalibratedSignal;
 	mViewModeToSignalMap["spans_vert"] = &mCalibratedSignal;
+	mViewModeToSignalMap["key states"] = &mCalibratedSignal;
 	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());	
 	
 	// setup OSC default
@@ -1092,7 +1093,7 @@ void SoundplaneModel::sendParametersToZones()
 void SoundplaneModel::sendTouchDataToZones()
 {
 	const float kTouchScaleToModel = 20.f;
-	float x, y, z, dz;
+	float x, y, z;
 	int age;
 
 	const float zscale = getFloatProperty("z_scale");
@@ -1105,10 +1106,10 @@ void SoundplaneModel::sendTouchDataToZones()
 
     for(int i=0; i<maxTouches; ++i)
 	{
-		age = mTouchFrame(ageColumn, i);
         x = mTouchFrame(xColumn, i);
         y = mTouchFrame(yColumn, i);
         z = mTouchFrame(zColumn, i);
+		age = mTouchFrame(ageColumn, i);
 		
 		// MLTEST don't try to get dz at start of touch. delay gate + velocity by ~5ms to calc note-on vel.
  //        dz = mTouchFrame(dzColumn, i);
@@ -1154,7 +1155,7 @@ void SoundplaneModel::sendTouchDataToZones()
             if(zoneIdx >= 0)
             {
                 ZonePtr zone = mZones[zoneIdx];
-                zone->addTouchToFrame(i, kgx, kgy, mCurrentKeyX[i], mCurrentKeyY[i], z, dz);
+                zone->addTouchToFrame(i, kgx, kgy, mCurrentKeyX[i], mCurrentKeyY[i], z, z);
             }
         }
 	}

@@ -79,6 +79,9 @@ public:
 constexpr int kSensorRows = 8;
 constexpr int kSensorCols = 64;
 
+constexpr int kKeyRows = 5;
+constexpr int kKeyCols = 30;
+
 template <size_t ARRAYS, size_t ARRAY_LENGTH >
 struct VectorArray2D
 { 
@@ -225,15 +228,23 @@ public:
 	
 	typedef VectorArray2D<kSensorRows, kSensorCols> VectorsH;
 	typedef VectorArray2D<kSensorCols, kSensorRows> VectorsV;
+	
+	typedef VectorArray2D<kKeyRows, kKeyCols> KeyStates;
 
 	VectorsH getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizOutMutex); return mSpansHorizOut; }
+	VectorsH getPingsHorizRaw() { std::lock_guard<std::mutex> lock(mPingsHorizRawOutMutex); return mPingsHorizRawOut; }
 	VectorsH getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizOutMutex); return mPingsHorizOut; }
 	VectorsH getClustersHoriz() { std::lock_guard<std::mutex> lock(mClustersHorizOutMutex); return mClustersHorizOut; }
+	VectorsH getClustersHorizRaw() { std::lock_guard<std::mutex> lock(mClustersHorizRawOutMutex); return mClustersHorizRawOut; }
 	
 	VectorsV getSpansVert() { std::lock_guard<std::mutex> lock(mSpansVertOutMutex); return mSpansVertOut; }
+	VectorsV getPingsVertRaw() { std::lock_guard<std::mutex> lock(mPingsVertRawOutMutex); return mPingsVertRawOut; }	
 	VectorsV getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertOutMutex); return mPingsVertOut; }	
 	VectorsV getClustersVert() { std::lock_guard<std::mutex> lock(mClustersVertOutMutex); return mClustersVertOut; }
-	
+	VectorsV getClustersVertRaw() { std::lock_guard<std::mutex> lock(mClustersVertRawOutMutex); return mClustersVertRawOut; }
+
+	KeyStates getKeyStates() { std::lock_guard<std::mutex> lock(mKeyStatesOutMutex); return mKeyStatesOut; }
+
 	std::array<Vec4, kMaxTouches> getRawTouches() { std::lock_guard<std::mutex> lock(mTouchesRawOutMutex); return mTouchesRawOut; }
 		
 	std::array<Vec4, kMaxTouches> getTouches() { std::lock_guard<std::mutex> lock(mTouchesOutMutex); return mTouchesOut; }
@@ -304,6 +315,8 @@ private:
 	int mKeyboardType;
 
 	MLSignal mFilteredInput;
+	MLSignal mFilteredInputX;
+	MLSignal mFilteredInputY;
 
 	MLSignal mCalibratedSignal;
 	MLSignal mCalibrationProgressSignal;
@@ -321,10 +334,18 @@ private:
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findZ2Pings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inSpans, const MLSignal& in);
 	
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> clusterPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const MLSignal& in);
+	
+	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> filterPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPingsY1);
 	
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
-	VectorArray2D<ARRAYS, ARRAY_LENGTH> clusterPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const MLSignal& in);
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> filterClusters(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPingsY1);
+	
+	
+	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
+	KeyStates filterKeyStates(const KeyStates& x, const KeyStates& ym1);
+	
 	
 	std::array<Vec4, kMaxTouches> findTouches(const VectorsH& pingsHoriz, const VectorsV& pingsVert, const MLSignal& z);
 	
@@ -333,7 +354,9 @@ private:
 	int getFreeIndex(std::array<Touch, kMaxTouches> t);
 
 	std::array<Vec4, kMaxTouches> filterTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, const MLSignal& z);
-
+	
+	std::array<Vec4, kMaxTouches> filterTouchesSimple(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, const MLSignal& z);
+	
 	std::array<Vec4, kMaxTouches> filterTouchesXX(const std::array<Vec4, kMaxTouches>& t);
 	
 	void matchTouches();
@@ -351,22 +374,42 @@ private:
 	std::mutex mSpansVertOutMutex;	
 	
 	// a ping is a guess at where a touch is over a particular row or column.
+	VectorsH mPingsHorizRaw;
 	VectorsH mPingsHoriz;
 	VectorsH mPingsHorizY1;
 	VectorsH mPingsHorizOut;
+	VectorsH mPingsHorizRawOut;
+	std::mutex mPingsHorizRawOutMutex;	
 	std::mutex mPingsHorizOutMutex;	
+	VectorsV mPingsVertRaw;
+	VectorsV mPingsVertRawOut;
 	VectorsV mPingsVert;
 	VectorsV mPingsVertY1;
 	VectorsV mPingsVertOut;
+	std::mutex mPingsVertRawOutMutex;	
 	std::mutex mPingsVertOutMutex;	
 	
 	// clusters of pings
 	VectorsH mClustersHoriz;
+	VectorsH mClustersHorizRaw;
+	VectorsH mClustersHorizY1;
 	VectorsH mClustersHorizOut;
 	std::mutex mClustersHorizOutMutex;	
+	VectorsH mClustersHorizRawOut;
+	std::mutex mClustersHorizRawOutMutex;	
 	VectorsV mClustersVert;
+	VectorsV mClustersVertRaw;
+	VectorsV mClustersVertY1;
+	VectorsV mClustersVertRawOut;
+	std::mutex mClustersVertRawOutMutex;	
 	VectorsV mClustersVertOut;
 	std::mutex mClustersVertOutMutex;	
+	
+	// key states
+	KeyStates mKeyStates;
+	KeyStates mKeyStates1;
+	KeyStates mKeyStatesOut;
+	std::mutex mKeyStatesOutMutex;	
 	
 	// touches
 	std::array<Vec4, kMaxTouches> mTouchesRaw;

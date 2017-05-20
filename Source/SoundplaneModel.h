@@ -130,12 +130,18 @@ public:
 	const int getHistoryCtr() { return mHistoryCtr; }
 
 	TouchTracker::VectorsH getSpansHoriz() { return mTracker.getSpansHoriz(); }
+	TouchTracker::VectorsH getPingsHorizRaw() { return mTracker.getPingsHorizRaw(); }
 	TouchTracker::VectorsH getPingsHoriz() { return mTracker.getPingsHoriz(); }
+	TouchTracker::VectorsH getClustersHorizRaw() { return mTracker.getClustersHorizRaw(); }
 	TouchTracker::VectorsH getClustersHoriz() { return mTracker.getClustersHoriz(); }
 	
 	TouchTracker::VectorsV getSpansVert() { return mTracker.getSpansVert(); }
+	TouchTracker::VectorsV getPingsVertRaw() { return mTracker.getPingsVertRaw(); }
 	TouchTracker::VectorsV getPingsVert() { return mTracker.getPingsVert(); }
+	TouchTracker::VectorsV getClustersVertRaw() { return mTracker.getClustersVertRaw(); }
 	TouchTracker::VectorsV getClustersVert() { return mTracker.getClustersVert(); }
+	
+	TouchTracker::KeyStates getKeyStates() { return mTracker.getKeyStates(); }
 	
 	std::array<Vec4, TouchTracker::kMaxTouches> getRawTouches() { return mTracker.getRawTouches(); }
 	

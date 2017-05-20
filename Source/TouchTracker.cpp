@@ -104,22 +104,6 @@ void removeSpanFromRow(std::array<Vec4, ROW_LENGTH>& row, int pos)
 	}
 }
 
-
-// combine existing cluster a with new ping b. z of the cluster keeps a running sum of all ping z values.
-Vec4 combinePings(Vec4 a, Vec4 b)
-{
-	float sxz = (a.x() * a.z())+(b.x() * b.z());
-	float sz = a.z() + b.z();
-	float sx = sxz / sz;
-	
-	Vec4 c(sx, 0., sz, 0.);
-
-	if(sx < 0.f) { debug() << "**" << a << " + " << b << " = " << c << "**\n"; }
-	
-	return c;
-
-}
-
 // insert before element i, making room
 template<typename T, size_t ARRAY_LENGTH>
 void insert(std::array<T, ARRAY_LENGTH>& k, T b, int i)
@@ -133,13 +117,30 @@ void insert(std::array<T, ARRAY_LENGTH>& k, T b, int i)
 	return;
 }
 
+
+// combine existing cluster a with new ping b. z of the cluster keeps a running sum of all ping z values
+// so that a running centroid of the position can be calculated.
+Vec4 combinePings(Vec4 a, Vec4 b)
+{
+	float sxz = (a.x() * a.z())+(b.x() * b.z());
+	float sz = a.z() + b.z();
+	float sx = sxz / sz;
+	
+	Vec4 c(sx, 0., sz, 0.);
+	
+	if(sx < 0.f) { debug() << "**" << a << " + " << b << " = " << c << "**\n"; }
+	
+	return c;
+	
+}
+
 template<size_t ARRAY_LENGTH>
 void insertPingIntoArray(std::array<Vec4, ARRAY_LENGTH>& k, Vec4 b, float r, bool dd)
 {
 	// if full (last element is not null), return
 	if(k[ARRAY_LENGTH - 1]) { debug() << "!"; return; }
 	
-	if(dd) debug() << "\n(" << countPings(k) ;
+	if(dd) debug() << " (" << countPings(k) ;
 	
 
 	// get insert index i
@@ -151,13 +152,15 @@ void insertPingIntoArray(std::array<Vec4, ARRAY_LENGTH>& k, Vec4 b, float r, boo
 	
 	if(dd) debug() << "(" << i << ")";
 		
-	
+	/*
 	if(!k[i])
 	{
 		// rightmost (incl. first)
 		k[i] = b;
+		if(dd) debug() << "N) ";
 		return;
 	}
+	*/
 	
 	bool overlapRight = within(b.x(), k[i].x() - r, k[i].x() + r);
 	if(i == 0)
@@ -167,13 +170,13 @@ void insertPingIntoArray(std::array<Vec4, ARRAY_LENGTH>& k, Vec4 b, float r, boo
 		{
 			k[i] = combinePings(k[i], b);
 
-			if(dd) debug() << "L";
+			if(dd) debug() << "L) ";
 		}
 		else
 		{
 			insert(k, b, i);
 			
-			if(dd) debug() << "R";
+			if(dd) debug() << "R) ";
 		}
 		return;
 	}
@@ -183,17 +186,17 @@ void insertPingIntoArray(std::array<Vec4, ARRAY_LENGTH>& k, Vec4 b, float r, boo
 	if((!overlapLeft) && (!overlapRight))
 	{
 		insert(k, b, i);		
-		if(dd) debug() << "A";
+		if(dd) debug() << "A)";
 	}
 	else if((overlapLeft) && (!overlapRight))
 	{
 		k[i - 1] = combinePings(k[i - 1], b);
-		if(dd) debug() << "B";
+		if(dd) debug() << "B)";
 	}
 	else if((!overlapLeft) && (overlapRight))
 	{
 		k[i] = combinePings(k[i], b);
-		if(dd) debug() << "C";
+		if(dd) debug() << "C)";
 	}
 	else // overlapLeft && overlapRight
 	{
@@ -206,8 +209,8 @@ void insertPingIntoArray(std::array<Vec4, ARRAY_LENGTH>& k, Vec4 b, float r, boo
 		Vec4 bToC(b.x(), b.y(), b.z()*pc, 0.f);
 		k[i - 1] = combinePings(k[i - 1], bToA);
 		k[i] = combinePings(k[i], bToC);
-		
-		if(dd) debug() << "     D";
+
+		if(dd) debug() << "D)";
 	}	
 }
 
@@ -240,14 +243,20 @@ TouchTracker::TouchTracker(int w, int h) :
 
 	mBackground.setDims(w, h);
 	mFilteredInput.setDims(w, h);
+	mFilteredInputX.setDims(w, h);
+	mFilteredInputY.setDims(w, h);
 	mCalibrationProgressSignal.setDims(w, h);
 
 	
-	// clear previous spans
-	for(auto& row : mSpansHoriz1.data)
+	// clear previous pings
+	for(auto& row : mPingsHorizY1.data)
 	{
 		row.fill(Vec4::null());	
-	}
+	} 
+	for(auto& row : mPingsVertY1.data)
+	{
+		row.fill(Vec4::null());	
+	} 
 }
 		
 TouchTracker::~TouchTracker()
@@ -308,12 +317,13 @@ int TouchTracker::getKeyIndexAtPoint(const Vec2 p)
 			float ky = yRange(y);
 			ky = clamp(ky, 0.f, 4.f);
 			iy = ky;
-
+			
 			k = iy*30 + ix;
 			break;
 	}
 	return k;
 }
+
 
 // return the center of the key over the point p.
 //
@@ -572,6 +582,9 @@ void TouchTracker::process(int)
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
 				
+		mFilteredInputX = mFilteredInput;
+		mFilteredInputY = mFilteredInput;
+		
 		// convolve input with 3x3 smoothing kernel.
 		float kc, kex, key, kk;			
 //		kc = 16./32.; kex = 4./32.; key = 2./32.; kk=1./32.;	
@@ -582,33 +595,57 @@ void TouchTracker::process(int)
 //		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
 //		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
 		
-		kc = 4./18.; kex = 3./18.; key = 2./18.; kk=1./18.;	
+		kc = 4./18.; kex = 3./18.; key = 2./18.; kk=1./18.;
 		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
-
+		
+		kc = 4./8.; kex = 2./8.; key = 0.; kk=0.;	
+		mFilteredInputX.convolve3x3xy(kc, kex, key, kk);
+		
+		kc = 4./8.; kex = 0.; key = 2./8.; kk=0.;	
+		mFilteredInputY.convolve3x3xy(kc, kex, key, kk);
+		
 		// MLTEST
 		mCalibratedSignal = mFilteredInput;
 
 		if(mMaxTouchesPerFrame > 0)
 		{
-			mSpansHoriz = findSpans<kSensorRows, kSensorCols, 0>(mFilteredInput);
-			mPingsHoriz = findZ2Pings<kSensorRows, kSensorCols, 0>(mSpansHoriz, mFilteredInput);			
+			mSpansHoriz = findSpans<kSensorRows, kSensorCols, 0>(mFilteredInputX);
+			mPingsHorizRaw = findZ2Pings<kSensorRows, kSensorCols, 0>(mSpansHoriz, mFilteredInputX);			
 			
-			mSpansVert = findSpans<kSensorCols, kSensorRows, 1>(mFilteredInput); 
-			mPingsVert = findZ2Pings<kSensorCols, kSensorRows, 1>(mSpansVert, mFilteredInput);
+			mSpansVert = findSpans<kSensorCols, kSensorRows, 1>(mFilteredInputY); 
+			mPingsVertRaw = findZ2Pings<kSensorCols, kSensorRows, 1>(mSpansVert, mFilteredInputY);
 			
-	//		mPingsHoriz = filterPings<kSensorRows, kSensorCols, 0>(mPingsHoriz, mPingsHorizY1);
-			mPingsHorizY1 = mPingsHoriz;
 			
-	//		mPingsVert = filterPings<kSensorCols, kSensorRows, 1>(mPingsVert, mPingsVertY1);
-			mPingsVertY1 = mPingsVert;
+			
+			/*
 			
 			// cluster pings
-			mClustersHoriz = clusterPings<kSensorRows, kSensorCols, 0>(mPingsHoriz, mFilteredInput);
-			mClustersVert = clusterPings<kSensorCols, kSensorRows, 1>(mPingsVert, mFilteredInput);
+			mClustersHorizRaw = clusterPings<kSensorRows, kSensorCols, 0>(mPingsHorizRaw, mFilteredInput);
+			mClustersVertRaw = clusterPings<kSensorCols, kSensorRows, 1>(mPingsVertRaw, mFilteredInput);
+
+			bool doFilter = false;
+			if(doFilter)
+			{
+				mClustersHoriz = filterClusters<kSensorRows, kSensorCols, 0>(mClustersHorizRaw, mClustersHorizY1);
+				mClustersHorizY1 = mClustersHoriz;			
+				mClustersVert = filterClusters<kSensorCols, kSensorRows, 1>(mClustersVertRaw, mClustersVertY1);
+				mClustersVertY1 = mClustersVert;
+			}
+			else
+			{
+				mClustersHoriz = mClustersHorizRaw;
+				mClustersVert = mClustersVertRaw;
+			} 
+			*/
+			
+			mKeyStates = pingsToKeyStates(mPingsHorizRaw, mPingsVertRaw);
+			mKeyStates = filterKeyStates(mKeyStates, mKeyStates1);
+			mKeyStates1 = mKeyStates;
 			
 			mTouchesRaw = findTouches(mClustersHoriz, mClustersVert, mFilteredInput);
+//			mTouchesRaw = findTouches(mPingsHoriz, mPingsVert, mFilteredInput);
 		
-			mTouches = filterTouches(mTouchesRaw, mTouches1, mFilteredInput);
+//			mTouches = filterTouchesSimple(mTouchesRaw, mTouches1, mFilteredInput);
 			mTouches1 = mTouches;
 			
 	//		matchTouches();
@@ -620,8 +657,18 @@ void TouchTracker::process(int)
 			}
 			
 			{
+				std::lock_guard<std::mutex> lock(mPingsHorizRawOutMutex);
+				mPingsHorizRawOut = mPingsHorizRaw;
+			}
+			
+			{
 				std::lock_guard<std::mutex> lock(mPingsHorizOutMutex);
 				mPingsHorizOut = mPingsHoriz;
+			}
+			
+			{
+				std::lock_guard<std::mutex> lock(mClustersHorizRawOutMutex);
+				mClustersHorizRawOut = mClustersHorizRaw;
 			}
 			
 			{
@@ -640,8 +687,23 @@ void TouchTracker::process(int)
 			}
 			
 			{
+				std::lock_guard<std::mutex> lock(mPingsVertRawOutMutex);
+				mPingsVertRawOut = mPingsVertRaw;
+			}
+			
+			{
+				std::lock_guard<std::mutex> lock(mClustersVertRawOutMutex);
+				mClustersVertRawOut = mClustersVertRaw;
+			}
+			
+			{
 				std::lock_guard<std::mutex> lock(mClustersVertOutMutex);
 				mClustersVertOut = mClustersVert;
+			}
+			
+			{
+				std::lock_guard<std::mutex> lock(mKeyStatesOutMutex);
+				mKeyStatesOut = mKeyStates;
 			}
 			
 			{
@@ -659,24 +721,23 @@ void TouchTracker::process(int)
 
 	}
 #if DEBUG   
-if(0)
+
+	
+	if(0)
 	if (mCount++ > 1000) 
 	{
 		mCount = 0;
 		//dumpTouches();
 		
-	debug() << "spans v: \n";
-		for(auto row : mSpansVertOut.data)
+	debug() << "key states v: \n";
+		
+		for(auto row : mKeyStatesOut.data)
 		{
-		for(auto x : row)
-		{
-			if(!x)
+			for(auto key : row)
 			{
-				break;	
+				debug() << "[" << key <<        "]";
 			}
-			debug() << "[" << x.y() - x.x() << "] ";
-
-		}
+			debug() << " \n";		
 		}
 	debug() << " \n";		
 		 
@@ -690,7 +751,7 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findSpans(const MLSignal& in)
 {
 	// zThresh must be greater than 0. We also want it significantly lower than mOnThreshold
 	// because when more candidate spans are generated, discontinuities when they appear / disappear are smaller.
-	const float zThresh = 0.0001 + mOnThreshold/2.f; 
+	const float zThresh = 0.0001 + mOnThreshold; 
 	
 	int dim1 = in.getWidth();
 	int dim2 = in.getHeight();
@@ -738,8 +799,6 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findSpans(const MLSignal& in)
 	}
 	return out;
 }
-
-
 
 // for each horiz or vert span, find one or more subspans over which the 2nd derivative of z is negative.
 //
@@ -828,9 +887,8 @@ template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findZ2Pings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& intSpans, const MLSignal& in)
 {
 	constexpr float ddzThresh = 0.0002f;
-	constexpr float kScale = XY ? 0.155f : 0.600f; // curvature per linear distance is different in x and y
+	constexpr float kScale = XY ? 0.200f : 0.600f; // curvature per linear distance is different in x and y
 
-	
 	// TEST
 	float maxK = 0.0f;
 	float maxZ = 0.0f;
@@ -849,6 +907,7 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findZ2Pings(const VectorArray2
 
 			float z = 0.f;
 			float zm1 = 0.f;
+			float zm2 = 0.f;
 			float dz = 0.f;
 			float dzm1 = 0.f;
 			float ddz = 0.f;
@@ -887,10 +946,11 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findZ2Pings(const VectorArray2
 						if(k > maxK)maxK = k;
 						if(z > maxZ)maxZ = z;
 						
-						appendVectorToRow(y.data[j], Vec4(x, k, zm1, 0.f));
+						appendVectorToRow(y.data[j], Vec4(x, zm2, 0.f, 0.f));
 					}
 				}
 				
+				zm2 = zm1;
 				zm1 = z;
 				dzm1 = dz;
 				ddzm2 = ddzm1;
@@ -954,130 +1014,361 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findPings(const VectorArray2D<
 	return y;
 }
 
+template<size_t ARRAY_LENGTH>
+Vec4 getLeftNeighbor( std::array<Vec4, ARRAY_LENGTH> array, float x, bool dd)
+{
+	if(dd)
+	debug() << "NEINGHBR fdor " << x << ": ";
+	
+	if(!array[0]) return Vec4::null();
+	
+	Vec4 left = Vec4::null();
+	for(Vec4 ping : array)
+	{
+		
+		if(dd)  debug() << ping ;
+		if(!ping) break;
+		if(ping.x() <= x)
+		{
+			if(dd) debug() << " [L] ";
+			left = ping;
+		}
+		else
+		{
+			if(dd) debug() << " [R] ";
+			break;
+		}
+	}
+	
+	if(dd) debug() << " ret:  " << left << "\n";
+
+	return left;
+}
+
+template<size_t ARRAY_LENGTH>
+Vec4 getRightNeighbor( std::array<Vec4, ARRAY_LENGTH> array, float x)
+{
+	if(!array[0]) return Vec4::null();
+	Vec4 right = Vec4::null();
+	for(Vec4 ping : array)
+	{
+		if(!ping) break;
+		if(ping.x() > x) 
+		{
+			right = ping;
+			break;
+		}
+	}
+	return right;
+}
+
+
 template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::filterPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPingsY1)
 {
-	constexpr float kMatchDistance = 4.0f;	
-	constexpr float k = 0.01f;
+	//	const float kR = 8.0f; // max filter radius
+	const float k1 = XY ? 3.4f : 4.7f;
 	
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> y;
 	int j = 0;
 	
-	// TODO fill in recent missing touches and decay!
-	
 	for(auto array : inPings.data)
 	{
-		y.data[j].fill(Vec4::null());
+		// copy to output array
+		y.data[j] = array;
 		
-		//		if(!XY) debug() << "row " << j << ": " ;
+		// get same row in previous pings
+		auto arrayY1 = inPingsY1.data[j];
 		
-		// TEMP
-		bool dp = ((!XY)&&(j==3));
+		bool doDebug = !XY && (j == 4);
 		
-		
-		for(Vec4 ping : array)
+		int inN = countPings(array);
+		if(doDebug)
 		{
-			if(!ping) break;
-			
-			// get same row in previous pings
-			auto arrayY1 = inPingsY1.data[j];
-			
-			Vec4 closestYPing = Vec4::null();
-			float minDist = MAXFLOAT;
-			
-			// TEMP count
-			int c = 0;
-			for(Vec4 pingY1 : arrayY1)
+			if(inN > 0)
 			{
-				if(!pingY1) break;
-				c++;
-			}
-			//		if(!XY) debug() << "Y1 row " << j << ": " << c << "\n";
-			
-			
-			
-			for(Vec4 pingY1 : arrayY1)
+			debug() << "\nin: ";
+			for(Vec4& ping : array)
 			{
-				if(!pingY1) break;
-				float dist = (ping - pingY1).magnitude();
-				if(dist < minDist)
-				{
-					minDist = dist;
-					closestYPing = pingY1;
-					
-					//				if(!XY) debug() << "C";
-				}
+				if(!ping) break;
+				debug() << ping;
 			}
-			
-			//appendVectorToRow(y.data[j], ping);							
-			
-			/*
-			 auto compareClosest = [&](Vec4& a, Vec4& b){ float ad = (a - ping).magnitude(); float bd = (b - ping).magnitude(); return (ad < bd) ? a : b; };		
-			 auto closest = std::accumulate(arrayY1.begin(), arrayY1.end(), Vec4::null, compareClosest);
-			 */
-			
-			bool mutuallyClosest = false;
-			
-			Vec4 closestXPing = Vec4::null();
-			if((closestYPing ) && (minDist < kMatchDistance)) // onepole skips , resetting when d > kMatchDistance				
+			debug() << "\n";
+			debug() << "y1: ";
+			for(Vec4& ping : arrayY1)
 			{
-				// check that this ping is also the closest one to previous (they are mutually closest) 
-				float minDist = MAXFLOAT;
-				for(Vec4 pingX1 : array)
-				{
-					if(!pingX1) break;
-					float dist = (closestYPing - pingX1).magnitude();
-					if(dist < minDist)
-					{
-						minDist = dist;
-						closestXPing = pingX1;
-					}
-				}
-				mutuallyClosest = (closestXPing == ping);
-				
-				
-				// TEST
-				mutuallyClosest = true;
-				
-				// mutual may be too severe -- instead just *attract* towards local activity regardless
-				
-				
+				if(!ping) break;
+				debug() << ping;
 			}
-			
-			
-			
-			// TODO reset filter if another touch is there previously - 
-			// age distance? 
-			// variance? 
-			
-			// each ping gets a Kalman filter?
-			if(mutuallyClosest)
-			{
-				
-				//			if(!XY) debug() << "~" << minDist;
-				
-				float pos = ping.x()*k + closestYPing.x()*(1.0f - k);
-				float z = ping.y()*k + closestYPing.y()*(1.0f - k);
-				
-				if(dp) debug() << "–" ;
-				appendVectorToRow(y.data[j], Vec4(pos, z, 0.f, 0.f));							
+			debug() << "\n";
 			}
-			else
-			{
-				// reset filter
-				
-				//			if(closest&&XY) debug() << " d > " <<  minDist <<"\n";  
-				//			if(!XY) debug() << "|" << minDist;
-				if(dp) debug() << "|" ;
-				// no match, unfiltered
-				appendVectorToRow(y.data[j], ping);							
-			}
-			
-		 
 		}
 		
 		
-		//	if(!XY) debug() << "\n";
+		for(Vec4& ping : y.data[j])
+		{
+			if(!ping) break;
+			
+			float x = ping.x();
+			float z = ping.z();
+			float newx = x;
+
+			// set filter effect radius, increase radius when pressure is light
+			const float rMin = k1/2.f;
+			const float rMax = k1* 2.f;
+			const float zThresh = 0.003f;
+			float zOffset = (zThresh - z)/zThresh;
+			zOffset = clamp(zOffset, 0.f, 1.f);
+			float r = rMin + (rMax - rMin)*zOffset;
+			
+			r = rMax; // TEMP
+			
+			/*
+			// get weighted centroid of all previous pings in triangular window radius r
+			int n = 0;
+			float cxSum = 0.f;
+			float czSum = 0.f;
+			for(Vec4& prev : arrayY1)
+			{
+				if(!prev) break;
+				float px = prev.x();
+				float pz = prev.z();	
+				if(within(px, x - r, x + r))
+				{
+					float windowWeight = 1.0f - fabs(px - x)/r;
+					// ? float zWeight = pz/z;
+					cxSum += px*pz*windowWeight;
+					czSum += pz*windowWeight;
+					n++;
+				}
+			}
+			if(doDebug)
+			{
+				debug() << "n = " << n << "\n";
+				debug() << "r = " << r << "\n";
+			}
+			*/
+			
+			// get closest previous ping within window radius r
+
+			float px;
+			float minPos;
+			float minDist = MAXFLOAT;
+			float windowWeight;
+			bool found = false;
+			for(Vec4& prev : arrayY1)
+			{
+				if(!prev) break;
+				float cx = prev.x();
+				float dist = fabs(cx - x);
+				if(within(cx, x - r, x + r))
+				{
+					if(dist < minDist)
+					{
+						// windowWeight = 1.0f - dist/r;
+						// ? float zWeight = pz/z;
+						minPos = cx;
+						minDist = dist;
+						found = true;
+					}
+				}
+			}
+			
+			
+			if(found)
+			{
+				//float cx = cxSum/czSums
+				
+				// get filter coeff
+				float dr = fabs(minPos - x);				
+				float cr = (dr/r);
+				
+				//cr *= cr;
+				cr = 1.0f - cr;
+				
+	//			float k = clamp(cr, 0.f, 1.f);	
+	//			
+				// filter position and get variance
+				
+				if(doDebug)
+				{
+					debug() << "    x = " << x << "    px = " << minPos << "\n";
+				}
+				
+				float k = 0.99f; // TODO separate x/y
+				newx = k*minPos + (1.0f - k)*x;
+
+			}
+			else
+			{
+				// reset variance and position
+				if(doDebug)
+				{
+					debug() << " ### \n";
+				}
+				
+				newx = x;
+				
+			}
+			
+			
+			
+			ping.setX(newx);
+		}
+		
+		if(inN > 0)
+		if(doDebug)
+		{
+			debug() << "\nout: ";
+			for(Vec4 ping : y.data[j])
+			{
+				if(!ping) break;
+				debug() << ping;
+			}
+			debug() << "\n";
+		}
+		
+		j++;
+	}
+	return y;
+}
+
+
+template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
+VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::filterClusters(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPingsY1)
+{
+	//	const float kR = 8.0f; // max filter radius
+	const float k1 = XY ? 3.4f : 4.7f;
+	const float kR = k1 / 4.f;
+	
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> y;
+	int j = 0;
+	
+	for(auto array : inPings.data)
+	{
+		// copy to output array
+		y.data[j] = array;
+		
+		// get same row in previous pings
+		auto arrayY1 = inPingsY1.data[j];
+		
+		bool doDebug = false;//!XY && (j == 4);
+		
+		if(doDebug)
+		{
+			debug() << "\nin: ";
+			for(Vec4& ping : array)
+			{
+				if(!ping) break;
+				debug() << ping;
+			}
+			debug() << "\n";
+			debug() << "y1: ";
+			for(Vec4& ping : arrayY1)
+			{
+				if(!ping) break;
+				debug() << ping;
+			}
+			debug() << "\n";
+		}
+		
+		
+		for(Vec4& ping : y.data[j])
+		{
+			if(!ping) break;
+			
+			float x = ping.x();
+			float z = ping.z();
+			float newx = x;
+			
+			Vec4 leftNeighbor = getLeftNeighbor(arrayY1, x, false);
+			Vec4 rightNeighbor = getRightNeighbor(arrayY1, x);
+			
+			if(doDebug)
+			{
+				debug() << "    left: " << leftNeighbor << " right: " << rightNeighbor << "\n";
+			}
+			
+			float cl = 0.f;
+			float cr = 0.f;
+			float xl, xr;
+			float dl, dr;
+			//	if(leftNeighbor)
+			{
+				xl = leftNeighbor.x();
+				dl = x - xl;
+				cl = (dl/kR);
+				
+				cl *= cl;
+				cl = 1.0f - cl;
+				cl = clamp(cl, 0.f, 1.f);
+			}
+			//	if(rightNeighbor)
+			{
+				xr = rightNeighbor.x();
+				dr = xr - x;				
+				cr = (dr/kR);
+				
+				
+				cr *= cr;
+				cr = 1.0f - cr;
+				
+				cr = clamp(cr, 0.f, 1.f);
+				
+			}
+			
+			
+			//		float kl = nkl*kM;
+			//		float kr = nkr*kM;
+			
+			if(leftNeighbor && rightNeighbor)
+			{
+				float fxl = cl*xl + (1.0f - cl)*x;
+				float fxr = cr*xr + (1.0f - cr)*x;
+				newx = (fxl + fxr)/2.f;
+				
+				if(doDebug) 
+				{
+					debug() << "B";
+					debug() << "    cl: " << cl << " , cr: " << cr << "\n";
+				}
+			}
+			else if(leftNeighbor)
+			{
+				newx = cl*xl + (1.0f - cl)*x;
+				
+				if(doDebug) debug() << "L";
+				if(doDebug)  debug() << "    dl: " << dl << " cl: " << cl << "\n";
+				if(doDebug)  debug() << "    x: " << x << " newx: " << newx << " xl: " << xl << "\n";
+				
+			}
+			else if(rightNeighbor)
+			{
+				newx = cr*xr + (1.0f - cr)*x;
+				
+				if(doDebug) debug() << "R";
+				if(doDebug)  debug() << "    dr: " << dr << " cr: " << cr << "\n";
+				if(doDebug)  debug() << "    x: " << x << " newx: " << newx << " xr: " << xr  << "\n";
+				
+			}
+			else
+			{
+				if(doDebug) debug() << "X";
+			}
+			
+			ping.setX(newx);
+		}
+		
+		if(doDebug)
+		{
+			debug() << "\nout: ";
+			for(Vec4 ping : y.data[j])
+			{
+				if(!ping) break;
+				debug() << ping;
+			}
+			debug() << "\n";
+		}
 		
 		j++;
 	}
@@ -1096,42 +1387,37 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::clusterPings(const VectorArray
 	// single-touch width constant
 	const float k1 = XY ? 3.4f : 4.7f;
 	
-	// z threshold to make clusters of the normal width. below this threshold larger clusters are gathered.
-	const float zAtNominalWidth = 0.0015f; 
-	
-	for(auto array : inPings.data)
+	for(auto pingsArray : inPings.data)
 	{
 		y.data[j].fill(Vec4::null());
 		
 		// copy 1d array of pings to local array and sort by z
-		std::array<Vec4, ARRAY_LENGTH> sortedArray = array;
-		std::sort(sortedArray.begin(), sortedArray.end(), [](Vec4 va, Vec4 vb){return va.z() > vb.z();});
+		std::array<Vec4, ARRAY_LENGTH> sortedPingsArray = pingsArray;
+		std::sort(sortedPingsArray.begin(), sortedPingsArray.end(), [](Vec4 va, Vec4 vb){return va.z() > vb.z();});
 		
 		// start with no clusters 
 		std::array<Vec4, ARRAY_LENGTH> clusterArray;
 		clusterArray.fill(Vec4::null());
-		int nClusters = 0;
 		
-		//		if(!XY) debug() << "row " << j << ": " ;
-		
-		// get previous clusters 
-	//	auto prevClusterArray = inClusters.data[j];
-		
-bool doDebug = 
-		0;//	(!XY && (j == 4));
+		bool doDebug = false;//(!XY && (j == 4));
 			
-		for(Vec4 ping : sortedArray)
+		for(Vec4 ping : sortedPingsArray)
 		{
 			if(!ping) break;
 			
-			// set ping radius
-			float r = XY ? 1.0f : 1.0f;
+			// set cluster radius, increase radius when pressure is light
+			const float rMin = k1/2.f;
+			const float rMax = k1*2.f;
+			const float zThresh = 0.003f;
+			float zOffset = (zThresh - ping.z())/zThresh;
+			zOffset = clamp(zOffset, 0.f, 1.f);
+			float r = rMin + (rMax - rMin)*zOffset;
+						
+			// TODO if distant, fade out z for continuity?
 			
-			
-			//TODO increase radius for low pressure
-			
-			insertPingIntoArray(clusterArray, ping, r, doDebug);
+			insertPingIntoArray(clusterArray, ping, r, false);
 		}
+		
 		
 		// clusters now have running z sums in them -- replace with z
 		
@@ -1142,7 +1428,7 @@ bool doDebug =
 			const float x = ping.x();
 			if(!(within(x, 0.f, w)))
 			{
-				debug() << "!! x: " << x << ", w: " << w << " !! \n";
+				debug() << "!! ping: " << ping << ", w: " << w << " !! \n";
 			}
 			Vec2 pos = XY ? Vec2(j + 0.f, x) : Vec2(x, j + 0.f);
 			float zFromInput = in.getInterpolatedLinear(pos);
@@ -1152,34 +1438,243 @@ bool doDebug =
 			
 //			ping.setZ(0.001f);//(zFromInput);
 			ping.setZ(zFromInput);
-			
-			
 		}
 		
 		y.data[j] = clusterArray;
 		
-		int pings = countPings(sortedArray);
-		if(0)
+		int pings = countPings(pingsArray);
+		int clusters = countPings(clusterArray);
+
 		if(doDebug)
 		{
-			if(pings > 1)
+			if(pings != clusters)
 			{
-			debug() << "pings: " << pings <<  " clusters: " << countPings(clusterArray) << "\n";
-				debug() << "[";
-				for(int i=0; i<4; ++i)
+				
+			debug() << "pings: " << pings <<  " clusters: " << clusters << "\n";
+				
+				debug() << "pings: [";
+				for(int i=0; i<pings; ++i)
+				{
+					debug() << pingsArray[i];// ? "*" : "-";
+				}
+				debug() << "]\n";
+				
+				debug() << "clusters: [";
+				for(int i=0; i<clusters; ++i)
 				{
 					debug() << clusterArray[i];// ? "*" : "-";
 				}
-				debug() << "]\n";
+				debug() << "]\n\n";
 			}
 		}
-		
-		
 		
 		j++;
 	}
 	return y;
 }
+
+float triWindow(float x, float r)
+{
+	float y = (x < 0) ? 1.0f + x/r : 1.0f - x/r;
+	return(clamp(y, 0.f, 1.f));
+}
+
+TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::VectorsH& pingsHoriz, const TouchTracker::VectorsV& pingsVert)
+{
+	//mKeyRangeX = MLRange (mKeyRect.left(), mKeyRect.left() + mKeyRect.width(), margin, mViewWidth - margin);
+	//mKeyRangeY = MLRange (mKeyRect.top(), mKeyRect.top() + mKeyRect.height(), margin, mViewHeight - margin);
+
+	float rx = 1.0f;
+	float ry = 1.0f;
+	
+	MLRange xRange(3.5f, 59.5f);
+	xRange.convertTo(MLRange(1.f, 29.f));
+	
+	MLRange yRange(1.25, 5.75);  // Soundplane A as measured
+	yRange.convertTo(MLRange(1.f, 4.f));
+	
+	TouchTracker::KeyStates centroids;
+
+	int j = 0;
+	for(auto pingsArray : pingsHoriz.data)
+	{
+		for(Vec4 ping : pingsArray)
+		{
+			if(!ping) break;
+			
+			float px = xRange(ping.x());
+			float py = yRange(j);
+			
+			// add ping to all keys it overlaps
+			//for(int ky=firstKeyY; ky <= lastKeyY; ++ky)
+			int ky = py;
+			{
+				//				float yWindow = triWindow(ky - py - 0.5f, ry);
+				int kx = px;
+				int firstKeyX = kx - 1;
+				int lastKeyX = kx + 1;
+				kx = clamp(kx, 0, kKeyCols - 1);
+				firstKeyX = clamp(firstKeyX, 0, kKeyCols - 1);
+				lastKeyX = clamp(lastKeyX, 0, kKeyCols - 1);
+				
+				
+				for(int destKeyX=firstKeyX; destKeyX <= lastKeyX; ++destKeyX)
+				{
+					//float xWindow = triWindow(px - kx - 0.5f, rx);
+					
+					float cx = px - destKeyX;
+					float cz = 1.0f;//*xWindow;
+					
+					Vec4& key = (centroids.data[ky])[destKeyX];
+					
+					key.setX(key.x() + cx*cz); // TEST
+					key.setZ(key.z() + cz);							
+				}
+			}
+		}
+		j++;
+	}
+	
+	
+	int i = 0;
+	for(auto pingsArray : pingsVert.data)
+	{		
+		bool doDebug = false;//(i == 16);
+		int n = 0;
+		
+		for(Vec4 ping : pingsArray)
+		{
+			if(!ping) break;
+			n++;
+				
+			float px = xRange(i);// clamp(xRange(i), 0.f, kKeyCols + 0.f);
+			float py = yRange(ping.x());// clamp(yRange(ping.x()), 0.f, kKeyRows + 0.f);
+			
+			// add ping to all keys it overlaps
+			
+			// add to key and neighbors
+			//		for(int kx=firstKeyX; kx <= lastKeyX; ++kx)
+			int kx = px;
+			kx = clamp(kx, 0, kKeyCols - 1);
+			{
+				
+				int ky = py;
+				int firstKeyY = ky - 1;
+				int lastKeyY = ky + 1;
+				ky = clamp(ky, 0, kKeyRows - 1);
+				firstKeyY = clamp(firstKeyY, 0, kKeyRows - 1);
+				lastKeyY = clamp(lastKeyY, 0, kKeyRows - 1);
+				
+				// add ping to key centroid and neighbors
+				for(int destKeyY=firstKeyY; destKeyY <= lastKeyY; ++destKeyY)
+				{
+					float cy = py - destKeyY;
+					float cz = 1.0f;//pz;//*yWindow;
+					
+					Vec4& key = (centroids.data[destKeyY])[kx];
+					
+					key.setY(key.y() + cy*cz); // TEST
+					key.setW(key.w() + cz);							
+				}
+			}
+		}
+		
+		if(doDebug && (n > 0))
+		{
+			debug() << "\n";
+		}
+		
+		i++;
+	}
+	
+	
+	// reduce centroids
+	for(auto& centroidsArray : centroids.data)
+	{
+		for(Vec4& centroid : centroidsArray)
+		{
+			
+			float cx = centroid.x();
+			float cz = centroid.z();
+			if(cz > 0.f)
+			{
+				centroid.setX(cx/cz);
+			}
+			else
+			{
+				centroid.setX(0.5f);
+			}
+			
+			
+			min / max or ... ? 
+			
+			float cy = centroid.y();
+			float cw = centroid.w();
+			if(cw > 0.f)
+			{
+				centroid.setY(cy/cw);
+			}
+			else
+			{
+				centroid.setY(0.5f);
+			}
+
+			// filter will fill in variance here
+			centroid.setZ(0.5f);
+			centroid.setW(0.5f);
+
+		}
+	}
+	
+
+	
+	return centroids;
+}
+
+
+TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeyStates& x, const TouchTracker::KeyStates& ym1)
+{
+	const float k = 0.05f;
+
+	// TEST
+	TouchTracker::KeyStates y;
+	int j = 0;
+	for(auto& yRow : y.data)
+	{
+		auto xRow = x.data[j];
+		auto ym1Row = ym1.data[j];
+		int i = 0;
+		for(Vec4& yKey : yRow)
+		{
+			Vec4 xKey = xRow[i];
+			Vec4 ym1Key = ym1Row[i];
+			
+			float xn = k*xKey.x() + (1.0f - k)*ym1Key.x();
+			float yn = k*xKey.y() + (1.0f - k)*ym1Key.y();
+			
+			float dx = xKey.x() - xn;
+			float dy = xKey.y() - yn;
+			
+			float xvn = k*fabs(dx*dx) + (1.0f - k)*ym1Key.z(); // z holds xvn
+			float yvn = k*fabs(dy*dy) + (1.0f - k)*ym1Key.w(); // z holds xvn
+			
+			
+			yKey = Vec4(xn, yn, xvn, yvn);
+			
+			if((i == 16) && (j == 2))
+			{
+				debug() << yKey << "\n";
+			}
+
+			
+			i++;
+		}
+		j++;
+	}
+	return y;
+
+}
+
 
 // find touches by looking for adjacent x and y clusters. 
 // TODO based on data, looking only at vertical pings could work, avoiding all the horiz computation. Revisit.  
@@ -1189,7 +1684,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 	y.fill(Vec4::null());
 	
 	int j = 0;
-	int intersections = 0;
+	int touches = 0;
 	for(auto row : pingsHoriz.data)
 	{
 		for(auto horizPing : row)
@@ -1203,29 +1698,37 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 			if(within(hxi, 0, kSensorCols))
 			{
 				// look for vertical pings nearby
-				auto col = pingsVert.data[hxi];
+				auto colA = pingsVert.data[hxi];
 				auto isCloseToHoriz = [&](Vec4 p){ int vyi = p.x(); return (vyi == hyi); };				
-				auto vertIt = std::find_if(col.begin(), col.end(), isCloseToHoriz ); 				
-				auto colB = pingsVert.data[hxi + 1];				
-				//		auto vertItB = std::find_if(colB.begin(), colB.end(), isCloseToHoriz ); 
+				auto vertItA = std::find_if(colA.begin(), colA.end(), isCloseToHoriz ); 	
 				
-				// simplest. other ideas: could get closest in either direction, could require both col & colB
-				if(vertIt != col.end())
+				auto colB = pingsVert.data[hxi + 1];				
+				auto vertItB = std::find_if(colB.begin(), colB.end(), isCloseToHoriz ); 
+				
+				// simple x near y
+				if(vertItA != colA.end())
 				{
-					Vec4 vertPing = *vertIt;
+					Vec4 vertPingA = *vertItA;
+
 					
 					// y curvature is more stable
 					// float kxy = vertPing.y(); // TEST;// (horizPing.y() + vertPing.y())/2.f;
 					
-					Vec2 xyPos (horizPing.x(), vertPing.x());
-
-					float zFromInput = z.getInterpolatedLinear(xyPos);
+					Vec2 xyPosA (horizPing.x(), vertPingA.x());
+					
+		//			Vec2 xyPosB (horizPing.x(), vertPingB.x());
+		//			Vec2 xyPosAvg = (xyPosA + xyPosB)/2.f;
+					float zFromInput = z.getInterpolatedLinear(xyPosA);
 
 					
 					
 					//			debug() << "k:" << kxy;
-					y[intersections++] = Vec4(horizPing.x(), vertPing.x(), zFromInput, 0);
+					y[touches++] = Vec4(xyPosA.x(), xyPosA.y(), zFromInput, 0);
 				}
+				
+				
+				// try: peak x near peak y
+				
 				
 				/*
 				 if((vertIt != col.end()) && (vertItB != colB.end()))
@@ -1252,6 +1755,14 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 		j++;
 	}
 	
+	if(0) // TEST
+	{
+	if(touches == 1) debug() << ".";
+		else if(touches == 2) debug() << "=";
+			else if (touches > 2) debug() << ">";
+	}
+	
+//	debug() << "tocuhes: " << touches << "\n";
 	return y;
 }
 
@@ -1276,8 +1787,7 @@ int TouchTracker::getFreeIndex(std::array<TouchTracker::Touch, TouchTracker::kMa
 
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& x, const std::array<Vec4, TouchTracker::kMaxTouches>& x1, const MLSignal& z)
 {
-	// when a touch is removed from one frame to the next, a placeholder may need to be inserted to maintain the
-	const Touch kPlaceholderTouch{-1., -1., 0., 0};
+	// when a touch is removed from one frame to the next, a placeholder may need to be inserted to maintain the order
 	const float kMaxConnectDist = 8.0f;
 	
 	std::array<Touch, kMaxTouches> prevTouches{};
@@ -1288,8 +1798,8 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const st
 	int m, n;
 	for(m = 0; (m < x1.size()) && x1[m]; m++) {}
 	for(n = 0; (n < x.size()) && x[n]; n++) {}
-//	m = clamp(m, 0, mMaxTouchesPerFrame);
-//	n = clamp(n, 0, mMaxTouchesPerFrame);
+	//	m = clamp(m, 0, mMaxTouchesPerFrame);
+	//	n = clamp(n, 0, mMaxTouchesPerFrame);
 	
 	// convert to Touches
 	for(int i=0; i < n; ++i)
@@ -1300,36 +1810,26 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const st
 	for(int j=0; j < m; ++j)
 	{
 		prevTouches[j] = vec4ToTouch(x1[j]);
+		prevTouches[j].currIdx = j;
 	}
-
+	
 	// categorize touches into one of continued, new, or removed.
-
-	if(n > 0)
-	{
-		debug() << "\n---------------------\n";
-		debug() << "[" << m << " -> " << n << "]\n";
-	}
+	
 	
 	// for each current touch, find closest distance to a previous touch
 	for(int i=0; i<n; ++i)
 	{
 		Touch curr = currTouches[i];
 		Vec2 currPos(curr.x, curr.y);
-	
-		debug() << "curr: " << currPos << "\n";
-		
 		for(int j=0; j < m; ++j)
 		{
 			Touch prev = prevTouches[j];
 			if(prev.age > 0) // don't match to dead touches
 			{
 				Vec2 prevPos(prev.x, prev.y);
-			
-				debug() << "prev: " << prevPos << "\n";
-		
 				Vec2 dab = currPos - prevPos;
 				float dist = dab.magnitude(); // NOTE (aPos - bPos).magnitude FAILS! TODO	
-			//	if(dist < kMaxConnectDist)
+				//	if(dist < kMaxConnectDist)
 				{
 					if(dist < currTouches[i].minDist)
 					{
@@ -1339,31 +1839,10 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const st
 				}
 			}
 		}
-		
-		debug() << i << ": min dist:" << currTouches[i].minDist << " prev idx:" << currTouches[i].prevIdx << "\n"; 
 	}
 	
 	// sort current touches by z
 	std::sort(currTouches.begin(), currTouches.begin() + n, [](Touch a, Touch b){ return a.z > b.z; } );
-	
-	if(n > 0)
-	{
-		debug() << "sorted: ";
-		for(int i=0; i < n; ++i)
-		{
-			debug() << touchToVec4(currTouches[i]) << " ";
-		}
-		debug() << "\n";
-	}
-	
-	/*
-	// fill new touches with placeholders
-	int mnMax = max(m, n);
-	for(int i=0; i<mnMax; ++i)
-	{
-		newTouches[i] = kPlaceholderTouch;
-	}
-	 */
 	
 	// start filling new touches.
 	int newSlotsRemaining = mMaxTouchesPerFrame;
@@ -1372,44 +1851,43 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const st
 	int maxOccupiedIdx = -1;
 	for(int i=0; i<n; ++i)
 	{
-		debug() << i << ":";
-		
 		int connectedIdx = currTouches[i].prevIdx;
 		bool written = false;
 		
 		if(connectedIdx >= 0)
 		{
-			debug() << "cont  ";
-			
 			Touch& closestPrevTouch = prevTouches[connectedIdx];
 			
 			if (!closestPrevTouch.occupied)
 			{
+				// touch is continued
 				// write new touch and occupy previous
+				
+				// TODO connected touch filter
 				newTouches[connectedIdx] = currTouches[i];
+				
 				closestPrevTouch.occupied = true;
 				
-
 				// increment age
 				newTouches[connectedIdx].age = (closestPrevTouch.age + 1);
+				//	newTouches[connectedIdx].z = 0.005f;
 				
 				maxOccupiedIdx = max(maxOccupiedIdx, connectedIdx);
 				written = true;
 			}
-
 		}
 		
 		if(!written) // because either occupied or not matched
 		{
-			debug() << "new  ";
-			
 			// write new
 			// find a free spot (TODO rotate) 
 			int freeIdx = getFreeIndex(newTouches);
-			debug() << "free idx:" << freeIdx << "\n";
 			if(freeIdx >= 0)
 			{
+				// touch is new, no filtering
 				newTouches[freeIdx] = currTouches[i];
+				
+				// reset age
 				newTouches[freeIdx].age = 1;
 				maxOccupiedIdx = max(maxOccupiedIdx, freeIdx);
 			}
@@ -1417,54 +1895,46 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const st
 		newSlotsRemaining--;
 		if(!newSlotsRemaining) break;
 	}
-
-	/*
-	// mark continued and new touches, and update ages 
-	for(int i=0; i<n; ++i)
+	
+	const int kTouchDecayFrames = 1000;
+	
+	// fill new touches with previous touches, if prev indices are not occupied
+	if(m > 0)
 	{
-		bool continued = false;
-		if(currTouches[i].prevIdx >= 0)
+		if(newSlotsRemaining)
 		{
-			Touch& closestPrevTouch = prevTouches[currTouches[i].prevIdx];
-			if (!closestPrevTouch.occupied)
+			for(int j=0; j<m; ++j)
 			{
-				// continued: increment age
-				currTouches[i].age = (closestPrevTouch.age + 1);
-				closestPrevTouch.occupied = true;
-				continued = true;
+				int oldAge = prevTouches[j].age;
+				if(oldAge != 0)
+				{
+					// if new touch at same index is unoccupied
+					if(newTouches[j].age == 0)
+					{
+						int newAge;
+						if(oldAge > 0)
+						{
+							// start decay
+							newAge = -kTouchDecayFrames;
+						}
+						else
+						{
+							// decay
+							newAge = oldAge + 1;
+						}
+						
+						// debug() << "D" << j << " " << oldAge << " -> " << newAge << "\n";
+						
+						// TODO decay filter
+						newTouches[j] = prevTouches[j];
+						
+						newTouches[j].age = newAge;
+						maxOccupiedIdx = max(maxOccupiedIdx, j);
+					}
+				}
 			}
 		}
-		
-		if (!continued)
-		{
-			// new touch: set age to 1
-			currTouches[i].age = 1;
-		}
-		
-		newTouches[currTouches[i].currIdx] = currTouches[i];
 	}
-	
-	// update ages 
-	for(int i=0; i<mMaxTouchesPerFrame; ++i)
-	{
-		if(newTouches[i].z > 0.f)
-		{
-			
-		}
-	}*/
-	
- 
-	// turn any expired touches into placeholders
-	
-	
-	
-	// remove any placeholders at end
-	
-	
-	// filter x, y and z as needed
-	
-
-	
 	
 	// convert back to Vec4
 	std::array<Vec4, kMaxTouches> y;	
@@ -1474,20 +1944,43 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const st
 		y[i] = touchToVec4(newTouches[i]);
 	}
 	
-
 	// debug
-	
-	if(n > 0)
-	{
-		for(int i=0; i <= maxOccupiedIdx; ++i)
+	if(0)
+		if(maxOccupiedIdx >= 0)
 		{
-			debug() << y[i] << " "; 
+			for(int i=0; i <= maxOccupiedIdx; ++i)
+			{
+				debug() << y[i] << " "; 
+			}
 		}
-	}
-
+	
 	return y;
 }
 
+// for testing, update ages in the simplest possible way to see results, rule out problems with complicated filter/matching 
+std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesSimple(const std::array<Vec4, TouchTracker::kMaxTouches>& x, const std::array<Vec4, TouchTracker::kMaxTouches>& x1, const MLSignal& z)
+{
+	std::array<Vec4, TouchTracker::kMaxTouches> y = x;
+	
+	// count incoming touches
+	int n;
+	for(n = 0; (n < y.size()) && y[n]; n++) {}
+	
+	// sort by z
+	std::sort(y.begin(), y.begin() + n, [](Vec4 a, Vec4 b){ return a.z() > b.z(); } );
+	
+	// increment ages if a touch is present
+	for(int i=0; i<n; ++i)
+	{
+		if(x1[i])
+		{
+			int age = x1[i].w();
+			y[i].setW( age + 1) ;
+		}
+	}
+	
+	return y;
+}
 
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesXX(const std::array<Vec4, TouchTracker::kMaxTouches>& in)
 {
@@ -1504,6 +1997,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesXX(const 
 	{
 		if(!in[n]) break;	
 	}
+	
 //	if(n> 0)
 //	debug() << "ints: " << n << "\n";
 	
