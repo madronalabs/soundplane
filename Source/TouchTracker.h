@@ -93,7 +93,7 @@ class TouchTracker
 public:
 	static constexpr int kMaxSpansPerRow = 32;
 	static constexpr int kMaxSpansPerCol = 4;
-	static constexpr int kMaxTouches = 32; // more than 10, to allow raw touches that may be filtered 
+	static constexpr int kMaxTouches = kKeyRows*kKeyCols; // one for each key state, to allow raw touches that may be filtered 
 	
 	class Listener
 	{
@@ -323,31 +323,16 @@ private:
 
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findSpans(const MLSignal& in);
-	
-	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
-	VectorArray2D<ARRAYS, ARRAY_LENGTH> findZ2Spans(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& intSpans, const MLSignal& in);
 		
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
-	VectorArray2D<ARRAYS, ARRAY_LENGTH> findPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inSpans, const MLSignal& in);
-	
-	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findZ2Pings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inSpans, const MLSignal& in);
-	
-	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
-	VectorArray2D<ARRAYS, ARRAY_LENGTH> clusterPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const MLSignal& in);
-	
-	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
-	VectorArray2D<ARRAYS, ARRAY_LENGTH> filterPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPingsY1);
-	
-	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
-	VectorArray2D<ARRAYS, ARRAY_LENGTH> filterClusters(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings, const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPingsY1);
-	
+
 	
 	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
 	KeyStates filterKeyStates(const KeyStates& x, const KeyStates& ym1);
 	
+	std::array<Vec4, kMaxTouches> findTouches(const KeyStates& keyStates, const MLSignal& z);
 	
-	std::array<Vec4, kMaxTouches> findTouches(const VectorsH& pingsHoriz, const VectorsV& pingsVert, const MLSignal& z);
 	
 	std::array<Vec4, kMaxTouches> findClusters(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
 
@@ -357,11 +342,7 @@ private:
 	
 	std::array<Vec4, kMaxTouches> filterTouchesSimple(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, const MLSignal& z);
 	
-	std::array<Vec4, kMaxTouches> filterTouchesXX(const std::array<Vec4, kMaxTouches>& t);
-	
-	void matchTouches();
-	
-	void filterAndOutputTouches();
+	void outputTouches();
 	
 	// spans of touches in x and y
 	VectorsH mSpansHoriz;

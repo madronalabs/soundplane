@@ -467,6 +467,8 @@ void SoundplaneGridView::renderSpansVert()
 		{
 			float y = mSensorRangeY.convert(j);
 			
+			// how could viewSignal be NULL here! destroyed again in another thread? it happened.
+			
 			float amp = clamp((*viewSignal)(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
 			float xAmp = lerp(x1, x2, amp);
 			glColor4fv(&darkRed[0]);
@@ -851,8 +853,9 @@ void SoundplaneGridView::renderKeyStates()
 
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
-	MLRange vxRange(0.125, 0.00, 0., 1.);
-	MLRange vyRange(0.125, 0.00, 0., 1.);
+	float varianceThresh = 0.125f;
+	MLRange vRange(varianceThresh, 0.00, 0., 1.);
+	
 	
 	auto keyStates = mpModel->getKeyStates();
 	int j = 0;
@@ -878,15 +881,16 @@ void SoundplaneGridView::renderKeyStates()
 			float sy = mKeyRangeY.convert(j + y);
 			
 						
-			Vec4 colorX = vlerp(darkGreen, lightGreen, vxRange.convertAndClip(vx));
-			glColor4fv(&colorX[0]);
+			Vec4 varianceColor = vlerp(darkGreen, lightGreen, vRange.convertAndClip(vy));
 			
-			MLGL::drawLine(sx, sy0, sx, sy1, 2.0f*mViewScale);
 			
-			Vec4 colorY = vlerp(darkGreen,lightGreen, vyRange.convertAndClip(vy));
-			glColor4fv(&colorY[0]);
+	//		colorX = (vx < xvt) ? lightGreen : darkGreen;
+			glColor4fv(&varianceColor[0]);
 			
-			MLGL::drawLine(sx0, sy, sx1, sy, 2.0f*mViewScale);
+			if(within(x, 0.f, 1.f))
+				MLGL::drawLine(sx, sy0, sx, sy1, 2.0f*mViewScale);
+			if(within(y, 0.f, 1.f))
+				MLGL::drawLine(sx0, sy, sx1, sy, 2.0f*mViewScale);
 			
 			i++;
 		}
@@ -1292,10 +1296,12 @@ void SoundplaneGridView::renderOpenGL()
 	else if (viewMode == "spans_horiz")
 	{
 		renderSpansHoriz();
+		drawSurfaceOverlay();
 	}
 	else if (viewMode == "spans_vert")
 	{
 		renderSpansVert();
+		drawSurfaceOverlay();
 	}
 	else if (viewMode == "raw pings")
 	{
