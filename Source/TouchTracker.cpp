@@ -618,8 +618,8 @@ void TouchTracker::process(int)
 			mPingsVertRaw = findZ2Pings<kSensorCols, kSensorRows, 1>(mSpansVert, mFilteredInput);
 			
 			
-			mKeyStates = pingsToKeyStates(mPingsHorizRaw, mPingsVertRaw);
-			mKeyStates = filterKeyStates(mKeyStates, mKeyStates1);
+			mKeyStates = pingsToKeyStates(mPingsHorizRaw, mPingsVertRaw, mKeyStates1);
+//			mKeyStates = filterKeyStates(mKeyStates, mKeyStates1);
 			mKeyStates1 = mKeyStates;
 			
 			mTouchesRaw = findTouches(mKeyStates, mFilteredInput);
@@ -698,7 +698,7 @@ void TouchTracker::process(int)
 		{
 			
 			
-		debug() << "key states v: \n";
+		debug() << "key states : \n";
 			
 			for(auto row : mKeyStatesOut.data)
 			{
@@ -882,8 +882,10 @@ float triWindow(float x, float r)
 	return(clamp(y, 0.f, 1.f));
 }
 
-TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::VectorsH& pingsHoriz, const TouchTracker::VectorsV& pingsVert)
+TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::VectorsH& pingsHoriz, const TouchTracker::VectorsV& pingsVert, TouchTracker::KeyStates prevStates)
 {
+	
+	const bool interpolate = false;
 	//mKeyRangeX = MLRange (mKeyRect.left(), mKeyRect.left() + mKeyRect.width(), margin, mViewWidth - margin);
 	//mKeyRangeY = MLRange (mKeyRect.top(), mKeyRect.top() + mKeyRect.height(), margin, mViewHeight - margin);
 
@@ -917,46 +919,61 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 			float py = sensorToKeyY(j);
 			float pz = ping.y(); // TODO experiment with curvature here instead of z
 			
-			// deinterpolate ping to 4 keys
-			float cx = px - 0.5f;
-			float cy = py - 0.5f;
-			int kxa = floorf(cx);
-			int kya = floorf(cy);
-			float fxa = cx - kxa;
-			float fxb = 1.0f - fxa;
-			float fya = cy - kya;
-			float fyb = 1.0f - fya;
-			kxa = clamp(kxa, 0, kKeyCols - 1);
-			kya = clamp(kya, 0, kKeyRows - 1);
-			int kxb = clamp(kxa + 1, 0, kKeyCols - 1);
-			int kyb = clamp(kxb + 1, 0, kKeyRows - 1);
-						
-			Vec4& xaya = (keyStates.data[kya])[kxa];
-			Vec4& xbya = (keyStates.data[kya])[kxb];
-			Vec4& xayb = (keyStates.data[kyb])[kxa];
-			Vec4& xbyb = (keyStates.data[kyb])[kxb];
+			if(interpolate)
+			{
+				// deinterpolate ping to 4 keys
+				
+				float cx = px - 0.5f;
+				float cy = py - 0.5f;
+				int kxa = floorf(cx);
+				int kya = floorf(cy);
+				
+				float fxa = cx - kxa;
+				float fxb = 1.0f - fxa;
+				float fya = cy - kya;
+				float fyb = 1.0f - fya;
+				
+				kxa = clamp(kxa, 0, kKeyCols - 1);
+				kya = clamp(kya, 0, kKeyRows - 1);
+				int kxb = clamp(kxa + 1, 0, kKeyCols - 1);
+				int kyb = clamp(kya + 1, 0, kKeyRows - 1);
+				
+				Vec4& xaya = (keyStates.data[kya])[kxa];
+				Vec4& xbya = (keyStates.data[kya])[kxb];
+				Vec4& xayb = (keyStates.data[kyb])[kxa];
+				Vec4& xbyb = (keyStates.data[kyb])[kxb];
 
-			float zaa = pz*fxa*fya;
-			float zba = pz*fxb*fya;
-			float zab = pz*fxa*fyb;
-			float zbb = pz*fxb*fyb;
-			
-			xaya.setX(xaya.x() + cx*zaa);
-			xaya.setZ(xaya.z() + zaa);	
-			
-			xbya.setX(xbya.x() + cx*zba);
-			xbya.setZ(xbya.z() + zba);	
-			
-			xayb.setX(xayb.x() + cx*zab);
-			xayb.setZ(xayb.z() + zab);	
-			
-			xbyb.setX(xbyb.x() + cx*zbb);
-			xbyb.setZ(xbyb.z() + zbb);							
+				float zaa = pz*fxa*fya;
+				float zba = pz*fxb*fya;
+				float zab = pz*fxa*fyb;
+				float zbb = pz*fxb*fyb;
+				
+				xaya.setX(xaya.x() + px*zaa);
+				xaya.setZ(xaya.z() + zaa);	
+				
+				xbya.setX(xbya.x() + px*zba);
+				xbya.setZ(xbya.z() + zba);	
+				
+				xayb.setX(xayb.x() + px*zab);
+				xayb.setZ(xayb.z() + zab);	
+				
+				xbyb.setX(xbyb.x() + px*zbb);
+				xbyb.setZ(xbyb.z() + zbb);		
+			}
+			else
+			{
+				int kxa = floorf(px);
+				int kya = floorf(py);
+				Vec4& xaya = (keyStates.data[kya])[kxa];
+				xaya.setX(xaya.x() + pz*px);
+				xaya.setZ(xaya.z() + pz);	
+				
+			}
 		}
 		j++;
 	}
-	
-	/*
+
+
 	int i = 0;
 	for(auto pingsArray : pingsVert.data)
 	{		
@@ -972,48 +989,59 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 			float py = sensorToKeyY(ping.x());// clamp(yRange(ping.x()), 0.f, kKeyRows + 0.f);
 			float pz = ping.y();
 			
-			// add ping to all keys it overlaps
-			
-			// add to key and neighbors
-			int kx = px;
-			int ky = py;
-			int firstKeyY = ky - 1;
-			int lastKeyY = ky + 1;
-			
-			kx = clamp(kx, 0, kKeyCols - 1);
-			ky = clamp(ky, 0, kKeyRows - 1);
-			firstKeyY = clamp(firstKeyY, 0, kKeyRows - 1);
-			lastKeyY = clamp(lastKeyY, 0, kKeyRows - 1);
-			
-			// add ping to key centroid and neighbors
-			for(int destKeyY=firstKeyY; destKeyY <= lastKeyY; ++destKeyY)
-		//	int destKeyY = ky;
+			if(interpolate)
 			{
-				float keyCenter = destKeyY + 0.5f;
-				float cy = py - destKeyY;
-		//		float ry = ryRange.convertAndClip(pz);
+				// deinterpolate ping to 4 keys			
+				float cx = px - 0.5f;
+				float cy = py - 0.5f;
+				int kxa = floorf(cx);
+				int kya = floorf(cy);
 				
-				float ry = 1.0;
-
-				float yWindow = triWindow(py - keyCenter, ry);
+				float fxa = cx - kxa;
+				float fxb = 1.0f - fxa;
+				float fya = cy - kya;
+				float fyb = 1.0f - fya;
 				
-				float cz = ry;//yWindow;
+				kxa = clamp(kxa, 0, kKeyCols - 1);
+				kya = clamp(kya, 0, kKeyRows - 1);
+				int kxb = clamp(kxa + 1, 0, kKeyCols - 1);
+				int kyb = clamp(kya + 1, 0, kKeyRows - 1);
+						
+			
+				Vec4& xaya = (keyStates.data[kya])[kxa];
+				Vec4& xbya = (keyStates.data[kya])[kxb];
+				Vec4& xayb = (keyStates.data[kyb])[kxa];
+				Vec4& xbyb = (keyStates.data[kyb])[kxb];
 				
-				Vec4& key = (keyStates.data[destKeyY])[kx];
+				float zaa = pz*fxa*fya;
+				float zba = pz*fxb*fya;
+				float zab = pz*fxa*fyb;
+				float zbb = pz*fxb*fyb;
 				
-				key.setY(key.y() + cy*cz);
-				key.setW(key.w() + cz);							
-			}
-		}
+				xaya.setY(xaya.y() + py*zaa);
+				xaya.setW(xaya.w() + zaa);	
 		
-		if(doDebug && (n > 0))
-		{
-			debug() << "\n";
+				xbya.setY(xbya.y() + py*zba);
+				xbya.setW(xbya.w() + zba);	
+			
+				xayb.setY(xayb.y() + py*zab);
+				xayb.setW(xayb.w() + zab);	
+				
+				xbyb.setY(xbyb.y() + py*zbb);
+				xbyb.setW(xbyb.w() + zbb);
+			}
+			else
+			{
+				int kxa = floorf(px);
+				int kya = floorf(py);
+				Vec4& xaya = (keyStates.data[kya])[kxa];				
+				xaya.setY(xaya.y() + pz*py);
+				xaya.setW(xaya.w() + pz);	
+			}
 		}
 		
 		i++;
 	}
-	*/
 	
 	// display coverage
 	if(mCount == 0)
@@ -1024,7 +1052,7 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 		{
 			for(Vec4& key : keyStatesArray)
 			{
-				int k = key.z() * 100.;
+				int k = key.z() ;
 				debug() << k;
 			}
 
@@ -1032,7 +1060,7 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 			
 			for(Vec4& key : keyStatesArray)
 			{		
-				int k = key.w();
+				int k = key.w() ;
 				debug() << k;
 			}
 			debug() << "\n";
@@ -1040,38 +1068,36 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 		
 	}
 
-//	WAT? 0s for x
+	
 	
 	// reduce x and y keyStates
-	for(auto& keyStatesArray : keyStates.data)
 	{
-		for(Vec4& key : keyStatesArray)
-		{
-			
-			float cx = key.x();
-			float cz = key.z();
-			float cy = key.y();
-			float cw = key.w();
+		int j = 0;
+		for(auto& keyStatesArray : keyStates.data)
+		{			
+			int i = 0;
+			for(Vec4& key : keyStatesArray)
+			{			
+				float cx = key.x();
+				float cy = key.y();
+				float cz = key.z();
+				float cw = key.w();
 
-	//		if((cz > 0.f) && (cw > 0.f))
-			if(1)
-			{
-				key.setX(cx/cz);
-				key.setY(cy/cw);
-				key.setZ(0.f);
-				// setting w = 0 here will cause variance to be computed in filterKeyStates()
-				key.setW(0.f);
+				if(cz > 0.f)
+				{
+					key.setX(cx/cz - i);				
+				}
+				if(cw > 0.f)
+				{
+					key.setY(cy/cw - j);
+				}
+
+				i++;
 			}
-			else
-			{
-				key.setX(0.5f);
-				key.setY(0.5f);
-				key.setZ(1.f);
-				key.setW(1.f);
-			}
+			j++;
 		}
 	}
-		
+	
 	return keyStates;
 }
 
@@ -1094,32 +1120,28 @@ TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeySta
 			Vec4 xKey = xRow[i];
 			Vec4 ym1Key = ym1Row[i];
 			
-			float variance = xKey.w();
-			
 			float xn, yn, zn;
-			float dy;
 			
-	//		if(variance < 1.f)
-			if(1)
+
+			float x = xKey.x();
+			float y = xKey.y();
+			float z = xKey.z();
+			float w = xKey.w();
+			
+			if((z > 0.f)||(w > 0.f))
 			{				
-				xn = k*xKey.x() + (1.0f - k)*ym1Key.x();
-				yn = k*xKey.y() + (1.0f - k)*ym1Key.y();
-				zn = k*xKey.z() + (1.0f - k)*ym1Key.z();
-				dy = fabs(xKey.y() - yn);			
+				xn = k*x + (1.0f - k)*ym1Key.x();
+				yn = k*y + (1.0f - k)*ym1Key.y();
+			//	zn = k*z + (1.0f - k)*ym1Key.z();
 			}
 			else
 			{
-				// no new meaningful centroid, maintain old xyz values and set variance input to 1
+				// no new meaningful centroid, maintain old xy values
 				xn = ym1Key.x();
-				yn = ym1Key.y();
-				zn = ym1Key.z();
-				dy = 0.125f*2.f; // TEST				
+				yn = ym1Key.y();			
 			}
 			
-			// always filter variance
-			variance = k*(dy) + (1.0f - k)*ym1Key.w(); 
-			
-			yKey = Vec4(xn, yn, zn, variance);
+			yKey = Vec4(xn, yn, zn, 0.f);
 			
 			if(0) // TEST
 			if((i == 16) && (j == 2))
@@ -1163,8 +1185,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 		{
 			float x = key.x();
 			float y = key.y();
-			float z = key.z();
-			float variance = key.w();
+
 			
 //			if(variance < kyvThresh) // don't switch here, it makes glitches.
 			// can continuous variance be used?
@@ -1175,6 +1196,10 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 					float sensorY = yRange(j + y);
 					
 					Vec2 xyPosA (sensorX, sensorY);
+					
+					
+					
+					// TODO get from pings
 					float zFromInput = inSignal.getInterpolatedLinear(xyPosA);	
 					
 					if(zFromInput > mOnThreshold)

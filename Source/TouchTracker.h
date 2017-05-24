@@ -328,7 +328,7 @@ private:
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findZ2Pings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inSpans, const MLSignal& in);
 
 	
-	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
+	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert, KeyStates prevStates);
 	KeyStates filterKeyStates(const KeyStates& x, const KeyStates& ym1);
 	
 	std::array<Vec4, kMaxTouches> findTouches(const KeyStates& keyStates, const MLSignal& z);
