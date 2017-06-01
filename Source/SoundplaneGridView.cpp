@@ -867,8 +867,8 @@ void SoundplaneGridView::renderKeyStates()
 			// key states after filtering have x, y, x variance, y variance
 			float x = key.x();
 			float y = key.y();
-			float vx = key.z();
-			float vy = key.w();
+			float z = key.z();
+			float w = key.w();
 			
 			// get screen coords
 			float sx0 = mKeyRangeX.convert(i);
@@ -880,8 +880,16 @@ void SoundplaneGridView::renderKeyStates()
 			float sx = mKeyRangeX.convert(i + x);
 			float sy = mKeyRangeY.convert(j + y);
 			
-						
-			Vec4 varianceColor = vlerp(darkGreen, lightGreen, vRange.convertAndClip(vy));
+			Vec4 varianceColor;
+			if(z > 0.f)
+			{
+				varianceColor = lightGreen;
+			}
+			else
+			{
+				varianceColor = darkGreen;
+			}
+//			Vec4 varianceColor = vlerp(darkGreen, lightGreen, vRange.convertAndClip(vy));
 			
 			
 	//		colorX = (vx < xvt) ? lightGreen : darkGreen;
