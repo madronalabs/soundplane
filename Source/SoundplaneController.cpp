@@ -199,7 +199,6 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("calibrated");
 	viewMenu->addItem("spans_horiz");
 	viewMenu->addItem("spans_vert");
-	viewMenu->addItem("raw pings");
 	viewMenu->addItem("pings");
 	viewMenu->addItem("raw clusters");
 	viewMenu->addItem("clusters");

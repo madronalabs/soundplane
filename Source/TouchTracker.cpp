@@ -597,6 +597,7 @@ void TouchTracker::process(int)
 		
 		kc = 4./18.; kex = 3./18.; key = 2./18.; kk=1./18.;
 		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
+		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
 
 		/*
 		kc = 4./8.; kex = 2./8.; key = 0.; kk=0.;	
@@ -617,8 +618,8 @@ void TouchTracker::process(int)
 			mSpansVert = findSpans<kSensorCols, kSensorRows, 1>(mFilteredInputY); 
 			mPingsVertRaw = findZ2Pings<kSensorCols, kSensorRows, 1>(mSpansVert, mFilteredInput);
 			
-			
 			mKeyStates = pingsToKeyStates(mPingsHorizRaw, mPingsVertRaw, mKeyStates1);
+//			mKeyStates = combineKeyStates(mKeyStates);
 			mKeyStates = filterKeyStates(mKeyStates, mKeyStates1);
 			mKeyStates1 = mKeyStates;
 			
@@ -719,9 +720,8 @@ void TouchTracker::process(int)
 template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findSpans(const MLSignal& in)
 {
-	// zThresh must be greater than 0. We also want it significantly lower than mOnThreshold
-	// because when more candidate spans are generated, discontinuities when they appear / disappear are smaller.
-	const float zThresh = 0.0001 + mOnThreshold; 
+	// zThresh must be greater than 0. 
+	const float zThresh = 0.0001 + mOnThreshold; 	
 	
 	int dim1 = in.getWidth();
 	int dim2 = in.getHeight();
@@ -818,23 +818,23 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findZ2Pings(const VectorArray2
 				ddz = dz - dzm1;
 				
 				// find ddz minima
-				if((ddzm1 < ddz) && (ddzm1 < ddzm2))// && (ddzm1 < -ddzThresh))
+				if((ddzm1 < ddz) && (ddzm1 < ddzm2) && (ddzm1 < -ddzThresh))
 				{ 
 					// get peak by quadratic interpolation
 					float a = ddzm2;
 					float b = ddzm1;
 					float c = ddz;
-				//	float k = (a - 2.f*b + c)/2.f * kScale * 10.f; // curvature
+					float k = (a - 2.f*b + c)/2.f * kScale * 10.f; // curvature
 					float p = ((a - c)/(a - 2.f*b + c))*0.5f;
 					float x = i - 2.f + p;
 					
 					// get z via box filter around center.
 					// I tried parabolic interpolation here but any benefit is buried in the noise.
-					float zp = 0.333f*(zm1 + zm2 + zm3);
-
+					// float zp = 0.333f*(zm1 + zm2 + zm3);
+									
 					if(within(x, intSpan.x(), intSpan.y()))
 					{
-						appendVectorToRow(y.data[j], Vec4(x, zp, 0.f, 0.f));
+						appendVectorToRow(y.data[j], Vec4(x, k, 0.f, 0.f));
 					}
 				}
 				
@@ -882,30 +882,13 @@ float triWindow(float x, float r)
 	return(clamp(y, 0.f, 1.f));
 }
 
+
+
 TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::VectorsH& pingsHoriz, const TouchTracker::VectorsV& pingsVert, TouchTracker::KeyStates prevStates)
 {
-	
-	const bool interpolate = false;
-	//mKeyRangeX = MLRange (mKeyRect.left(), mKeyRect.left() + mKeyRect.width(), margin, mViewWidth - margin);
-	//mKeyRangeY = MLRange (mKeyRect.top(), mKeyRect.top() + mKeyRect.height(), margin, mViewHeight - margin);
-
-	// single-touch width constant
-//	const float k1 = XY ? 3.4f : 4.7f;
-	float rxMax = 4.7f / 2.f;
-	float ryMax = 3.4f / 2.f;
-	float rxMin = rxMax;//0.5f;
-	float ryMin = ryMax;//0.5f;
-
-	MLRange rxRange(0.f, 0.01f);
-	rxRange.convertTo(MLRange(rxMax, rxMin));
-	
-	MLRange ryRange(0.f, 0.01f);
-	ryRange.convertTo(MLRange(ryMax, ryMin));
-	
 	MLRange sensorToKeyX(3.5f, 59.5f, 1.f, 29.f);
 	MLRange sensorToKeyY(0., 7., 0.25, 4.75); // as measured, revisit
-	
-	
+		
 	TouchTracker::KeyStates keyStates;
 	
 	VectorArray2D<kKeyRows, kKeyCols> zValues;
@@ -921,59 +904,15 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 			float py = sensorToKeyY(j);
 			float pz = ping.y(); 
 			
-			if(interpolate)
-			{
-				// deinterpolate ping to 4 keys
-				
-				float cx = px - 0.5f;
-				float cy = py - 0.5f;
-				int kxa = floorf(cx);
-				int kya = floorf(cy);
-				
-				float fxa = cx - kxa;
-				float fxb = 1.0f - fxa;
-				float fya = cy - kya;
-				float fyb = 1.0f - fya;
-				
-				kxa = clamp(kxa, 0, kKeyCols - 1);
-				kya = clamp(kya, 0, kKeyRows - 1);
-				int kxb = clamp(kxa + 1, 0, kKeyCols - 1);
-				int kyb = clamp(kya + 1, 0, kKeyRows - 1);
-				
-				Vec4& xaya = (keyStates.data[kya])[kxa];
-				Vec4& xbya = (keyStates.data[kya])[kxb];
-				Vec4& xayb = (keyStates.data[kyb])[kxa];
-				Vec4& xbyb = (keyStates.data[kyb])[kxb];
+			// correct curvature for key position
+			float pxf = px - floorf(px);
+			
 
-				float zaa = pz*fxa*fya;
-				float zba = pz*fxb*fya;
-				float zab = pz*fxa*fyb;
-				float zbb = pz*fxb*fyb;
-				
-				xaya.setX(xaya.x() + px*zaa);
-				xaya.setZ(xaya.z() + zaa);	
-				
-				xbya.setX(xbya.x() + px*zba);
-				xbya.setZ(xbya.z() + zba);	
-				
-				xayb.setX(xayb.x() + px*zab);
-				xayb.setZ(xayb.z() + zab);	
-				
-				xbyb.setX(xbyb.x() + px*zbb);
-				xbyb.setZ(xbyb.z() + zbb);		
+			float correction = 4.f - 12.f*(pxf - 0.5f)*(pxf - 0.5f);
+		//		debug() << "c:" << correction << "\n";
+			
+		//	pz *= correction;
 
-				Vec4& zxaya = (zValues.data[kya])[kxa];
-				Vec4& zxbya = (zValues.data[kya])[kxb];
-				Vec4& zxayb = (zValues.data[kyb])[kxa];
-				Vec4& zxbyb = (zValues.data[kyb])[kxb];
-				
-				zxaya.setZ(max(zxaya.z(), pz*fxa*fya));	
-				zxbya.setZ(max(zxbya.z(), pz*fxb*fya));	
-				zxayb.setZ(max(zxayb.z(), pz*fxa*fyb));		
-				zxbyb.setZ(max(zxbyb.z(), pz*fxb*fyb));	
-
-			}
-			else
 			{
 				int kxa = floorf(px);
 				int kya = floorf(py);
@@ -987,8 +926,8 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 				
 				
 				Vec4& zxaya = (zValues.data[kya])[kxa];
-		//		zxaya.setZ(zxaya.z() + 1.f);	
-				zxaya.setZ(max(zxaya.z(), pz));	
+				zxaya.setZ(zxaya.z() + 1.f);	
+		//		zxaya.setZ(max(zxaya.z(), pz));	
 				
 			}
 		}
@@ -1011,58 +950,6 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 			float py = sensorToKeyY(ping.x());// clamp(yRange(ping.x()), 0.f, kKeyRows + 0.f);
 			float pz = ping.y();
 			
-			if(interpolate)
-			{
-				// deinterpolate ping to 4 keys			
-				float cx = px - 0.5f;
-				float cy = py - 0.5f;
-				int kxa = floorf(cx);
-				int kya = floorf(cy);
-				
-				float fxa = cx - kxa;
-				float fxb = 1.0f - fxa;
-				float fya = cy - kya;
-				float fyb = 1.0f - fya;
-				
-				kxa = clamp(kxa, 0, kKeyCols - 1);
-				kya = clamp(kya, 0, kKeyRows - 1);
-				int kxb = clamp(kxa + 1, 0, kKeyCols - 1);
-				int kyb = clamp(kya + 1, 0, kKeyRows - 1);
-						
-			
-				Vec4& xaya = (keyStates.data[kya])[kxa];
-				Vec4& xbya = (keyStates.data[kya])[kxb];
-				Vec4& xayb = (keyStates.data[kyb])[kxa];
-				Vec4& xbyb = (keyStates.data[kyb])[kxb];
-				
-				float zaa = pz*fxa*fya;
-				float zba = pz*fxb*fya;
-				float zab = pz*fxa*fyb;
-				float zbb = pz*fxb*fyb;
-				
-				xaya.setY(xaya.y() + py*zaa);
-				xaya.setW(xaya.w() + zaa);	
-		
-				xbya.setY(xbya.y() + py*zba);
-				xbya.setW(xbya.w() + zba);	
-			
-				xayb.setY(xayb.y() + py*zab);
-				xayb.setW(xayb.w() + zab);	
-				
-				xbyb.setY(xbyb.y() + py*zbb);
-				xbyb.setW(xbyb.w() + zbb);
-				
-				Vec4& zxaya = (zValues.data[kya])[kxa];
-				Vec4& zxbya = (zValues.data[kya])[kxb];
-				Vec4& zxayb = (zValues.data[kyb])[kxa];
-				Vec4& zxbyb = (zValues.data[kyb])[kxb];
-				
-				zxaya.setW(max(zxaya.w(), pz*fxa*fya));	
-				zxbya.setW(max(zxbya.w(), pz*fxb*fya));	
-				zxayb.setW(max(zxayb.w(), pz*fxa*fyb));		
-				zxbyb.setW(max(zxbyb.w(), pz*fxb*fyb));	
-			}
-			else
 			{
 				int kxa = floorf(px);
 				int kya = floorf(py);
@@ -1072,8 +959,8 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 				
 								
 				Vec4& zxaya = (zValues.data[kya])[kxa];
-//				zxaya.setW(zxaya.w() + 1.f);	
-				zxaya.setW(max(zxaya.w(), pz));
+				zxaya.setW(zxaya.w() + 1.f);	
+//				zxaya.setW(max(zxaya.w(), pz));
 				
 			}
 		}
@@ -1126,22 +1013,17 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 
 				if((cz > 0.f) && (cw > 0.f))
 				{
-					// divide sum of position by sum of pressure to get position centroids
+					// divide sum of position by sum of curvature to get position centroids
 					float newX = cx/cz - i;
 					float newY = cy/cw - j;
-					
-					// TEST
-					// use curvature, x, y, or z... which has least noise? 
-				//	float newZ = 0.f;
-					
-				//	float status = 1.f;
-					//		key = Vec4(newX, newY, newZ, status);
 					
 					key.setX(newX);
 					key.setY(newY);
 					
-					key.setZ(zn);
-					key.setW(wn);
+					// divide sum of curvature by # of samples to get average
+					// then multiply x and y averages
+					key.setZ((cz/zn)*(cw/wn) * 1000.f);
+					//key.setW(cw/wn);
 				}
 				else
 				{
@@ -1159,10 +1041,75 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 }
 
 
+TouchTracker::KeyStates TouchTracker::combineKeyStates(const TouchTracker::KeyStates& x)
+{
+	TouchTracker::KeyStates y;
+	int j = 0;
+	
+	// combine horizontally
+	for(auto& outputRow : y.data) 
+	{
+		auto& inputRow = x.data[j];
+		
+		int i = 0;
+		for(Vec4& outputKey : outputRow)
+		{
+			
+			if(i == 0)
+			{
+				Vec4 kc = inputRow[i];
+				Vec4 kr = inputRow[i + 1];
+				
+				if(kc.z() > kr.z())
+				{
+					outputKey = kc;
+				}
+				
+			}
+			else if(i < kKeyCols - 1)
+			{
+				Vec4 kl = inputRow[i - 1];
+				Vec4 kc = inputRow[i];
+				Vec4 kr = inputRow[i + 1];
+				
+				if((kc.z() > kr.z()) && (kc.z() > kl.z()))
+				{
+					
+					// get average, noting that positions are key-relative
+					float sx = (kl.x() + kc.x() + kr.x());
+					
+					outputKey.setX(sx);
+					outputKey.setY(kc.y());
+					outputKey.setZ(kc.z());
+				}
+			}
+			else
+			{
+				Vec4 kl = inputRow[i - 1];
+				Vec4 kc = inputRow[i];
+				
+				if(kc.z() > kl.z())
+				{
+					outputKey = kc;
+				}
+			}
+				
+			
+			i++;
+		}
+		j++;
+	}
+	
+	
+	
+	return y;
+	
+}
+
 TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeyStates& x, const TouchTracker::KeyStates& ym1)
 {
-	// TODO adaptive??
-	const float k = 1.0f;//0.1f;
+	// TODO adaptive
+	const float k = 0.1f;
 
 	// TEST
 	TouchTracker::KeyStates y;
@@ -1178,25 +1125,31 @@ TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeySta
 			Vec4 ym1Key = ym1Row[i];
 			
 			float xn, yn, zn;			
-
+			
 			float x = xKey.x();
 			float y = xKey.y();
 			float z = xKey.z();
 			float w = xKey.w();
-
+			
 			// MLTEST
 			// here is choice of z -- current should = previous
 			float currentZ = xKey.z();
 			float prevZ = ym1Key.z();
 			
+			xn = k*x + (1.0f - k)*ym1Key.x();
+			yn = k*y + (1.0f - k)*ym1Key.y();
+			zn = k*z + (1.0f - k)*ym1Key.z();
 			
+			yKey = Vec4(xn, yn, zn, 0.f);
+
+			/*
 			if((currentZ > 0.f) && (prevZ > 0.f))
 			{				
 				// normal filter
 				xn = k*x + (1.0f - k)*ym1Key.x();
 				yn = k*y + (1.0f - k)*ym1Key.y();
 				zn = k*z + (1.0f - k)*ym1Key.z();
-			
+				
 				yKey = Vec4(xn, yn, zn, 0.f);
 			}
 			else if((currentZ > 0.f) && (prevZ <= 0.f))
@@ -1212,13 +1165,15 @@ TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeySta
 			{
 				yKey = Vec4(ym1Key.x(), ym1Key.y(), 0.f, 0.f);
 			}
+			*/
+			
 			
 			if(0) // TEST
-			if((i == 16) && (j == 2))
-			{
-				debug() << yKey << "\n";
-			}
-
+				if((i == 16) && (j == 2))
+				{
+					debug() << yKey << "\n";
+				}
+			
 			
 			i++;
 		}
@@ -1244,22 +1199,18 @@ TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeySta
 		
 	}
 	
-
-	
 	
 	return y;
-
+	
 }
 
 
-// look at variance of key states to find touches.
+// look at key states to find touches.
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const TouchTracker::KeyStates& keyStates, const MLSignal& inSignal)
 {
 	std::array<Vec4, kMaxTouches> touches;
 	touches.fill(Vec4::null());
 
-	float kyvThresh = 0.125f;
-	
 	// convert back to sensor ranges
 	MLRange xRange(1.f, 29.f);
 	xRange.convertTo(MLRange(3.5f, 59.5f));
@@ -1267,7 +1218,6 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 //	MLRange yRange(1.f, 4.f, 1.25, 5.75);
 	MLRange yRange(0.5f, 4.5f, 0.f, 7.f);
 	
-	MLRange varianceMultRange(kyvThresh, 0.f, 0.f, 1.f);
 
 	int nTouches = 0;
 	int j = 0;
@@ -1280,32 +1230,16 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 			float y = key.y();
 			float z = key.z();
 
-// 			if((within(key.x(), 0.f, 1.f)) && (within(key.y(), 0.f, 1.f)))
+//			if((within(key.x(), 0.f, 1.f)) && (within(key.y(), 0.f, 1.f)))
 			
-			
-//			if(variance < kyvThresh) // don't switch here, it makes glitches.
-			// can continuous variance be used?
+			if(z > mOnThreshold)
 			{
-//				if(within(x, 0.f, 1.f) && within(y, 0.f, 1.f))
-//				if(z > mOnThreshold)
+				float sensorX = xRange(i + x);
+				float sensorY = yRange(j + y);
+				
+				if(nTouches < kMaxTouches)
 				{
-					float sensorX = xRange(i + x);
-					float sensorY = yRange(j + y);
-					
-					Vec2 xyPosA (sensorX, sensorY);
-					
-					// TODO get from pings
-					float zFromInput = z;// inSignal.getInterpolatedLinear(xyPosA);	
-					
-			//		if(zFromInput > mOnThreshold)
-					{
-// try filtering z	thru from pings					
-//						float varianceMult = varianceMultRange.convertAndClip(variance);		
-						if(nTouches < kMaxTouches)
-						{
-							touches[nTouches++] = Vec4(sensorX, sensorY, z, 0);
-						}
-					}
+					touches[nTouches++] = Vec4(sensorX, sensorY, z, 0);
 				}
 			}
 			
@@ -1317,7 +1251,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 	// display within-ness
 	if(mCount == 0)
 	{
-		debug() << "\n touches: " << nTouches << "\n";
+		debug() << "\n raw touches: " << nTouches << "\n";
 	}
 	
 	return touches;

@@ -45,7 +45,6 @@ private:
 	void renderSpansHoriz();
 	void renderSpansVert();
 	void renderClustersRaw();
-	void renderPingsRaw();
 	void renderPings();
 	void renderClusters();
 	

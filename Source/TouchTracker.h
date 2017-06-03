@@ -329,6 +329,8 @@ private:
 
 	
 	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert, KeyStates prevStates);
+	KeyStates combineKeyStates(const KeyStates& x);
+	
 	KeyStates filterKeyStates(const KeyStates& x, const KeyStates& ym1);
 	
 	std::array<Vec4, kMaxTouches> findTouches(const KeyStates& keyStates, const MLSignal& z);
