@@ -407,8 +407,15 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD = page1->addDial("lopass", dialRect.withCenter(7, dialY), "lopass", c2);
 	pD->setRange(1., 250., 1);	
 	pD->setDefault(100.);	
+
 	
 	pB = page1->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
+	
+	
+	pD = page1->addDial("k thresh", dialRect.withCenter(10., dialY), "k_thresh", c2);
+	pD->setRange(0., 1., 0.01);	
+	pD->setDefault(0.2);	
+	
 
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 
@@ -458,8 +465,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD = page2->addDial("hysteresis", dialRect.withCenter(2, dialY), "hysteresis", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.5);
+
 	
-//	pD = page2->addDial("template", dialRect.withCenter(3.5, dialY), "t_thresh", c2);
+	//	pD = page2->addDial("template", dialRect.withCenter(3.5, dialY), "t_thresh", c2);
 //	pD->setRange(0., 1., 0.001);	
 //	pD->setDefault(0.2);
 	

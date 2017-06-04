@@ -198,11 +198,14 @@ void SoundplaneGridView::setModel(SoundplaneModel* m)
 
 void SoundplaneGridView::renderXYGrid()
 {
+	const int kTouchHistorySize = 500;
 	float fMax = mpModel->getFloatProperty("z_max");
 	
 	const MLSignal* calSignal = mpModel->getSignalForViewMode("calibrated");
 	if(!calSignal) return;
 
+	TouchTracker::SensorBitsArray thresholds = mpModel->getThresholdBits();
+	
 	setupOrthoView();
 	float dotSize = fabs(mKeyRangeY(0.08f) - mKeyRangeY(0.f));
 	float displayScale = mpModel->getFloatProperty("display_scale");
@@ -211,9 +214,10 @@ void SoundplaneGridView::renderXYGrid()
 	// TODO don't use fixed function pipeline.
 	//
 	Vec4 lineColor;
-	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
+	Vec4 darkBlue(0.1f, 0.1f, 0.5f, 1.f);
 	Vec4 gray(0.6f, 0.6f, 0.6f, 1.f);
 	Vec4 lightGray(0.9f, 0.9f, 0.9f, 1.f);
+	Vec4 green(0.3f, 0.9f, 0.3f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
 	
 	// fill calibrated data areas
@@ -223,9 +227,20 @@ void SoundplaneGridView::renderXYGrid()
 		for(int i=mLeftSensor; i<mRightSensor; ++i)
 		{
 			float mix = (*calSignal)(i, j) / fMax;
-			mix *= displayScale;
+			mix *= displayScale*2.f;
+			mix = clamp(mix, 0.f, 1.f);
 			Vec4 dataColor = vlerp(gray, lightGray, mix);
+			
+			// mark sensor junction if over threshold
+			bool t = thresholds[j*kSensorCols + i];
+			
+			if(t)
+			{
+				dataColor = green;
+			}
+			
 			glColor4fv(&dataColor[0]);
+			
 			glBegin(GL_QUADS);
 			float x1 = mSensorRangeX.convert(i - 0.5f);
 			float y1 = mSensorRangeY.convert(j - 0.5f);
@@ -288,7 +303,7 @@ void SoundplaneGridView::renderXYGrid()
 			glBegin(GL_LINE_STRIP);
 			int cc = ctr;
 			int a = 0;
-			for(int t=0; t < kSoundplaneHistorySize - 2; ++t)
+			for(int t=0; t < kTouchHistorySize; ++t)
 			{				
 				float x = touchHistory(xColumn, touch, cc);
 				float y = touchHistory(yColumn, touch, cc);
@@ -306,202 +321,6 @@ void SoundplaneGridView::renderXYGrid()
 		}
 	}
 }
-
-void SoundplaneGridView::renderSpansHoriz()
-{
-	setupOrthoView();
-
-	// draw stuff in immediate mode. 
-	// TODO don't use fixed function pipeline.
-	//
-	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
-	Vec4 darkRed(0.5f, 0.3f, 0.3f, 1.f);
-	Vec4 white(1.f, 1.f, 1.f, 1.f);
-	float ph = 0.4;
-	const float kGraphAmp = 4.0f;
-	float displayScale = mpModel->getFloatProperty("display_scale")*10.f;
-	
-	// draw spans
-	VectorArray2D<kSensorRows, kSensorCols> spans = mpModel->getSpansHoriz();
-	int j = 0;
-	for(auto row : spans.data)
-	{
-		for(auto p : row)
-		{
-			if(!p) break; // each array of spans is null-terminated
-			
-			// span: (xStart, xEnd, xVariance, yVariance)
-			float x1 = mSensorRangeX.convert(p.x());
-			float x2 = mSensorRangeX.convert(p.y());
-			float y1 = mSensorRangeY.convert(j - ph);	
-			float y2 = mSensorRangeY.convert(j + ph);	
-			
-			MLRect tr(x1, y1, x2 - x1, y2 - y1);
-
-			darkBlue[3] = 0.25f;
-			glColor4fv(&darkBlue[0]);
-			MLGL::fillRect(tr);
-
-			darkBlue[3] = 1.0f;
-			glColor4fv(&darkBlue[0]);
-			MLGL::strokeRect(tr, 1.0*mViewScale);
-
-		}
-		j++;
-	}	
-	
-	// draw calibrated data
-	
-	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
-	if(!viewSignal) return;
-	
-	// draw line graph
-	glLineWidth(mViewScale);
-	
-	for(int j=0; j<mSensorHeight; ++j)
-	{
-		float y1 = mSensorRangeY.convert(j - ph);	
-		float y2 = mSensorRangeY.convert(j + ph);	
-		
-		glBegin(GL_LINE_STRIP);
-		
-		for(int i=0; i<mSensorWidth; ++i)
-		{
-			float x = mSensorRangeX.convert(i);
-			
-			float amp = clamp((*viewSignal)(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
-			float yAmp = lerp(y1, y2, amp);
-			
-			glColor4fv(&darkRed[0]);
-			
-			glVertex2f(x, yAmp);
-		}
-		glEnd();
-	}
-	
-	// draw horiz pings as vert lines
-	auto pings = mpModel->getPingsHorizRaw();
-	j = 0;
-	for(auto row : pings.data)
-	{
-		for(auto p : row)
-		{
-			if(!p) break; // each array of spans is null-terminated
-
-			float x1 = mSensorRangeX.convert(p.x());
-			float x2 = x1;
-			float y1 = mSensorRangeY.convert(j - ph);	
-			float y2 = mSensorRangeY.convert(j + ph);	
-
-			Vec4 dotColor = darkRed;
-			dotColor[3] = 0.5f;
-			glColor4fv(&dotColor[0]);
-			
-			MLGL::drawLine(x1, y1, x2, y2, 2.0f*mViewScale);
-		}
-		j++;
-	}		
-
-}
-
-
-void SoundplaneGridView::renderSpansVert()
-{
-	setupOrthoView();
-	
-	// draw stuff in immediate mode. 
-	// TODO don't use fixed function pipeline.
-	//
-	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
-	Vec4 darkRed(0.5f, 0.3f, 0.3f, 1.f);
-	Vec4 white(1.f, 1.f, 1.f, 1.f);
-	float ph = 0.4;
-	const float kGraphAmp = 4.0f;
-	float displayScale = mpModel->getFloatProperty("display_scale")*10.f;
-	
-	// draw spans
-	// draw spans
-	VectorArray2D<kSensorCols, kSensorRows> spans = mpModel->getSpansVert();
-	int j = 0;
-	for(auto row : spans.data)
-	{
-		for(auto p : row)
-		{
-			if(!p) break; // array of spans is null-terminated
-
-			// span: (yStart, yEnd, x)
-			float y1 = mSensorRangeY.convert(p.x());
-			float y2 = mSensorRangeY.convert(p.y());
-			float x1 = mSensorRangeX.convert(j - ph);	
-			float x2 = mSensorRangeX.convert(j + ph);	
-			
-			MLRect tr(x1, y1, x2 - x1, y2 - y1);
-			
-			darkBlue[3] = 0.25f;
-			glColor4fv(&darkBlue[0]);
-			MLGL::fillRect(tr);
-			
-			darkBlue[3] = 1.0f;
-			glColor4fv(&darkBlue[0]);
-			MLGL::strokeRect(tr, 1.0*mViewScale);
-		}
-		j++;
-	}	
-	
-	// draw calibrated data
-	
-	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
-	if(!viewSignal) return;
-	
-	// draw line graph
-	glLineWidth(mViewScale);
-	for(int i=0; i<mSensorWidth; ++i)
-	{
-		float x = mSensorRangeX.convert(i);
-		float x1 = mSensorRangeX.convert(i - ph);	
-		float x2 = mSensorRangeX.convert(i + ph);	
-		
-		glBegin(GL_LINE_STRIP);
-		
-		for(int j=0; j<mSensorHeight; ++j)
-		{
-			float y = mSensorRangeY.convert(j);
-			
-			// how could viewSignal be NULL here! destroyed again in another thread? it happened.
-			
-			float amp = clamp((*viewSignal)(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
-			float xAmp = lerp(x1, x2, amp);
-			glColor4fv(&darkRed[0]);
-			glVertex2f(xAmp, y);
-		}
-		glEnd();
-	}
-	
-	// draw vert pings as horiz lines
-	auto pings = mpModel->getPingsVertRaw();
-	j = 0;
-	for(auto col : pings.data)
-	{
-		for(auto p : col)
-		{
-			if(!p) break; // each array of spans is null-terminated
-			
-			float y1 = mSensorRangeY.convert(p.x());
-			float y2 = y1;
-			float x1 = mSensorRangeX.convert(j - ph);	
-			float x2 = mSensorRangeX.convert(j + ph);	
-			
-			Vec4 dotColor = darkRed;
-			dotColor[3] = 0.5f;
-			glColor4fv(&dotColor[0]);
-			
-			MLGL::drawLine(x1, y1, x2, y2, 2.0f*mViewScale);
-		}
-		j++;
-	}		
-}
-
-
 
 void SoundplaneGridView::renderPings()
 {
@@ -543,13 +362,8 @@ void SoundplaneGridView::renderPings()
 		j++;
 	}		
 	
-	// draw vert spans
-	auto spansVert = mpModel->getSpansVert();
-	int colInt = 0;
-
-	
 	// draw vert pings
-	colInt = 0;
+	int colInt = 0;
 	auto pingsVert = mpModel->getPingsVertRaw();
 	for(auto col : pingsVert.data)
 	{
@@ -721,7 +535,7 @@ void SoundplaneGridView::renderKeyStates()
 		{
 			// key states after filtering have x, y, x variance, y variance
 			float x = key.x();
-			float y = key.z() * 20.f * displayScale;
+			float y = key.y();// * 20.f * displayScale;
 			float z = key.z();
 			float w = key.w();
 			
@@ -739,10 +553,9 @@ void SoundplaneGridView::renderKeyStates()
 			float sy = mKeyRangeY.convert(j + y);
 			
 
-		//	Vec4 varianceColor = vlerp(darkGreen, lightGreen, zRange.convertAndClip(z));
+			Vec4 varianceColor = vlerp(darkGreen, lightGreen, zRange.convertAndClip(z));
+		//	Vec4 varianceColor = (z > 0.0001f) ? lightGreen : darkGreen;
 			
-			
-			Vec4 varianceColor = (z > 0.0001f) ? lightGreen : darkGreen;
 			glColor4fv(&varianceColor[0]);
 		
 			MLGL::drawLine(sx, sy0, sx, sy1, 2.0f*mViewScale);
@@ -1147,16 +960,6 @@ void SoundplaneGridView::renderOpenGL()
 	if (viewMode == "xy")
 	{
 		renderXYGrid();
-		drawSurfaceOverlay();
-	}
-	else if (viewMode == "spans_horiz")
-	{
-		renderSpansHoriz();
-		drawSurfaceOverlay();
-	}
-	else if (viewMode == "spans_vert")
-	{
-		renderSpansVert();
 		drawSurfaceOverlay();
 	}
 	else if (viewMode == "pings")

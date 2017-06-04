@@ -197,8 +197,7 @@ void SoundplaneController::setupMenus()
 	mMenuMap["viewmode"] = viewMenu;
 	viewMenu->addItem("raw data");
 	viewMenu->addItem("calibrated");
-	viewMenu->addItem("spans_horiz");
-	viewMenu->addItem("spans_vert");
+	viewMenu->addItem("xy");
 	viewMenu->addItem("pings");
 	viewMenu->addItem("raw clusters");
 	viewMenu->addItem("clusters");

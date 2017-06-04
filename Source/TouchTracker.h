@@ -14,6 +14,7 @@
 #include <thread>
 #include <mutex>
 #include <array>
+#include <bitset>
 
 const int kTemplateRadius = 3;
 const int kTemplateSize = kTemplateRadius*2 + 1;
@@ -87,6 +88,7 @@ struct VectorArray2D
 { 
 	std::array< std::array<Vec4, ARRAY_LENGTH>, ARRAYS > data;
 };
+
 
 class TouchTracker
 {
@@ -192,6 +194,7 @@ public:
 	void clear();
 	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
+	void setCurvatureThresh(float f);
 	void setTaxelsThresh(int t) { mTaxelsThresh = t; }
 	void setQuantize(bool q) { mQuantizeToKey = q; }
 	void setLopass(float k); 	
@@ -226,18 +229,18 @@ public:
 	// returning by value - MLTEST
 	// these should use time-stamped ringbuffers to communicate with views
 	
+	typedef std::bitset<kSensorRows*kSensorCols> SensorBitsArray;	
 	typedef VectorArray2D<kSensorRows, kSensorCols> VectorsH;
 	typedef VectorArray2D<kSensorCols, kSensorRows> VectorsV;
-	
 	typedef VectorArray2D<kKeyRows, kKeyCols> KeyStates;
+	
+	SensorBitsArray getThresholdBits() { std::lock_guard<std::mutex> lock(mThresholdBitsMutex); return mThresholdBitsOut; }
 
-	VectorsH getSpansHoriz() { std::lock_guard<std::mutex> lock(mSpansHorizOutMutex); return mSpansHorizOut; }
 	VectorsH getPingsHorizRaw() { std::lock_guard<std::mutex> lock(mPingsHorizRawOutMutex); return mPingsHorizRawOut; }
 	VectorsH getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizOutMutex); return mPingsHorizOut; }
 	VectorsH getClustersHoriz() { std::lock_guard<std::mutex> lock(mClustersHorizOutMutex); return mClustersHorizOut; }
 	VectorsH getClustersHorizRaw() { std::lock_guard<std::mutex> lock(mClustersHorizRawOutMutex); return mClustersHorizRawOut; }
 	
-	VectorsV getSpansVert() { std::lock_guard<std::mutex> lock(mSpansVertOutMutex); return mSpansVertOut; }
 	VectorsV getPingsVertRaw() { std::lock_guard<std::mutex> lock(mPingsVertRawOutMutex); return mPingsVertRawOut; }	
 	VectorsV getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertOutMutex); return mPingsVertOut; }	
 	VectorsV getClustersVert() { std::lock_guard<std::mutex> lock(mClustersVertOutMutex); return mClustersVertOut; }
@@ -311,6 +314,7 @@ private:
 	
 	float mOnThreshold;
 	float mOffThreshold;
+	float mCurvatureThreshold;
 		
 	int mKeyboardType;
 
@@ -320,12 +324,12 @@ private:
 
 	MLSignal mCalibratedSignal;
 	MLSignal mCalibrationProgressSignal;
+	
+	SensorBitsArray findThresholdBits(const MLSignal& in);
 
+	
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
-	VectorArray2D<ARRAYS, ARRAY_LENGTH> findSpans(const MLSignal& in);
-		
-	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
-	VectorArray2D<ARRAYS, ARRAY_LENGTH> findZ2Pings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inSpans, const MLSignal& in);
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> findPings(const SensorBitsArray& inThresh, const MLSignal& inSignal);
 
 	
 	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert, KeyStates prevStates);
@@ -346,15 +350,11 @@ private:
 	
 	void outputTouches();
 	
-	// spans of touches in x and y
-	VectorsH mSpansHoriz;
-	VectorsH mSpansHoriz1;
-	VectorsH mSpansHorizOut;
-	std::mutex mSpansHorizOutMutex;	
-	VectorsV mSpansVert;
-	VectorsV mSpansVert1;
-	VectorsV mSpansVertOut;
-	std::mutex mSpansVertOutMutex;	
+	
+	SensorBitsArray mThresholdBits;
+	SensorBitsArray mThresholdBitsOut;
+	std::mutex mThresholdBitsMutex;	
+	
 	
 	// a ping is a guess at where a touch is over a particular row or column.
 	VectorsH mPingsHorizRaw;
