@@ -297,7 +297,7 @@ void SoundplaneGridView::renderXYGrid()
 	for(int touch=0; touch<nt; ++touch)
 	{
 		int age = touches(ageColumn, touch);
-		if (age > 0)
+	//	if (age > 0)
 		{
 			glColor4fv(MLGL::getIndicatorColor(touch));
 			glBegin(GL_LINE_STRIP);

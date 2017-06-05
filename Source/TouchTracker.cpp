@@ -591,11 +591,6 @@ void TouchTracker::setThresh(float f)
 	mCalibrator.setThreshold(mOnThreshold);
 }
 
-void TouchTracker::setCurvatureThresh(float f) 
-{ 
-	mCurvatureThreshold = f*0.001f; 
-}
-
 void TouchTracker::setLopass(float k)
 { 
 	mLopass = k; 
@@ -692,8 +687,8 @@ void TouchTracker::process(int)
 			mPingsHorizRaw = findPings<kSensorRows, kSensorCols, 0>(mThresholdBits, mFilteredInput);
 			mPingsVertRaw = findPings<kSensorCols, kSensorRows, 1>(mThresholdBits, mFilteredInput);
 			
-//			mPingsHorizRaw = correctPings<kSensorRows, kSensorCols, 0>(mPingsHorizRaw);
-//			mPingsVertRaw = correctPings<kSensorCols, kSensorRows, 1>(mPingsVertRaw);
+			mPingsHorizRaw = correctPings<kSensorRows, kSensorCols, 0>(mPingsHorizRaw);
+			mPingsVertRaw = correctPings<kSensorCols, kSensorRows, 1>(mPingsVertRaw);
 			
 			mKeyStates = pingsToKeyStates(mPingsHorizRaw, mPingsVertRaw, mKeyStates1);
 			mKeyStates = combineKeyStates(mKeyStates);
@@ -899,7 +894,7 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findPings(const SensorBitsArra
 					ddz = dz - dzm1;
 					
 					// find ddz minima
-					if((ddzm1 < ddz) && (ddzm1 < ddzm2))// && (ddzm1 < -mCurvatureThreshold))
+					if((ddzm1 < ddz) && (ddzm1 < ddzm2))
 					{ 
 						// get peak by quadratic interpolation
 						float a = ddzm2;
@@ -1034,7 +1029,6 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 		j++;
 	}
 
-
 	int i = 0;
 	for(auto pingsArray : pingsVert.data)
 	{		
@@ -1087,7 +1081,6 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 		}
 		
 	}
-
 	
 	// get x and y centroids 
 	{
@@ -1109,29 +1102,22 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 				if((cz > 0.f) && (cw > 0.f))
 				{
 					// divide sum of position by sum of curvature to get position centroids
-					float newX = cx/cz - i;
-					float newY = cy/cw - j;
-					float newZ = 0.f;
+					key.setX(cx/cz - i);
+					key.setY(cy/cw - j);
 					
-					key.setX(newX);
-					key.setY(newY);
-					
-					// divide sum of curvature by # of samples to get average
-					// then multiply x and y averages
-//					key.setZ((cz/zn)*(cw/wn) * 2000.f);
-	//				key.setZ((cw/wn));
-//					key.setZ((cz/zn));
-					
-					
+					// multiplying x by y curvature means both must be present
 					float k = (cz/zn)*(cw/wn) * 2000.f;											
-						
 					key.setZ(k);
-					
 				}
 				else
 				{
 					// reset position to key center
 					key = Vec4(0.5f, 0.5f, 0.f, 0.f);
+					
+					Vec4 prevKey = prevStates.data[j][i];
+					
+					
+					
 				}
 
 				i++;
@@ -1148,67 +1134,132 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 TouchTracker::KeyStates TouchTracker::combineKeyStates(const TouchTracker::KeyStates& x)
 {
 	TouchTracker::KeyStates y;
-	int j = 0;
+	// combine vertically
+	{			
+		int j = 0;
+		for(auto& outputRow : y.data) 
+		{
+			int i = 0;
+			for(Vec4& outputKey : outputRow)
+			{
+				Vec4 k2 = x.data[j][i];
+				float yCentroid, newZ;
+				if(j == 0)
+				{
+					Vec4 k3 = x.data[j + 1][i];
+					
+					float y2 = k2.y();
+					float y3 = k3.y() + 1.f;
+					float c2 = k2.z();
+					float c3 = k3.z();
+					float cSum = c2 + c3;
+					float ycSum = y2*c2 + y3*c3;					
+					yCentroid = (cSum > 0.f) ? (ycSum/cSum) : y2;	
+					newZ = (c2 > c3) ? c2 : 0.f;
+					outputKey = Vec4(k2.x(), yCentroid, newZ, 0.f);	
+				}
+				else if(j < kKeyRows - 1)
+				{
+					Vec4 k1 = x.data[j - 1][i];
+					Vec4 k3 = x.data[j + 1][i];
+					
+					float y1 = k1.y() - 1.f;
+					float y2 = k2.y();
+					float y3 = k3.y() + 1.f;
+					float c1 = k1.z();
+					float c2 = k2.z();
+					float c3 = k3.z();
+					float cSum = c1 + c2 + c3;
+					float ycSum = y1*c1 + y2*c2 + y3*c3;					
+					yCentroid = (cSum > 0.f) ? (ycSum/cSum) : y2;	
+					newZ = ((c2 > c1) && (c2 > c3)) ? c2 : 0.f;
+					outputKey = Vec4(k2.x(), yCentroid, newZ, 0.f);		 
+				}
+				else
+				{
+					Vec4 k1 = x.data[j - 1][i];
+					
+					float y1 = k1.y() - 1.f;
+					float y2 = k2.y();
+					float c1 = k1.z();
+					float c2 = k2.z();
+					float cSum = c1 + c2;
+					float ycSum = y1*c1 + y2*c2;					
+					yCentroid = (cSum > 0.f) ? (ycSum/cSum) : y2;	
+					newZ = (c2 > c1) ? c2 : 0.f;
+					outputKey = Vec4(k2.x(), yCentroid, newZ, 0.f);	
+				}
+				
+				i++;
+			}
+			j++;
+		}
+	}
 	
 	// combine horizontally
-	for(auto& outputRow : y.data) 
-	{
-		auto& inputRow = x.data[j];
-		
-		int i = 0;
-		for(Vec4& outputKey : outputRow)
+	{			
+		int j = 0;
+		for(auto& outputRow : y.data) 
 		{
+			auto& inputRow = x.data[j];
 			
-			if(i == 0)
+			int i = 0;
+			for(Vec4& outputKey : outputRow)
 			{
-				Vec4 kc = inputRow[i];
-				Vec4 kr = inputRow[i + 1];
-				
-				if(kc.z() > kr.z())
+				Vec4 k2 = inputRow[i];
+				float xCentroid, newZ;
+				if(i == 0)
 				{
-					outputKey = kc;
+					Vec4 k3 = inputRow[i + 1];
+					
+					// get centroid of position with respect to curvature, noting that positions are key-relative
+					float x2 = k2.x();
+					float x3 = k3.x() + 1.f;
+					float c2 = k2.z();
+					float c3 = k3.z();
+					float cSum = c2 + c3;
+					float xcSum = x2*c2 + x3*c3;
+					
+					// note that the centroid may be outside the key, which is fine!
+					xCentroid = (cSum > 0.f) ? (xcSum/cSum) : x2;	
+					newZ = (c2 > c3) ? c2 : 0.f;
 				}
-				
-			}
-			else if(i < kKeyCols - 1)
-			{
-				Vec4 kl = inputRow[i - 1];
-				Vec4 kc = inputRow[i];
-				Vec4 kr = inputRow[i + 1];
-				
-				// get centroid of position with respect to curvature, noting that positions are key-relative
-				float xl = kl.x() - 1.f;
-				float xc = kc.x();
-				float xr = kc.x() + 1.f;
-				
-				float cl = kl.z();
-				float cc = kc.z();
-				float cr = kr.z();
-				
-				float cSum = cl + cc + cr;
-				float xcSum = xl*cl + xc*cc + xr*cr;
-				
-				// note that the centroid may be outside the key, which is fine!
-				float xCentroid = (cSum > 0.f) ? (xcSum/cSum) : xc;	
-				
-				float newZ = ((cc > cr) && (cc > cl)) ? kc.z() : 0.f;
-				outputKey = Vec4(xCentroid, kc.y(), newZ, 0.f);		 
-			}
-			else
-			{
-				Vec4 kl = inputRow[i - 1];
-				Vec4 kc = inputRow[i];
-				
-				if(kc.z() > kl.z())
+				else if(i < kKeyCols - 1)
 				{
-					outputKey = kc;
+					Vec4 k1 = inputRow[i - 1];
+					Vec4 k3 = inputRow[i + 1];
+
+					float x1 = k1.x() - 1.f;
+					float x2 = k2.x();
+					float x3 = k3.x() + 1.f;
+					float c1 = k1.z();
+					float c2 = k2.z();
+					float c3 = k3.z();
+					float cSum = c1 + c2 + c3;
+					float xcSum = x1*c1 + x2*c2 + x3*c3;
+					xCentroid = (cSum > 0.f) ? (xcSum/cSum) : x2;	
+					newZ = ((c2 > c1) && (c2 > c3)) ? c2 : 0.f;
 				}
+				else
+				{
+					Vec4 k1 = inputRow[i - 1];
+					
+					float x1 = k1.x() - 1.f;
+					float x2 = k2.x();
+					float c1 = k1.z();
+					float c2 = k2.z();
+					float cSum = c1 + c2;
+					float xcSum = x1*c1 + x2*c2;
+					xCentroid = (cSum > 0.f) ? (xcSum/cSum) : x2;	
+					newZ = (c2 > c1) ? c2 : 0.f;
+				}
+				outputKey = Vec4(xCentroid, k2.y(), newZ, 0.f);					
+				i++;
 			}
-			
-			i++;
+			j++;
 		}
-		j++;
 	}
+
 	
 	return y;
 }
@@ -1244,7 +1295,7 @@ TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeySta
 			
 			xn = mxy*x + (1.0f - mxy)*prevX;
 			yn = mxy*y + (1.0f - mxy)*prevY;			
-			kn = k;//mk*k + (1.0f - mk)*prevK;
+			kn = mk*k + (1.0f - mk)*prevK;
 			
 			yKey = Vec4(xn, yn, kn, 0.f);
 			i++;
@@ -1299,16 +1350,13 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 			float y = key.y();
 			float k = key.z();
 
-			if(k > mCurvatureThreshold)
+			if(k > 0.00001f)
 			{
 				float sensorX = xRange(i + x);
 				float sensorY = yRange(j + y);
 				
 				if(nTouches < kMaxTouches) // could remove if array big enough
 				{
-					// TEST show K directly
-				//	float z = k;//inSignal.getInterpolatedLinear(Vec2(sensorX, sensorY));
-				
 					float z = inSignal.getInterpolatedLinear(Vec2(sensorX, sensorY));
 					
 					// pass everything above mOffThreshold for hysteresis.

@@ -209,10 +209,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				mTracker.setThresh(v);
 			}
-			else if (p == "k_thresh")
-			{
-				mTracker.setCurvatureThresh(v);
-			}
 			else if (p == "span_correct")
 			{
 				mTracker.setSpanCorrect(v);

@@ -411,11 +411,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	
 	pB = page1->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
 	
-	
-	pD = page1->addDial("k thresh", dialRect.withCenter(10., dialY), "k_thresh", c2);
-	pD->setRange(0., 1., 0.01);	
-	pD->setDefault(0.2);	
-	
 
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 

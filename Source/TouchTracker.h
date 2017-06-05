@@ -194,7 +194,6 @@ public:
 	void clear();
 	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
-	void setCurvatureThresh(float f);
 	void setTaxelsThresh(int t) { mTaxelsThresh = t; }
 	void setQuantize(bool q) { mQuantizeToKey = q; }
 	void setLopass(float k); 	
@@ -314,7 +313,6 @@ private:
 	
 	float mOnThreshold;
 	float mOffThreshold;
-	float mCurvatureThreshold;
 		
 	int mKeyboardType;
 
