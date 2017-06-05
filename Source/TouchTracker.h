@@ -331,6 +331,8 @@ private:
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findPings(const SensorBitsArray& inThresh, const MLSignal& inSignal);
 
+	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
+	VectorArray2D<ARRAYS, ARRAY_LENGTH> correctPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings);
 	
 	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert, KeyStates prevStates);
 	KeyStates combineKeyStates(const KeyStates& x);
