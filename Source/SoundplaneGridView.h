@@ -42,8 +42,8 @@ private:
 	void drawSurfaceOverlay();
 	void renderXYGrid();
 
-	void renderSpansHoriz();
-	void renderSpansVert();
+	void renderPingsHoriz();
+	void renderPingsVert();
 	void renderClustersRaw();
 	void renderPings();
 	void renderClusters();

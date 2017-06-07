@@ -199,8 +199,8 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("calibrated");
 	viewMenu->addItem("xy");
 	viewMenu->addItem("pings");
-	viewMenu->addItem("raw clusters");
-	viewMenu->addItem("clusters");
+	viewMenu->addItem("pings horiz");
+	viewMenu->addItem("pings vert");
 	viewMenu->addItem("key states");
 	viewMenu->addItem("raw touches");
 	viewMenu->addItem("touches");

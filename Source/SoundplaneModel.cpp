@@ -132,8 +132,8 @@ SoundplaneModel::SoundplaneModel() :
 	// set up view modes map
 	mViewModeToSignalMap["raw data"] = &mRawSignal;
 	mViewModeToSignalMap["calibrated"] = &mCalibratedSignal;
-	mViewModeToSignalMap["spans_horiz"] = &mCalibratedSignal;
-	mViewModeToSignalMap["spans_vert"] = &mCalibratedSignal;
+	mViewModeToSignalMap["pings horiz"] = &mCalibratedSignal;
+	mViewModeToSignalMap["pings vert"] = &mCalibratedSignal;
 	mViewModeToSignalMap["key states"] = &mCalibratedSignal;
 	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());	
 	
