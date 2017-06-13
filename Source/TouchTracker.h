@@ -332,23 +332,27 @@ private:
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> correctPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings);
 	
-	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert, KeyStates prevStates);
+	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert, const TouchTracker::KeyStates& ym1);
 	KeyStates combineKeyStates(const KeyStates& x);
 	
 	KeyStates filterKeyStates(const KeyStates& x, const KeyStates& ym1);
 	
-	std::array<Vec4, kMaxTouches> findTouches(const KeyStates& keyStates, const MLSignal& z);
+	std::array<Vec4, kMaxTouches> findTouches(const KeyStates& keyStates);
+	
+	std::array<Vec4, kMaxTouches> combineTouches(const std::array<Vec4, kMaxTouches>& t);
+	
+
 	
 	
 	std::array<Vec4, kMaxTouches> findClusters(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
 
 	int getFreeIndex(std::array<Touch, kMaxTouches> t);
 
-	std::array<Vec4, kMaxTouches> filterTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, const MLSignal& z);
+	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	
-	std::array<Vec4, kMaxTouches> filterTouchesSimple(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, const MLSignal& z);
+	std::array<Vec4, kMaxTouches> filterTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	
-	void outputTouches();
+	void outputTouches(std::array<Vec4, TouchTracker::kMaxTouches> touches);
 	
 	
 	SensorBitsArray mThresholdBits;
@@ -399,6 +403,7 @@ private:
 	std::array<Vec4, kMaxTouches> mTouchesRawOut;
 	std::mutex mTouchesRawOutMutex;	
 	std::array<Vec4, kMaxTouches> mTouches;
+	std::array<Vec4, kMaxTouches> mTouchesMatch1;
 	std::array<Vec4, kMaxTouches> mTouches1;
 	std::array<Vec4, kMaxTouches> mTouchesOut;
 	std::mutex mTouchesOutMutex;	

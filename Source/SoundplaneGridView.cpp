@@ -272,8 +272,7 @@ void SoundplaneGridView::renderXYGrid()
 			float x = touches(xColumn, t);
 			float y = touches(yColumn, t);
 			
-			Vec2 xyPos(x, y);
-			Vec2 gridPos = mpModel->xyToKeyGrid(xyPos);
+			Vec2 gridPos(x, y);
 			float tx = mKeyRangeX.convert(gridPos.x());
 			float ty = mKeyRangeY.convert(gridPos.y());
 			float tz = touches(zColumn, t);
@@ -318,7 +317,7 @@ void SoundplaneGridView::renderXYGrid()
 
 				if((age > 0))
 				{
-					Vec2 gridPos = mpModel->xyToKeyGrid(Vec2(x, y));
+					Vec2 gridPos(x, y);
 					float px = mKeyRangeX.convert(gridPos.x());
 					float py = mKeyRangeY.convert(gridPos.y());
 					glVertex2f(px, py);	
@@ -506,6 +505,7 @@ void SoundplaneGridView::renderPings()
 		{
 			if(!p) break; // each array of spans is null-terminated
 			
+			// pings are in sensor coordinates
 			float x = mSensorRangeX.convert(p.x());
 			float y = mSensorRangeY.convert(j);
 			float z = p.y();
@@ -771,8 +771,8 @@ void SoundplaneGridView::renderRawTouches()
 	{
 		if(!inx) break;
 		
-		float x = mSensorRangeX.convert(inx.x());
-		float y = mSensorRangeY.convert(inx.y());
+		float x = mKeyRangeX.convert(inx.x());
+		float y = mKeyRangeY.convert(inx.y());
 
 		Vec4 dotColor(MLGL::getIndicatorColor(i));
 		//	dotColor[3] = z*10.f;
@@ -805,8 +805,6 @@ void SoundplaneGridView::renderTouches()
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	
 	setupOrthoView();
-	int gridWidth = 30; // Soundplane A TODO get from tracker
-	int gridHeight = 5;
 	
 	float dotSize = 200.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
 	float displayScale = mpModel->getFloatProperty("display_scale");
@@ -819,8 +817,8 @@ void SoundplaneGridView::renderTouches()
 		Vec4 t = xs[i];
 		if(t.z() > 0.f)
 		{
-			float x = mSensorRangeX.convert(t.x());
-			float y = mSensorRangeY.convert(t.y());
+			float x = mKeyRangeX.convert(t.x());
+			float y = mKeyRangeY.convert(t.y());
 			
 			int age = t.w();	
 			

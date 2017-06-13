@@ -1123,14 +1123,19 @@ void SoundplaneModel::sendTouchDataToZones()
 			mTouchFrame(zColumn, i) = z;
 
 			// get fractional key grid position (Soundplane A)
-			Vec2 keyXY = xyToKeyGrid(Vec2(x, y));
-            float kgx = keyXY.x();
-            float kgy = keyXY.y();
+		//	Vec2 keyXY = xyToKeyGrid(Vec2(x, y));
+          //  float kgx = keyXY.x();
+           // float kgy = keyXY.y();
+			float kgx = x;
+			float kgy = y;
+			Vec2 keyXY (x, y);
 
             // get integer key
-            int ix = (int)(keyXY.x());
-            int iy = (int)(keyXY.y());
-
+        //    int ix = (int)(keyXY.x());
+          //  int iy = (int)(keyXY.y());
+			int ix = (int)x;
+			int iy = (int)y;
+			
             // apply hysteresis to raw position to get current key
             // hysteresis: make it harder to move out of current key
             if(age == 1)
