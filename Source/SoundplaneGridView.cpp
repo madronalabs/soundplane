@@ -232,11 +232,11 @@ void SoundplaneGridView::renderXYGrid()
 			Vec4 dataColor = vlerp(gray, lightGray, mix);
 			
 			// mark sensor junction if over threshold
-			bool t = thresholds[j*kSensorCols + i];
-			
+			bool t = thresholds[j*kSensorCols + i];			
 			if(t)
 			{
-				dataColor = green;
+				dataColor[0]*= 0.5f;
+				dataColor[2]*= 0.5f;
 			}
 			
 			glColor4fv(&dataColor[0]);
@@ -749,13 +749,10 @@ void SoundplaneGridView::renderKeyStates()
 void SoundplaneGridView::renderRawTouches()
 {
 	if (!mpModel) return;
-	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
-	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
-	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	
 	setupOrthoView();
 
-	float dotSize = 200.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
 	float displayScale = mpModel->getFloatProperty("display_scale");
 		
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -773,19 +770,18 @@ void SoundplaneGridView::renderRawTouches()
 		
 		float x = mKeyRangeX.convert(inx.x());
 		float y = mKeyRangeY.convert(inx.y());
-
+		float z = inx.z();
+		
 		Vec4 dotColor(MLGL::getIndicatorColor(i));
-		//	dotColor[3] = z*10.f;
 		dotColor[3] = 0.5f;
 		glColor4fv(&dotColor[0]);
 		
 		// draw dot on surface
 		Vec2 pos(x, y);
-		//float z = viewSignal->getInterpolatedLinear(p);
-		MLGL::drawDot(pos, inx.z()*dotSize*displayScale);
+		MLGL::drawDot(pos, z*dotSize*displayScale);
 		
 		// cross in center
-		float k = dotSize*0.04f;
+		float k = dotSize*0.01f;
 		dotColor[3] = 1.0f;
 		glColor4fv(&dotColor[0]);
 		MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
@@ -800,48 +796,47 @@ void SoundplaneGridView::renderRawTouches()
 void SoundplaneGridView::renderTouches()
 {
 	if (!mpModel) return;
-	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
-	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
-	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	
 	setupOrthoView();
 	
-	float dotSize = 200.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
 	float displayScale = mpModel->getFloatProperty("display_scale");
-
-	// draw touch sums colored by index
-	std::array<Vec4, TouchTracker::kMaxTouches> xs = mpModel->getTouches();	
 	
-	for(int i = 0; i < TouchTracker::kMaxTouches; ++i)
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glDisable(GL_LINE_SMOOTH);
+	glLineWidth(1.0*mViewScale);
+	
+	// draw intersections colored by group
+	auto xs = mpModel->getTouches();
+	int rowInt = 0;
+	int i = 0;
+	for(auto inx : xs)
 	{
-		Vec4 t = xs[i];
-		if(t.z() > 0.f)
-		{
-			float x = mKeyRangeX.convert(t.x());
-			float y = mKeyRangeY.convert(t.y());
-			
-			int age = t.w();	
-			
-			Vec4 dotColor(MLGL::getIndicatorColor(i));
-			dotColor[3] = 0.5f;
-			glColor4fv(&dotColor[0]);
-			
-			// draw dot on surface
-			Vec2 pos(x, y);
-			//float z = viewSignal->getInterpolatedLinear(p);
-			MLGL::drawDot(pos, t.z()*dotSize*displayScale);
-			
-			// cross in center
-			float k = dotSize*0.04f;
-			dotColor[3] = 1.0f;
-			glColor4fv(&dotColor[0]);
-			MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
-			MLGL::drawLine(x, y - k, x, y + k, 2.0f*mViewScale);
-
-			
-		}
+		if(!inx) break;
+		
+		float x = mKeyRangeX.convert(inx.x());
+		float y = mKeyRangeY.convert(inx.y());
+		float z = inx.z();
+		
+		Vec4 dotColor(MLGL::getIndicatorColor(i));
+		dotColor[3] = 0.5f;
+		glColor4fv(&dotColor[0]);
+		
+		// draw dot on surface
+		Vec2 pos(x, y);
+		MLGL::drawDot(pos, z*dotSize*displayScale);
+		
+		// cross in center
+		float k = dotSize*0.01f;
+		dotColor[3] = 1.0f;
+		glColor4fv(&dotColor[0]);
+		MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
+		MLGL::drawLine(x, y - k, x, y + k, 2.0f*mViewScale);
+		
+		rowInt++;
+		i++;
 	}
-
 }
 
 void SoundplaneGridView::renderZGrid()

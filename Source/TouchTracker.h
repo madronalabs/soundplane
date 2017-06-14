@@ -311,6 +311,7 @@ private:
 	float mSmoothing;
 	float mForceCurve;
 	
+	float mFilterThreshold;
 	float mOnThreshold;
 	float mOffThreshold;
 		
@@ -341,9 +342,6 @@ private:
 	
 	std::array<Vec4, kMaxTouches> combineTouches(const std::array<Vec4, kMaxTouches>& t);
 	
-
-	
-	
 	std::array<Vec4, kMaxTouches> findClusters(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
 
 	int getFreeIndex(std::array<Touch, kMaxTouches> t);
@@ -351,6 +349,7 @@ private:
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	
 	std::array<Vec4, kMaxTouches> filterTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
+	std::array<Vec4, kMaxTouches> clampTouches(const std::array<Vec4, kMaxTouches>& x);
 	
 	void outputTouches(std::array<Vec4, TouchTracker::kMaxTouches> touches);
 	

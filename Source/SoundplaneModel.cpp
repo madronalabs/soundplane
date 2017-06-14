@@ -1111,7 +1111,6 @@ void SoundplaneModel::sendTouchDataToZones()
         z = mTouchFrame(zColumn, i);
 		age = mTouchFrame(ageColumn, i);
 		
-		// MLTEST don't try to get dz at start of touch. delay gate + velocity by ~5ms to calc note-on vel.
  //        dz = mTouchFrame(dzColumn, i);
 		
 		if(age > 0)

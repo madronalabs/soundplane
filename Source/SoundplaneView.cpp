@@ -405,7 +405,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setDefault(0.25);	
 
 	pD = page1->addDial("lopass", dialRect.withCenter(7, dialY), "lopass", c2);
-	pD->setRange(1., 250., 1);	
+	pD->setRange(1., 500., 1);	
 	pD->setDefault(100.);	
 
 	
