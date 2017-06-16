@@ -623,7 +623,7 @@ void TouchTracker::clear()
 
 void TouchTracker::setThresh(float f) 
 { 
-	mOnThreshold = f; 
+	mOnThreshold = clamp(f, 0.0005f, 1.f); 
 	mFilterThreshold = mOnThreshold * 0.5f; 
 	mOffThreshold = mOnThreshold * 0.75f; 
 }
@@ -688,35 +688,12 @@ void TouchTracker::process(int)
 			mCalibrator.normalizeInput(mFilteredInput);
 		}
 				
-//		mFilteredInputX = mFilteredInput;
-//		mFilteredInputY = mFilteredInput;
-		
 		// convolve input with 3x3 smoothing kernel.
+		// a lot of filtering is needed here to get good position accuracy for Soundplane A.
 		float kc, kex, key, kk;	
-		
-//		kc = 16./32.; kex = 4./32.; key = 2./32.; kk=1./32.;	
-//		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
-//		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
-
-//		kc = 16./48.; kex = 8./48.; key = 4./48.; kk=2./48.;	
-//		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
-//		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
-		
-//		kc = 4./18.; kex = 3./18.; key = 2./18.; kk=1./18.;
-//		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
-//		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
-		
-		kc = 8./28.; kex = 6./28.; key = 2./28.; kk=1./28.;
+		kc = 4./16.; kex = 2./16.; key = 2./16.; kk=1./16.;
 		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
 		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
-		
-		/*
-		kc = 4./8.; kex = 2./8.; key = 0.; kk=0.;	
-		mFilteredInputX.convolve3x3xy(kc, kex, key, kk);
-		
-		kc = 4./8.; kex = 0.; key = 2./8.; kk=0.;	
-		mFilteredInputY.convolve3x3xy(kc, kex, key, kk);
-		*/
 		
 		// MLTEST
 		mCalibratedSignal = mFilteredInput;
@@ -734,20 +711,24 @@ void TouchTracker::process(int)
 			
 			mKeyStates = pingsToKeyStates(mPingsHorizRaw, mPingsVertRaw, mKeyStates1);
 			
-//			mKeyStates = combineKeyStates(mKeyStates);
-//			mKeyStates = filterKeyStates(mKeyStates, mKeyStates1);
-			
+			mKeyStates = reduceKeyStates(mKeyStates);
+
+			mKeyStates = filterKeyStates(mKeyStates, mKeyStates1);
 			mKeyStates1 = mKeyStates;
+
+			mKeyStates = combineKeyStates(mKeyStates);
 			
+							
 			// get touches, in key coordinates
 			mTouchesRaw = findTouches(mKeyStates);
 			
 //			mTouches = combineTouches(mTouchesRaw);
 			mTouches = (mTouchesRaw);
 			
-			mTouches = matchTouches(mTouches, mTouches1);
+			mTouches = matchTouches(mTouches, mTouchesMatch1);
+			mTouchesMatch1 = mTouches;
 			
-			mTouches = filterTouches(mTouches, mTouches1);
+//			mTouches = filterTouches(mTouches, mTouches1);
 			mTouches1 = mTouches;
 			
 			mTouches = clampTouches(mTouches);
@@ -1103,8 +1084,15 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 			int kya = clamp(static_cast<int>(floorf(py)), 0, kKeyRows - 1);
 			Vec4& xaya = (keyStates.data[kya])[kxa];
 			
-			xaya.setX(xaya.x() + pz*px);
-			xaya.setZ(xaya.z() + pz);
+			if(0)
+			if(pz > xaya.z())
+			{
+				xaya.setX(px);
+				xaya.setZ(pz);
+			}
+			
+				xaya.setX(xaya.x() + pz*px);
+				xaya.setZ(xaya.z() + pz);
 			
 			Vec4& zxaya = (zValues.data[kya])[kxa];
 			zxaya.setZ(zxaya.z() + 1.f);	
@@ -1130,10 +1118,18 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 			
 			int kxa = clamp(static_cast<int>(floorf(px)), 0, kKeyCols - 1);
 			int kya = clamp(static_cast<int>(floorf(py)), 0, kKeyRows - 1);
-			Vec4& xaya = (keyStates.data[kya])[kxa];				
-			xaya.setY(xaya.y() + pz*py);
-			xaya.setW(xaya.w() + pz);	
-											
+			Vec4& xaya = (keyStates.data[kya])[kxa];		
+			
+			if(0)
+			if(pz > xaya.w())
+			{
+				xaya.setY(py);
+				xaya.setW(pz);
+			}
+
+				xaya.setY(xaya.y() + pz*py);
+				xaya.setW(xaya.w() + pz);	
+			
 			Vec4& zxaya = (zValues.data[kya])[kxa];
 			zxaya.setW(zxaya.w() + 1.f);	
 		}
@@ -1167,7 +1163,7 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 		
 	}
 	
-	float maxK = 0.f;
+	float maxZ = 0.f;
 	
 	// get x and y centroids 
 	{
@@ -1183,8 +1179,6 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 				float cw = key.w();
 				
 				Vec4 zVec = (zValues.data[j])[i];
-				float zn = zVec.z();
-				float wn = zVec.w();
 
 				if((cz > 0.f) && (cw > 0.f))
 				{
@@ -1192,16 +1186,28 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 					key.setX(cx/cz - i);
 					key.setY(cy/cw - j);
 					
-					// multiplying x by y pings means both must be present
-					float k = sqrtf((cz/zn)*(cw/wn)) * 8.f;			
+					float z;
 					
-					maxK = max(k, maxK); // TEST
+					if(0)
+					{
+					// TEST
+					key.setX(cx - i);
+					key.setY(cy - j);
+					z = sqrtf((cz)*(cw)) * 8.f;			
+					}
+					
+					// multiplying x by y pings means both must be present
+					float zn = zVec.z();
+					float wn = zVec.w();
+					z = sqrtf((cz/zn)*(cw/wn)) * 8.f;			
+					
+					maxZ = max(z, maxZ); // TEST
 					
 					// reject below a low threshold here to reduce # of key states we have to process
 					const float kMinKeyZ = 0.002f;
-					if(k < kMinKeyZ) k = 0.f;
+					if(z < kMinKeyZ) z = 0.f;
 					
-					key.setZ(k);
+					key.setZ(z);
 				}
 				else
 				{
@@ -1209,8 +1215,11 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 					
 					// TODO can this be dropped and history only in touch filters?
 					
-					Vec4 prevKey = ym1.data[j][i];
-					key = Vec4(prevKey.x(), prevKey.y(), 0.f, 0.f);
+				//	Vec4 prevKey = ym1.data[j][i];
+					//	key = Vec4(prevKey.x(), prevKey.y(), 0.f, 0.f);
+					
+					// TEST
+					key = Vec4(0.5f, 0.5f, 0.f, 0.f);
 					
 				//	key = Vec4(0.5f, 0.5f, 0.f, 0.f);
 				}
@@ -1221,156 +1230,215 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 		}
 	}
 	
-//	debug() << "k: " << maxK << "\n";
+//	debug() << " max z: " << maxZ << "\n";
 
 	
 	return keyStates;
 }
 
 
-TouchTracker::KeyStates TouchTracker::combineKeyStates(const TouchTracker::KeyStates& x)
+// before filtering key states, ensure that there is no more than one centroid in any corner of 4 keys.
+// this will cause all sums to add up to the original value after filtering.
+//
+TouchTracker::KeyStates TouchTracker::reduceKeyStates(const TouchTracker::KeyStates& in)
 {
-	TouchTracker::KeyStates vert;
+	TouchTracker::KeyStates out;
 	
-	// combine vertically
-	{			
-		int j = 0;
-		for(auto& outputRow : vert.data) 
+	for(int j=0; j<kKeyRows - 1; ++j)
+	{
+		for(int i=0; i<kKeyCols - 1; ++i)
 		{
-			int i = 0;
-			for(Vec4& outputKey : outputRow)
-			{
-				Vec4 k2 = x.data[j][i];
-				float yCentroid, newZ;
-				if(j == 0)
-				{
-					Vec4 k3 = x.data[j + 1][i];
-					
-					float y2 = k2.y();
-					float y3 = k3.y() + 1.f;
-					float c2 = k2.z();
-					float c3 = k3.z();
-					float cSum = c2 + c3;
-					float ycSum = y2*c2 + y3*c3;					
-					yCentroid = (cSum > 0.f) ? (ycSum/cSum) : y2;	
-					newZ = (c2 > c3) ? c2 : 0.f;
-					outputKey = Vec4(k2.x(), yCentroid, newZ, 0.f);	
-				}
-				else if(j < kKeyRows - 1)
-				{
-					Vec4 k1 = x.data[j - 1][i];
-					Vec4 k3 = x.data[j + 1][i];
-					
-					float y1 = k1.y() - 1.f;
-					float y2 = k2.y();
-					float y3 = k3.y() + 1.f;
-					float c1 = k1.z();
-					float c2 = k2.z();
-					float c3 = k3.z();
-					float cSum = c1 + c2 + c3;
-					float ycSum = y1*c1 + y2*c2 + y3*c3;					
-					yCentroid = (cSum > 0.f) ? (ycSum/cSum) : y2;	
-					newZ = ((c2 > c1) && (c2 > c3)) ? c2 : 0.f;
-					outputKey = Vec4(k2.x(), yCentroid, newZ, 0.f);		 
-				}
-				else
-				{
-					Vec4 k1 = x.data[j - 1][i];
-					
-					float y1 = k1.y() - 1.f;
-					float y2 = k2.y();
-					float c1 = k1.z();
-					float c2 = k2.z();
-					float cSum = c1 + c2;
-					float ycSum = y1*c1 + y2*c2;					
-					yCentroid = (cSum > 0.f) ? (ycSum/cSum) : y2;	
-					newZ = (c2 > c1) ? c2 : 0.f;
-					outputKey = Vec4(k2.x(), yCentroid, newZ, 0.f);	
-				}
-				
-				i++;
-			}
-			j++;
-		}
-	}
 
-	// combine horizontally
-	TouchTracker::KeyStates y;
-	{			
-		int j = 0;
-		for(auto& outputRow : y.data) 
-		{
-			auto& inputRow = vert.data[j];
+			Vec4& aOut = out.data[j][i];
+			Vec4& bOut = out.data[j][i + 1];
+			Vec4& cOut = out.data[j + 1][i];
+			Vec4& dOut = out.data[j + 1][i + 1];
+			Vec4 a = in.data[j][i];
+			Vec4 b = in.data[j][i + 1];
+			Vec4 c = in.data[j + 1][i];
+			Vec4 d = in.data[j + 1][i + 1];
 			
-			int i = 0;
-			for(Vec4& outputKey : outputRow)
+			float ax = a.x();
+			float ay = a.y();
+			float az = a.z();
+			float bx = b.x() + 1.f;
+			float by = b.y();
+			float bz = b.z();
+			float cx = c.x();
+			float cy = c.y() + 1.f;
+			float cz = c.z();
+			float dx = d.x() + 1.f;
+			float dy = d.y() + 1.f;
+			float dz = d.z();
+			
+			int pa = (a.z() > 0.f) && (a.x() > 0.5f) && (a.y() > 0.5f);
+			int pb = (b.z() > 0.f) && (b.x() < 1.5f) && (b.y() > 0.5f);
+			int pc = (c.z() > 0.f) && (c.x() > 0.5f) && (c.y() < 1.5f);
+			int pd = (d.z() > 0.f) && (d.x() < 1.5f) && (d.y() < 1.5f);
+			
+			int pBits = (pd << 3) | (pc << 2) | (pb << 1) | pa;
+			float kx, ky, kz;
+			float sxz, syz, sz;
+			
+			bool doWrite = true;
+			
+			switch(pBits)
 			{
-				Vec4 k2 = inputRow[i];
-				float xCentroid, newZ;
-
-				if(i == 0)
-				{
-					Vec4 k3 = inputRow[i + 1];
+				case 0: 
+					doWrite = false;
+					break;
+				case 1: 
+					kx = ax;
+					ky = ay;
+					kz = az;
+					break;
+				case 2:
+					kx = bx;
+					ky = by;
+					kz = bz;
+					break;
+				case 3: // a, b
+					sxz = ax*az + bx*bz;
+					syz = ay*az + by*bz;
+					sz = az + bz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(az, bz);
+					break;
+				case 4:
+					kx = cx;
+					ky = cy;
+					kz = cz;
+					break;
+				case 5: // a, c
+					sxz = ax*az + cx*cz;
+					syz = ay*az + cy*cz;
+					sz = az + cz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(az, cz);
+					break;
+				case 6: // b, c
+					sxz = bx*bz + cx*cz;
+					syz = by*bz + cy*cz;
+					sz = bz + cz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(bz, cz);
+					break;
+				case 7: // a, b, c
+					sxz = ax*az + bx*bz + cx*cz;
+					syz = ay*az + by*bz + cy*cz;
+					sz = az + bz + cz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(az, max(bz, cz));
+					break;
+				case 8:
+					kx = dx;
+					ky = dy;
+					kz = dz;
+					break;
+				case 9: // a, d
+					sxz = ax*az + dx*dz;
+					syz = ay*az + dy*dz;
+					sz = az + dz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(az, dz);
+					break;
+				case 10: // b, d
+					sxz = bx*bz + dx*dz;
+					syz = by*bz + dy*dz;
+					sz = bz + dz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(bz, dz);
+					break;
+				case 11: // a, b, d
+					sxz = ax*az + bx*bz + dx*dz;
+					syz = ay*az + by*bz + dy*dz;
+					sz = az + bz + dz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(az, max(bz, dz));
+					break;
+				case 12: // c, d
+					sxz = cx*cz + dx*dz;
+					syz = cy*cz + dy*dz;
+					sz = cz + dz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(cz, dz);
+					break;
+				case 13: // a, c, d
+					sxz = ax*az + cx*cz + dx*dz;
+					syz = ay*az + cy*cz + dy*dz;
+					sz = az + cz + dz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(az, max(cz, dz));
+					break;
+				case 14: // b, c, d
+					sxz = bx*bz + cx*cz + dx*dz;
+					syz = by*bz + cy*cz + dy*dz;
+					sz = bz + cz + dz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(bz, max(cz, dz));
+					break;
+				case 15: // a, b, c, d
+					sxz = ax*az + bx*bz + cx*cz + dx*dz;
+					syz = ay*az + by*bz + cy*cz + dy*dz;
+					sz = az + bz + cz + dz;
+					kx = sxz/sz;
+					ky = syz/sz;
+					kz = max(az, max(bz, max(cz, dz)));
+					break;
 					
-					// get centroid of position with respect to curvature, noting that positions are key-relative
-					float x2 = k2.x();
-					float x3 = k3.x() + 1.f;
-					float c2 = k2.z();
-					float c3 = k3.z();
-					float cSum = c2 + c3;
-					float xcSum = x2*c2 + x3*c3;
-					
-					// note that the centroid may be outside the key, which is fine!
-					xCentroid = (cSum > 0.f) ? (xcSum/cSum) : x2;	
-					newZ = (c2 > c3) ? c2 : 0.f;
-				}
-				else if(i < kKeyCols - 1)
-				{
-					Vec4 k1 = inputRow[i - 1];
-					Vec4 k3 = inputRow[i + 1];
-
-					float x1 = k1.x() - 1.f;
-					float x2 = k2.x();
-					float x3 = k3.x() + 1.f;
-					float c1 = k1.z();
-					float c2 = k2.z();
-					float c3 = k3.z();
-					float cSum = c1 + c2 + c3;
-					float xcSum = x1*c1 + x2*c2 + x3*c3;
-					xCentroid = (cSum > 0.f) ? (xcSum/cSum) : x2;	
-					newZ = ((c2 > c1) && (c2 > c3)) ? c2 : 0.f;
-				}
-				else
-				{
-					Vec4 k1 = inputRow[i - 1];
-					
-					float x1 = k1.x() - 1.f;
-					float x2 = k2.x();
-					float c1 = k1.z();
-					float c2 = k2.z();
-					float cSum = c1 + c2;
-					float xcSum = x1*c1 + x2*c2;
-					xCentroid = (cSum > 0.f) ? (xcSum/cSum) : x2;	
-					newZ = (c2 > c1) ? c2 : 0.f;
-				}
-				
-				outputKey = Vec4(xCentroid, k2.y(), newZ, 0.f);					
-				i++;
 			}
-			j++;
+
+
+			if(doWrite)
+			{
+				Vec4* outputs[4] {&aOut, &bOut, &cOut, &dOut}; // OK
+
+
+				// get position centroid
+				
+				// write centroid back to the proper state for the corner it's in
+				int right = kx > 1.f;
+				int top = ky > 1.f;
+				int qBits = (top << 1) | right;
+					
+				if(right) kx -= 1.f;
+				if(top) ky -= 1.f;
+				
+				*outputs[qBits] = Vec4(kx, ky, kz, 0.f);
+
+
+			}
 		}
 	}
 	
-	return y;
+		
+	return out;
 }
 
 // filter location and curvature in each key state
 TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeyStates& x, const TouchTracker::KeyStates& ym1)
 {
-	const float mxy = 0.05f;
-	const float mkPos = 0.1f;
-	const float mk = 0.1f;
 
+	// get z coeffs from user setting
+	const float sr = 1000.f;
+	const float kZFreq = 50.f;
+	
+	float omegaUp = kZFreq*kMLTwoPi/sr;
+	float kUp = expf(-omegaUp);
+	float a0Up = 1.f - kUp;
+	float b1Up = kUp;
+	
+	
 	TouchTracker::KeyStates y;
 	int j = 0;
 	for(auto& yRow : y.data) 
@@ -1383,37 +1451,23 @@ TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeySta
 			Vec4 xKey = xRow[i];
 			Vec4 ym1Key = ym1Row[i];
 			
-			float xn, yn, kn;	
+			float newZ = 0.f;
 			
 			float x = xKey.x();
 			float y = xKey.y();
-			float k = xKey.z();
-			float prevX = ym1Key.x();
-			float prevY = ym1Key.y();
-			float prevK = ym1Key.z();
-			
-			xn = x;//mxy*x + (1.0f - mxy)*prevX;
-			yn = y;//mxy*y + (1.0f - mxy)*prevY;	
-			
-			float dk = k - prevK;
-			if(dk > 0.f)
-				kn = mkPos*k + (1.0f - mkPos)*prevK;		
-			else
-				kn = mk*k + (1.0f - mk)*prevK;		
-			
-			
-			kn = k;
-			
-			kn = clamp(kn, 0.f, 1.0f);
+			float z = xKey.z();
+			float z1 = ym1Key.z();
 
-			yKey = Vec4(xn, yn, kn, 0.f);
+			newZ = (z*a0Up) + (z1*b1Up);
+		
+			yKey = Vec4(x, y, newZ, 0.f);
 			i++;
 		}
 		j++;
 	}
 	
 	// display within-ness
-	if(0)
+
 	if(mCount == 0)
 	{
 		debug() << "\n within:\n";
@@ -1435,6 +1489,160 @@ TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeySta
 }
 
 
+TouchTracker::KeyStates TouchTracker::combineKeyStates(const TouchTracker::KeyStates& pIn)
+{
+	TouchTracker::KeyStates in = pIn;
+	TouchTracker::KeyStates out;
+	
+	for(int j=0; j<kKeyRows - 1; ++j)
+	{
+		for(int i=0; i<kKeyCols - 1; ++i)
+		{
+			Vec4& aOut = out.data[j][i];
+			Vec4& bOut = out.data[j][i + 1];
+			Vec4& cOut = out.data[j + 1][i];
+			Vec4& dOut = out.data[j + 1][i + 1];
+			Vec4& a = in.data[j][i];
+			Vec4& b = in.data[j][i + 1];
+			Vec4& c = in.data[j + 1][i];
+			Vec4& d = in.data[j + 1][i + 1];
+			
+			float ax = a.x();
+			float ay = a.y();
+			float az = a.z();
+			float bx = b.x() + 1.f;
+			float by = b.y();
+			float bz = b.z();
+			float cx = c.x();
+			float cy = c.y() + 1.f;
+			float cz = c.z();
+			float dx = d.x() + 1.f;
+			float dy = d.y() + 1.f;
+			float dz = d.z();
+			
+			int pa = (a.z() > 0.f) && (a.x() > 0.5f) && (a.y() > 0.5f);
+			int pb = (b.z() > 0.f) && (b.x() <= 1.5f) && (b.y() > 0.5f);
+			int pc = (c.z() > 0.f) && (c.x() > 0.5f) && (c.y() <= 1.5f);
+			int pd = (d.z() > 0.f) && (d.x() <= 1.5f) && (d.y() <= 1.5f);
+			
+			int pBits = (pd << 3) | (pc << 2) | (pb << 1) | pa;
+			float kx, ky, kz;
+			float sxz = 0;
+			float syz = 0;
+			float sz = 0;
+
+			// add z and make position centroid for any keys at this corner
+			if(pa)
+			{
+				a.setZ(0.f);
+				sxz += ax*az;
+				syz += ay*az;
+				sz += az;
+			}
+			if(pb)
+			{
+				b.setZ(0.f);
+				sxz += bx*bz;
+				syz += by*bz;
+				sz += bz;
+			}
+			if(pc)
+			{
+				c.setZ(0.f);
+				sxz += cx*cz;
+				syz += cy*cz;
+				sz += cz;
+			}
+			if(pd)
+			{
+				d.setZ(0.f);
+				sxz += dx*dz;
+				syz += dy*dz;
+				sz += dz;
+			}
+			if(sz > mFilterThreshold)
+			{
+				kx = sxz/sz;
+				ky = syz/sz;
+				kz = sz;
+				
+				Vec4* inputs[4] {&a, &b, &c, &d}; // OK
+				Vec4* outputs[4] {&aOut, &bOut, &cOut, &dOut}; // OK
+				
+				
+ 				// get position centroid
+				
+				// write corner centroid back to the proper key
+				int right = kx > 1.f;
+				int top = ky > 1.f;
+				int qBits = (top << 1) | right;
+				
+				if(right) kx -= 1.f;
+				if(top) ky -= 1.f;
+
+				
+			//	debug() << "[" << sxz << "/" << syz << "/" << sz << " -> " << kx << "/" << ky << "]";
+
+			debug() << qBits << " "; // qbits is WRONG
+				
+				
+				Vec4 prev = *outputs[qBits];
+				float prevX = prev.x();
+				float prevY = prev.y();
+				float prevZ = prev.z();
+				
+				float esxz = prevX*prevZ + kx*kz;
+				float esyz = prevY*prevZ + ky*kz;
+				float esz = prevZ + kz;
+				float ekx = esxz/esz;
+				float eky = esyz/esz;
+				
+				*outputs[qBits] = Vec4(ekx, eky, esz, 0.f);
+				
+	//			debug() << qBits << " ";
+				
+			}
+		}		
+	}
+	
+	
+	
+	
+	if(mCount == 0)
+	{
+		debug() << "\n combine in:\n";
+		
+		debug() << std::setprecision(2);
+		
+		for(auto& keyStatesArray : pIn.data)
+		{
+			for(auto& k : keyStatesArray)
+			{
+				debug() << k << " ";
+			}
+			
+			debug() << "\n";
+		}
+		debug() << "\n combine out:\n";
+		
+		for(auto& keyStatesArray : out.data)
+		{
+			for(auto& k : keyStatesArray)
+			{
+				debug() << k << " ";
+			}
+			
+			debug() << "\n";
+		}
+		
+	}
+
+	
+	return out;
+}
+
+
+
 // look at key states to find touches.
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const TouchTracker::KeyStates& keyStates)
 {
@@ -1452,7 +1660,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 			float y = key.y();
 			float z = key.z();
 
-			if(z > 0.f) 
+			if(z > mOffThreshold) 
 			{
 				float sensorX = (i + x);
 				float sensorY = (j + y);
@@ -1681,10 +1889,8 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 		currTouches[i] = vec4ToTouch(x[i]);
 		currTouches[i].currIdx = i;
 	}
-
 	
 	// categorize touches into one of continued, new, or removed.
-	
 	
 	// for each current touch, find closest distance to a previous touch
 	for(int i=0; i<n; ++i)
@@ -1700,7 +1906,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 				Vec2 prevPos(prev.x, prev.y);
 				Vec2 dab = currPos - prevPos;
 				float dist = dab.magnitude(); // NOTE (aPos - bPos).magnitude FAILS! TODO	
-			//	if(dist < kMaxConnectDist)
+				if(dist < kMaxConnectDist)
 				{
 					if(dist < currTouches[i].minDist)
 					{
@@ -1730,40 +1936,17 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 		
 		if(connectedIdx >= 0)
 		{
-			Touch& closestPrevTouch = prevTouches[connectedIdx];
+			Touch& connectedPrevTouch = prevTouches[connectedIdx];
 			
-			if (!closestPrevTouch.occupied)
+			if (!connectedPrevTouch.occupied)
 			{
 				// touch is continued
 				// write new touch and occupy previous
 				newTouches[connectedIdx] = currTouches[i];
-				
-				closestPrevTouch.occupied = true;
+				connectedPrevTouch.occupied = true;
 				
 				// increment age
-				// newTouches[connectedIdx].age = (closestPrevTouch.age + 1);
-				//	newTouches[connectedIdx].z = 0.005f;
-				
-				// mark as connected.
-				
-				
-				/*
-				Vec2 prevPos(closestPrevTouch.x, closestPrevTouch.y);
-				Vec2 currPos(currTouches[i].x, currTouches[i].y);
-
-				Vec2 dab = currPos - prevPos;
-				float dist = dab.magnitude(); // NOTE (aPos - bPos).magnitude FAILS! TODO	
-
-				if(dist < kMaxConnectDist)
-				{
-					newTouches[connectedIdx].age = prevTouches[connectedIdx].age + 1;
-				}
-				else
-				{
-					newTouches[connectedIdx].age = 1;
-				}				 
-				 */
-				
+				newTouches[connectedIdx].age = (connectedPrevTouch.age + 1);
 				
 				maxOccupiedIdx = max(maxOccupiedIdx, connectedIdx);
 				written = true;
@@ -1779,6 +1962,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 			if(freeIdx >= 0)
 			{
 				newTouches[freeIdx] = currTouches[i];
+				newTouches[freeIdx].age = 1;
 				maxOccupiedIdx = max(maxOccupiedIdx, freeIdx);
 			}
 		}
@@ -1849,7 +2033,6 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 }
 
 
-
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& in, const std::array<Vec4, TouchTracker::kMaxTouches>& inz1)
 {
 	float sr = 1000.f; // Soundplane A
@@ -1889,14 +2072,13 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const st
 		float x = in[i].x();
 		float y = in[i].y();
 		float z = in[i].z();
-		float w = in[i].w(); // new age, set by matchTouches, is 1 if touch is connected to previous.
+		float w = in[i].w(); 
 		
 		float x1 = inz1[i].x();
 		float y1 = inz1[i].y();
 		float z1 = inz1[i].z();
 		float w1 = inz1[i].w();
-		
-		
+				
 		float dx = (x1 - x);
 		float dy = (y1 - y);
 		float dist = sqrtf(dx*dx + dy*dy);
@@ -1919,16 +2101,16 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const st
 		else
 		{
 			newZ = (z*a0Down) + (z1*b1Down);				
-		}		
-		
+		}	
+
 		// filter position
-		if((z < mOnThreshold) && (dz < 0.f))
+		if(z < mOnThreshold)
 		{			
 			// decay, hold position
 			newX = x1;
 			newY = y1;
 		}
-		else if(!connected)
+		else if(!connected) 
 		{
 			// new touch, set new position
 			newX = x;
@@ -1963,6 +2145,10 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouches(const st
 		if(!gate)
 		{
 			newW = 0;
+		}
+		else if(!connected)
+		{
+			newW = 1;
 		}
 		else
 		{
@@ -2022,9 +2208,12 @@ void TouchTracker::outputTouches(std::array<Vec4, TouchTracker::kMaxTouches> tou
 		
 		if(!mCount)
 		{
-			debug() << "    " << t << "\n";
+			debug() << "    " << t ;
 		}
 	}
+	
+	if(!mCount)
+		debug() << "\n";
 }
 
 void TouchTracker::setDefaultNormalizeMap()

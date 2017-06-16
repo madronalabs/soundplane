@@ -334,6 +334,7 @@ private:
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> correctPings(const VectorArray2D<ARRAYS, ARRAY_LENGTH>& inPings);
 	
 	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert, const TouchTracker::KeyStates& ym1);
+	KeyStates reduceKeyStates(const KeyStates& x);
 	KeyStates combineKeyStates(const KeyStates& x);
 	
 	KeyStates filterKeyStates(const KeyStates& x, const KeyStates& ym1);

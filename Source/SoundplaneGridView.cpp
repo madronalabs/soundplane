@@ -680,7 +680,7 @@ void SoundplaneGridView::renderKeyStates()
 
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
-	MLRange zRange(0.f, 0.002f, 0., 1.);
+	MLRange zRange(0.f, 0.01f, 0., 1.);
 	
 	
 	auto keyStates = mpModel->getKeyStates();
@@ -695,7 +695,7 @@ void SoundplaneGridView::renderKeyStates()
 			float y = key.y();// * 20.f * displayScale;
 			float z = key.z();
 			float w = key.w();
-			
+						
 			x = clamp(x, 0.f, 1.f);
 			y = clamp(y, 0.f, 1.f);
 
