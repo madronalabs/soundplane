@@ -57,24 +57,7 @@ void SoundplaneController::handleWidgetAction(MLWidget* w, MLSymbol action, MLSy
 		{
 			mpSoundplaneModel->beginCalibrate();
 		}
-		else if (p == "normalize")
-		{
-			mpSoundplaneModel->beginCalibrate();
-			mpSoundplaneModel->beginNormalize();
-			if(mpSoundplaneView)
-			{
-				MLWidget* pB = mpSoundplaneView->getWidget("normalize_cancel");
-				pB->getComponent()->setEnabled(true);
-			}
-		}
-		else if (p == "normalize_cancel")
-		{
-			mpSoundplaneModel->cancelNormalize();
-		}
-		else if (p == "normalize_default")
-		{
-			mpSoundplaneModel->setDefaultNormalize();
-		}
+
 		else if(p == "prev")
 		{
 			if(mpSoundplaneView)

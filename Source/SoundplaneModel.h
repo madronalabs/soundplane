@@ -161,11 +161,7 @@ public:
 	SoundplaneMIDIOutput& getMIDIOutput() { return mMIDIOutput; }
 
 	void setKymaMode(bool m);
-	void beginNormalize();
-	void cancelNormalize();
-	bool trackerIsCalibrating();
-	bool trackerIsCollectingMap();
-	void setDefaultNormalize();
+
 	Vec2 getTrackerCalibrateDims() { return Vec2(kCalibrateWidth, kCalibrateHeight); }
 	Vec2 xyToKeyGrid(Vec2 xy);
 

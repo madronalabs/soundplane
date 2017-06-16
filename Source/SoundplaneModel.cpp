@@ -135,7 +135,7 @@ SoundplaneModel::SoundplaneModel() :
 	mViewModeToSignalMap["pings horiz"] = &mCalibratedSignal;
 	mViewModeToSignalMap["pings vert"] = &mCalibratedSignal;
 	mViewModeToSignalMap["key states"] = &mCalibratedSignal;
-	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());	
+//	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());	
 	
 	// setup OSC default
 	setProperty("osc_service_name", kOSCDefaultStr);
@@ -419,11 +419,11 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			}
 			if(p == MLSymbol("tracker_calibration"))
 			{
-				mTracker.setCalibration(sig);
+//				mTracker.setCalibration(sig);
 			}
 			if(p == MLSymbol("tracker_normalize"))
 			{
-				mTracker.setNormalizeMap(sig);
+//				mTracker.setNormalizeMap(sig);
 			}
 
 		}
@@ -1644,67 +1644,6 @@ const MLSignal* SoundplaneModel::getSignalForViewMode(const std::string& m)
 	return 0;
 }
 
-const MLSignal& SoundplaneModel::getTrackerCalibrateSignal()
-{
-	return mTracker.getCalibrateSignal();
-}
-
-Vec3 SoundplaneModel::getTrackerCalibratePeak()
-{
-	return mTracker.getCalibratePeak();
-}
-
-bool SoundplaneModel::isWithinTrackerCalibrateArea(int i, int j)
-{
-	return mTracker.isWithinCalibrateArea(i, j);
-}
-
-// --------------------------------------------------------------------------------
-#pragma mark tracker calibration
-
-void SoundplaneModel::beginNormalize()
-{
-	if(getDeviceState() == kDeviceHasIsochSync)
-	{
-		mTracker.beginCalibrate();
-	}
-}
-
-void SoundplaneModel::cancelNormalize()
-{
-	if(getDeviceState() == kDeviceHasIsochSync)
-	{
-		mTracker.cancelCalibrate();
-	}
-}
-
-bool SoundplaneModel::trackerIsCalibrating()
-{
-	int r = 0;
-	if(getDeviceState() == kDeviceHasIsochSync)
-	{
-		r = mTracker.isCalibrating();
-	}
-	return r;
-}
-
-bool SoundplaneModel::trackerIsCollectingMap()
-{
-	int r = 0;
-	if(getDeviceState() == kDeviceHasIsochSync)
-	{
-		r = mTracker.isCollectingNormalizeMap();
-	}
-	return r;
-}
-
-void SoundplaneModel::setDefaultNormalize()
-{
-	if(getDeviceState() == kDeviceHasIsochSync)
-	{
-		mTracker.setDefaultNormalizeMap();
-	}
-}
 
 // JSON utilities
 

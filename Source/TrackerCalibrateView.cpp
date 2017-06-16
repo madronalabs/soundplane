@@ -99,11 +99,11 @@ void TrackerCalibrateView::renderOpenGL()
         float sh = myAspect/soundplaneAspect;	
         yRange.convertTo(MLRange(-sh, sh));	
             
-        if (mpModel->trackerIsCalibrating())
+        if (0)//(mpModel->trackerIsCalibrating())
         {	
             // draw stuff in immediate mode. TODO vertex buffers and modern GL code in general. 
             
-            if(mpModel->trackerIsCollectingMap())
+            if(0)//(mpModel->trackerIsCollectingMap())
             {
                 doneColor = blue;
             }
