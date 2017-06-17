@@ -50,33 +50,6 @@ typedef enum
 	ageColumn = 3
 } TouchSignalColumns;
 
-/*
-class Touch
-{
-public:
-	Touch();
-	Touch(float px, float py, float pz, float pdz);
-	~Touch() {}	
-	bool isActive() const {return (age > 0); } 
-	int key;
-	float x;
-	float y;
-	float z;
-	float x1, y1, z1;
-	float dz;
-	float xf; // filtered x
-	float yf; // filtered y
-	float zf; // filtered z
-	float zf10; // const 10Hz filtered z
-	float dzf; // d(filtered z)
-	int age;
-	int retrig;
-	float tDist; // distance from template touch
-	int releaseCtr;
-	float releaseSlope;
-	int unsortedIdx;
-};*/
-
 //std::ostream& operator<< (std::ostream& out, const Touch & t);
 
 constexpr int kSensorRows = 8;

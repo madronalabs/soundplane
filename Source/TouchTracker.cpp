@@ -222,7 +222,7 @@ void TouchTracker::process(int)
 			
 			mKeyStates = reduceKeyStates(mKeyStates);
 
-			mKeyStates = filterKeyStates(mKeyStates, mKeyStates1);
+	//		mKeyStates = filterKeyStates(mKeyStates, mKeyStates1);
 			mKeyStates1 = mKeyStates;
 
 			mKeyStates = combineKeyStates(mKeyStates);
@@ -236,7 +236,7 @@ void TouchTracker::process(int)
 			mTouches = matchTouches(mTouches, mTouchesMatch1);
 			mTouchesMatch1 = mTouches;
 			
-			mTouches = filterTouches(mTouches, mTouches1);
+	//		mTouches = filterTouches(mTouches, mTouches1);
 			mTouches1 = mTouches;
 			
 			mTouches = clampTouches(mTouches);
@@ -732,10 +732,10 @@ TouchTracker::KeyStates TouchTracker::reduceKeyStates(const TouchTracker::KeySta
 			float dy = d.y() + 1.f;
 			float dz = d.z();
 			
-			int pa = (a.z() > 0.f) && (a.x() > 0.5f) && (a.y() > 0.5f);
-			int pb = (b.z() > 0.f) && (b.x() < 1.5f) && (b.y() > 0.5f);
-			int pc = (c.z() > 0.f) && (c.x() > 0.5f) && (c.y() < 1.5f);
-			int pd = (d.z() > 0.f) && (d.x() < 1.5f) && (d.y() < 1.5f);
+			int pa = (az > 0.f) && (ax > 0.5f) && (ay > 0.5f);
+			int pb = (bz > 0.f) && (bx < 1.5f) && (by > 0.5f);
+			int pc = (cz > 0.f) && (cx > 0.5f) && (cy < 1.5f);
+			int pd = (dz > 0.f) && (dx < 1.5f) && (dy < 1.5f);
 			
 			int pBits = (pd << 3) | (pc << 2) | (pb << 1) | pa;
 			float kx, ky, kz;
@@ -864,7 +864,8 @@ TouchTracker::KeyStates TouchTracker::reduceKeyStates(const TouchTracker::KeySta
 			{
 				Vec4* outputs[4] {&aOut, &bOut, &cOut, &dOut}; // OK
 
-
+				// do deep trace of one corner
+					
 				// get position centroid
 				
 				// write centroid back to the proper state for the corner it's in
@@ -872,8 +873,23 @@ TouchTracker::KeyStates TouchTracker::reduceKeyStates(const TouchTracker::KeySta
 				int top = ky > 1.f;
 				int qBits = (top << 1) | right;
 					
+				
+				if((i == 16) && (j == 2))
+				{
+					debug() << "\n" << a << b << c << d << "\n";
+					debug() << pa << " " << pb << " " << pc << " " << pd << "\n";
+					debug() << "[" << kx << " / " << ky << "]";
+					debug() << right << "/" << top << "\n";
+					debug() << qBits << "\n";
+					
+				}
+				
+
+				
 				if(right) kx -= 1.f;
 				if(top) ky -= 1.f;
+				
+				
 				
 				*outputs[qBits] = Vec4(kx, ky, kz, 0.f);
 
@@ -920,6 +936,7 @@ TouchTracker::KeyStates TouchTracker::filterKeyStates(const TouchTracker::KeySta
 			float z1 = ym1Key.z();
 
 			newZ = (z*a0Up) + (z1*b1Up);
+			if(newZ < mFilterThreshold) newZ = 0.f;
 		
 			yKey = Vec4(x, y, newZ, 0.f);
 			i++;
@@ -981,10 +998,10 @@ TouchTracker::KeyStates TouchTracker::combineKeyStates(const TouchTracker::KeySt
 			float dy = d.y() + 1.f;
 			float dz = d.z();
 			
-			int pa = (a.z() > 0.f) && (a.x() > 0.5f) && (a.y() > 0.5f);
-			int pb = (b.z() > 0.f) && (b.x() <= 1.5f) && (b.y() > 0.5f);
-			int pc = (c.z() > 0.f) && (c.x() > 0.5f) && (c.y() <= 1.5f);
-			int pd = (d.z() > 0.f) && (d.x() <= 1.5f) && (d.y() <= 1.5f);
+			int pa = (az > 0.f) && (ax > 0.5f) && (ay > 0.5f);
+			int pb = (bz > 0.f) && (bx < 1.5f) && (by > 0.5f);
+			int pc = (cz > 0.f) && (cx > 0.5f) && (cy < 1.5f);
+			int pd = (dz > 0.f) && (dx < 1.5f) && (dy < 1.5f);
 			
 			int pBits = (pd << 3) | (pc << 2) | (pb << 1) | pa;
 			float kx, ky, kz;
@@ -995,7 +1012,7 @@ TouchTracker::KeyStates TouchTracker::combineKeyStates(const TouchTracker::KeySt
 			// add z and make position centroid for any keys at this corner
 			if(pa)
 			{
-				a.setZ(0.f);
+				a.setZ(0.f); // needed? pa etc. should ensure energy is only counted once
 				sxz += ax*az;
 				syz += ay*az;
 				sz += az;
@@ -1027,7 +1044,6 @@ TouchTracker::KeyStates TouchTracker::combineKeyStates(const TouchTracker::KeySt
 				ky = syz/sz;
 				kz = sz;
 				
-				Vec4* inputs[4] {&a, &b, &c, &d}; // OK
 				Vec4* outputs[4] {&aOut, &bOut, &cOut, &dOut}; // OK
 				
 				
@@ -1038,29 +1054,23 @@ TouchTracker::KeyStates TouchTracker::combineKeyStates(const TouchTracker::KeySt
 				int top = ky > 1.f;
 				int qBits = (top << 1) | right;
 				
+				
+				if((i == 16) && (j == 2))
+				{
+					debug() << "\n" << " VVVVVVVVVVV\n" << a << b << c << d << "\n";
+					debug() << pa << " " << pb << " " << pc << " " << pd << "\n";
+					debug() << "[" << kx << " / " << ky << "]";
+					debug() << right << "/" << top << "\n";
+					debug() << qBits << "\n\n";
+					
+				}
+				
 				if(right) kx -= 1.f;
 				if(top) ky -= 1.f;
 
+				*outputs[qBits] = Vec4(kx, ky, kz, 0.f);
 				
-			//	debug() << "[" << sxz << "/" << syz << "/" << sz << " -> " << kx << "/" << ky << "]";
 
-			debug() << qBits << " "; // qbits is WRONG
-				
-				
-				Vec4 prev = *outputs[qBits];
-				float prevX = prev.x();
-				float prevY = prev.y();
-				float prevZ = prev.z();
-				
-				float esxz = prevX*prevZ + kx*kz;
-				float esyz = prevY*prevZ + ky*kz;
-				float esz = prevZ + kz;
-				float ekx = esxz/esz;
-				float eky = esyz/esz;
-				
-				*outputs[qBits] = Vec4(ekx, eky, esz, 0.f);
-				
-	//			debug() << qBits << " ";
 				
 			}
 		}		
