@@ -216,7 +216,9 @@ private:
 	
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findPings(const SensorBitsArray& inThresh, const MLSignal& inSignal);
-	
+
+	VectorsH reducePingsH(const VectorsH& pings);
+
 	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert, const TouchTracker::KeyStates& ym1);
 	KeyStates reduceKeyStates(const KeyStates& x);
 	KeyStates combineKeyStates(const KeyStates& x);
@@ -232,8 +234,10 @@ private:
 	int getFreeIndex(std::array<Touch, kMaxTouches> t);
 
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
+	std::array<Vec4, kMaxTouches> matchTouchesSimple(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	
 	std::array<Vec4, kMaxTouches> filterTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
+	std::array<Vec4, kMaxTouches> filterTouchesSimple(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	std::array<Vec4, kMaxTouches> clampTouches(const std::array<Vec4, kMaxTouches>& x);
 	
 	void outputTouches(std::array<Vec4, TouchTracker::kMaxTouches> touches);
