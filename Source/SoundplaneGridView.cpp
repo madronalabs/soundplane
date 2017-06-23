@@ -220,6 +220,8 @@ void SoundplaneGridView::renderXYGrid()
 	Vec4 green(0.3f, 0.9f, 0.3f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
 	
+	// calSignal is not right sometimes
+	
 	// fill calibrated data areas
 	for(int j=0; j<mSensorHeight; ++j)
 	{

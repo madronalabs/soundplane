@@ -751,6 +751,7 @@ void SoundplaneMIDIOutput::setMaxTouches(int t)
 void SoundplaneMIDIOutput::sendMPEChannels()
 {
 	int chan = getMPEMainChannel();
+	if(!mpCurrentDevice) return;
 	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, kMPE_MIDI_CC, mMPEChannels));
 }
 

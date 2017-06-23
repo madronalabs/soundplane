@@ -94,16 +94,38 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		glBegin(GL_LINES);
 		for(int i=fr.left() + 1; i<fr.right()-1; ++i)
 		{
-			int time = frameXRange(i);			
+			int time = frameXRange(i);		
+			
 			float force = touchHistory(2, j, time);
 			float y = frameYRange.convert(force);
 			
 			// draw line
 			glVertex2f(i, fr.top());	
 			glVertex2f(i, y);	
+			
 		}
 		glEnd();
-	}
+
+		// TEMP x graph
+		
+		glLineWidth(viewH / 100.f);
+
+		MLRange xToYRange(0., 30., fr.top() + margin, fr.bottom() - margin);
+		glColor4f(0, 0, 0, 1.0f);
+		glBegin(GL_LINES);
+		for(int i=fr.left() + 1; i<fr.right()-1; ++i)
+		{
+			int time = frameXRange(i);		
+			
+			float x = touchHistory(0, j, time);
+			float y = xToYRange.convert(x);
+			
+			// draw line
+			glVertex2f(i, y);	
+			
+		}
+		glEnd();
+}
 }
 
 void SoundplaneTouchGraphView::renderOpenGL()

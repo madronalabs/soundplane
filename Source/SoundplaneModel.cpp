@@ -717,20 +717,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 			}
 		}
 		
-		// filter data in time
-		/*
-		mBoxFilter.setInputSignal(&mSurface);
-		mBoxFilter.setOutputSignal(&mSurface);
-		mBoxFilter.process(1);	
-		mNotchFilter.setInputSignal(&mSurface);
-		mNotchFilter.setOutputSignal(&mSurface);
-		mNotchFilter.process(1);
-		mLopassFilter.setInputSignal(&mSurface);
-		mLopassFilter.setOutputSignal(&mSurface);
-		mLopassFilter.process(1);
-		 */
-
-		// send filtered data to touch tracker.
+		// send data to touch tracker.
 		mTracker.setInputSignal(&mSurface);
 		mTracker.setOutputSignal(&mTouchFrame);
 		mTracker.process(1);
@@ -739,7 +726,6 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		// TODO elide all this copying! 
 		
 		mCalibratedSignal = mTracker.getCalibratedSignal();
-
 		
  		sendTouchDataToZones();
 
@@ -1122,16 +1108,9 @@ void SoundplaneModel::sendTouchDataToZones()
 			mTouchFrame(zColumn, i) = z;
 
 			// get fractional key grid position (Soundplane A)
-		//	Vec2 keyXY = xyToKeyGrid(Vec2(x, y));
-          //  float kgx = keyXY.x();
-           // float kgy = keyXY.y();
-			float kgx = x;
-			float kgy = y;
 			Vec2 keyXY (x, y);
 
             // get integer key
-        //    int ix = (int)(keyXY.x());
-          //  int iy = (int)(keyXY.y());
 			int ix = (int)x;
 			int iy = (int)y;
 			
@@ -1159,7 +1138,7 @@ void SoundplaneModel::sendTouchDataToZones()
             if(zoneIdx >= 0)
             {
                 ZonePtr zone = mZones[zoneIdx];
-                zone->addTouchToFrame(i, kgx, kgy, mCurrentKeyX[i], mCurrentKeyY[i], z, z);
+                zone->addTouchToFrame(i, x, y, mCurrentKeyX[i], mCurrentKeyY[i], z, z);
             }
         }
 	}
@@ -1174,6 +1153,7 @@ void SoundplaneModel::sendTouchDataToZones()
 	std::vector<bool> freedTouches;
 	freedTouches.resize(kSoundplaneMaxTouches);
 
+	// generates freedTouches array, syntax should be different
     for(int i=0; i<zones; ++i)
 	{
         mZones[i]->processTouchesNoteOffs(freedTouches);
@@ -1285,17 +1265,7 @@ void SoundplaneModel::testCallback()
 
 void SoundplaneModel::filterAndSendData()
 {
-	/*
-	// filter data in time
-	mNotchFilter.setInputSignal(&mSurface);
-	mNotchFilter.setOutputSignal(&mSurface);
-	mNotchFilter.process(1);					
-	mLopassFilter.setInputSignal(&mSurface);
-	mLopassFilter.setOutputSignal(&mSurface);
-	mLopassFilter.process(1);	
-	*/
-	
-	// send filtered data to touch tracker.
+	// send data to touch tracker.
 	mTracker.setInputSignal(&mSurface);					
 	mTracker.setOutputSignal(&mTouchFrame);
 	mTracker.process(1);
