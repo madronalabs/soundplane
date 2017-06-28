@@ -229,15 +229,13 @@ private:
 	
 	std::array<Vec4, kMaxTouches> combineTouches(const std::array<Vec4, kMaxTouches>& t);
 	
-	std::array<Vec4, kMaxTouches> findClusters(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
 
-	int getFreeIndex(std::array<Touch, kMaxTouches> t);
+	int getFreeIndex(std::array<Vec4, kMaxTouches> t, Vec2 pos);
 
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
-	std::array<Vec4, kMaxTouches> matchTouchesSimple(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
-	
-	std::array<Vec4, kMaxTouches> filterTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
-	std::array<Vec4, kMaxTouches> filterTouchesSimple(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
+	std::array<Vec4, kMaxTouches> filterTouchesXY(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
+	std::array<Vec4, kMaxTouches> filterTouchesZ(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
+
 	std::array<Vec4, kMaxTouches> clampTouches(const std::array<Vec4, kMaxTouches>& x);
 	
 	void outputTouches(std::array<Vec4, TouchTracker::kMaxTouches> touches);
@@ -291,10 +289,14 @@ private:
 	std::array<Vec4, kMaxTouches> mTouchesRawOut;
 	std::mutex mTouchesRawOutMutex;	
 	std::array<Vec4, kMaxTouches> mTouches;
-	std::array<Vec4, kMaxTouches> mTouchesMatch1;
-	std::array<Vec4, kMaxTouches> mTouches1;
+	
+	std::array<Vec4, kMaxTouches> mTouchesMatch1; // xy filter history
+	std::array<Vec4, kMaxTouches> mTouches1; // z, age filter history
+	
 	std::array<Vec4, kMaxTouches> mTouchesOut;
 	std::mutex mTouchesOutMutex;	
+	
+	std::array<Vec2, kMaxTouches> mLatestPositions;
 	
 	MLSignal mBackground;
 	
