@@ -350,7 +350,7 @@ void SoundplaneGridView::renderPingsHoriz()
 	// TODO don't use fixed function pipeline.
 	//
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
-	Vec4 darkRed(0.5f, 0.3f, 0.3f, 1.f);
+	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	float ph = 0.4;
 	const float kGraphAmp = 4.0f;
@@ -400,7 +400,7 @@ void SoundplaneGridView::renderPingsHoriz()
 			float y1 = mSensorRangeY.convert(j - ph);   
 			float y2 = mSensorRangeY.convert(j + ph);   
 			
-			Vec4 dotColor = darkRed;
+			Vec4 dotColor = darkBlue;
 			dotColor[3] = 0.5f;
 			glColor4fv(&dotColor[0]);
 			
@@ -420,7 +420,7 @@ void SoundplaneGridView::renderPingsVert()
 	// TODO don't use fixed function pipeline.
 	//
 	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 1.f);
-	Vec4 darkRed(0.5f, 0.3f, 0.3f, 1.f);
+	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	float ph = 0.4;
 	const float kGraphAmp = 4.0f;

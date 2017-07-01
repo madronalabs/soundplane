@@ -46,8 +46,8 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 	const int frames = mpModel->getFloatProperty("max_touches");
 	if (!frames) return;
 		
-	const Colour c = findColour(MLLookAndFeel::backgroundColor);
-	float p = c.getBrightness();
+//	const Colour c = findColour(MLLookAndFeel::darkFillColor);
+//	float p = c.getBrightness();
 		
 	int margin = viewH / 30;
 	int numSize = margin*2;
@@ -67,25 +67,55 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 	for(int j=0; j<frames; ++j)
 	{
 		// draw frames
-		p = 0.9f;
+		float p = 0.85f;
 		glColor4f(p, p, p, 1.0f);
 		MLRect fr = frameSize.translated(Vec2(left, margin + j*frameOffset));
 		MLGL::fillRect(fr);	
-		p = 0.6f;
+		
+		p = 0.1f;
 		glColor4f(p, p, p, 1.0f);
         MLGL::strokeRect(fr, viewScale);
 		
+		
 		// draw touch activity indicators at left
-		glColor4fv(MLGL::getIndicatorColor(j));
+		float ic[4];
+		float ih[4];
+		const float* co = MLGL::getIndicatorColor(j);
+		for(int i=0; i<4; ++i) // really?!
+		{
+			ic[i] = co[i];
+			ih[i] = co[i];
+			ih[i] += 0.3f;
+			ih[i] = clamp(ih[i], 0.f, 1.f);
+		}
+		
+		glColor4fv(ih);
+		
 		MLRect r(0, 0, numSize, numSize);		
 		MLRect tr = r.translated(Vec2(margin, margin + j*frameOffset + (frameHeight - numSize)/2));				
 		int age = currentTouch(ageColumn, j);		
 		if (age > 0)
+		{
+			glColor4fv(ih);
 			MLGL::fillRect(tr);	
-		else
+			glColor4fv(ic);
 			MLGL::strokeRect(tr, viewScale);
+		}
+		else
+		{
+			p = 0.6f;
+			glColor4f(p, p, p, 1.f);
+			MLGL::fillRect(tr);	
+			p = 0.1f;
+			glColor4f(p, p, p, 1.f);
+			MLGL::strokeRect(tr, viewScale);
+		}
+		
+		
+		
 			
 		// draw history	
+		glColor4fv(ic);
 		MLRange frameXRange(fr.left(), fr.right());
 		frameXRange.convertTo(MLRange(0, (float)kSoundplaneHistorySize));		
 		MLRange frameYRange(1., 0.);
@@ -111,7 +141,8 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		glLineWidth(viewH / 100.f);
 
 		MLRange xToYRange(0., 30., fr.top() + margin, fr.bottom() - margin);
-		glColor4f(0, 0, 0, 1.0f);
+		p = 0.25f;
+		glColor4f(p, p, p, 1.0f);
 		glBegin(GL_LINES);
 		for(int i=fr.left() + 1; i<fr.right()-1; ++i)
 		{

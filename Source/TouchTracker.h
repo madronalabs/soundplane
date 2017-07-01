@@ -70,7 +70,7 @@ class TouchTracker
 public:
 	static constexpr int kMaxSpansPerRow = 32;
 	static constexpr int kMaxSpansPerCol = 4;
-	static constexpr int kMaxTouches = kKeyRows*kKeyCols; // one for each key state, to allow raw touches that may be filtered 
+	static constexpr int kMaxTouches = 16; 
 	
 	class Listener
 	{
@@ -227,10 +227,11 @@ private:
 	
 	std::array<Vec4, kMaxTouches> findTouches(const KeyStates& keyStates);
 	
+	std::array<Vec4, kMaxTouches> sortTouchesWithHysteresis(const std::array<Vec4, kMaxTouches>& t, std::array<int, TouchTracker::kMaxTouches>& currentSortedOrder);
 	std::array<Vec4, kMaxTouches> combineTouches(const std::array<Vec4, kMaxTouches>& t);
-	
+	std::array<Vec4, kMaxTouches> limitNumberOfTouches(const std::array<Vec4, kMaxTouches>& t);
 
-	int getFreeIndex(std::array<Vec4, kMaxTouches> t, Vec2 pos);
+	int getFreeIndex(std::array<Vec4, kMaxTouches> touches, Vec4 t, int, int);
 
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	std::array<Vec4, kMaxTouches> filterTouchesXY(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
@@ -283,6 +284,9 @@ private:
 	KeyStates mKeyStates1;
 	KeyStates mKeyStatesOut;
 	std::mutex mKeyStatesOutMutex;	
+	
+	// sorted order of touches for hysteresis
+	std::array<int, TouchTracker::kMaxTouches> mTouchSortOrder;
 	
 	// touches
 	std::array<Vec4, kMaxTouches> mTouchesRaw;
