@@ -209,6 +209,10 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				mTracker.setThresh(v);
 			}
+			else if (p == "lo_thresh")
+			{
+				mTracker.setLoThresh(v);
+			}
 			else if (p == "span_correct")
 			{
 				mTracker.setSpanCorrect(v);

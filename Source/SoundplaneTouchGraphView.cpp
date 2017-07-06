@@ -45,10 +45,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 	const MLSignal& touchHistory = mpModel->getTouchHistory();
 	const int frames = mpModel->getFloatProperty("max_touches");
 	if (!frames) return;
-		
-//	const Colour c = findColour(MLLookAndFeel::darkFillColor);
-//	float p = c.getBrightness();
-		
+				
 	int margin = viewH / 30;
 	int numSize = margin*2;
 	int left = margin*2 + numSize;
@@ -66,39 +63,41 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 	
 	for(int j=0; j<frames; ++j)
 	{
-		// draw frames
+		// graph frame background
 		float p = 0.85f;
 		glColor4f(p, p, p, 1.0f);
 		MLRect fr = frameSize.translated(Vec2(left, margin + j*frameOffset));
 		MLGL::fillRect(fr);	
 		
+		// graph frame border
 		p = 0.1f;
 		glColor4f(p, p, p, 1.0f);
         MLGL::strokeRect(fr, viewScale);
 		
-		
 		// draw touch activity indicators at left
-		float ic[4];
-		float ih[4];
+		float indDark[4];
+		float indLight[4];
+		float indDarker[4];
 		const float* co = MLGL::getIndicatorColor(j);
+		
+		// brighten
 		for(int i=0; i<4; ++i) // really?!
 		{
-			ic[i] = co[i];
-			ih[i] = co[i];
-			ih[i] += 0.3f;
-			ih[i] = clamp(ih[i], 0.f, 1.f);
+			indDark[i] = co[i];
+			indLight[i] = clamp(co[i] + 0.3f, 0.f, 1.f);
+			indDarker[i] = clamp(co[i] - 0.3f, 0.f, 1.f);
 		}
 		
-		glColor4fv(ih);
+		glColor4fv(indLight);
 		
 		MLRect r(0, 0, numSize, numSize);		
 		MLRect tr = r.translated(Vec2(margin, margin + j*frameOffset + (frameHeight - numSize)/2));				
 		int age = currentTouch(ageColumn, j);		
 		if (age > 0)
 		{
-			glColor4fv(ih);
+			glColor4fv(indLight);
 			MLGL::fillRect(tr);	
-			glColor4fv(ic);
+			glColor4fv(indDark);
 			MLGL::strokeRect(tr, viewScale);
 		}
 		else
@@ -111,11 +110,8 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 			MLGL::strokeRect(tr, viewScale);
 		}
 		
-		
-		
-			
 		// draw history	
-		glColor4fv(ic);
+		glColor4fv(indDark);
 		MLRange frameXRange(fr.left(), fr.right());
 		frameXRange.convertTo(MLRange(0, (float)kSoundplaneHistorySize));		
 		MLRange frameYRange(1., 0.);
@@ -131,8 +127,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 			
 			// draw line
 			glVertex2f(i, fr.top());	
-			glVertex2f(i, y);	
-			
+			glVertex2f(i, y);				
 		}
 		glEnd();
 
@@ -141,8 +136,8 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		glLineWidth(viewH / 100.f);
 
 		MLRange xToYRange(0., 30., fr.top() + margin, fr.bottom() - margin);
-		p = 0.25f;
-		glColor4f(p, p, p, 1.0f);
+		glColor4fv(indDarker);
+
 		glBegin(GL_LINES);
 		for(int i=fr.left() + 1; i<fr.right()-1; ++i)
 		{
@@ -156,7 +151,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 			
 		}
 		glEnd();
-}
+	}
 }
 
 void SoundplaneTouchGraphView::renderOpenGL()

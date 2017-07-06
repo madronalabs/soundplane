@@ -49,10 +49,11 @@ private:
 	void renderClusters();
 	
 	void renderKeyStates();
-	
-	
+		
+	void renderTouches(std::array<Vec4, TouchTracker::kMaxTouches> t);
 	void renderRawTouches();
-	void renderTouches();
+	void renderFilteredTouches();
+	
 	void renderZGrid();
 	void renderBarChartRaw();
  	
@@ -73,6 +74,11 @@ private:
 	int mSensorHeight, mSensorWidth;
 	int mLeftSensor, mRightSensor;
 	int mKeyHeight, mKeyWidth;
+	
+	int mCount; // TEMP
+	std::array<Vec4, TouchTracker::kMaxTouches> mTouchesToDraw;
+	std::array<Vec4, TouchTracker::kMaxTouches> mTouchesMaxFrame;
+	int mMaxRawTouches;
 
 };
 

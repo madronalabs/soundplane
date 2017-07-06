@@ -461,7 +461,11 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.5);
 
+	pD = page2->addDial("lo thresh", dialRect.withCenter(3.5, dialY), "lo_thresh", c2);
+	pD->setRange(0., 0.25, 0.01);	
+	pD->setDefault(0.01);	
 	
+
 	//	pD = page2->addDial("template", dialRect.withCenter(3.5, dialY), "t_thresh", c2);
 //	pD->setRange(0., 1., 0.001);	
 //	pD->setDefault(0.2);
@@ -634,10 +638,11 @@ void SoundplaneView::setOSCServicesString(const std::string& str)
 void SoundplaneView::paint (Graphics& g)
 {
 	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
+	
 	myLookAndFeel->drawBackground(g, this);	
 
 	// TEST paint grid
-	// myLookAndFeel->drawUnitGrid(g);	
+	//myLookAndFeel->drawUnitGrid(g);	
 }
 
 void SoundplaneView::goToPage (int page)

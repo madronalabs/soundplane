@@ -93,6 +93,7 @@ public:
 	void clear();
 	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
+	void setLoThresh(float f);
 	void setTaxelsThresh(int t) { mTaxelsThresh = t; }
 	void setQuantize(bool q) { mQuantizeToKey = q; }
 	void setLopass(float k); 	
@@ -201,7 +202,8 @@ private:
 	float mFilterThreshold;
 	float mOnThreshold;
 	float mOffThreshold;
-		
+	float mLoPressureThreshold;
+	
 	int mKeyboardType;
 
 	MLSignal mFilteredInput;
@@ -219,6 +221,10 @@ private:
 
 	VectorsH reducePingsH(const VectorsH& pings);
 
+	VectorsH correctPingsH(const VectorsH& pings);
+	
+	VectorsV correctPingsV(const VectorsV& pings);
+	
 	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert, const TouchTracker::KeyStates& ym1);
 	KeyStates reduceKeyStates(const KeyStates& x);
 	KeyStates combineKeyStates(const KeyStates& x);
