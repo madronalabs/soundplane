@@ -638,9 +638,6 @@ void SoundplaneGridView::renderTouches(std::array<Vec4, TouchTracker::kMaxTouche
 			n++;	
 	}
 	
-	// TEMP
-	debug() << "t" << n << " ";
-	
 	if(n > mMaxRawTouches)
 	{
 		mMaxRawTouches = n; // TODO max accumulate functor

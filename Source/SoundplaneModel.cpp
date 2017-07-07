@@ -200,9 +200,13 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				mMIDIOutput.setMaxTouches(v);
 				mOSCOutput.setMaxTouches(v);
 			}
-			else if (p == "lopass")
+			else if (p == "lopass_xy")
 			{
 				mTracker.setLopass(v);
+			}
+			else if (p == "lopass_z")
+			{
+				mTracker.setLopassZ(v);
 			}
 
 			else if (p == "z_thresh")
@@ -445,7 +449,7 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 
 	setProperty("z_thresh", 0.01);
 	setProperty("z_scale", 1.);
-	setProperty("z_curve", 0.25);
+	setProperty("z_curve", 0.5);
 	setProperty("display_scale", 1.);
 
 	setProperty("quantize", 1.);
@@ -1079,6 +1083,22 @@ void SoundplaneModel::sendParametersToZones()
     }
 }
 
+// c over [0 - 1] fades from sqrt(x) -> x -> x^2
+//
+float responseCurve(float x, float c)
+{
+	float y;
+	if(c < 0.5f)
+	{
+		y = lerp(x*x, x, c*2.f);
+	}
+	else
+	{
+		y = lerp(x, sqrtf(x), c*2.f - 1.f);
+	}
+	return y;
+}
+
 // send raw touches to zones in order to generate note and controller events.
 void SoundplaneModel::sendTouchDataToZones()
 {
@@ -1107,8 +1127,8 @@ void SoundplaneModel::sendTouchDataToZones()
 		{
  			// apply adjustable force curve for z and clamp
 			z *= zscale * kTouchScaleToModel;
-			z = (1.f - zcurve)*z + zcurve*z*z*z;
 			z = clamp(z, 0.f, 1.f);
+			z = responseCurve(z, zcurve);
 			mTouchFrame(zColumn, i) = z;
 
 			// get fractional key grid position (Soundplane A)

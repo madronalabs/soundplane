@@ -70,7 +70,7 @@ class TouchTracker
 public:
 	static constexpr int kMaxSpansPerRow = 32;
 	static constexpr int kMaxSpansPerCol = 4;
-	static constexpr int kMaxTouches = 16; 
+	static constexpr int kMaxTouches = 10; 
 	
 	class Listener
 	{
@@ -97,6 +97,7 @@ public:
 	void setTaxelsThresh(int t) { mTaxelsThresh = t; }
 	void setQuantize(bool q) { mQuantizeToKey = q; }
 	void setLopass(float k); 	
+	void setLopassZ(float k); 	
 	void setForceCurve(float f) { mForceCurve = f; }
 	void setZScale(float f) { mZScale = f; }
 	
@@ -182,6 +183,7 @@ private:
 	
 	float mSampleRate;
 	float mLopass;
+	float mLopassZ;
 	
 	bool mQuantizeToKey;
 	
@@ -225,7 +227,7 @@ private:
 	
 	VectorsV correctPingsV(const VectorsV& pings);
 	
-	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert, const TouchTracker::KeyStates& ym1);
+	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
 	KeyStates reduceKeyStates(const KeyStates& x);
 	KeyStates combineKeyStates(const KeyStates& x);
 	
@@ -233,15 +235,19 @@ private:
 	
 	std::array<Vec4, kMaxTouches> findTouches(const KeyStates& keyStates);
 	
+	std::array<Vec4, kMaxTouches> combineCloseTouches(const std::array<Vec4, kMaxTouches>& t);
+
+	std::array<Vec4, kMaxTouches> removeCrowdedTouches(const std::array<Vec4, kMaxTouches>& t);
+
 	std::array<Vec4, kMaxTouches> sortTouchesWithHysteresis(const std::array<Vec4, kMaxTouches>& t, std::array<int, TouchTracker::kMaxTouches>& currentSortedOrder);
-	std::array<Vec4, kMaxTouches> combineTouches(const std::array<Vec4, kMaxTouches>& t);
 	std::array<Vec4, kMaxTouches> limitNumberOfTouches(const std::array<Vec4, kMaxTouches>& t);
 
 	int getFreeIndex(std::array<Vec4, kMaxTouches> touches, Vec4 t, int, int);
 
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
-	std::array<Vec4, kMaxTouches> filterTouchesXY(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
-	std::array<Vec4, kMaxTouches> filterTouchesZ(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
+	
+	std::array<Vec4, kMaxTouches> filterTouchesXYFixed(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
+	std::array<Vec4, kMaxTouches> filterTouchesZFixed(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 
 	std::array<Vec4, kMaxTouches> clampTouches(const std::array<Vec4, kMaxTouches>& x);
 	

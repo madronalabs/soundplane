@@ -391,25 +391,29 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD = page1->addDial("touches", dialRect.withCenter(0.5, dialY), "max_touches", c2);
 	pD->setRange(0., 16., 1.);	
 	pD->setDefault(4);	
-
-	pD = page1->addDial("thresh", dialRect.withCenter(2.0, dialY), "z_thresh", c2);
+	
+	pB = page1->addToggleButton("rotate", toggleRect.withCenter(1.5, dialY), "rotate", c2);
+	
+	pD = page1->addDial("thresh", dialRect.withCenter(4.0, dialY), "z_thresh", c2);
 	pD->setRange(0., 0.025, 0.001);	
 	pD->setDefault(0.01);	
 	
-	pD = page1->addDial("z scale", dialRect.withCenter(3.5, dialY), "z_scale", c2);
+	pD = page1->addDial("z scale", dialRect.withCenter(5.5, dialY), "z_scale", c2);
 	pD->setRange(0.25, 5.0, 0.01);	
 	pD->setDefault(1.0);
 	
-	pD = page1->addDial("z curve", dialRect.withCenter(5.0, dialY), "z_curve", c2);
+	pD = page1->addDial("z curve", dialRect.withCenter(7.0, dialY), "z_curve", c2);
 	pD->setRange(0., 1., 0.01);	
-	pD->setDefault(0.25);	
-
-	pD = page1->addDial("lopass", dialRect.withCenter(7, dialY), "lopass", c2);
-	pD->setRange(1., 500., 1);	
-	pD->setDefault(100.);	
+	pD->setDefault(0.5);	
 
 	
-	pB = page1->addToggleButton("rotate", toggleRect.withCenter(8.5, dialY), "rotate", c2);
+	pD = page1->addDial("lopass xy", dialRect.withCenter(9.5, dialY), "lopass_xy", c2);
+	pD->setRange(1., 100., 1.);	
+	pD->setDefault(50.);	
+	
+	pD = page1->addDial("lopass z", dialRect.withCenter(11.0, dialY), "lopass_z", c2);
+	pD->setRange(1., 100., 1.);	
+	pD->setDefault(50.);	
 	
 
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
