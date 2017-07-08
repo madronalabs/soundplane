@@ -96,7 +96,7 @@ public:
 	void setLoThresh(float f);
 	void setTaxelsThresh(int t) { mTaxelsThresh = t; }
 	void setQuantize(bool q) { mQuantizeToKey = q; }
-	void setLopass(float k); 	
+	void setLopassXY(float k); 	
 	void setLopassZ(float k); 	
 	void setForceCurve(float f) { mForceCurve = f; }
 	void setZScale(float f) { mZScale = f; }
@@ -104,7 +104,6 @@ public:
 	// process input and get touches. creates one frame of touch data in buffer.
 	void process(int);
 	
-	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; } 
 	
 
 	void setListener(Listener* pL) { mpListener = pL; }
@@ -123,6 +122,9 @@ public:
 	typedef VectorArray2D<kSensorCols, kSensorRows> VectorsV;
 	typedef VectorArray2D<kKeyRows, kKeyCols> KeyStates;
 	
+
+	const MLSignal& getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);  return mCalibratedSignal; } 
+
 	SensorBitsArray getThresholdBits() { std::lock_guard<std::mutex> lock(mThresholdBitsMutex); return mThresholdBitsOut; }
 
 	VectorsH getPingsHorizRaw() { std::lock_guard<std::mutex> lock(mPingsHorizRawOutMutex); return mPingsHorizRawOut; }
@@ -182,7 +184,7 @@ private:
 	MLSignal* mpOut;
 	
 	float mSampleRate;
-	float mLopass;
+	float mLopassXY;
 	float mLopassZ;
 	
 	bool mQuantizeToKey;
@@ -214,9 +216,12 @@ private:
 
 	MLSignal mCalibratedSignal;
 	MLSignal mCalibrationProgressSignal;
+	std::mutex mCalibratedSignalMutex;
+	
+	MLSignal adjustForMax(const MLSignal& in);
 	
 	SensorBitsArray findThresholdBits(const MLSignal& in);
-
+	
 	
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findPings(const SensorBitsArray& inThresh, const MLSignal& inSignal);
@@ -247,7 +252,8 @@ private:
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	
 	std::array<Vec4, kMaxTouches> filterTouchesXYFixed(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
-	std::array<Vec4, kMaxTouches> filterTouchesZFixed(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
+	std::array<Vec4, kMaxTouches> filterTouchesXY(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, float freq);
+	std::array<Vec4, kMaxTouches> filterTouchesZ(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, float upFreq, float downFreq);
 
 	std::array<Vec4, kMaxTouches> clampTouches(const std::array<Vec4, kMaxTouches>& x);
 	
@@ -306,8 +312,11 @@ private:
 	std::mutex mTouchesRawOutMutex;	
 	std::array<Vec4, kMaxTouches> mTouches;
 	
-	std::array<Vec4, kMaxTouches> mTouchesMatch1; // xy filter history
-	std::array<Vec4, kMaxTouches> mTouches1; // z, age filter history
+	// filter histories
+	std::array<Vec4, kMaxTouches> mTouchesMatch1;
+	std::array<Vec4, kMaxTouches> mTouchesXY1;
+	std::array<Vec4, kMaxTouches> mTouches1; 
+	std::array<Vec4, kMaxTouches> mTouches2; 
 	
 	std::array<Vec4, kMaxTouches> mTouchesOut;
 	std::mutex mTouchesOutMutex;	

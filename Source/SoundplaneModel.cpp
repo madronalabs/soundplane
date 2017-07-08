@@ -202,7 +202,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			}
 			else if (p == "lopass_xy")
 			{
-				mTracker.setLopass(v);
+				mTracker.setLopassXY(v);
 			}
 			else if (p == "lopass_z")
 			{

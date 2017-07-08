@@ -27,9 +27,10 @@ inline float cityBlockDistance(Vec4 a, Vec4 b)
 
 inline float cityBlockDistanceXYZ(Vec4 a, Vec4 b)
 {
-	// if z scale is too small, zero touches will get matched with active ones
-	// if too big, z is more important than position
-	float kZScale = 50.f;
+	// if z scale is too small, precious zero touches will get matched with new active ones
+	// in the same position.
+	// if too big, z is more important than position and nothing works
+	float kZScale = 0.f;
 	
 	return fabs(a.x() - b.x()) + fabs(a.y() - b.y()) + kZScale*fabs(a.z() - b.z());
 }
@@ -93,7 +94,7 @@ TouchTracker::TouchTracker(int w, int h) :
 	mRotate(false),
 	mDoNormalize(true),
 	mUseTestSignal(false),
-	mLopass(50.),
+	mLopassXY(5.),
 	mLopassZ(50.)
 {
 	mBackground.setDims(w, h);
@@ -197,9 +198,9 @@ void TouchTracker::setLoThresh(float f)
 	mLoPressureThreshold = f*0.01;
 }
 
-void TouchTracker::setLopass(float k)
+void TouchTracker::setLopassXY(float k)
 { 
-	mLopass = k; 
+	mLopassXY = k; 
 }
 
 void TouchTracker::setLopassZ(float k)
@@ -237,7 +238,7 @@ void TouchTracker::process(int)
 	// filter out any negative values. negative values can shows up from capacitive coupling near edges,
 	// from motion or bending of the whole instrument, 
 	// from the elastic layer deforming and pushing up on the sensors near a touch. 
-	mFilteredInput.sigMax(0.f);
+//	mFilteredInput.sigMax(0.f);
 
 	{	
 		// convolve input with 3x3 smoothing kernel.
@@ -250,12 +251,22 @@ void TouchTracker::process(int)
 //		kc = 4./24; kex = 4./24.; key = 2./24.; kk=2./24.;
 		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
 		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
+		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
+		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
 		
 		// MLTEST
-		mCalibratedSignal = mFilteredInput;
-
+//		mFilteredInput = adjustForMax(mFilteredInput);
+		mFilteredInput.sigMax(0.f);
+		
+		{
+			std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);
+			mCalibratedSignal = mFilteredInput;
+		}
+		
 		if(mMaxTouchesPerFrame > 0)
 		{
+			
+			
 			mThresholdBits = findThresholdBits(mFilteredInput);
 						
 			mPingsHorizRaw = correctPingsH(findPings<kSensorRows, kSensorCols, 0>(mThresholdBits, mFilteredInput));
@@ -269,21 +280,28 @@ void TouchTracker::process(int)
 			mTouches = combineCloseTouches(mTouchesRaw);
 			
 			
-//			mTouches = removeCrowdedTouches(mTouches);
-			
-			
-			
 			mTouches = sortTouchesWithHysteresis(mTouches, mTouchSortOrder);			
 			mTouches = limitNumberOfTouches(mTouches);
 			
-			// match -> position filter -> feedback
+			// match -> position filter -> crowding -> feedback
 			mTouches = matchTouches(mTouches, mTouchesMatch1);	
 			mTouches = filterTouchesXYFixed(mTouches, mTouchesMatch1);
+			mTouches = removeCrowdedTouches(mTouches);			
 			mTouchesMatch1 = mTouches;
 		
 			
-			mTouches = filterTouchesZFixed(mTouches, mTouches1);
+			// variable position filter from user setting
+			mTouches = filterTouchesXY(mTouches, mTouchesXY1, mLopassXY*0.1f);
+			mTouchesXY1 = mTouches;
+
+			
+			// fixed filter for detector
+			mTouches = filterTouchesZ(mTouches, mTouches1, 100.f, 50.f);
 			mTouches1 = mTouches;
+			
+			// variable z filter from user setting
+			mTouches = filterTouchesZ(mTouches, mTouches2, mLopassZ*2.f, mLopassZ*0.5f);
+			mTouches2 = mTouches;
 			
 				
 			mTouches = clampTouches(mTouches);
@@ -351,6 +369,36 @@ void TouchTracker::process(int)
 	}   
  
 }
+
+
+MLSignal TouchTracker::adjustForMax(const MLSignal& in)
+{
+
+	MLSignal out(in);
+	
+	// TODO max value from filtered spatially
+	float maxValue = 0;
+	
+	int w = in.getWidth();
+	int h = in.getHeight();
+	for(int j=0; j<h; ++j)
+	{
+		for(int i=0; i<w; ++i)
+		{
+			float f = in(i, j);
+			if(f > maxValue)
+			{
+				maxValue = f;
+			}
+		}
+	}
+	
+	out.subtract(maxValue*0.125f);
+		
+	return out;
+}
+
+
 
 
 TouchTracker::SensorBitsArray TouchTracker::findThresholdBits(const MLSignal& in)
@@ -452,7 +500,7 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findPings(const SensorBitsArra
 				// if span ends are not on borders, calculate the length for check. Otherwise we have to assume it's long enough.
 				const int spanLength = ((intSpanStart > 0)&&(intSpanEnd < ARRAY_LENGTH)) ? (intSpanEnd - intSpanStart) : kMinSpanLength;
 				
-				if(spanLength >= kMinSpanLength)
+		//		if(spanLength >= kMinSpanLength)
 				{
 					// span acquired, look for pings
 					float z = 0.f;
@@ -721,6 +769,7 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 
 	// get ping locations and pressures by combining vert and horiz
 	{
+		const float kPressureScale = 32.f;
 		int j = 0;
 		for(auto& keyStatesArray : keyStates.data)
 		{			
@@ -736,7 +785,7 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 				{					
 					key.setX(cx - i);
 					key.setY(cy - j);
-					key.setZ(sqrtf((cz)*(cw)) * 16.f);
+					key.setZ(sqrtf((cz)*(cw)) * kPressureScale);
 					key.setW(0.f);
 				}
 				else
@@ -792,7 +841,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::combineCloseTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& in)
 {	
-	float kCombineDistance = 1.5f; // minimum distance in keys, width and height -- must be > kMaxConnectDist in matchTouches!
+	float kCombineDistance = 1.0f; // minimum distance in keys, width and height -- must be >= kMaxConnectDist in matchTouches!
 	
 	std::array<Vec4, kMaxTouches> touches(in);
 	
@@ -887,76 +936,32 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::combineCloseTouches(co
 
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::removeCrowdedTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& in)
 {	
-	float kCrowdedDistance = 2.0f; 
-		
-	std::array<Vec4, kMaxTouches> touches(in);
-	
-	// sort by z. 
-	std::sort(touches.begin(), touches.begin() + kMaxTouches, [](Vec4 a, Vec4 b){ return a.z() > b.z(); } );
-	
-	// count.
-	int nIn = 0;
-	for(int i = 0; i < touches.size(); i++)
-	{
-		if (touches[i].z() == 0.)
-		{
-			break;
-		}
-		nIn++;
-	}
-	
+	float kCrowdedDistance = 2.0f; 	
 	std::array<Vec4, kMaxTouches> out(in);
 	
-	/*
-	if(nIn > 1)
+	// for each touch i, for each neighbor j of higher z, reduce i.z as linear falloff with distance.
+	for(int i=0; i<mMaxTouchesPerFrame; ++i)
 	{
+		Vec4& ta = out[i];		
+		float az = ta.z();
 		
-		out.fill(Vec4());
-		int nOut = 0;
-		
-		// for each touch i, for each neighbor j of higher z, reduce i.z as linear falloff with distance.
-		for(int i=1; i<nIn; ++i)
+		for(int j = 0; j<mMaxTouchesPerFrame; ++j)
 		{
-			Vec4 ta = touches[i];
-			
-			if(!used[i])
+			if(j != i)
 			{
-				float ax = ta.x();
-				float ay = ta.y();
-				float az = ta.z();
-				
-				float sxz = ax*az;
-				float syz = ay*az;
-				float sz = az;
-				
-				for(int j = i + 1; j<nIn; ++j)
-				{
-					Vec4 tb = touches[j];
-					if(!used[j])
-					{
-						if(cityBlockDistance(ta, tb) < kCombineDistance)
-						{						
-							float bx = tb.x();
-							float by = tb.y();
-							float bz = tb.z();
-							
-							sxz += bx*bz;
-							syz += by*bz;
-							sz += bz;
-							used[j] = true;
-						}
-					}
+				Vec4 tb = in[j];
+				float dab = cityBlockDistance(ta, tb);
+
+				if(dab < kCrowdedDistance)
+				{						
+					float bz = tb.z();					
+					az -= bz*(1.f - dab/kCrowdedDistance);
 				}
-				
-				out[nOut++] = Vec4(sxz/sz, syz/sz, az, 0.f);
-				//				out[nOut++] = Vec4(ax, ay, az, 0.f);
-				
 			}
 		}
+		
+		ta.setZ(az);
 	}
-	
-	//	if(nIn > nOut)
-	//	debug() << "\ncombine:" << nIn << "->" << nOut << "\n";
 	
 	if(mCount == 0)
 	{
@@ -973,7 +978,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::removeCrowdedTouches(c
 		}
 		debug() << "\n";
 	}
-	*/
+	
 	
 	return out;
 }
@@ -1219,15 +1224,16 @@ int TouchTracker::getFreeIndex(std::array<Vec4, TouchTracker::kMaxTouches> touch
 //
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& x, const std::array<Vec4, TouchTracker::kMaxTouches>& x1)
 {
-	
 	bool dump = false; // DEBUG
-	
 	
 	// TODO vary with pressure
 	const float kMaxConnectDist = 1.0f;  // must be <= kCombineDistance!
 	
 	std::array<Vec4, kMaxTouches> newTouches;
 	newTouches.fill(Vec4());
+	
+	std::array<Vec4, kMaxTouches> predicted;
+	predicted.fill(Vec4());
 	
 	std::array<int, kMaxTouches> reverseMatchIdx; 
 	reverseMatchIdx.fill(-1);
@@ -1247,20 +1253,19 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 	{
 		float minDist = MAXFLOAT;
 		Vec4 curr = x[i];
-		Vec2 currPos(curr.x(), curr.y());
 		
 		// first try match with all previous z > 0
 		for(int j=0; j < mMaxTouchesPerFrame; ++j)
 		{
 			Vec4 prev = x1[j];
-//			if(prev.z() > 0.f)
+			if(prev.z() > 0.f)
 			{
-				float distToPreviousTouch = cityBlockDistanceXYZ(prev, curr);
-				if(distToPreviousTouch < minDist)
-				{
-					reverseMatchIdx[i] = j;
-					minDist = distToPreviousTouch;						
-				}
+			float distToPreviousTouch = cityBlockDistanceXYZ(prev, curr);
+			if(distToPreviousTouch < minDist)
+			{
+				reverseMatchIdx[i] = j;
+				minDist = distToPreviousTouch;						
+			}
 			}
 		}
 	}
@@ -1272,26 +1277,18 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 	{
 		float minDist = MAXFLOAT;
 		Vec4 prev = x1[i];
-		Vec2 prevPos(prev.x(), prev.y());
 		
 		for(int j=0; j < n; ++j)
 		{
 			Vec4 curr = x[j];
-//			if(curr.z() > 0.f)
+			float distToCurrentTouch = cityBlockDistanceXYZ(prev, curr);
+			if(distToCurrentTouch < minDist)
 			{
-				float distToCurrentTouch = cityBlockDistanceXYZ(prev, curr);
-				if(distToCurrentTouch < minDist)
-				{
-					forwardMatchIdx[i] = j;
-					minDist = distToCurrentTouch;						
-				}
+				forwardMatchIdx[i] = j;
+				minDist = distToCurrentTouch;						
 			}
 		}
 	}
-
-	// for each current touch k,
-	// if k matched a previous touch at index j,
-	// write k to new touches at index j
 
 	// get mutual matches
 	std::array<int, kMaxTouches> mutualMatches; 
@@ -1313,34 +1310,22 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 	std::array<bool, kMaxTouches> currWrittenToNew; 
 	currWrittenToNew.fill(false);
 
-	// first, continue well-matched touches
+	// first, continue well-matched nonzero touches
 	for(int i=0; i<n; ++i)
 	{
 		if(mutualMatches[i])
 		{
 			Vec4 curr = x[i];		
-			if(curr.z() > 0.f)
+			Vec4 prev = x1[reverseMatchIdx[i]];
+			if((curr.z() > 0.f) && (prev.z() > 0.f))
 			{			
-				int prevIdx = reverseMatchIdx[i];			
-				if(prevIdx >= 0)
-				{
-					Vec4 prev = x1[prevIdx];
-					// match with the closest touch if it is active
-					
-					if(prev.z() > 0.f) // without this, leftover inactive touches pick up active touches they shouldn't
-					{					
-						bool close = cityBlockDistanceXYZ(prev, curr) < kMaxConnectDist;
-						
-				//		if((forwardMatchIdx[prevIdx] == i) && close)  // MLTEST
-						
-				//		if(close)
-						{	
-							// touch is continued, mark as connected and write to new touches
-							curr.setW(1);						
-							newTouches[prevIdx] = curr;
-							currWrittenToNew[i] = true;						
-						}
-					}
+				bool close = cityBlockDistanceXYZ(prev, curr) < kMaxConnectDist;						
+				if(close)
+				{	
+					// touch is continued, mark as connected and write to new touches
+					curr.setW(1);						
+					newTouches[reverseMatchIdx[i]] = curr;
+					currWrittenToNew[i] = true;						
 				}
 			}
 		}
@@ -1349,10 +1334,10 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 	// next, continue any zero z touches
 	for(int i=0; i<n; ++i)
 	{
-		if(!currWrittenToNew[i])
+		if((mutualMatches[i]) && (!currWrittenToNew[i]))
 		{		
 			Vec4 curr = x[i];		
-			if(curr.z() > 0.f)
+		//	if(curr.z() > 0.f)
 			{			
 				int prevIdx = reverseMatchIdx[i];			
 				if(prevIdx >= 0)
@@ -1362,7 +1347,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 						// don't match z
 						bool close = cityBlockDistance(prev, curr) < kMaxConnectDist;
 						
-						if((forwardMatchIdx[prevIdx] == i) && close)
+						if(close)
 						{	
 							// touch is continued, mark as connected and write to new touches
 							curr.setW(1);						
@@ -1415,13 +1400,12 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 				}
 				else
 				{
-					// fail!
+					// MLTEST 
 					debug() << "FAIL";
 				}
 			}
 		}
 	}
-		
 	
 	// fill in any unused touches with previous locations. This will allow old touches to re-link if not reused.
 	for(int i=0; i < mMaxTouchesPerFrame; ++i)
@@ -1434,30 +1418,28 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 			newTouches[i].setY(x1[i].y());
 		}
 	}
-
 	
 	if(dump)
 	{
-			debug() << "\n n = " << n << "\n";
-			debug() << "fwd: ";
-			for(int i=0; i<mMaxTouchesPerFrame; ++i)
-			{
-				debug() << forwardMatchIdx[i] << " ";
-			}
-			debug() << "\nrev: ";
-			for(int i=0; i<n; ++i)
-			{
-				debug() << reverseMatchIdx[i] << " ";
-			}
-			debug() << "\n";
-			debug() << "mut: ";
-			for(int i=0; i<mMaxTouchesPerFrame; ++i)
-			{
-				debug() << mutualMatches[i] << " ";
-			}
-			debug() << "\n";
+		debug() << "\n n = " << n << "\n";
+		debug() << "fwd: ";
+		for(int i=0; i<mMaxTouchesPerFrame; ++i)
+		{
+			debug() << forwardMatchIdx[i] << " ";
+		}
+		debug() << "\nrev: ";
+		for(int i=0; i<n; ++i)
+		{
+			debug() << reverseMatchIdx[i] << " ";
+		}
+		debug() << "\n";
+		debug() << "mut: ";
+		for(int i=0; i<mMaxTouchesPerFrame; ++i)
+		{
+			debug() << mutualMatches[i] << " ";
+		}
+		debug() << "\n";
 
-		
 		
 		debug() << "\n";
 		for(int i=0; i < mMaxTouchesPerFrame; ++i)
@@ -1496,23 +1478,9 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesXYFixed(const std::array<Vec4, TouchTracker::kMaxTouches>& in, const std::array<Vec4, TouchTracker::kMaxTouches>& inz1)
 {
 	float sr = 1000.f; // Soundplane A
-
-	const float kFixedXYFreqMax = 100.f;
-	const float kFixedXYFreqMin = 2.0f;
-
+	const float kFixedXYFreqMax = 50.f;
+	const float kFixedXYFreqMin = 1.0f;
 	MLRange zToXYFreq(0., 0.1, kFixedXYFreqMin, kFixedXYFreqMax); 
-
-	// count incoming touches, noting there may be holes due to matching
-	int maxIdx = 0;
-	int n = 0;
-	for(int i = 0; i < mMaxTouchesPerFrame; i++) 
-	{
-		if(in[i].z() > 0.f)
-		{
-			n++;
-			maxIdx = i;
-		}
-	}
 	
 	std::array<Vec4, TouchTracker::kMaxTouches> out;
 	
@@ -1525,41 +1493,13 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesXYFixed(c
 		
 		float x1 = inz1[i].x();
 		float y1 = inz1[i].y();
-		float z1 = inz1[i].z();
-//		float w1 = inz1[i].w();
 		
 		// filter, or not
 		float newX, newY;
-
-		
-		/*
-		if(newZ > mOnThreshold)
-		{
-			debug() << "O";
-		}
-		else if(newZ > mOffThreshold)
-		{
-			debug() << "o";
-		}
-		else if(newZ > mFilterThreshold)
-		{
-			debug() << "_";
-		}
-		else 
-		{
-			debug() << ".";
-		}
-		*/
-		
-
 		if(w)
 		{
-			
-			//		debug() << "C";
-			
 			// get xy coeffs, adaptive based on z
-			float freq = zToXYFreq.convertAndClip(z);
-			
+			float freq = zToXYFreq.convertAndClip(z);			
 			float omegaXY = freq*kMLTwoPi/sr;
 			float kXY = expf(-omegaXY);
 			float a0XY = 1.f - kXY;
@@ -1571,54 +1511,70 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesXYFixed(c
 		}
 		else
 		{
-			
-	//		debug() << "#";
 			newX = x;
 			newY = y;
 		}
 		
-		
-		if(0) 
-			if(n > 0)
-			{
-				debug() << "filterTouches: " << n << " touches, max Idx = " << maxIdx << "\n";
-				if((z > mOnThreshold)&&(z1 <= mOnThreshold))
-				{
-					//		debug() << "ON:" << 
-				}
-			}
 		out[i] = Vec4(newX, newY, z, w);
 	}
 	
-	
-	if(mCount == 0)
-	{
-		debug() << "filterxy: ";
-		for(int i = 0; i < mMaxTouchesPerFrame; i++)
-		{
-			debug() << out[i];
-		}
-		debug() << "\n";
-	}
 	return out;
 }
 
 
-std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesZFixed(const std::array<Vec4, TouchTracker::kMaxTouches>& in, const std::array<Vec4, TouchTracker::kMaxTouches>& inz1)
+// input: vec4<x, y, z, k> where k is 1 if the touch is connected to the previous touch at the same index.
+//
+std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesXY(const std::array<Vec4, TouchTracker::kMaxTouches>& in, const std::array<Vec4, TouchTracker::kMaxTouches>& inz1, float freq)
 {
-	// get z coeffs from user setting
+	float sr = 1000.f; // Soundplane A		
+	float omegaXY = freq*kMLTwoPi/sr;
+	float kXY = expf(-omegaXY);
+	float a0XY = 1.f - kXY;
+	float b1XY = kXY;
 	
-	const float kFixedZFreq = 100.f;
-	const float kFixedZFreqDown = 50.f;
+	std::array<Vec4, TouchTracker::kMaxTouches> out;
+	
+	for(int i=0; i<mMaxTouchesPerFrame; ++i)
+	{
+		float x = in[i].x();
+		float y = in[i].y();
+		float z = in[i].z();
+		float w = in[i].w(); 
+		
+		float x1 = inz1[i].x();
+		float y1 = inz1[i].y();
+		
+		// filter, or not
+		float newX, newY;
+		if(w)
+		{
+			// onepole filters			
+			newX = (x*a0XY) + (x1*b1XY);
+			newY = (y*a0XY) + (y1*b1XY);		
+		}
+		else
+		{
+			newX = x;
+			newY = y;
+		}
+		
+		out[i] = Vec4(newX, newY, z, w);
+	}
+	
+	return out;
+}
+
+std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesZ(const std::array<Vec4, TouchTracker::kMaxTouches>& in, const std::array<Vec4, TouchTracker::kMaxTouches>& inz1, float upFreq, float downFreq)
+{
 	const float sr = 1000.f;
-	float omegaUp = kFixedZFreq*kMLTwoPi/sr;
-	float kUp = expf(-omegaUp);
-	float a0Up = 1.f - kUp;
-	float b1Up = kUp;
-	float omegaDown = kFixedZFreqDown*kMLTwoPi/sr;
-	float kDown = expf(-omegaDown);
-	float a0Down = 1.f - kDown;
-	float b1Down = kDown;
+	const float omegaUp = upFreq*kMLTwoPi/sr;
+	const float kUp = expf(-omegaUp);
+	const float a0Up = 1.f - kUp;
+	const float b1Up = kUp;
+	const float omegaDown = downFreq*kMLTwoPi/sr;
+	const float kDown = expf(-omegaDown);
+	const float a0Down = 1.f - kDown;
+	const float b1Down = kDown;
 	
 	std::array<Vec4, TouchTracker::kMaxTouches> out;
 	
@@ -1666,17 +1622,6 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesZFixed(co
 		}
 		
 		out[i] = Vec4(x, y, newZ, newW);
-	}
-	
-	
-	if(mCount == 0)
-	{
-		debug() << "filter z: ";
-		for(int i = 0; i < mMaxTouchesPerFrame; i++)
-		{
-			debug() << out[i];
-		}
-		debug() << "\n";
 	}
 	
 	return out;

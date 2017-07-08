@@ -205,7 +205,8 @@ void SoundplaneGridView::renderXYGrid()
 	
 	const MLSignal* calSignal = mpModel->getSignalForViewMode("calibrated");
 	if(!calSignal) return;
-
+	if(calSignal->getWidth() != mSensorWidth) return;
+	
 	TouchTracker::SensorBitsArray thresholds = mpModel->getThresholdBits();
 	
 	setupOrthoView();
@@ -363,6 +364,7 @@ void SoundplaneGridView::renderPingsHoriz()
 	
 	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
 	if(!viewSignal) return;
+	if(viewSignal->getWidth() != mSensorWidth) return;
 	
 	// draw line graph
 	glLineWidth(mViewScale);

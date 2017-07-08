@@ -457,22 +457,16 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	// MLTEST temp
 	//debug().sendOutputToListener(pDebug);
 
-	pD = page2->addDial("bg filter", dialRect.withCenter(0.5, dialY), "bg_filter", c2);
-	pD->setRange(0.01, 1.0, 0.01);	
-	pD->setDefault(0.05);
-	
-	pD = page2->addDial("hysteresis", dialRect.withCenter(2, dialY), "hysteresis", c2);
+		
+	pD = page2->addDial("hysteresis", dialRect.withCenter(0.5, dialY), "hysteresis", c2);
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.5);
 
-	pD = page2->addDial("lo thresh", dialRect.withCenter(3.5, dialY), "lo_thresh", c2);
+	pD = page2->addDial("lo thresh", dialRect.withCenter(2., dialY), "lo_thresh", c2);
 	pD->setRange(0., 0.25, 0.01);	
 	pD->setDefault(0.01);	
 	
 
-	//	pD = page2->addDial("template", dialRect.withCenter(3.5, dialY), "t_thresh", c2);
-//	pD->setRange(0., 1., 0.001);	
-//	pD->setDefault(0.2);
 	
 	pB = page2->addToggleButton("kyma", toggleRect.withCenter(12, dialY), "kyma_poll", c2);
 	pB = page2->addToggleButton("test", toggleRect.withCenter(13, dialY), "test_signal", c2);
