@@ -30,7 +30,7 @@ inline float cityBlockDistanceXYZ(Vec4 a, Vec4 b)
 	// if z scale is too small, precious zero touches will get matched with new active ones
 	// in the same position.
 	// if too big, z is more important than position and nothing works
-	float kZScale = 0.f;
+	float kZScale = 50.f;
 	
 	return fabs(a.x() - b.x()) + fabs(a.y() - b.y()) + kZScale*fabs(a.z() - b.z());
 }
@@ -285,7 +285,7 @@ void TouchTracker::process(int)
 			
 			// match -> position filter -> crowding -> feedback
 			mTouches = matchTouches(mTouches, mTouchesMatch1);	
-			mTouches = filterTouchesXYFixed(mTouches, mTouchesMatch1);
+			mTouches = filterTouchesXYAdaptive(mTouches, mTouchesMatch1);
 			mTouches = removeCrowdedTouches(mTouches);			
 			mTouchesMatch1 = mTouches;
 		
@@ -1258,7 +1258,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 		for(int j=0; j < mMaxTouchesPerFrame; ++j)
 		{
 			Vec4 prev = x1[j];
-			if(prev.z() > 0.f)
+//			if(prev.z() > 0.f)
 			{
 			float distToPreviousTouch = cityBlockDistanceXYZ(prev, curr);
 			if(distToPreviousTouch < minDist)
@@ -1475,11 +1475,11 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 
 // input: vec4<x, y, z, k> where k is 1 if the touch is connected to the previous touch at the same index.
 //
-std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesXYFixed(const std::array<Vec4, TouchTracker::kMaxTouches>& in, const std::array<Vec4, TouchTracker::kMaxTouches>& inz1)
+std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesXYAdaptive(const std::array<Vec4, TouchTracker::kMaxTouches>& in, const std::array<Vec4, TouchTracker::kMaxTouches>& inz1)
 {
 	float sr = 1000.f; // Soundplane A
-	const float kFixedXYFreqMax = 50.f;
-	const float kFixedXYFreqMin = 1.0f;
+	const float kFixedXYFreqMax = 100.f;
+	const float kFixedXYFreqMin = 2.0f;
 	MLRange zToXYFreq(0., 0.1, kFixedXYFreqMin, kFixedXYFreqMax); 
 	
 	std::array<Vec4, TouchTracker::kMaxTouches> out;

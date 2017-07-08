@@ -251,7 +251,7 @@ private:
 
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	
-	std::array<Vec4, kMaxTouches> filterTouchesXYFixed(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
+	std::array<Vec4, kMaxTouches> filterTouchesXYAdaptive(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	std::array<Vec4, kMaxTouches> filterTouchesXY(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, float freq);
 	std::array<Vec4, kMaxTouches> filterTouchesZ(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, float upFreq, float downFreq);
 
