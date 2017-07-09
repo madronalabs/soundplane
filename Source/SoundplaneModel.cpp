@@ -445,7 +445,8 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 {
 	// parameter defaults and creation
 	setProperty("max_touches", 4);
-	setProperty("lopass", 100.);
+	setProperty("lopass_xy", 50.);
+	setProperty("lopass_z", 50.);
 
 	setProperty("z_thresh", 0.01);
 	setProperty("z_scale", 1.);
@@ -476,6 +477,7 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("bg_filter", 0.05);
 
 	setProperty("hysteresis", 0.5);
+	setProperty("lo_thresh", 0.1);
 
 	// menu param defaults
 	setProperty("viewmode", "calibrated");

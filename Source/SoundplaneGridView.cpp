@@ -630,28 +630,7 @@ void SoundplaneGridView::renderKeyStates()
 void SoundplaneGridView::renderTouches(std::array<Vec4, TouchTracker::kMaxTouches> newTouches)
 {
 	if (!mpModel) return;
-	
-	// in stop-motion view,
-	// keep track of max # of touches
-	int n=0;
-	for(auto inx : newTouches)
-	{
-		if(inx.z() > 0.)
-			n++;	
-	}
-	
-	if(n > mMaxRawTouches)
-	{
-		mMaxRawTouches = n; // TODO max accumulate functor
-		mTouchesMaxFrame = newTouches;
-	}
 		
-	if(!mCount) // TEMP
-	{
-		mMaxRawTouches = 0;
-		mTouchesToDraw = mTouchesMaxFrame;
-	}
-	
 	setupOrthoView();
 
 	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
@@ -663,7 +642,7 @@ void SoundplaneGridView::renderTouches(std::array<Vec4, TouchTracker::kMaxTouche
 	glLineWidth(1.0*mViewScale);
 
 	// draw intersections colored by group
-	auto xs = mTouchesToDraw;  
+	auto xs = newTouches;  
 	int rowInt = 0;
 	int i = 0;
 	for(auto inx : xs)

@@ -247,14 +247,13 @@ private:
 	std::array<Vec4, kMaxTouches> sortTouchesWithHysteresis(const std::array<Vec4, kMaxTouches>& t, std::array<int, TouchTracker::kMaxTouches>& currentSortedOrder);
 	std::array<Vec4, kMaxTouches> limitNumberOfTouches(const std::array<Vec4, kMaxTouches>& t);
 
-	int getFreeIndex(std::array<Vec4, kMaxTouches> touches, Vec4 t, int, int);
-
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	
 	std::array<Vec4, kMaxTouches> filterTouchesXYAdaptive(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	std::array<Vec4, kMaxTouches> filterTouchesXY(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, float freq);
 	std::array<Vec4, kMaxTouches> filterTouchesZ(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, float upFreq, float downFreq);
 
+	std::array<Vec4, kMaxTouches> exileOldTouches(const std::array<Vec4, kMaxTouches>& x);
 	std::array<Vec4, kMaxTouches> clampTouches(const std::array<Vec4, kMaxTouches>& x);
 	
 	void outputTouches(std::array<Vec4, TouchTracker::kMaxTouches> touches);

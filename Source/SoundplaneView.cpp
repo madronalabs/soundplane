@@ -464,7 +464,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 
 	pD = page2->addDial("lo thresh", dialRect.withCenter(2., dialY), "lo_thresh", c2);
 	pD->setRange(0., 0.25, 0.01);	
-	pD->setDefault(0.01);	
+	pD->setDefault(0.10);	
 	
 
 	
