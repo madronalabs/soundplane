@@ -218,8 +218,6 @@ private:
 	MLSignal mCalibrationProgressSignal;
 	std::mutex mCalibratedSignalMutex;
 	
-	MLSignal adjustForMax(const MLSignal& in);
-	
 	SensorBitsArray findThresholdBits(const MLSignal& in);
 	
 	
@@ -240,7 +238,7 @@ private:
 	
 	std::array<Vec4, kMaxTouches> findTouches(const KeyStates& keyStates);
 	
-	std::array<Vec4, kMaxTouches> combineCloseTouches(const std::array<Vec4, kMaxTouches>& t);
+//	std::array<Vec4, kMaxTouches> combineCloseTouches(const std::array<Vec4, kMaxTouches>& t);
 
 	std::array<Vec4, kMaxTouches> removeCrowdedTouches(const std::array<Vec4, kMaxTouches>& t);
 
@@ -253,7 +251,8 @@ private:
 	std::array<Vec4, kMaxTouches> filterTouchesXY(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, float freq);
 	std::array<Vec4, kMaxTouches> filterTouchesZ(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, float upFreq, float downFreq);
 
-	std::array<Vec4, kMaxTouches> exileOldTouches(const std::array<Vec4, kMaxTouches>& x);
+	std::array<Vec4, kMaxTouches> exileOldTouches(const std::array<Vec4, kMaxTouches>& x1, const std::array<Vec4, kMaxTouches>& x2);
+
 	std::array<Vec4, kMaxTouches> clampTouches(const std::array<Vec4, kMaxTouches>& x);
 	
 	void outputTouches(std::array<Vec4, TouchTracker::kMaxTouches> touches);
@@ -321,6 +320,10 @@ private:
 	std::mutex mTouchesOutMutex;	
 	
 	std::array<Vec2, kMaxTouches> mLatestPositions;
+	
+	std::array<int, kMaxTouches> mPreviousMatch; 
+
+	
 	
 	MLSignal mBackground;
 	
