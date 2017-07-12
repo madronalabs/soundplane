@@ -121,9 +121,10 @@ public:
 
 	const MLSignal& getTouchFrame() { return mTouchFrame; }
 	const MLSignal& getTouchHistory() { return mTouchHistory; }
-	const MLSignal& getRawSignal() { return mRawSignal; }
-	const MLSignal& getCalibratedSignal() { return mCalibratedSignal; }
-
+	
+	const MLSignal getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
+	const MLSignal getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalSignalMutex); return mCalibratedSignal; }
+	
 	const MLSignal& getTrackerCalibrateSignal();
 	Vec3 getTrackerCalibratePeak();
 	bool isWithinTrackerCalibrateArea(int i, int j);
@@ -146,10 +147,8 @@ public:
 	std::array<Vec4, TouchTracker::kMaxTouches> getRawTouches() { return mTracker.getRawTouches(); }
 	
 	std::array<Vec4, TouchTracker::kMaxTouches> getTouches() { return mTracker.getTouches(); }
-	
-	const MLSignal* getSignalForViewMode(const std::string& m);
 
-    const std::vector<ZonePtr>& getZones(){ return mZones; }
+	const std::vector<ZonePtr>& getZones(){ return mZones; }
     const CriticalSection* getZoneLock() {return &mZoneLock;}
 
     void setStateFromJSON(cJSON* pNode, int depth);
@@ -227,7 +226,9 @@ private:
 	MLSignal mCalibrateStdDev;
 
 	MLSignal mRawSignal;
+	std::mutex mRawSignalMutex;
 	MLSignal mCalibratedSignal;
+	std::mutex mCalSignalMutex;
 
 	int mCalibrateCount; // samples in one calibrate step
 	int mCalibrateStep; // calibrate step from 0 - end

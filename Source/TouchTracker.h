@@ -242,6 +242,7 @@ private:
 
 	std::array<Vec4, kMaxTouches> sortTouchesWithHysteresis(const std::array<Vec4, kMaxTouches>& t, std::array<int, TouchTracker::kMaxTouches>& currentSortedOrder);
 	std::array<Vec4, kMaxTouches> limitNumberOfTouches(const std::array<Vec4, kMaxTouches>& t);
+	std::array<Vec4, kMaxTouches> rotateTouches(const std::array<Vec4, kMaxTouches>& t);
 
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	
@@ -249,7 +250,7 @@ private:
 	std::array<Vec4, kMaxTouches> filterTouchesXY(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, float freq);
 	std::array<Vec4, kMaxTouches> filterTouchesZ(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1, float upFreq, float downFreq);
 
-	std::array<Vec4, kMaxTouches> exileOldTouches(const std::array<Vec4, kMaxTouches>& x1, const std::array<Vec4, kMaxTouches>& x2);
+	std::array<Vec4, kMaxTouches> exileUnusedTouches(const std::array<Vec4, kMaxTouches>& x1, const std::array<Vec4, kMaxTouches>& x2);
 
 	std::array<Vec4, kMaxTouches> clampTouches(const std::array<Vec4, kMaxTouches>& x);
 	

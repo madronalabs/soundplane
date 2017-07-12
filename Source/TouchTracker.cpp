@@ -238,7 +238,7 @@ void TouchTracker::process(int)
 	// filter out any negative values. negative values can shows up from capacitive coupling near edges,
 	// from motion or bending of the whole instrument, 
 	// from the elastic layer deforming and pushing up on the sensors near a touch. 
-//	mFilteredInput.sigMax(0.f);
+	mFilteredInput.sigMax(0.f);
 
 	{	
 		// convolve input with 3x3 smoothing kernel.
@@ -246,7 +246,7 @@ void TouchTracker::process(int)
 		float kc, kex, key, kk;	
 		
 		
-	//	kc = 4./14.; kex = 3./14.; key = 2./14.; kk=0.;
+//		kc = 4./14.; kex = 3./14.; key = 2./14.; kk=0.;
 		
 		kc = 4./18; kex = 3./18.; key = 2./18.; kk=1./18.;
 
@@ -256,7 +256,7 @@ void TouchTracker::process(int)
 		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
 		
 		
-		mFilteredInput.sigMax(0.f);
+//		mFilteredInput.sigMax(0.f);
 		
 		{
 			std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);
@@ -268,31 +268,35 @@ void TouchTracker::process(int)
 			mThresholdBits = findThresholdBits(mFilteredInput);
 						
 			mPingsHorizRaw = correctPingsH(findPings<kSensorRows, kSensorCols, 0>(mThresholdBits, mFilteredInput));
-			mPingsVertRaw = correctPingsV(findPings<kSensorCols, kSensorRows, 1>(mThresholdBits, mFilteredInput));			
-			
+			mPingsVertRaw = correctPingsV(findPings<kSensorCols, kSensorRows, 1>(mThresholdBits, mFilteredInput));						
 			mKeyStates = pingsToKeyStates(mPingsHorizRaw, mPingsVertRaw);
 			
 			// get touches, in key coordinates
 			mTouchesRaw = findTouches(mKeyStates);
 			mTouches = reduceCrowdedTouches(mTouchesRaw);
 			
-			// sort by z. 
+			// sort touches by z. 
 			std::sort(mTouches.begin(), mTouches.begin() + kMaxTouches, [](Vec4 a, Vec4 b){ return a.z() > b.z(); } );
 			
 			// match -> position filter -> z filter -> feedback
 			mTouches = matchTouches(mTouches, mTouchesMatch1);	
 			mTouches = filterTouchesXYAdaptive(mTouches, mTouchesMatch1);
 			mTouches = filterTouchesZ(mTouches, mTouchesMatch1, 100.f, 20.f);			
+
 			mTouchesMatch1 = mTouches;
 			
 			// variable z filter from user setting
 			mTouches = filterTouchesZ(mTouches, mTouches2, mLopassZ*2.f, mLopassZ*0.25f);
 			mTouches2 = mTouches;
 			
-			// after variable filter, exile decayed touches
-			mTouchesMatch1 = exileOldTouches(mTouchesMatch1, mTouches);
-		
+			// after variable filter, exile decayed touches. Note this affects match feedback!
+			mTouchesMatch1 = exileUnusedTouches(mTouchesMatch1, mTouches);
 			
+			
+			if(mRotate)
+			{
+				mTouches = rotateTouches(mTouches);
+			}	
 			
 
 		//	TODO hyster after
@@ -813,11 +817,11 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::reduceCrowdedTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& in)
 {	
-	float kCrowdedDistance = 3.f; 	
-
+	float kCrowdedDistance = 4.f; 	
+	
 	// > 1 to allow close touches of near equal z to reduce each other
-	float kOtherTouchZMult = 2.0f;
-
+	float kOtherTouchZMult = 2.f;
+	
 	std::array<Vec4, kMaxTouches> out(in);
 	
 	// for each touch i, for each neighbor j of higher z, reduce i.z as linear falloff with distance.
@@ -834,7 +838,8 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::reduceCrowdedTouches(c
 			{
 				Vec4 tb = in[j];
 				float bz = tb.z();			
-				if(bz > 0.f)
+				
+				if(bz*kOtherTouchZMult > az)
 				{
 					float dab = cityBlockDistance(ta, tb);
 					if((dab > 0.f) && (dab < kCrowdedDistance))
@@ -876,7 +881,6 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::reduceCrowdedTouches(c
 	
 	return out;
 }
-
 
 
 // sort the input touches in z order. A hysteresis offset for each array member prevents members from changing order too often.
@@ -1000,18 +1004,18 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::sortTouchesWithHystere
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::limitNumberOfTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& in)
 {	
 	std::array<Vec4, kMaxTouches> touches(in);
-
+	
 	/*
-	int nTouches = 0;
-	for(int i = 0; i < touches.size(); i++)
-	{
+	 int nTouches = 0;
+	 for(int i = 0; i < touches.size(); i++)
+	 {
 		if (touches[i].z() == 0.)
 		{
-			nTouches = i;
-			break;
+	 nTouches = i;
+	 break;
 		}
-	}
-*/
+	 }
+	 */
 	
 	// limit number of touches by overwriting with zeroes
 	for(int i = mMaxTouchesPerFrame; i < kMaxTouches; i++)
@@ -1031,7 +1035,8 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::limitNumberOfTouches(c
 	
 	return touches;
 }
-   
+
+
 // match incoming touches in x with previous frame of touches in x1.
 // for each possible touch slot, output the touch x closest in location to the previous frame.
 // if the incoming touch is a continuation of the previous one, set its age (w) to 1, otherwise to 0. 
@@ -1299,7 +1304,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 				}
 				debug() << "\n";		
 				
-*/
+				 */
 				
 				
 				
@@ -1559,10 +1564,8 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesZ(const s
 }
 
 
-// if a touch has decayed to 0 after z filtering, move it off the scene so it won't match to other touches.
-
-
-std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::exileOldTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& preFiltered, const std::array<Vec4, TouchTracker::kMaxTouches>& postFiltered)
+// if a touch has decayed to 0 after z filtering, move it off the scene so it won't match to other nearby touches.
+std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::exileUnusedTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& preFiltered, const std::array<Vec4, TouchTracker::kMaxTouches>& postFiltered)
 {
 	std::array<Vec4, TouchTracker::kMaxTouches> out(preFiltered);
 	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
@@ -1576,6 +1579,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::exileOldTouches(const 
 			{
 				a.setX(-1.f);
 				a.setY(-10.f);
+				a.setZ(0.f);
 			}
 		}
 		
@@ -1584,6 +1588,31 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::exileOldTouches(const 
 	return out;
 }
 
+
+std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::rotateTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& in)
+{	
+	std::array<Vec4, kMaxTouches> touches(in);
+	
+	int n = 0;
+	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
+	{
+		Vec4 t = in[i];
+		if(t.z() > mFilterThreshold)
+		{
+			n++;
+		}		
+		
+		if(t.w() == 1)
+		{
+			debug() << "***" << i << "\n";
+		}
+	}
+
+	
+	
+	
+	return touches;
+}
 
 // clamp touches and remove hysteresis threshold.
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::clampTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& in)

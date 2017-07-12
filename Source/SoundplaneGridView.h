@@ -55,7 +55,6 @@ private:
 	void renderFilteredTouches();
 	
 	void renderZGrid();
-	void renderBarChartRaw();
  	
 	Vec2 worldToScreen(const Vec3& world); 
 	

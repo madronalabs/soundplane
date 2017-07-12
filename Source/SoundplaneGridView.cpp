@@ -122,8 +122,6 @@ void SoundplaneGridView::drawSurfaceOverlay()
 {
 
 	float dotSize = fabs(mKeyRangeY(0.08f) - mKeyRangeY(0.f));
-	const MLSignal* calSignal = mpModel->getSignalForViewMode("calibrated");
-	if(!calSignal) return;
 	
 	setupOrthoView();
 	
@@ -203,9 +201,7 @@ void SoundplaneGridView::renderXYGrid()
 	const int kTouchHistorySize = 500;
 	float fMax = mpModel->getFloatProperty("z_max");
 	
-	const MLSignal* calSignal = mpModel->getSignalForViewMode("calibrated");
-	if(!calSignal) return;
-	if(calSignal->getWidth() != mSensorWidth) return;
+	const MLSignal calSignal = mpModel->getCalibratedSignal();
 	
 	TouchTracker::SensorBitsArray thresholds = mpModel->getThresholdBits();
 	
@@ -231,7 +227,7 @@ void SoundplaneGridView::renderXYGrid()
 		// Soundplane A-specific
 		for(int i=mLeftSensor; i<mRightSensor; ++i)
 		{
-			float mix = (*calSignal)(i, j) / fMax;
+			float mix = (calSignal)(i, j) / fMax;
 			mix *= displayScale*2.f;
 			mix = clamp(mix, 0.f, 1.f);
 			Vec4 dataColor = vlerp(gray, lightGray, mix);
@@ -362,9 +358,7 @@ void SoundplaneGridView::renderPingsHoriz()
 	
 	// draw calibrated data
 	
-	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
-	if(!viewSignal) return;
-	if(viewSignal->getWidth() != mSensorWidth) return;
+	const MLSignal viewSignal = mpModel->getCalibratedSignal();
 	
 	// draw line graph
 	glLineWidth(mViewScale);
@@ -380,7 +374,7 @@ void SoundplaneGridView::renderPingsHoriz()
 		{
 			float x = mSensorRangeX.convert(i);
 			
-			float amp = clamp((*viewSignal)(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
+			float amp = clamp(viewSignal(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
 			float yAmp = lerp(y1, y2, amp);
 			
 			glColor4fv(&darkRed[0]);
@@ -433,8 +427,7 @@ void SoundplaneGridView::renderPingsVert()
 	
 	// draw calibrated data
 	
-	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
-	if(!viewSignal) return;
+	const MLSignal viewSignal = mpModel->getCalibratedSignal();
 	
 	// draw line graph
 	glLineWidth(mViewScale);
@@ -450,9 +443,7 @@ void SoundplaneGridView::renderPingsVert()
 		{
 			float y = mSensorRangeY.convert(j);
 			
-			// how could viewSignal be NULL here! destroyed again in another thread? it happened.
-			
-			float amp = clamp((*viewSignal)(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
+			float amp = clamp(viewSignal(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
 			float xAmp = lerp(x1, x2, amp);
 			glColor4fv(&darkRed[0]);
 			glVertex2f(xAmp, y);
@@ -711,8 +702,7 @@ void SoundplaneGridView::renderZGrid()
 	ySensorRange.convertTo(MLRange(-sh, sh));
 	
 	const std::string& viewMode = getStringProperty("viewmode");
-	const MLSignal* viewSignal = mpModel->getSignalForViewMode(viewMode);
-	if(!viewSignal) return;
+	const MLSignal viewSignal = mpModel->getCalibratedSignal();
 	
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	float gridScale = displayScale * 100.f;
@@ -762,7 +752,7 @@ void SoundplaneGridView::renderZGrid()
 			{
 				float x = xSensorRange.convert(i);
 				float y = ySensorRange.convert(j);
-				float z = (*viewSignal)(i, j);
+				float z = viewSignal(i, j);
 				if(zeroClip) { z = max(z, 0.f); }
 				float zMean = (z + preOffset)*gridScale;
 				glVertex3f(x, y, -zMean);
@@ -777,14 +767,14 @@ void SoundplaneGridView::renderZGrid()
 				{
 					float x1 = xSensorRange.convert(i);
 					float y1 = ySensorRange.convert(j);
-					float z = (*viewSignal)(i, j);
+					float z = viewSignal(i, j);
 					if(zeroClip) { z = max(z, 0.f); }
 					float z1 = (z + preOffset)*gridScale;
 					glVertex3f(x1, y1, -z1);
 					
 					float x2 = xSensorRange.convert(i + 1);
 					float y2 = ySensorRange.convert(j);
-					z = (*viewSignal)(i + 1, j);
+					z = viewSignal(i + 1, j);
 					if(zeroClip) { z = max(z, 0.f); }
 					float z2 = (z + preOffset)*gridScale;
 					glVertex3f(x2, y2, -z2);
@@ -808,7 +798,7 @@ void SoundplaneGridView::renderZGrid()
 			{
 				float x = xSensorRange.convert(i);
 				float y = ySensorRange.convert(j);
-				float z0 = (*viewSignal)(i, j);
+				float z0 = viewSignal(i, j);
 				if(zeroClip) { z0 = max(z0, 0.f); }
 				float z = (z0 + preOffset)*gridScale;
 				glVertex3f(x, y, -z);
@@ -823,7 +813,7 @@ void SoundplaneGridView::renderZGrid()
 			{
 				float x = xSensorRange.convert(i);
 				float y = ySensorRange.convert(j);
-				float z0 = (*viewSignal)(i, j);
+				float z0 = viewSignal(i, j);
 				if(zeroClip) { z0 = max(z0, 0.f); }
 				float z = (z0 + preOffset)*gridScale;
 				glVertex3f(x, y, -z);
@@ -859,43 +849,6 @@ void SoundplaneGridView::renderZGrid()
 			sprintf(strBuf, "%5.3f", tz);			
 			drawInfoBox(Vec3(tx, ty, 0.), strBuf, t);                
 			
-		}
-	}
-}
-
-
-void SoundplaneGridView::renderBarChartRaw()
-{
-	const MLSignal* viewSignal = mpModel->getSignalForViewMode(getStringProperty("viewmode"));
-	if(!viewSignal) return;
-	
-	setupOrthoView();
-	
-	float displayScale = mpModel->getFloatProperty("display_scale");
-	float scale = displayScale;
-	
-	Vec4 darkBlue(0.3f, 0.3f, 0.5f, 0.5f);
-	Vec4 darkRed(0.5f, 0.3f, 0.3f, 0.5f);
-
-	// draw dots
-	for(int j=0; j<mSensorHeight; ++j)
-	{
-		for(int i=0; i<mSensorWidth; ++i)
-		{
-			float x = mSensorRangeX.convert(i);
-			float y = mSensorRangeY.convert(j);
-			
-			float z = (*viewSignal)(i, j)*scale;
-			
-			if(z > 0)
-			{
-				glColor4fv(&darkBlue[0]);
-			}
-			else
-			{
-				glColor4fv(&darkRed[0]);
-			}
-			MLGL::drawDot(Vec2(x, y), z);
 		}
 	}
 }
@@ -984,16 +937,6 @@ void SoundplaneGridView::renderOpenGL()
 	else if (viewMode == "touches")
 	{
 		renderFilteredTouches();
-		drawSurfaceOverlay();
-	}
-	else if (viewMode == "norm map")
-	{
-		renderBarChartRaw();
-		drawSurfaceOverlay();
-	}
-	else if ((viewMode == "test1") || (viewMode == "test2"))
-	{
-		renderBarChartRaw();
 		drawSurfaceOverlay();
 	}
 	else

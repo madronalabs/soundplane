@@ -1625,22 +1625,6 @@ void SoundplaneModel::endSelectCarriers()
 	enableOutput(true);
 }
 
-const MLSignal* SoundplaneModel::getSignalForViewMode(const std::string& m)
-{
-	std::map<std::string, MLSignal*>::iterator it;
-	it = mViewModeToSignalMap.find(m);
-	if(it != mViewModeToSignalMap.end())
-	{
-		return mViewModeToSignalMap[m];
-	}
-	else
-	{
-		debug() << "SoundplaneModel::getSignalForViewMode: no signal for " << m << "!\n";
-	}
-	return 0;
-}
-
-
 // JSON utilities
 
 std::string getJSONString(cJSON* pNode, const char* name)
