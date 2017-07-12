@@ -237,10 +237,8 @@ private:
 	KeyStates filterKeyStates(const KeyStates& x, const KeyStates& ym1);
 	
 	std::array<Vec4, kMaxTouches> findTouches(const KeyStates& keyStates);
-	
-//	std::array<Vec4, kMaxTouches> combineCloseTouches(const std::array<Vec4, kMaxTouches>& t);
 
-	std::array<Vec4, kMaxTouches> removeCrowdedTouches(const std::array<Vec4, kMaxTouches>& t);
+	std::array<Vec4, kMaxTouches> reduceCrowdedTouches(const std::array<Vec4, kMaxTouches>& t);
 
 	std::array<Vec4, kMaxTouches> sortTouchesWithHysteresis(const std::array<Vec4, kMaxTouches>& t, std::array<int, TouchTracker::kMaxTouches>& currentSortedOrder);
 	std::array<Vec4, kMaxTouches> limitNumberOfTouches(const std::array<Vec4, kMaxTouches>& t);
