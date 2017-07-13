@@ -40,7 +40,7 @@ float sensorToKeyY(float sy)
 
 	// Soundplane A as measured
 	constexpr int mapSize = 6;
-	constexpr std::array<float, mapSize> sensorMap{{0.25, 1.3, 2.8, 4.2, 5.9, 6.6}};
+	constexpr std::array<float, mapSize> sensorMap{{0.25, 1.1, 2.8, 4.2, 5.9, 6.6}};
 	constexpr std::array<float, mapSize> keyMap{{0.25, 1., 2., 3., 4., 4.75}};
 	
 	if(sy < sensorMap[0])
@@ -81,9 +81,10 @@ TouchTracker::TouchTracker(int w, int h) :
 	mMaxTouchesPerFrame(0),
 	mNeedsClear(true),
 	mSampleRate(1000.f),
-	mRotate(false),
 	mLopassXY(5.),
-	mLopassZ(50.)
+	mLopassZ(50.),
+	mRotate(false),
+	mPairs(false)
 {
 	mFilteredInput.setDims(w, h);
 	mFilteredInputX.setDims(w, h);
@@ -163,6 +164,11 @@ void TouchTracker::setRotate(bool b)
 	{
 		mRotateShuffleOrder[i] = i;
 	}
+}
+
+void TouchTracker::setPairs(bool b)
+{ 
+	mPairs = b;
 }
 
 void TouchTracker::clear()
@@ -251,6 +257,15 @@ void TouchTracker::process(int)
 			// get touches, in key coordinates
 			mTouchesRaw = findTouches(mKeyStates);
 			mTouches = reduceCrowdedTouches(mTouchesRaw);
+
+			/*
+			// pairs
+			if(mPairs)
+			{
+				mTouches = createPairsV(mTouches);
+				mTouches = createPairsH(mTouches);
+			}
+			*/
 			
 			// sort touches by z. 
 			std::sort(mTouches.begin(), mTouches.begin() + kMaxTouches, [](Vec4 a, Vec4 b){ return a.z() > b.z(); } );
@@ -267,6 +282,7 @@ void TouchTracker::process(int)
 			
 			// after variable filter, exile decayed touches. Note this affects match feedback!
 			mTouchesMatch1 = exileUnusedTouches(mTouchesMatch1, mTouches);
+			
 						
 			//	TODO hysteresis after matching to prevent glitching 
 			//			mTouches = sortTouchesWithHysteresis(mTouches, mTouchSortOrder);			
@@ -1283,6 +1299,144 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::exileUnusedTouches(con
 		
 		out[i] = a;					
 	}
+	return out;
+}
+
+std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::createPairsV(const std::array<Vec4, TouchTracker::kMaxTouches>& in)
+{	
+	std::array<Vec4, kMaxTouches> out(in);
+	const float r = 0.125f;
+	
+	// count
+	int n = 0;
+	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
+	{
+		if(in[i].z() >= mFilterThreshold)
+		{
+			n = i + 1;
+		}
+	}
+	
+	for(int i = 0; i < n; ++i)
+	{
+		Vec4 touchToAdd;
+		bool added = false;
+		Vec4 t = out[i];
+		float tz = t.z();
+		if(tz >= mFilterThreshold)
+		{
+			float y = t.y();
+			int yi = y;
+			float fy = y - yi;
+			if(fy < r)
+			{
+				touchToAdd = t;
+				touchToAdd.setY(yi - r);
+				t.setY(yi + r);
+			}
+			else if(fy > 1.0f - r)
+			{
+				touchToAdd = t;
+				touchToAdd.setY(yi + 1 + r);
+				t.setY(yi + 1 - r);
+			}
+		}
+				
+		if(touchToAdd.z() >= mFilterThreshold)
+		{
+			int freeIdx = -1;
+			
+			// find free index after i
+			for(int j = i + 1; j < mMaxTouchesPerFrame; ++j)
+			{
+				Vec4 tj = out[j];
+				if(tj.z() < mFilterThreshold)
+				{
+					freeIdx = j;
+					break;
+				}
+			}
+			
+			if(freeIdx >= 0)
+			{
+				out[freeIdx] = touchToAdd;
+				added = true;
+			}
+		}
+		if(added)
+		{
+			out[i] = t;
+		}
+	}	
+	return out;
+}
+
+std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::createPairsH(const std::array<Vec4, TouchTracker::kMaxTouches>& in)
+{	
+	std::array<Vec4, kMaxTouches> out(in);
+	const float r = 0.125f;
+	
+	// count
+	int n = 0;
+	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
+	{
+		if(in[i].z() >= mFilterThreshold)
+		{
+			n = i + 1;
+		}
+	}
+	
+	for(int i = 0; i < n; ++i)
+	{
+		Vec4 touchToAdd;
+		bool added = false;
+		Vec4 t = out[i];
+		float tz = t.z();
+		if(tz >= mFilterThreshold)
+		{
+			float x = t.x();
+			int xi = x;
+			float fx = x - xi;
+			if(fx < r)
+			{
+				touchToAdd = t;
+				touchToAdd.setX(xi - r);
+				t.setX(xi + r);
+			}
+			else if(fx > 1.0f - r)
+			{
+				touchToAdd = t;
+				touchToAdd.setX(xi + 1 + r);
+				t.setX(xi + 1 - r);
+			}
+		}
+		
+		if(touchToAdd.z() >= mFilterThreshold)
+		{
+			int freeIdx = -1;
+			
+			// find free index after i
+			for(int j = i + 1; j < mMaxTouchesPerFrame; ++j)
+			{
+				Vec4 tj = out[j];
+				if(tj.z() < mFilterThreshold)
+				{
+					freeIdx = j;
+					break;
+				}
+			}
+			
+			if(freeIdx >= 0)
+			{
+				out[freeIdx] = touchToAdd;
+				added = true;
+			}
+		}
+		if(added)
+		{
+			out[i] = t;
+		}
+	}	
 	return out;
 }
 

@@ -263,6 +263,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	// all-zone controls up top
 	float topDialsY = 1.66f;
 
+//	pB = page0->addToggleButton("pairs", toggleRect.withCenter(3.25, topDialsY), "pairs", c2);
+	
 	pB = page0->addToggleButton("quantize", toggleRect.withCenter(4.25, topDialsY), "quantize", c2);
 	pB = page0->addToggleButton("note lock", toggleRect.withCenter(5.25, topDialsY), "lock", c2);
 	pB = page0->addToggleButton("glissando", toggleRect.withCenter(6.25, topDialsY), "glissando", c2);

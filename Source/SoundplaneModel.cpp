@@ -264,6 +264,11 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				bool b = v;
 				mTracker.setRotate(b);
 			}
+			else if (p == "pairs")
+			{
+				bool b = v;
+				mTracker.setPairs(b);
+			}
 			else if (p == "glissando")
 			{
 				mMIDIOutput.setGlissando(bool(v));
@@ -420,6 +425,7 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("z_curve", 0.5);
 	setProperty("display_scale", 1.);
 
+	setProperty("pairs", 0.);
 	setProperty("quantize", 1.);
 	setProperty("lock", 0.);
 	setProperty("abs_rel", 0.);

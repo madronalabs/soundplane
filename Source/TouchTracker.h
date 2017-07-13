@@ -80,7 +80,6 @@ public:
 	void setMaxTouches(int t);
 	void makeTemplate();
 	
-
 	void clear();
 	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
@@ -94,6 +93,7 @@ public:
 	void process(int);
 	
 	void setRotate(bool b);
+	void setPairs(bool b);
 	
 	typedef std::bitset<kSensorRows*kSensorCols> SensorBitsArray;	
 	typedef VectorArray2D<kSensorRows, kSensorCols> VectorsH;
@@ -209,7 +209,10 @@ private:
 
 	std::array<Vec4, kMaxTouches> sortTouchesWithHysteresis(const std::array<Vec4, kMaxTouches>& t, std::array<int, TouchTracker::kMaxTouches>& currentSortedOrder);
 	std::array<Vec4, kMaxTouches> limitNumberOfTouches(const std::array<Vec4, kMaxTouches>& t);
+
 	std::array<Vec4, kMaxTouches> rotateTouches(const std::array<Vec4, kMaxTouches>& t);
+	std::array<Vec4, kMaxTouches> createPairsV(const std::array<Vec4, kMaxTouches>& t);
+	std::array<Vec4, kMaxTouches> createPairsH(const std::array<Vec4, kMaxTouches>& t);
 
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	
@@ -279,6 +282,7 @@ private:
 	
 	std::array<int, kMaxTouches> mRotateShuffleOrder;
 	bool mRotate;
+	bool mPairs;
 	
 	int mNumKeys;
 
