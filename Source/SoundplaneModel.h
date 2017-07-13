@@ -29,7 +29,6 @@
 
 class SoundplaneModel :
 	public SoundplaneDriverListener,
-	public TouchTracker::Listener,
 	public MLOSCListener,
 	public MLNetServiceHub,
 	public MLModel
@@ -40,7 +39,7 @@ public:
 	~SoundplaneModel();
 
 	// MLModel
-    void doPropertyChangeAction(MLSymbol , const MLProperty & );
+    void doPropertyChangeAction(MLSymbol , const MLProperty & ) override;
 
 	void setAllPropertiesToDefaults();
 
@@ -49,9 +48,6 @@ public:
 	virtual void receivedFrame(SoundplaneDriver& driver, const float* data, int size) override;
 	virtual void handleDeviceError(int errorType, int data1, int data2, float fd1, float fd2) override;
 	virtual void handleDeviceDataDump(const float* pData, int size) override;
-
-	// TouchTracker::Listener
-	void hasNewCalibration(const MLSignal& cal, const MLSignal& norm, float avgDist);
 
 	// MLOSCListener
 	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint);
@@ -117,8 +113,6 @@ public:
 
 	void getMinMaxHistory(int n);
 	const MLSignal& getCorrelation();
-	void setTaxelsThresh(int t) { mTracker.setTaxelsThresh(t); }
-
 	const MLSignal& getTouchFrame() { return mTouchFrame; }
 	const MLSignal& getTouchHistory() { return mTouchHistory; }
 	
@@ -133,14 +127,9 @@ public:
 	TouchTracker::SensorBitsArray getThresholdBits() { return mTracker.getThresholdBits(); }
 	
 	TouchTracker::VectorsH getPingsHorizRaw() { return mTracker.getPingsHorizRaw(); }
-	TouchTracker::VectorsH getPingsHoriz() { return mTracker.getPingsHoriz(); }
-	TouchTracker::VectorsH getClustersHorizRaw() { return mTracker.getClustersHorizRaw(); }
-	TouchTracker::VectorsH getClustersHoriz() { return mTracker.getClustersHoriz(); }
-	
+	TouchTracker::VectorsH getPingsHoriz() { return mTracker.getPingsHoriz(); }	
 	TouchTracker::VectorsV getPingsVertRaw() { return mTracker.getPingsVertRaw(); }
 	TouchTracker::VectorsV getPingsVert() { return mTracker.getPingsVert(); }
-	TouchTracker::VectorsV getClustersVertRaw() { return mTracker.getClustersVertRaw(); }
-	TouchTracker::VectorsV getClustersVert() { return mTracker.getClustersVert(); }
 	
 	TouchTracker::KeyStates getKeyStates() { return mTracker.getKeyStates(); }
 	
@@ -272,8 +261,6 @@ private:
 
     MLFileCollectionPtr mTouchPresets;
     MLFileCollectionPtr mZonePresets;
-
-	std::map<std::string, MLSignal*> mViewModeToSignalMap;
 
 	// OSC services
 	std::vector<std::string> mServiceNames;

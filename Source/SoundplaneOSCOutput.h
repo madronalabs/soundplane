@@ -80,6 +80,7 @@ private:
 	osc::OutboundPacketStream& getPacketStreamForOffset(int offset);
 	UdpTransmitSocket* getTransmitSocketForOffset(int portOffset);
 	void sendFrame();
+	void sendFrameToKyma();
 
 	int mMaxTouches;	
 	

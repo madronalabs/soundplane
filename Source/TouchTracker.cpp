@@ -74,23 +74,14 @@ TouchTracker::TouchTracker(int w, int h) :
 	mWidth(w),
 	mHeight(h),
 	mpIn(0),
-	mNumNewCentroids(0),
-	mNumCurrentCentroids(0),
-	mNumPreviousCentroids(0),
-	mMatchDistance(2.0f),
-	mNumPeaks(0),
 	mFilterThreshold(0.01f),
 	mOnThreshold(0.03f),
 	mOffThreshold(0.02f),
-	mTaxelsThresh(9),
-	mQuantizeToKey(false),
 	mCount(0),
 	mMaxTouchesPerFrame(0),
 	mNeedsClear(true),
 	mSampleRate(1000.f),
 	mRotate(false),
-	mDoNormalize(true),
-	mUseTestSignal(false),
 	mLopassXY(5.),
 	mLopassZ(50.)
 {
@@ -98,7 +89,6 @@ TouchTracker::TouchTracker(int w, int h) :
 	mFilteredInputX.setDims(w, h);
 	mFilteredInputY.setDims(w, h);
 	mCalibrationProgressSignal.setDims(w, h);
-	
 
 	// clear key states
 	for(auto& row : mKeyStates.data)
@@ -268,8 +258,7 @@ void TouchTracker::process(int)
 			// match -> position filter -> z filter -> feedback
 			mTouches = matchTouches(mTouches, mTouchesMatch1);	
 			mTouches = filterTouchesXYAdaptive(mTouches, mTouchesMatch1);
-			mTouches = filterTouchesZ(mTouches, mTouchesMatch1, 100.f, 20.f);			
-
+			mTouches = filterTouchesZ(mTouches, mTouchesMatch1, 100.f, 50.f);			
 			mTouchesMatch1 = mTouches;
 			
 			// variable z filter from user setting
@@ -279,7 +268,7 @@ void TouchTracker::process(int)
 			// after variable filter, exile decayed touches. Note this affects match feedback!
 			mTouchesMatch1 = exileUnusedTouches(mTouchesMatch1, mTouches);
 						
-			//	TODO hysteresis after matching
+			//	TODO hysteresis after matching to prevent glitching 
 			//			mTouches = sortTouchesWithHysteresis(mTouches, mTouchSortOrder);			
 			//			mTouches = limitNumberOfTouches(mTouches);
 			
@@ -303,16 +292,6 @@ void TouchTracker::process(int)
 			{
 				std::lock_guard<std::mutex> lock(mPingsHorizOutMutex);
 				mPingsHorizOut = mPingsHoriz;
-			}
-			
-			{
-				std::lock_guard<std::mutex> lock(mClustersHorizRawOutMutex);
-				mClustersHorizRawOut = mClustersHorizRaw;
-			}
-			
-			{
-				std::lock_guard<std::mutex> lock(mClustersHorizOutMutex);
-				mClustersHorizOut = mClustersHoriz;
 			}
 			
 			{

@@ -112,16 +112,6 @@ SoundplaneModel::SoundplaneModel() :
     clearZones();
 
 	setAllPropertiesToDefaults();
-
-	mTracker.setListener(this);
-
-	// set up view modes map
-	mViewModeToSignalMap["raw data"] = &mRawSignal;
-	mViewModeToSignalMap["calibrated"] = &mCalibratedSignal;
-	mViewModeToSignalMap["pings horiz"] = &mCalibratedSignal;
-	mViewModeToSignalMap["pings vert"] = &mCalibratedSignal;
-	mViewModeToSignalMap["key states"] = &mCalibratedSignal;
-//	mViewModeToSignalMap["norm map"] = &(mTracker.getNormalizeMap());	
 	
 	// setup OSC default
 	setProperty("osc_service_name", kOSCDefaultStr);
@@ -203,10 +193,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				mTracker.setLoThresh(v);
 			}
-			else if (p == "span_correct")
-			{
-				mTracker.setSpanCorrect(v);
-			}
 			else if (p == "z_scale")
 			{
 				mTracker.setZScale(v);
@@ -270,19 +256,12 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "quantize")
 			{
 				bool b = v;
-				mTracker.setQuantize(b);
 				sendParametersToZones();
 			}
 			else if (p == "rotate")
 			{
 				bool b = v;
 				mTracker.setRotate(b);
-			}
-			else if (p == "test_signal")
-			{
-				bool b = v;
-				mTracker.setUseTestSignal(b);
-				mTesting = b;
 			}
 			else if (p == "glissando")
 			{
@@ -780,29 +759,6 @@ void SoundplaneModel::handleDeviceDataDump(const float* pData, int size)
 	debug() << "\n";
 }
 
-// when calibration is done, set params to save entire calibration signal and
-// set template threshold based on average distance
-void SoundplaneModel::hasNewCalibration(const MLSignal& cal, const MLSignal& norm, float avgDistance)
-{
-	if(avgDistance > 0.f)
-	{
-		setProperty("tracker_calibration", cal);
-		setProperty("tracker_normalize", norm);
-		float thresh = avgDistance * 1.75f;
-		MLConsole() << "SoundplaneModel::hasNewCalibration: calculated template threshold: " << thresh << "\n";
-
-	}
-	else
-	{
-		// set default calibration
-		setProperty("tracker_calibration", cal);
-		setProperty("tracker_normalize", norm);
-		float thresh = 0.2f;
-		MLConsole() << "SoundplaneModel::hasNewCalibration: default template threshold: " << thresh << "\n";
-
-	}
-}
-
 // get a string that explains what Soundplane hardware and firmware and client versions are running.
 const char* SoundplaneModel::getHardwareStr()
 {
@@ -1271,7 +1227,6 @@ void SoundplaneModel::testCallback()
 		}
 	}
 	
-	mTracker.doNormalize(false);
 	filterAndSendData();
 }
 

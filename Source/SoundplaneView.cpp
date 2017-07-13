@@ -236,12 +236,12 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	MLDrawing* pDraw = page0->addDrawing(MLRect(0, 1, 14, 9));
 	page0->renameWidget(pDraw, "page0_lines");
 	int p[20]; // point indices
-	p[0] = pDraw->addPoint(Vec2(7., 5.0));
-	p[1] = pDraw->addPoint(Vec2(7., 8.5));
+	p[0] = pDraw->addPoint(Vec2(7.0, 5.0));
+	p[1] = pDraw->addPoint(Vec2(7.0, 8.5));
 	p[2] = pDraw->addPoint(Vec2(10.5, 5.0));
 	p[3] = pDraw->addPoint(Vec2(10.5, 8.5));
 	pDraw->addOperation(MLDrawing::drawLine, p[0], p[1]);
-	pDraw->addOperation(MLDrawing::drawLine, p[2], p[3]);
+//	pDraw->addOperation(MLDrawing::drawLine, p[2], p[3]);
 	
 	// title
 	pL = page0->addLabel("Zones", pageTitleRect, 1.5f, eMLTitle);
@@ -254,13 +254,15 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	
 	MLRect zoneLabelRect(0, 0, 3., 0.25);
 	float sectionLabelsY = 6.125; 
-	page0->addLabel("ZONE", zoneLabelRect.withCenter(3.5, sectionLabelsY), 1.00f, eMLTitle);
-	page0->addLabel("MIDI", zoneLabelRect.withCenter(8.75, sectionLabelsY), 1.00f, eMLTitle);
-	page0->addLabel("OSC", zoneLabelRect.withCenter(12.25, sectionLabelsY), 1.00f, eMLTitle);
+	
+//	page0->addLabel("ZONE", zoneLabelRect.withCenter(3.5, sectionLabelsY), 1.00f, eMLTitle);
+	
+	page0->addLabel("MIDI", zoneLabelRect.withCenter(4.25, sectionLabelsY), 1.00f, eMLTitle);
+	page0->addLabel("OSC", zoneLabelRect.withCenter(9.75, sectionLabelsY), 1.00f, eMLTitle);
     
 	// all-zone controls up top
 	float topDialsY = 1.66f;
-    
+
 	pB = page0->addToggleButton("quantize", toggleRect.withCenter(4.25, topDialsY), "quantize", c2);
 	pB = page0->addToggleButton("note lock", toggleRect.withCenter(5.25, topDialsY), "lock", c2);
 	pB = page0->addToggleButton("glissando", toggleRect.withCenter(6.25, topDialsY), "glissando", c2);
@@ -284,15 +286,18 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	// if note: note #, single / multi
 	// if note grid: start note, y skip, single / multi
 	// if control: ctrl x, ctrl y, ctrl dx, ctrl dy
+	
     
 	// MIDI
-	pB = page0->addToggleButton("active", toggleRect.withCenter(7.75, bottomDialsY), "midi_active", c2);
-	pB = page0->addToggleButton("pressure", toggleRect.withCenter(7.75, bottomDialsY2), "midi_pressure_active", c2);
-	pD = page0->addDial("rate", dialRect.withCenter(8.75, bottomDialsY), "data_freq_midi", c2);
+	pB = page0->addToggleButton("active", toggleRect.withCenter(3.25, bottomDialsY), "midi_active", c2);
+	
+	pB = page0->addToggleButton("pressure", toggleRect.withCenter(3.25, bottomDialsY2), "midi_pressure_active", c2);
+	pD = page0->addDial("rate", dialRect.withCenter(4.25, bottomDialsY), "data_freq_midi", c2);
 	pD->setRange(1., 500., 1.);
 	pD->setDefault(250.);
-	pD = page0->addDial("bend range", dialRect.withCenter(9.75, bottomDialsY), "bend_range", c2);
+	pD = page0->addDial("bend range", dialRect.withCenter(5.25, bottomDialsY), "bend_range", c2);
 	pD->setRange(0., 96., 1.);
+	pD->setDefault(48);
 	for(int i=0; i<13; ++i)
 	{
 		pD->addDetent(i);
@@ -300,36 +305,25 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	for(int i=24; i<97; i += 12)
 	{
 		pD->addDetent(i);
-	}
+	}	
+	pB = page0->addToggleButton("MPE", toggleRect.withCenter(4.25, bottomDialsY2), "midi_mpe", c2);
 	
-	pB = page0->addToggleButton("MPE", toggleRect.withCenter(8.75, bottomDialsY2), "midi_mpe", c2);
-	mpMidiChannelDial = page0->addDial("channel", dialRect.withCenter(9.75, bottomDialsY2), "midi_channel", c2);
+	mpMidiChannelDial = page0->addDial("channel", dialRect.withCenter(5.25, bottomDialsY2), "midi_channel", c2);
 	mpMidiChannelDial->setRange(1., 16., 1.);
-	
-	// 	addWidgetToView(button, r, paramName);
-	// addPropertyView(paramName, button, MLSymbol("value"));
-	
-    //	pB = page0->addToggleButton("one / multi", toggleRect.withCenter(6.5, 5.25), "single_multi", c2);
-    //	pB->setSplitMode(true);
-    //	pB->setEnabled(false);
     
-    //	pD = page0->addDial("channel", dialRectSmall.withCenter(4.5, 7.75), "channel", c2);
-    //	pD->setRange(1., 16., 1.);
-    
-	pD->setDefault(48);
-	
 	MLRect textButtonRect3(0, 0, 3., 0.4);
-	mpMIDIDeviceButton = page0->addMenuButton("device", textButtonRect3.withCenter(8.75, 9.), "midi_device");
+	mpMIDIDeviceButton = page0->addMenuButton("device", textButtonRect3.withCenter(4.25, 9.), "midi_device");
+	
 	
 	// OSC
 	
-	pB = page0->addToggleButton("active", toggleRect.withCenter(11.25, bottomDialsY), "osc_active", c2);
-	pD = page0->addDial("rate", dialRect.withCenter(12.25, bottomDialsY), "data_freq_osc", c2);
+	pB = page0->addToggleButton("active", toggleRect.withCenter(8.75, bottomDialsY), "osc_active", c2);
+	pD = page0->addDial("rate", dialRect.withCenter(9.75, bottomDialsY), "data_freq_osc", c2);
 	pD->setRange(1., 500., 1.);
 	pD->setDefault(250.);
-	pB = page0->addToggleButton("matrix", toggleRect.withCenter(13.25, bottomDialsY), "osc_send_matrix", c2);
+	pB = page0->addToggleButton("matrix", toggleRect.withCenter(10.75, bottomDialsY), "osc_send_matrix", c2);
 	
-	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(12.25, 9.), "osc_service_name");
+	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(9.75, 9.), "osc_service_name");
 	
 	// additional parameter views allow us to adapt UI based on Model properties.
 	page0->addPropertyView("midi_mpe", this, MLSymbol("mpe")); 	
@@ -447,9 +441,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	page2->addTextButton("select carriers", MLRect(0, 2, 3, 0.4), "select_carriers");
 	page2->addTextButton("restore defaults", MLRect(0, 3., 3, 0.4), "restore_defaults");
 	
-	page2->addTextButton("normalize", MLRect(3.5, 2, 3, 0.4), "normalize");
-	page2->addTextButton("cancel normalize", MLRect(3.5, 2.5, 3, 0.4), "normalize_cancel");
-	page2->addTextButton("use defaults", MLRect(3.5, 3., 3, 0.4), "normalize_default");
 	
 	// tracker calibration view
 	MLRect TCVRect(0, 4.f, 6.5, 3.);

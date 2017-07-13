@@ -374,7 +374,7 @@ void SoundplaneGridView::renderPingsHoriz()
 		{
 			float x = mSensorRangeX.convert(i);
 			
-			float amp = clamp(viewSignal(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
+			float amp = viewSignal(i, j)*displayScale*kGraphAmp;
 			float yAmp = lerp(y1, y2, amp);
 			
 			glColor4fv(&darkRed[0]);
@@ -443,7 +443,7 @@ void SoundplaneGridView::renderPingsVert()
 		{
 			float y = mSensorRangeY.convert(j);
 			
-			float amp = clamp(viewSignal(i, j)*displayScale*kGraphAmp, 0.f, 1.f);
+			float amp = viewSignal(i, j)*displayScale*kGraphAmp;
 			float xAmp = lerp(x1, x2, amp);
 			glColor4fv(&darkRed[0]);
 			glVertex2f(xAmp, y);
@@ -702,7 +702,15 @@ void SoundplaneGridView::renderZGrid()
 	ySensorRange.convertTo(MLRange(-sh, sh));
 	
 	const std::string& viewMode = getStringProperty("viewmode");
-	const MLSignal viewSignal = mpModel->getCalibratedSignal();
+	MLSignal viewSignal;
+	if(viewMode == "raw data")
+	{
+		viewSignal = mpModel->getRawSignal();
+	}
+	else
+	{
+		viewSignal = mpModel->getCalibratedSignal();
+	}
 	
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	float gridScale = displayScale * 100.f;

@@ -44,9 +44,7 @@ private:
 
 	void renderPingsHoriz();
 	void renderPingsVert();
-	void renderClustersRaw();
 	void renderPings();
-	void renderClusters();
 	
 	void renderKeyStates();
 		

@@ -72,15 +72,6 @@ public:
 	static constexpr int kMaxSpansPerCol = 4;
 	static constexpr int kMaxTouches = 10; 
 	
-	class Listener
-	{
-	public:
-		Listener() {}
-		virtual ~Listener() {}
-		virtual void hasNewCalibration(const MLSignal& cal, const MLSignal& norm, float avg) = 0;
-	};
-	
-	
 	TouchTracker(int w, int h);
 	~TouchTracker();
 
@@ -94,8 +85,6 @@ public:
 	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
 	void setLoThresh(float f);
-	void setTaxelsThresh(int t) { mTaxelsThresh = t; }
-	void setQuantize(bool q) { mQuantizeToKey = q; }
 	void setLopassXY(float k); 	
 	void setLopassZ(float k); 	
 	void setForceCurve(float f) { mForceCurve = f; }
@@ -104,35 +93,25 @@ public:
 	// process input and get touches. creates one frame of touch data in buffer.
 	void process(int);
 	
-	void setListener(Listener* pL) { mpListener = pL; }
 	void setRotate(bool b);
-	void setUseTestSignal(bool b) { mUseTestSignal = b; }
-	void doNormalize(bool b) { mDoNormalize = b; }
-	
-	void setSpanCorrect(float v) { mSpanCorrect = v; }
-	
-	// returning by value - MLTEST
-	// these should use time-stamped ringbuffers to communicate with views
 	
 	typedef std::bitset<kSensorRows*kSensorCols> SensorBitsArray;	
 	typedef VectorArray2D<kSensorRows, kSensorCols> VectorsH;
 	typedef VectorArray2D<kSensorCols, kSensorRows> VectorsV;
 	typedef VectorArray2D<kKeyRows, kKeyCols> KeyStates;
 	
-
+	// returning lots of things by value - 
+	// TODO these should use time-stamped ringbuffers to communicate with views
+	
 	const MLSignal& getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);  return mCalibratedSignal; } 
 
 	SensorBitsArray getThresholdBits() { std::lock_guard<std::mutex> lock(mThresholdBitsMutex); return mThresholdBitsOut; }
 
 	VectorsH getPingsHorizRaw() { std::lock_guard<std::mutex> lock(mPingsHorizRawOutMutex); return mPingsHorizRawOut; }
 	VectorsH getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizOutMutex); return mPingsHorizOut; }
-	VectorsH getClustersHoriz() { std::lock_guard<std::mutex> lock(mClustersHorizOutMutex); return mClustersHorizOut; }
-	VectorsH getClustersHorizRaw() { std::lock_guard<std::mutex> lock(mClustersHorizRawOutMutex); return mClustersHorizRawOut; }
 	
 	VectorsV getPingsVertRaw() { std::lock_guard<std::mutex> lock(mPingsVertRawOutMutex); return mPingsVertRawOut; }	
 	VectorsV getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertOutMutex); return mPingsVertOut; }	
-	VectorsV getClustersVert() { std::lock_guard<std::mutex> lock(mClustersVertOutMutex); return mClustersVertOut; }
-	VectorsV getClustersVertRaw() { std::lock_guard<std::mutex> lock(mClustersVertRawOutMutex); return mClustersVertRawOut; }
 
 	KeyStates getKeyStates() { std::lock_guard<std::mutex> lock(mKeyStatesOutMutex); return mKeyStatesOut; }
 
@@ -170,8 +149,6 @@ private:
 		return Vec4(t.x, t.y, t.z, static_cast<float>(t.age));
 	}
 	
-	Listener* mpListener;
-	
 	void dumpTouches();
 	int countActiveTouches();
 	
@@ -186,16 +163,9 @@ private:
 	
 	bool mQuantizeToKey;
 	
-	int mNumPeaks;
-	int mNumNewCentroids;
-	int mNumCurrentCentroids;
-	int mNumPreviousCentroids;
-	
 	float mTemplateSizeY;
 
-	float mMatchDistance;
 	float mZScale;
-	int mTaxelsThresh;
 	
 	float mSmoothing;
 	float mForceCurve;
@@ -275,21 +245,7 @@ private:
 	std::mutex mPingsVertRawOutMutex;	
 	std::mutex mPingsVertOutMutex;	
 	
-	// clusters of pings
-	VectorsH mClustersHoriz;
-	VectorsH mClustersHorizRaw;
-	VectorsH mClustersHorizY1;
-	VectorsH mClustersHorizOut;
-	std::mutex mClustersHorizOutMutex;	
-	VectorsH mClustersHorizRawOut;
-	std::mutex mClustersHorizRawOutMutex;	
-	VectorsV mClustersVert;
-	VectorsV mClustersVertRaw;
-	VectorsV mClustersVertY1;
-	VectorsV mClustersVertRawOut;
-	std::mutex mClustersVertRawOutMutex;	
-	VectorsV mClustersVertOut;
-	std::mutex mClustersVertOutMutex;	
+
 	
 	// key states
 	KeyStates mKeyStates;
@@ -324,17 +280,11 @@ private:
 	std::array<int, kMaxTouches> mRotateShuffleOrder;
 	bool mRotate;
 	
-	
-	bool mDoNormalize;
-	
-	float mSpanCorrect;
-	
 	int mNumKeys;
 
 	int mCount;
 	
 	bool mNeedsClear;
-	bool mUseTestSignal;
 
 };
 
