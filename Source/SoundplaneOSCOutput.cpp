@@ -64,14 +64,16 @@ void SoundplaneOSCOutput::connect(const char* name, int port)
 	resetAllSockets();
 	try
 	{
-		UdpTransmitSocket& socket = getTransmitSocketForOffset(0);
 		osc::OutboundPacketStream& p = getPacketStreamForOffset(0);
+		UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
+		if(!socket) return;
+		
 		p << osc::BeginBundleImmediate;
 		p << osc::BeginMessage( "/t3d/dr" );	
 		p << (osc::int32)mDataFreq;
 		p << osc::EndMessage;
 		p << osc::EndBundle;
-		socket.Send( p.Data(), p.Size() );
+		socket->Send( p.Data(), p.Size() );
 		debug() << "SoundplaneOSCOutput:connected to " << name << ", port " << port << "\n";
 	}
 	catch(std::runtime_error err)
@@ -107,7 +109,8 @@ void SoundplaneOSCOutput::doInfrequentTasks()
 		if(mSocketInitialized[portOffset])	
 		{
 			osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);
-			UdpTransmitSocket& socket = getTransmitSocketForOffset(portOffset);
+			UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
+			if(!socket) return;
 
 			if(mKymaMode)
 			{
@@ -120,7 +123,7 @@ void SoundplaneOSCOutput::doInfrequentTasks()
 				p << (osc::int32)1;
 				p << osc::EndMessage;
 				p << osc::EndBundle;
-				socket.Send( p.Data(), p.Size() );
+				socket->Send( p.Data(), p.Size() );
 			}
 			
 			// send data rate to receiver
@@ -129,7 +132,7 @@ void SoundplaneOSCOutput::doInfrequentTasks()
 			p << (osc::int32)mDataFreq;
 			p << osc::EndMessage;
 			p << osc::EndBundle;
-			socket.Send( p.Data(), p.Size() );
+			socket->Send( p.Data(), p.Size() );
 		}
 	}
 }
@@ -162,13 +165,13 @@ osc::OutboundPacketStream& SoundplaneOSCOutput::getPacketStreamForOffset(int por
 	return p;
 }
 
-UdpTransmitSocket& SoundplaneOSCOutput::getTransmitSocketForOffset(int portOffset)
+UdpTransmitSocket* SoundplaneOSCOutput::getTransmitSocketForOffset(int portOffset)
 {
 	if(!mSocketInitialized[portOffset])
 	{
 		initializeSocket(portOffset);
 	}
-	return *mUDPSockets[portOffset];
+	return &(*mUDPSockets[portOffset]);
 }
 
 void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* msg)
@@ -300,12 +303,14 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
 		if(mGotMatrixThisFrame)
 		{
 			osc::OutboundPacketStream& p = getPacketStreamForOffset(0);					 
-			UdpTransmitSocket& socket = getTransmitSocketForOffset(0);
+			UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
+			if(!socket) return;
+
 			p << osc::BeginMessage( "/t3d/matrix" );
 			p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
 			p << osc::EndMessage;
 			mGotMatrixThisFrame = false;
-			socket.Send( p.Data(), p.Size() );
+			socket->Send( p.Data(), p.Size() );
 		}
     }
 }
@@ -333,7 +338,8 @@ void SoundplaneOSCOutput::sendFrame()
 		{
 			// send controller message: /t3d/[zoneName] val1 (val2) on port (3123 + offset).
 			osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);
-			UdpTransmitSocket& socket = getTransmitSocketForOffset(portOffset);
+			UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
+			if(!socket) return;
 			
 			// int channel = pMsg->mData[1];
 			// int ctrlNum1 = pMsg->mData[2];
@@ -374,7 +380,7 @@ void SoundplaneOSCOutput::sendFrame()
 			// clear
 			mMessagesByZone[i].mType = nullSym;
 			
-			socket.Send( p.Data(), p.Size() );
+			socket->Send( p.Data(), p.Size() );
 		}
 	}
 	
@@ -384,7 +390,8 @@ void SoundplaneOSCOutput::sendFrame()
 		// begin OSC bundle for this frame
 		// timestamp is now stored in the bundle, synchronizing all info for this frame.
 		osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);					 
-		UdpTransmitSocket& socket = getTransmitSocketForOffset(portOffset);
+		UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
+		if(!socket) return;
 		
 		// begin bundle
 		p << osc::BeginBundle(mCurrFrameStartTime);
@@ -430,7 +437,7 @@ void SoundplaneOSCOutput::sendFrame()
 		p << osc::EndBundle;
 		
 		// send it
-		socket.Send( p.Data(), p.Size() );
+		socket->Send( p.Data(), p.Size() );
 		
 	}
 }

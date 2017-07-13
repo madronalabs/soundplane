@@ -131,10 +131,9 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		}
 		glEnd();
 
-		// TEMP x graph
-		
+		/*
+		// DEBUG to draw x position graph		
 		glLineWidth(viewH / 100.f);
-
 		MLRange xToYRange(0., 30., fr.top() + margin, fr.bottom() - margin);
 		glColor4fv(indDarker);
 
@@ -151,6 +150,8 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 			
 		}
 		glEnd();
+		 */
+		
 	}
 }
 

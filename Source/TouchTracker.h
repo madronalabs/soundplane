@@ -104,10 +104,7 @@ public:
 	// process input and get touches. creates one frame of touch data in buffer.
 	void process(int);
 	
-	
-
 	void setListener(Listener* pL) { mpListener = pL; }
-	void setDefaultNormalizeMap();
 	void setRotate(bool b);
 	void setUseTestSignal(bool b) { mUseTestSignal = b; }
 	void doNormalize(bool b) { mDoNormalize = b; }
@@ -318,20 +315,16 @@ private:
 	std::array<Vec4, kMaxTouches> mTouchesOut;
 	std::mutex mTouchesOutMutex;	
 	
-	std::array<Vec2, kMaxTouches> mLatestPositions;
-	
-	std::array<int, kMaxTouches> mPreviousMatch; 
-
-	
-	
-	MLSignal mBackground;
-	
+	std::array<Vec2, kMaxTouches> mLatestPositions;	
 		
 	int mRetrigClock;
 	
 	int mMaxTouchesPerFrame;
-	int mPrevTouchForRotate;
+	
+	std::array<int, kMaxTouches> mRotateShuffleOrder;
 	bool mRotate;
+	
+	
 	bool mDoNormalize;
 	
 	float mSpanCorrect;

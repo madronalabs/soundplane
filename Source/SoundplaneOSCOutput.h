@@ -78,7 +78,7 @@ private:
 	void resetAllSockets();
 	void initializeSocket(int portOffset);
 	osc::OutboundPacketStream& getPacketStreamForOffset(int offset);
-	UdpTransmitSocket& getTransmitSocketForOffset(int portOffset);
+	UdpTransmitSocket* getTransmitSocketForOffset(int portOffset);
 	void sendFrame();
 
 	int mMaxTouches;	

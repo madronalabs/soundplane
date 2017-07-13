@@ -188,7 +188,6 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("raw touches");
 	viewMenu->addItem("touches");
 
-	viewMenu->addItem("norm map");
 	
 	mMenuMap["midi_device"] = MLMenuPtr(new MLMenu("midi_device"));
     
