@@ -111,7 +111,7 @@ public:
 	void setMPEExtended(bool v);
 	void setMPE(bool v);
 	void setStartChannel(int v);
-	void setKymaPoll(bool v);
+	void setKymaMode(bool v);
 	
 private:
 	int getMPEMainChannel();
@@ -170,7 +170,7 @@ private:
 	// channel to be used for single-channel output
 	int mChannel;
 	
-	bool mKymaPoll;
+	bool mKymaMode;
 	bool mVerbose;
 	uint64_t mLastTimeVerbosePrint;
 };

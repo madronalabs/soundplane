@@ -463,11 +463,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD = page2->addDial("lo thresh", dialRect.withCenter(2., dialY), "lo_thresh", c2);
 	pD->setRange(0., 0.25, 0.01);	
 	pD->setDefault(0.10);	
-	
 
 	
-	pB = page2->addToggleButton("kyma", toggleRect.withCenter(12, dialY), "kyma_poll", c2);
-	pB = page2->addToggleButton("test", toggleRect.withCenter(13, dialY), "test_signal", c2);
+	pB = page2->addToggleButton("kyma", toggleRect.withCenter(12, dialY), "kyma", c2);
 
 }
 
@@ -529,7 +527,6 @@ void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
 		MLAppView::doPropertyChangeAction(p, val);
 	}
 }
-
 
 void SoundplaneView::initialize()
 {

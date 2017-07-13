@@ -50,8 +50,8 @@ public:
 	virtual void handleDeviceDataDump(const float* pData, int size) override;
 
 	// MLOSCListener
-	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint);
-	void ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint);
+	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint) override;
+	void ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint) override;
 
 	// MLNetServiceHub
 	void didResolveAddress(NetService *pNetService);
@@ -257,6 +257,7 @@ private:
 	std::vector<float> mMaxNoiseByCarrierSet;
 	std::vector<float> mMaxNoiseFreqByCarrierSet;
 
+	bool mKymaMode;
 	int mKymaIsConnected; // TODO more custom clients
 
     MLFileCollectionPtr mTouchPresets;

@@ -89,6 +89,7 @@ SoundplaneModel::SoundplaneModel() :
 	//mpUDPReceiveSocket(nullptr),
 	mTest(0),
 	mKymaIsConnected(0),
+	mKymaMode(false),
 	mTracker(kSoundplaneWidth, kSoundplaneHeight)
 {
 	// setup geometry
@@ -282,14 +283,15 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				mMIDIOutput.setBendRange(v);
 				sendParametersToZones();
 			}
-			else if (p == "kyma_poll")
+			else if (p == "kyma")
 			{
 				bool b = v;
 				
 				// MLTEST
-				MLConsole() << "SoundplaneModel: kyma_poll " << b << "\n";
+				MLConsole() << "SoundplaneModel: kyma mode " << b << "\n";
 				
-				mMIDIOutput.setKymaPoll(b);
+				setKymaMode(b);
+				
 				listenToOSC(b ? kDefaultUDPReceivePort : 0);
 				
 				if(b)
@@ -479,11 +481,7 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 			// MLTEST
 			MLConsole() << " arg = " << a1 << "\n";
 
-			// set Kyma mode
-			if (mOSCOutput.getKymaMode())
-			{
-				mKymaIsConnected = true;
-			}
+			mKymaIsConnected = true;
 		}
 		else if (std::strcmp( m.AddressPattern(), "/osc/notify/midi/Soundplane" ) == 0 )
 		{
@@ -495,15 +493,14 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 			
 			// set voice count to a1
 			int newTouches = clamp((int)a1, 0, kSoundplaneMaxTouches);
-			if(mKymaIsConnected)
+
+			// Kyma is sending 0 sometimes, which there is probably
+			// no reason to respond to
+			if(newTouches > 0)
 			{
-				// Kyma is sending 0 sometimes, which there is probably
-				// no reason to respond to
-				if(newTouches > 0)
-				{
-					setProperty("max_touches", newTouches);
-				}
+				setProperty("max_touches", newTouches);
 			}
+
 		}
 	}
 	catch( osc::Exception& e )
@@ -536,6 +533,11 @@ void SoundplaneModel::didResolveAddress(NetService *pNetService)
 	static const char* kymaStr = "beslime";
 	int len = strlen(kymaStr);
 	bool isProbablyKyma = !strncmp(serviceName.c_str(), kymaStr, len);
+	
+	if(isProbablyKyma)
+	{
+		MLConsole() << "setting Kyma mode.\n";
+	}
 	setKymaMode(isProbablyKyma);
 }
 
@@ -653,7 +655,6 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 
 	// store surface for raw output
 	mRawSignal.copy(mSurface);
-
 	
 	if (mCalibrating)
 	{
@@ -1163,16 +1164,10 @@ void SoundplaneModel::sendMessageToListeners()
 
 void SoundplaneModel::setKymaMode(bool m)
 {
+	mKymaMode = m;
 	mOSCOutput.setKymaMode(m);
-	if (m)
-	{
-		// looking for Kyma
-		// TODO poll and check Kyma connection periodically
-	}
-	else
-	{
-		mKymaIsConnected = false;
-	}
+	mMIDIOutput.setKymaMode(m);
+
 }
 
 // --------------------------------------------------------------------------------

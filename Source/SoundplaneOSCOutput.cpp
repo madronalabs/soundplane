@@ -103,7 +103,6 @@ void SoundplaneOSCOutput::setActive(bool v)
 
 void SoundplaneOSCOutput::doInfrequentTasks()
 {
-	
 	if(mKymaMode)
 	{
 		osc::OutboundPacketStream& p = getPacketStreamForOffset(0);

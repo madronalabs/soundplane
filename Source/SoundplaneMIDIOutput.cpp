@@ -92,7 +92,7 @@ SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mMPEMode(true),
 	mMPEChannels(0),
 	mChannel(1),
-	mKymaPoll(true),
+	mKymaMode(false),
 	mVerbose(false),
 	mLastTimeVerbosePrint(0)
 {
@@ -273,11 +273,11 @@ void SoundplaneMIDIOutput::setStartChannel(int v)
 	sendAllMIDINotesOff();
 }
 
-void SoundplaneMIDIOutput::setKymaPoll(bool v)
+void SoundplaneMIDIOutput::setKymaMode(bool v)
 { 
 	// MLTEST
-	MLConsole() << "kyma poll: " << v << "\n";
-	mKymaPoll = v; 
+	MLConsole() << "SoundplaneMIDIOutput: kyma mode " << v << "\n";
+	mKymaMode = v; 
 }
 
 // MPE spec defines a split mode using main channels 1 and 16. We ignore this for now and use only channel 1
@@ -540,7 +540,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
     {
         sendMIDIVoiceMessages();
 		if(mGotControllerChanges && mTimeToSendNewFrame) sendMIDIControllerMessages();
-		if(mKymaPoll) pollKymaViaMIDI();
+		if(mKymaMode) pollKymaViaMIDI();
 		if(mVerbose) dumpVoices();
 		updateVoiceStates();
     }
