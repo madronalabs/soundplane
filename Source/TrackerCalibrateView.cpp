@@ -49,9 +49,9 @@ Vec2 TrackerCalibrateView::worldToScreen(const Vec3& world)
 void TrackerCalibrateView::renderOpenGL()
 {
 	if (!mpModel) return;
-	Vec2 dim = mpModel->getTrackerCalibrateDims();
-	int width = dim.x();
-	int height = dim.y();
+
+	int width = mpModel->getWidth();
+	int height = mpModel->getHeight();
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
     ScopedPointer<LowLevelGraphicsContext> glRenderer

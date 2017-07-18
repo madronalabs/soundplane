@@ -707,10 +707,16 @@ void SoundplaneGridView::renderZGrid()
 	{
 		viewSignal = mpModel->getRawSignal();
 	}
-	else
+	else if(viewMode == "calibrated")
 	{
 		viewSignal = mpModel->getCalibratedSignal();
 	}
+	else
+	{
+		viewSignal = mpModel->getSmoothedSignal();
+	}
+	// should be one compare for Vec2 signal dims
+	if((viewSignal.getHeight() != mSensorHeight) || (viewSignal.getWidth() != mSensorWidth)) return;
 	
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	float gridScale = displayScale * 100.f;
@@ -947,7 +953,7 @@ void SoundplaneGridView::renderOpenGL()
 		renderFilteredTouches();
 		drawSurfaceOverlay();
 	}
-	else
+	else // raw, calibrated or smoothed
 	{
 		renderZGrid();
 	}

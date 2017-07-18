@@ -56,10 +56,7 @@ static void makeStandardCarrierSet(SoundplaneDriver::Carriers &carriers, int set
 SoundplaneModel::SoundplaneModel() :
 	mOutputEnabled(false),
 	mSurface(kSoundplaneWidth, kSoundplaneHeight),
-
 	mRawSignal(kSoundplaneWidth, kSoundplaneHeight),
-	mCalibratedSignal(kSoundplaneWidth, kSoundplaneHeight),
-
 	mTesting(false),
 	mCalibrating(false),
 	mSelectingCarriers(false),
@@ -193,14 +190,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "lo_thresh")
 			{
 				mTracker.setLoThresh(v);
-			}
-			else if (p == "z_scale")
-			{
-				mTracker.setZScale(v);
-			}
-			else if (p == "z_curve")
-			{
-				mTracker.setForceCurve(v);
 			}
 			else if (p == "snap")
 			{
@@ -660,7 +649,10 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 	memcpy(pSurfaceData, data, size * sizeof(float));
 
 	// store surface for raw output
-	mRawSignal.copy(mSurface);
+	{ 
+		std::lock_guard<std::mutex> lock(mRawSignalMutex); 
+		mRawSignal.copy(mSurface);
+	}
 	
 	if (mCalibrating)
 	{
@@ -704,10 +696,6 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		mTracker.setOutputSignal(&mTouchFrame);
 		mTracker.process(1);
 
-		// get calibrated and cooked signals for viewing
-		// TODO elide all this copying! 
-		
-		mCalibratedSignal = mTracker.getCalibratedSignal();
 		
  		sendTouchDataToZones();
 
@@ -1142,13 +1130,14 @@ void SoundplaneModel::sendTouchDataToZones()
 
     // send optional calibrated matrix
     if(mSendMatrixData)
-    {
+    {		
+		MLSignal calibratedPressure = mTracker.getCalibratedSignal();
         mMessage.mType = MLSymbol("matrix");
         for(int j = 0; j < kSoundplaneHeight; ++j)
         {
             for(int i = 0; i < kSoundplaneWidth; ++i)
             {
-                mMessage.mMatrix[j*kSoundplaneWidth + i] = mCalibratedSignal(i, j);
+                mMessage.mMatrix[j*kSoundplaneWidth + i] = calibratedPressure(i, j);
             }
         }
         sendMessageToListeners();
@@ -1237,10 +1226,6 @@ void SoundplaneModel::filterAndSendData()
 	mTracker.setInputSignal(&mSurface);					
 	mTracker.setOutputSignal(&mTouchFrame);
 	mTracker.process(1);
-	
-	// get calibrated signal for viewing
-	// TODO get rid of these copies
-	mCalibratedSignal = mTracker.getCalibratedSignal();								
 	
 	sendTouchDataToZones();
 	
@@ -1385,12 +1370,6 @@ void SoundplaneModel::endCalibrate()
 	mCalibrating = false;
 	mHasCalibration = true;
 
-	/*
-	mBoxFilter.clear();
-	mNotchFilter.clear();
-	mLopassFilter.clear();
-*/
-	
 	enableOutput(true);
 }
 
