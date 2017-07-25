@@ -540,7 +540,6 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
     {
         sendMIDIVoiceMessages();
 		if(mGotControllerChanges && mTimeToSendNewFrame) sendMIDIControllerMessages();
-		if(mKymaMode) pollKymaViaMIDI();
 		if(mVerbose) dumpVoices();
 		updateVoiceStates();
     }
@@ -682,13 +681,23 @@ void SoundplaneMIDIOutput::sendMIDIControllerMessages()
 	mGotControllerChanges = false;
 }
 
+void SoundplaneMIDIOutput::doInfrequentTasks()
+{
+	if(mKymaMode)
+	{
+		pollKymaViaMIDI();
+	}
+}
+
 void SoundplaneMIDIOutput::pollKymaViaMIDI()
 {
 	// send NRPN with Soundplane identifier every few secs. for Kyma.
 	const uint64_t nrpnPeriodMicrosecs = 1000*1000*4;
-	if (mCurrFrameStartTime > mLastTimeNRPNWasSent + nrpnPeriodMicrosecs)
+	uint64_t now = getMicroseconds();
+	
+	if (now > mLastTimeNRPNWasSent + nrpnPeriodMicrosecs)
 	{
-		mLastTimeNRPNWasSent = mCurrFrameStartTime;
+		mLastTimeNRPNWasSent = now;
 		// set NRPN
 		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 99, 0x53));
 		mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0x50));

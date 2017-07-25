@@ -286,12 +286,12 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				
 				setKymaMode(b);
 				
-				listenToOSC(b ? kDefaultUDPReceivePort : 0);
-				
 				if(b)
 				{
-					MLConsole() << "     listening for OSC on port " << kDefaultUDPReceivePort << ".\n";
+					MLConsole() << "     listening for OSC on port " << kDefaultUDPReceivePort << "...\n";
 				}
+				
+				listenToOSC(b ? kDefaultUDPReceivePort : 0);
 			}
 			else if (p == "override_carriers")
 			{
@@ -1237,7 +1237,8 @@ void SoundplaneModel::filterAndSendData()
 void SoundplaneModel::doInfrequentTasks()
 {
 	PollNetServices();
-    mOSCOutput.doInfrequentTasks();
+	mOSCOutput.doInfrequentTasks();
+	mMIDIOutput.doInfrequentTasks();
 
 	if (mCarrierMaskDirty)
 	{

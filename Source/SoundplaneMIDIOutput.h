@@ -113,6 +113,8 @@ public:
 	void setStartChannel(int v);
 	void setKymaMode(bool v);
 	
+	void doInfrequentTasks();
+	
 private:
 	int getMPEMainChannel();
 	int getMPEVoiceChannel(int voice);
@@ -137,7 +139,6 @@ private:
 	void sendMIDIControllerMessages();
 	void pollKymaViaMIDI();
 	void dumpVoices();
-
 	
 	int mVoices;
 	

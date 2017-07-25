@@ -172,7 +172,7 @@ void TouchTracker::setThresh(float f)
 
 void TouchTracker::setLoThresh(float f) 
 { 
-	mLoPressureThreshold = f*0.01;
+	mLoPressureThreshold = f;
 }
 
 void TouchTracker::setLopassXY(float k)
@@ -201,43 +201,34 @@ void TouchTracker::process(int)
 	
 	mFilteredInput.copy(in);
 	
-	// clear edges (should do earlier! TODO)
-	int w = in.getWidth();
-	int h = in.getHeight();
-	for(int j=0; j<h; ++j)
-	{
-		mFilteredInput(0, j) = 0;
-		mFilteredInput(w - 1, j) = 0;
-	}
-	
 	// make calibrated signal available to viewers
 	{
 		std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);
 		mCalibratedSignal = mFilteredInput;
 	}
 	
-	// filter out any negative values. negative values can shows up from capacitive coupling near edges,
+	// filter out any negative values. negative values can show up from capacitive coupling near edges,
 	// from motion or bending of the whole instrument, 
 	// from the elastic layer deforming and pushing up on the sensors near a touch. 
 	mFilteredInput.sigMax(0.f);
-
 	{	
 		// convolve input with 3x3 smoothing kernel.
 		// a lot of filtering is needed here to get good position accuracy for Soundplane A.
-		float kc, kex, key, kk;	
-		kc = 4./18; kex = 3./18.; key = 2./18.; kk=1./18.;
+		float kc, kex, key, kk;			
+		kc = 2.; kex = 1.; key = 1.; kk=1.;
 		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
 		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
 		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
-		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
+//		mFilteredInput.convolve3x3xy(kc, kex, key, kk);
+		const float kPostSmoothScale = 1.f/64.f;
+		mFilteredInput.scale(kPostSmoothScale);
 		
 		// make smoothed signal available
 		{
 			std::lock_guard<std::mutex> lock(mSmoothedSignalMutex);
 			mSmoothedSignal = mFilteredInput;
 		}
-		
-		
+				
 		if(mMaxTouchesPerFrame > 0)
 		{
 			mThresholdBits = findThresholdBits(mFilteredInput);
@@ -343,9 +334,15 @@ TouchTracker::SensorBitsArray TouchTracker::findThresholdBits(const MLSignal& in
 	int h = in.getHeight();
 	for(int j=0; j<h; ++j)
 	{
+		float thresh = mLoPressureThreshold;
+		
+		// for Soundplane A, make pressure threshold lower at clamped edges where movement is hard
+		// we have to vary the threshold, not the data!
+		if ((j == 0)||(j == h - 1)) thresh *= 0.5f;
+		
 		for(int i=0; i<w; ++i)
 		{
-			y[j*w + i] = (in(i, j) > mLoPressureThreshold);
+			y[j*w + i] = (in(i, j) > thresh);
 		}
 	}
 	
@@ -415,7 +412,7 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findPings(const SensorBitsArra
 				// if span ends are not on borders, calculate the length for check. Otherwise we have to assume it's long enough.
 				const int spanLength = ((intSpanStart > 0)&&(intSpanEnd < ARRAY_LENGTH)) ? (intSpanEnd - intSpanStart) : kMinSpanLength;
 				
-		//		if(spanLength >= kMinSpanLength)
+				if(spanLength >= kMinSpanLength)
 				{
 					// span acquired, look for pings
 					float z = 0.f;
@@ -454,7 +451,7 @@ VectorArray2D<ARRAYS, ARRAY_LENGTH> TouchTracker::findPings(const SensorBitsArra
 							float za = zm3;
 							float zb = zm2;
 							float zc = zm1;
-							float zPeak = zb - 0.25f*(za - zc)*p;
+							float zPeak = zb - 0.25f*(za - zc)*p;  // unused ?!
 							
 							if(within(x, intSpanStart + 0.f, intSpanEnd - 0.f))
 							{
@@ -647,8 +644,8 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 		
 			if(pk > xaya.z())
 			{
-				xaya.setX(px); // x at max z
-				xaya.setZ(pk); // max z for x ping -> z
+				xaya.setX(px); // x at max k
+				xaya.setZ(pk); // max k for x ping -> z
 			}
 		}
 		j++;
@@ -674,8 +671,8 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 			
 			if(pk > xaya.w())
 			{
-				xaya.setY(py); // y at max z
-				xaya.setW(pk); // max z for y ping -> w
+				xaya.setY(py); // y at max k
+				xaya.setW(pk); // max k for y ping -> w
 			}
 		}
 		i++;
@@ -683,7 +680,7 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 
 	// get ping locations and pressures by combining vert and horiz
 	{
-		const float kPressureScale = 24.f;
+		const float kPressureScale = 1.f;
 		int j = 0;
 		for(auto& keyStatesArray : keyStates.data)
 		{			
@@ -699,12 +696,14 @@ TouchTracker::KeyStates TouchTracker::pingsToKeyStates(const TouchTracker::Vecto
 				{					
 					key.setX(cx - i);
 					key.setY(cy - j);
+					
+					// get pressure from max x and y curvatures
 					key.setZ(sqrtf((cz)*(cw)) * kPressureScale);
 					key.setW(0.f);
 				}
 				else
 				{
-					// return key center - doesn't matter currently because with 0 z the state is not used by the touch filter
+					// return key center - doesn't matter currently because with z = 0. the state is not used by the touch filter
 					key = Vec4(0.5f, 0.5f, 0.f, 0.f);
 				}
 
@@ -755,10 +754,10 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::reduceCrowdedTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& in)
 {	
-	float kCrowdedDistance = 4.f; 	
+	float kCrowdedDistance = 4.0f; 	
 	
 	// > 1 to allow close touches of near equal z to reduce each other
-	float kOtherTouchZMult = 2.f;
+	float kOtherTouchZMult = 2.0f;
 	
 	std::array<Vec4, kMaxTouches> out(in);
 	
@@ -1104,9 +1103,11 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::matchTouches(const std
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::filterTouchesXYAdaptive(const std::array<Vec4, TouchTracker::kMaxTouches>& in, const std::array<Vec4, TouchTracker::kMaxTouches>& inz1)
 {
 	float sr = 1000.f; // Soundplane A
+	
+	// these filter settings have a big and sort of delicate impact on play feel, so they are not user settable at this point
 	const float kFixedXYFreqMax = 20.f;
-	const float kFixedXYFreqMin = 0.5f;
-	MLRange zToXYFreq(0., 0.1, kFixedXYFreqMin, kFixedXYFreqMax); 
+	const float kFixedXYFreqMin = 1.f;
+	MLRange zToXYFreq(0., 0.02, kFixedXYFreqMin, kFixedXYFreqMax); 
 	
 	std::array<Vec4, TouchTracker::kMaxTouches> out;
 	

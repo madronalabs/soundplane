@@ -30,7 +30,7 @@ const int kDefaultUDPPort = 3123;
 const int kNumUDPPorts = 16;
 
 // Soundplane app input port for Kyma and other config messages
-const int kDefaultUDPReceivePort = 3124;
+const int kDefaultUDPReceivePort = 3124; // 3122?
 
 const int kUDPOutputBufferSize = 4096;
 

@@ -198,11 +198,11 @@ void SoundplaneGridView::setModel(SoundplaneModel* m)
 
 void SoundplaneGridView::renderXYGrid()
 {
-	const int kTouchHistorySize = 500;
 	float fMax = mpModel->getFloatProperty("z_max");
 	
-	const MLSignal calSignal = mpModel->getCalibratedSignal();
-	
+	const MLSignal calSignal = mpModel->getSmoothedSignal();
+	if((calSignal.getHeight() != mSensorHeight) || (calSignal.getWidth() != mSensorWidth)) return;
+
 	TouchTracker::SensorBitsArray thresholds = mpModel->getThresholdBits();
 	
 	setupOrthoView();
@@ -228,11 +228,11 @@ void SoundplaneGridView::renderXYGrid()
 		for(int i=mLeftSensor; i<mRightSensor; ++i)
 		{
 			float mix = (calSignal)(i, j) / fMax;
-			mix *= displayScale*2.f;
+			mix *= displayScale * 0.5f;
 			mix = clamp(mix, 0.f, 1.f);
 			Vec4 dataColor = vlerp(gray, lightGray, mix);
 			
-			// mark sensor junction if over threshold
+			// filter sensor junction green if over threshold
 			bool t = thresholds[j*kSensorCols + i];			
 			if(t)
 			{
@@ -352,17 +352,16 @@ void SoundplaneGridView::renderPingsHoriz()
 	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	float ph = 0.4;
-	const float kGraphAmp = 4.0f;
+	const float kGraphAmp = 1.0f;
 	float displayScale = mpModel->getFloatProperty("display_scale")*10.f;
 	
 	
 	// draw calibrated data
 	
-	const MLSignal viewSignal = mpModel->getCalibratedSignal();
+	const MLSignal viewSignal = mpModel->getSmoothedSignal();
 	
 	// draw line graph
 	glLineWidth(mViewScale);
-	
 	for(int j=0; j<mSensorHeight; ++j)
 	{
 		float y1 = mSensorRangeY.convert(j - ph);   
@@ -421,13 +420,13 @@ void SoundplaneGridView::renderPingsVert()
 	Vec4 darkRed(0.6f, 0.3f, 0.3f, 1.f);
 	Vec4 white(1.f, 1.f, 1.f, 1.f);
 	float ph = 0.4;
-	const float kGraphAmp = 4.0f;
+	const float kGraphAmp = 1.0f;
 	float displayScale = mpModel->getFloatProperty("display_scale")*10.f;
 	
 	
 	// draw calibrated data
 	
-	const MLSignal viewSignal = mpModel->getCalibratedSignal();
+	const MLSignal viewSignal = mpModel->getSmoothedSignal();
 	
 	// draw line graph
 	glLineWidth(mViewScale);
@@ -491,7 +490,7 @@ void SoundplaneGridView::renderPings()
 	glLineWidth(4.0*mViewScale);
 
 	// draw horiz pings
-	float kDotSize = 200.f;
+	float kDotSize = 32.f;
 	float dotSize = kDotSize*fabs(mKeyRangeY(0.10f) - mKeyRangeY(0.f));
 	auto pings = mpModel->getPingsHorizRaw();
 	int j = 0;
@@ -714,6 +713,7 @@ void SoundplaneGridView::renderZGrid()
 	else
 	{
 		viewSignal = mpModel->getSmoothedSignal();
+		viewSignal.scale(0.1f);
 	}
 	// should be one compare for Vec2 signal dims
 	if((viewSignal.getHeight() != mSensorHeight) || (viewSignal.getWidth() != mSensorWidth)) return;

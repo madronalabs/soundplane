@@ -10,6 +10,7 @@
 #include <map>
 #include <stdint.h>
 
+#include "MLDebug.h"
 #include "MLTime.h"
 #include "MLModel.h"
 #include "SoundplaneModelA.h"

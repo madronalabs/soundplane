@@ -396,7 +396,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	
 	pD = page1->addDial("thresh", dialRect.withCenter(2.5, dialY), "z_thresh", c2);
 	pD->setRange(0., 0.025, 0.001);	
-	pD->setDefault(0.01);	
+	pD->setDefault(0.005);	
 	
 	pD = page1->addDial("z scale", dialRect.withCenter(3.75, dialY), "z_scale", c2);
 	pD->setRange(0.25, 5.0, 0.01);	
@@ -418,7 +418,11 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setRange(1., 100., 1.);	
 	pD->setDefault(50.);	
 	
-
+	
+	pD = page1->addDial("lo thresh", dialRect.withCenter(7.5, dialY), "lo_thresh", c2);
+	pD->setRange(0., 0.05, 0.001);	
+	pD->setDefault(0.01);	
+	
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 
 //	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
@@ -462,13 +466,11 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setRange(0.01, 1.0, 0.01);	
 	pD->setDefault(0.5);
 
-	pD = page2->addDial("lo thresh", dialRect.withCenter(2., dialY), "lo_thresh", c2);
-	pD->setRange(0., 0.25, 0.01);	
-	pD->setDefault(0.10);	
-
 	
 	pB = page2->addToggleButton("kyma", toggleRect.withCenter(12, dialY), "kyma", c2);
-
+	
+	setWantsKeyboardFocus(true);
+	pDebug->setWantsKeyboardFocus(true);
 }
 
 SoundplaneView::~SoundplaneView()
