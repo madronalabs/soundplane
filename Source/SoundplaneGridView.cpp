@@ -200,7 +200,14 @@ void SoundplaneGridView::renderXYGrid()
 {
 	float fMax = mpModel->getFloatProperty("z_max");
 	
-	const MLSignal calSignal = mpModel->getSmoothedSignal();
+//	const MLSignal calSignal = mpModel->getSmoothedSignal();
+	
+	
+	// MLTEST
+	const MLSignal calSignal = mpModel->getCurvatureSignal();
+	
+	
+	
 	if((calSignal.getHeight() != mSensorHeight) || (calSignal.getWidth() != mSensorWidth)) return;
 
 	TouchTracker::SensorBitsArray thresholds = mpModel->getThresholdBits();
@@ -234,7 +241,7 @@ void SoundplaneGridView::renderXYGrid()
 			
 			// filter sensor junction green if over threshold
 			bool t = thresholds[j*kSensorCols + i];			
-			if(t)
+			if(0)// MLTEST (t)
 			{
 				dataColor[0]*= 0.5f;
 				dataColor[2]*= 0.5f;
@@ -615,22 +622,20 @@ void SoundplaneGridView::renderKeyStates()
 
 }
 
-
-
 void SoundplaneGridView::renderTouches(std::array<Vec4, TouchTracker::kMaxTouches> newTouches)
 {
 	if (!mpModel) return;
-		
+	
 	setupOrthoView();
-
+	
 	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
 	float displayScale = mpModel->getFloatProperty("display_scale");
-		
+	
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
 	glDisable(GL_LINE_SMOOTH);
 	glLineWidth(1.0*mViewScale);
-
+	
 	// draw intersections colored by group
 	auto xs = newTouches;  
 	int rowInt = 0;
@@ -663,6 +668,53 @@ void SoundplaneGridView::renderTouches(std::array<Vec4, TouchTracker::kMaxTouche
 	}
 }
 
+void SoundplaneGridView::renderPeaks()
+{
+	std::array<Vec4, TouchTracker::kMaxTouches> peaks (mpModel->getPeaks());
+	
+	
+	setupOrthoView();
+	
+	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	float displayScale = mpModel->getFloatProperty("display_scale");
+	
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glDisable(GL_LINE_SMOOTH);
+	glLineWidth(1.0*mViewScale);
+	
+	// draw intersections colored by group
+	auto xs = peaks;  
+	int rowInt = 0;
+	int i = 0;
+	for(auto inx : xs)
+	{
+		if(!inx) break;
+		
+		float x = mSensorRangeX.convert(inx.x());
+		float y = mSensorRangeY.convert(inx.y());
+		float z = inx.z();
+		
+		Vec4 dotColor(MLGL::getIndicatorColor(i));
+		dotColor[3] = 0.5f;
+		glColor4fv(&dotColor[0]);
+		
+		// draw dot on surface
+		Vec2 pos(x, y);
+		MLGL::drawDot(pos, z*dotSize*displayScale);
+		
+		// cross in center
+		float k = dotSize*0.01f;
+		dotColor[3] = 1.0f;
+		glColor4fv(&dotColor[0]);
+		MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
+		MLGL::drawLine(x, y - k, x, y + k, 2.0f*mViewScale);
+		
+		rowInt++;
+		i++;
+	}
+
+}
 
 void SoundplaneGridView::renderRawTouches()
 {
@@ -709,6 +761,10 @@ void SoundplaneGridView::renderZGrid()
 	else if(viewMode == "calibrated")
 	{
 		viewSignal = mpModel->getCalibratedSignal();
+	}
+	else if(viewMode == "curvature")
+	{
+		viewSignal = mpModel->getCurvatureSignal();
 	}
 	else
 	{
@@ -946,6 +1002,11 @@ void SoundplaneGridView::renderOpenGL()
 	else if (viewMode == "raw touches")
 	{
 		renderRawTouches();
+		drawSurfaceOverlay();
+	}
+	else if (viewMode == "peaks")
+	{
+		renderPeaks();
 		drawSurfaceOverlay();
 	}
 	else if (viewMode == "touches")

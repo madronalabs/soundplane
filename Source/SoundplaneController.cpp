@@ -181,6 +181,8 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("raw data");
 	viewMenu->addItem("calibrated");
 	viewMenu->addItem("smoothed");
+	viewMenu->addItem("curvature");
+	viewMenu->addItem("peaks");
 	viewMenu->addItem("xy");
 	viewMenu->addItem("pings");
 	viewMenu->addItem("pings horiz");
@@ -189,7 +191,6 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("raw touches");
 	viewMenu->addItem("touches");
 
-	
 	mMenuMap["midi_device"] = MLMenuPtr(new MLMenu("midi_device"));
     
 	MLMenuPtr zoneMenu(new MLMenu("zone_preset"));

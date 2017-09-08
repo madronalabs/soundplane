@@ -35,6 +35,9 @@ constexpr int kSensorCols = 64;
 constexpr int kKeyRows = 5;
 constexpr int kKeyCols = 30;
 
+MLSignal smoothPressure(const MLSignal& inSignal); 
+
+
 template <size_t ARRAYS, size_t ARRAY_LENGTH >
 struct VectorArray2D
 { 
@@ -44,8 +47,10 @@ struct VectorArray2D
 class TouchTracker
 {
 public:
+	
+	static constexpr int kMaxPeaks = kSensorRows*kSensorCols; 
 	static constexpr int kMaxTouches = 10; 
- 
+	
 	TouchTracker(int w, int h);
 	~TouchTracker();
 	
@@ -77,7 +82,9 @@ public:
 	
 	const MLSignal& getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);  return mCalibratedSignal; } 
 	const MLSignal& getSmoothedSignal() { std::lock_guard<std::mutex> lock(mSmoothedSignalMutex);  return mSmoothedSignal; } 
-
+	
+	const MLSignal& getCurvatureSignal() { std::lock_guard<std::mutex> lock(mCurvatureSignalMutex);  return mCurvatureSignal; } 
+	
 	SensorBitsArray getThresholdBits() { std::lock_guard<std::mutex> lock(mThresholdBitsMutex); return mThresholdBitsOut; }
 
 	VectorsH getPingsHorizRaw() { std::lock_guard<std::mutex> lock(mPingsHorizRawOutMutex); return mPingsHorizRawOut; }
@@ -88,8 +95,10 @@ public:
 
 	KeyStates getKeyStates() { std::lock_guard<std::mutex> lock(mKeyStatesOutMutex); return mKeyStatesOut; }
 
+	std::array<Vec4, kMaxTouches> getPeaks() { std::lock_guard<std::mutex> lock(mPeaksOutMutex); return mPeaksOut; }
+	
 	std::array<Vec4, kMaxTouches> getRawTouches() { std::lock_guard<std::mutex> lock(mTouchesRawOutMutex); return mTouchesRawOut; }
-		
+	
 	std::array<Vec4, kMaxTouches> getTouches() { std::lock_guard<std::mutex> lock(mTouchesOutMutex); return mTouchesOut; }
 	
 private:
@@ -111,12 +120,20 @@ private:
 	float mLoPressureThreshold;
 	
 	MLSignal mFilteredInput;
+	MLSignal mInput1;
+	MLSignal mInput2;
+	MLSignal mInput3;
 	
 	MLSignal mCalibratedSignal;
 	std::mutex mCalibratedSignalMutex;
 	
 	MLSignal mSmoothedSignal;
 	std::mutex mSmoothedSignalMutex;
+
+	MLSignal mCurvatureSignalX;
+	MLSignal mCurvatureSignalY;
+	MLSignal mCurvatureSignal;
+	std::mutex mCurvatureSignalMutex;
 	
 	SensorBitsArray mThresholdBits;
 	SensorBitsArray mThresholdBitsOut;
@@ -144,6 +161,11 @@ private:
 	// sorted order of touches for hysteresis
 	std::array<int, TouchTracker::kMaxTouches> mTouchSortOrder;
 	
+	// peaks
+	std::array<Vec4, kMaxTouches> mPeaks;
+	std::array<Vec4, kMaxTouches> mPeaksOut;
+	std::mutex mPeaksOutMutex;	
+	
 	// touches
 	std::array<Vec4, kMaxTouches> mTouchesRaw;
 	std::array<Vec4, kMaxTouches> mTouchesRawOut;
@@ -167,13 +189,21 @@ private:
 	
 	template<size_t ARRAYS, size_t ARRAY_LENGTH, bool XY>
 	VectorArray2D<ARRAYS, ARRAY_LENGTH> findPings(const SensorBitsArray& inThresh, const MLSignal& inSignal);
-
+	
+	MLSignal getCurvatureX(const MLSignal& inSignal); 
+	MLSignal getCurvatureY(const MLSignal& inSignal); 
+	
+	MLSignal correctEdges(const MLSignal& inSignal); 
+	
 	VectorsH correctPingsH(const VectorsH& pings);	
 	VectorsV correctPingsV(const VectorsV& pings);
 	
+	
+	std::array<Vec4, kMaxTouches> findTouches(const MLSignal& x, const MLSignal& y, const MLSignal& xy);
+	
+	KeyStates pingsToKeyStatesOld(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
 	KeyStates pingsToKeyStates(const VectorsH& pingsHoriz, const VectorsV& pingsVert);
 	
-	std::array<Vec4, kMaxTouches> findTouches(const KeyStates& keyStates);
 
 	std::array<Vec4, kMaxTouches> reduceCrowdedTouches(const std::array<Vec4, kMaxTouches>& t);
 

@@ -16,6 +16,7 @@ const char *kLocalDotDomain   =   "local.";
 
 const int kModelDefaultCarriersSize = 40;
 const unsigned char kModelDefaultCarriers[kModelDefaultCarriersSize] =
+/*
 {
 	// 40 default carriers.  avoiding 16, 32 (always bad)
 	6, 7, 8, 9,
@@ -27,6 +28,21 @@ const unsigned char kModelDefaultCarriers[kModelDefaultCarriersSize] =
 	37, 38, 39, 40, 41,
 	42, 43, 44, 45, 46,
 	47
+};
+*/
+{
+	// 40 default carriers.  avoiding 16, 32 (always bad)
+//	6, 7, 8, 9,
+//	10, 11, 12, 13, 14,
+//	15, 17, 18, 19, 20,
+	21, 22, 23, 24, 25,
+	26, 27, 28, 29, 30,
+	31, 33, 34, 35, 36,
+	37, 38, 39, 40, 41,
+	42, 43, 44, 45, 46,
+	47, 48, 49, 50, 51,
+	52, 53, 54, 55, 56,
+	57, 58, 59, 60, 61
 };
 
 // make one of the possible standard carrier sets, skipping a range of carriers out of the
@@ -1132,15 +1148,19 @@ void SoundplaneModel::sendTouchDataToZones()
     if(mSendMatrixData)
     {		
 		MLSignal calibratedPressure = mTracker.getCalibratedSignal();
-        mMessage.mType = MLSymbol("matrix");
-        for(int j = 0; j < kSoundplaneHeight; ++j)
-        {
-            for(int i = 0; i < kSoundplaneWidth; ++i)
-            {
-                mMessage.mMatrix[j*kSoundplaneWidth + i] = calibratedPressure(i, j);
-            }
-        }
-        sendMessageToListeners();
+		if(calibratedPressure.getHeight() == kSoundplaneHeight)
+		{
+			
+			mMessage.mType = MLSymbol("matrix");
+			for(int j = 0; j < kSoundplaneHeight; ++j)
+			{
+				for(int i = 0; i < kSoundplaneWidth; ++i)
+				{
+					mMessage.mMatrix[j*kSoundplaneWidth + i] = calibratedPressure(i, j);
+				}
+			}
+			sendMessageToListeners();
+		}
     }
 
     // tell listeners we are done with this frame.

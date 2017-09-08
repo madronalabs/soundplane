@@ -120,6 +120,7 @@ public:
 	const MLSignal getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
 	const MLSignal getCalibratedSignal() { return mTracker.getCalibratedSignal(); }
 	const MLSignal getSmoothedSignal() { return mTracker.getSmoothedSignal(); }
+	const MLSignal getCurvatureSignal() { return mTracker.getCurvatureSignal(); }
 	
 	const MLSignal& getTrackerCalibrateSignal();
 	Vec3 getTrackerCalibratePeak();
@@ -134,6 +135,8 @@ public:
 	TouchTracker::VectorsV getPingsVert() { return mTracker.getPingsVert(); }
 	
 	TouchTracker::KeyStates getKeyStates() { return mTracker.getKeyStates(); }
+	
+	std::array<Vec4, TouchTracker::kMaxTouches> getPeaks() { return mTracker.getPeaks(); }
 	
 	std::array<Vec4, TouchTracker::kMaxTouches> getRawTouches() { return mTracker.getRawTouches(); }
 	
