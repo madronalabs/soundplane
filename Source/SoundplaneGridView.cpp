@@ -762,15 +762,31 @@ void SoundplaneGridView::renderZGrid()
 	{
 		viewSignal = mpModel->getCalibratedSignal();
 	}
+	else if(viewMode == "smoothed")
+	{
+		viewSignal = mpModel->getSmoothedSignal();
+		viewSignal.scale(0.05f);
+	}
 	else if(viewMode == "curvature")
 	{
 		viewSignal = mpModel->getCurvatureSignal();
+		viewSignal.scale(0.25f);
+	}
+	else if(viewMode == "curvature x")
+	{
+		viewSignal = mpModel->getCurvatureSignalX();
+		viewSignal.scale(0.25f);
+	}
+	else if(viewMode == "curvature y")
+	{
+		viewSignal = mpModel->getCurvatureSignalY();
+		viewSignal.scale(0.25f);
 	}
 	else
 	{
-		viewSignal = mpModel->getSmoothedSignal();
-		viewSignal.scale(0.1f);
+		viewSignal = mpModel->getCalibratedSignal();
 	}
+
 	// should be one compare for Vec2 signal dims
 	if((viewSignal.getHeight() != mSensorHeight) || (viewSignal.getWidth() != mSensorWidth)) return;
 	

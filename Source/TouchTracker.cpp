@@ -36,10 +36,12 @@ float sensorToKeyY(float sy)
 {
 	float ky = 0.f;
 
-	// Soundplane A as measured. This depends on correctEdges constant.
+	// Soundplane A as measured.
 	constexpr int mapSize = 6;
-	constexpr std::array<float, mapSize> sensorMap{{0.5, 0.9, 2.75, 4.25, 6.15, 6.5}};
-	constexpr std::array<float, mapSize> keyMap{{0., 1., 2., 3., 4., 5.}};
+	// these y locations depend on the amount of y smoothing. Currently smoothing 3 times with a [1, 1, 1]
+	// kernel, for Soundplane A.
+	constexpr std::array<float, mapSize> sensorMap{{0.7, 1.2, 2.7, 4.3, 5.8, 6.3}};
+	constexpr std::array<float, mapSize> keyMap{{0.01, 1., 2., 3., 4., 4.99}};
 	
 	if(sy < sensorMap[0])
 	{
@@ -173,10 +175,6 @@ void TouchTracker::setThresh(float f)
 	mOffThreshold = mOnThreshold * 0.75f; 
 }
 
-void TouchTracker::setLoThresh(float f) 
-{ 
-	mLoPressureThreshold = f;
-}
 
 void TouchTracker::setLopassXY(float k)
 { 
@@ -189,7 +187,7 @@ void TouchTracker::setLopassZ(float k)
 }
 
 
-MLSignal smoothPressure(const MLSignal& in)
+MLSignal smoothPressureX(const MLSignal& in)
 {
 	int i, j;
 	float f;
@@ -198,10 +196,10 @@ MLSignal smoothPressure(const MLSignal& in)
 	
 	// MLTEST
 	
-	const float kc = 2.f;
+	const float kc = 1.f;
 	const float kex = 1.f;
-	const float key = 1.f;
-	const float kk = 1.f;
+	const float key = 0.f;
+	const float kk = 0.f;
 	
 	// MLTEST
 	// temp 
@@ -215,7 +213,144 @@ MLSignal smoothPressure(const MLSignal& in)
 	
 	int wb = in.getWidthBits();
 	
-	const float kernelSum = 10.f;
+	const float kernelSum = kc + 2.f*(kex + key) + 4.f*kk;
+	
+	
+	j = 0;	// top row
+	{
+		// row ptrs
+		pr2 = (pIn + (j << wb));
+		pr3 = (pIn + ((j + 1) << wb));
+		prOut = (pOut + (j << wb) );
+		
+		i = 0; // top left corner
+		{
+			f = kex * (pr2[i+1]);
+			f += key * (pr3[i]);
+			f += kk * (pr3[i+1]);
+			f += kc * pr2[i];
+			prOut[i] = f/kernelSum;		
+		}
+		
+		for(i = 1; i < width - 1; i++) // top side
+		{
+			f = kex * (pr2[i-1] + pr2[i+1]);
+			f += key * (pr3[i]);
+			f += kk * (pr3[i-1] + pr3[i+1]);
+			f += kc * pr2[i];
+			prOut[i] = f/kernelSum;		
+		}
+		
+		i = width - 1; // top right corner
+		{
+			f = kex * (pr2[i-1]);
+			f += key * (pr3[i]);
+			f += kk * (pr3[i-1]);
+			f += kc * pr2[i];
+			prOut[i] = f/kernelSum;		
+		}
+	}
+	for(j = 1; j < height - 1; j++) // center rows
+	{
+		// row ptrs
+		pr1 = (pIn + ((j - 1) << wb));
+		pr2 = (pIn + (j << wb));
+		pr3 = (pIn + ((j + 1) << wb));
+		prOut = (pOut + (j << wb));
+		
+		i = 0; // left side
+		{
+			f = kex * (pr2[i+1]);
+			f += key * (pr1[i] + pr3[i]);
+			f += kk * (pr1[i+1] + pr3[i+1]);
+			f += kc * pr2[i];
+			prOut[i] = f/kernelSum;		
+		}
+		
+		for(i = 1; i < width - 1; i++) // center
+		{
+			f = kex * (pr2[i-1] + pr2[i+1]);
+			f += key * (pr1[i] + pr3[i]);
+			f += kk * (pr1[i-1] + pr1[i+1] + pr3[i-1] + pr3[i+1]);
+			f += kc * pr2[i];
+			prOut[i] = f/kernelSum;		
+		}
+		
+		i = width - 1; // right side
+		{
+			f = kex * (pr2[i-1]);
+			f += key * (pr1[i] + pr3[i]);
+			f += kk * (pr1[i-1] + pr3[i-1]);
+			f += kc * pr2[i];
+			prOut[i] = f/kernelSum;		
+		}
+	}
+	j = height - 1;	// bottom row
+	{
+		// row ptrs
+		pr1 = (pIn + ((j - 1) << wb));
+		pr2 = (pIn + (j << wb));
+		prOut = (pOut + (j << wb));
+		
+		i = 0; // bottom left corner
+		{
+			f = kex * (pr2[i+1]);
+			f += key * (pr1[i]);
+			f += kk * (pr1[i+1]);
+			f += kc * pr2[i];
+			prOut[i] = f/kernelSum;		
+		}
+		
+		for(i = 1; i < width - 1; i++) // bottom side
+		{
+			f = kex * (pr2[i-1] + pr2[i+1]);
+			f += key * (pr1[i]);
+			f += kk * (pr1[i-1] + pr1[i+1]);
+			f += kc * pr2[i];
+			prOut[i] = f/kernelSum;		
+		}
+		
+		i = width - 1; // bottom right corner
+		{
+			f = kex * (pr2[i-1]);
+			f += key * (pr1[i]);
+			f += kk * (pr1[i-1]);
+			f += kc * pr2[i];
+			prOut[i] = f/kernelSum;		
+		}
+	}
+	return out;
+}
+
+
+
+MLSignal smoothPressureY(const MLSignal& in)
+{
+	int i, j;
+	float f;
+	const float * pr1, * pr2, * pr3; // input row ptrs
+	float * prOut; 	
+	
+	// MLTEST
+	
+	const float kc = 1.f;
+	const float kex = 0.f;
+	const float key = 1.f;
+	const float kk = 0.f;
+	
+	// MLTEST
+	// temp 
+	int width = in.getWidth();
+	int height = in.getHeight();
+	MLSignal out(width, height);
+	
+	
+	const float* pIn = in.getBuffer();
+	float* pOut = out.getBuffer();
+	
+	int wb = in.getWidthBits();
+	
+	const float kernelSum = kc + 2.f*(kex + key) + 4.f*kk;
 	
 	
 	j = 0;	// top row
@@ -361,43 +496,53 @@ void TouchTracker::process(int)
 	mFilteredInput.sigMax(0.f);
 	{	
 		// convolve input with 3x3 smoothing kernel.
-		// a lot of filtering is needed here to get good position accuracy for Soundplane A.
+		// a lot of filtering is needed here for Soundplane A to make sure peaks are in centers of touches.
+		// it also reduces noise. 
+		// the down side is, contiguous touches are harder to tell apart. a smart blob-shape algorithm
+		// can make up for this later, with this filtering still intact.
 		
-		mFilteredInput = correctEdges(mFilteredInput);
-		
-		mFilteredInput = smoothPressure(mFilteredInput);
-		mFilteredInput = smoothPressure(mFilteredInput);
-		mFilteredInput = smoothPressure(mFilteredInput);
-		mFilteredInput = smoothPressure(mFilteredInput);
-
-		const float kPostSmoothScale = 32.f;
+		const float kPostSmoothScale = 64.f;
 		mFilteredInput.scale(kPostSmoothScale);
 		
-		// make smoothed signal available
 		{
 			std::lock_guard<std::mutex> lock(mSmoothedSignalMutex);
 			mSmoothedSignal = (mFilteredInput);
+
+			mSmoothedSignal = smoothPressureX(mSmoothedSignal);
+			mSmoothedSignal = smoothPressureX(mSmoothedSignal);
+			mSmoothedSignal = smoothPressureX(mSmoothedSignal);
+			mSmoothedSignal = smoothPressureX(mSmoothedSignal);
+
+			mSmoothedSignal = smoothPressureY(mSmoothedSignal);
+			mSmoothedSignal = smoothPressureY(mSmoothedSignal);
+			mSmoothedSignal = smoothPressureY(mSmoothedSignal);
+			
 		}
-				
+		
+		// make smoothed signals available
+		{
+			std::lock_guard<std::mutex> lock(mCurvatureSignalXMutex);
+			mCurvatureSignalX = getCurvatureX(mSmoothedSignal);
+		}
+		
+		{
+			std::lock_guard<std::mutex> lock(mCurvatureSignalXMutex);
+			mCurvatureSignalY = getCurvatureY(mSmoothedSignal);
+		}
+		
+		{
+			std::lock_guard<std::mutex> lock(mCurvatureSignalMutex);
+			mCurvatureSignal = mCurvatureSignalX;
+			mCurvatureSignal.multiply(mCurvatureSignalY);
+			mCurvatureSignal.sqrt();
+		}		
+		
 		if(mMaxTouchesPerFrame > 0)
 		{
-
-			mCurvatureSignalX = getCurvatureX(mFilteredInput);
-			mCurvatureSignalY = getCurvatureY(mFilteredInput);
-
-			{
-				std::lock_guard<std::mutex> lock(mCurvatureSignalMutex);
-				mCurvatureSignal = mCurvatureSignalX;
-				mCurvatureSignal.multiply(mCurvatureSignalY);
-				mCurvatureSignal.sqrt();
-				
-//				mCurvatureSignal.scale(64.f);
-			}
-
 			mTouchesRaw = findTouches(mCurvatureSignalX, mCurvatureSignalY, mCurvatureSignal);
 			
 
-			//			mTouches = reduceCrowdedTouches(mTouchesRaw);
+			//mTouches = reduceCrowdedTouches(mTouchesRaw);
 			
 			mTouches = (mTouchesRaw);
 			
@@ -584,35 +729,6 @@ MLSignal TouchTracker::getCurvatureY(const MLSignal& in)
 	return cy;
 }
 
-MLSignal TouchTracker::correctEdges(const MLSignal& in)
-{
-	const float k = .5f;
-	const int w = kSensorCols;
-	const int h = kSensorRows;
-	
-	// TODO no dynamic signals MLTEST
-	MLSignal out(w, h);
-	
-	float rowMults[kSensorRows];	
-	for(int row=0; row < kSensorRows; ++row)
-	{
-		rowMults[row] = 1.f;
-	}
-	rowMults[0] = rowMults[kSensorRows - 1] = 1.f + k*2.f;
-	rowMults[1] = rowMults[kSensorRows - 2] = 1.f + k*1.f;
-//	rowMults[2] = rowMults[kSensorRows - 3] = 1.f + k;
-
-	for(int j = 0; j < kSensorRows; ++j)
-	{		
-		for(int i=0; i<kSensorCols; ++i)
-		{
-			out(i, j) = in(i, j)*rowMults[j];
-		}
-	}
-	
-	return out;
-}
-
 class compareZ 
 {
 public:
@@ -625,7 +741,7 @@ public:
 Vec4 correctPeakX(Vec4 pos, const MLSignal& in) 
 {		
 	Vec4 newPos = pos;
-	
+	const float maxCorrect = 0.5f;
 	const int w = kSensorCols;
 	int x = pos.x();
 	int y = pos.y();
@@ -636,8 +752,7 @@ Vec4 correctPeakX(Vec4 pos, const MLSignal& in)
 		float b = in(x, y);
 		float c = in(x + 1, y);
 		float p = ((a - c)/(a - 2.f*b + c))*0.5f;
-		float fx = x + clamp(p, -1.f, 1.f);								
-		
+		float fx = x + clamp(p, -maxCorrect, maxCorrect);										
 		newPos = Vec4(fx, pos.y(), pos.z(), 0.f);
 	}
 	
@@ -647,7 +762,7 @@ Vec4 correctPeakX(Vec4 pos, const MLSignal& in)
 Vec4 correctPeakY(Vec4 pos, const MLSignal& in) 
 {		
 	Vec4 newPos = pos;
-	
+	const float maxCorrect = 0.5f;
 	const int h = kSensorRows;
 	int x = pos.x();
 	int y = pos.y();
@@ -657,24 +772,35 @@ Vec4 correctPeakY(Vec4 pos, const MLSignal& in)
 		float a = in(x, y - 1);
 		float b = in(x, y);
 		float c = in(x, y + 1);
-		float p = ((a - c)/(a - 2.f*b + c))*0.5f;
-		
-		float fy = y + clamp(p, -1.f, 1.f);							
-		
+		float p = ((a - c)/(a - 2.f*b + c))*0.5f;		
+		float fy = y + clamp(p, -maxCorrect, maxCorrect);							
 		newPos = Vec4(pos.x(), fy, pos.z(), 0.f);
 	}
 	else if(y == 0)
 	{
 		debug() << "0";
+
+		float a = in(x, y);
+		float b = in(x, y);
+		float c = in(x, y + 1);
+		float p = ((a - c)/(a - 2.f*b + c))*0.5f;		
+		float fy = y + clamp(p, -maxCorrect, maxCorrect);							
+		newPos = Vec4(pos.x(), fy, pos.z(), 0.f);
 	}
 	else if(y == h - 1)
 	{
 		debug() << "m";
+		
+		float a = in(x, y - 1);
+		float b = in(x, y);
+		float c = 0;//in(x, y);
+		float p = ((a - c)/(a - 2.f*b + c))*0.5f;		
+		float fy = y + clamp(p, -maxCorrect, maxCorrect);							
+		newPos = Vec4(pos.x(), fy, pos.z(), 0.f);
 	}
 	
 	return newPos;
 }
-
 
 
 Vec4 peakToTouch(Vec4 p)
@@ -684,7 +810,10 @@ Vec4 peakToTouch(Vec4 p)
 	return Vec4(sensorToKeyX(p.x()), sensorToKeyY(p.y()), p.z(), 0.f);
 }
 
-std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const MLSignal& inX, const MLSignal& inY, const MLSignal& in)
+// quick touch finder based on peaks of curvature. 
+// this works well, but a different approach based on blob sizes could do a much better
+// job with contiguous keys.
+std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const MLSignal& inX, const MLSignal& inY, const MLSignal& inXY)
 {
 	const int w = kSensorCols;
 	const int h = kSensorRows;	
@@ -725,11 +854,14 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const MLSi
 		}
 	}
 	*/
+	
+	const MLSignal& in = inXY;
 		
 	// get peaks
 	float f11, f12, f13;
 	float f21, f22, f23;
 	float f31, f32, f33;
+	
 	j = 0;
 	{
 		std::bitset<kSensorCols>& row = map[j];
@@ -749,6 +881,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const MLSi
 			
 		}
 	}
+	
 	
 	for (j = 1; j < h - 1; ++j)
 	{
@@ -771,6 +904,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const MLSi
 			
 		}
 	}
+	
 	j = h - 1;
 	{
 		std::bitset<kSensorCols>& row = map[j];
@@ -848,9 +982,9 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const MLSi
 		Vec4 p = peaks[i];
 		if(p.z() < mFilterThreshold) break;
 				
-		Vec4 px = correctPeakX(p, inX);
+		Vec4 px = correctPeakX(p, inXY);
 		
-		Vec4 pxy = correctPeakY(px, inY);
+		Vec4 pxy = correctPeakY(px, inXY);
 		
 		touches[i] = peakToTouch(pxy);	
 		
@@ -859,8 +993,6 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const MLSi
 		{
 //			debug() << "y: " << p.y() << " -> " << pxy.y() << "\n";
 		}
-		
-		
 	}
 	
 	return touches;
@@ -1394,7 +1526,7 @@ std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::findTouches(const Touc
 
 std::array<Vec4, TouchTracker::kMaxTouches> TouchTracker::reduceCrowdedTouches(const std::array<Vec4, TouchTracker::kMaxTouches>& in)
 {	
-	float kCrowdedDistance = 3.0f; 	
+	float kCrowdedDistance = 6.0f; 	
 	
 	// > 1 to allow close touches of near equal z to reduce each other
 	float kOtherTouchZMult = 2.0f;

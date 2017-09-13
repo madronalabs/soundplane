@@ -181,6 +181,8 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("raw data");
 	viewMenu->addItem("calibrated");
 	viewMenu->addItem("smoothed");
+	viewMenu->addItem("curvature x");
+	viewMenu->addItem("curvature y");
 	viewMenu->addItem("curvature");
 	viewMenu->addItem("peaks");
 	viewMenu->addItem("xy");

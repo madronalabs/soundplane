@@ -16,52 +16,38 @@ const char *kLocalDotDomain   =   "local.";
 
 const int kModelDefaultCarriersSize = 40;
 const unsigned char kModelDefaultCarriers[kModelDefaultCarriersSize] =
-/*
+
+
 {
-	// 40 default carriers.  avoiding 16, 32 (always bad)
-	6, 7, 8, 9,
-	10, 11, 12, 13, 14,
-	15, 17, 18, 19, 20,
-	21, 22, 23, 24, 25,
-	26, 27, 28, 29, 30,
-	31, 33, 34, 35, 36,
-	37, 38, 39, 40, 41,
-	42, 43, 44, 45, 46,
-	47
-};
-*/
-{
-	// 40 default carriers.  avoiding 16, 32 (always bad)
-//	6, 7, 8, 9,
-//	10, 11, 12, 13, 14,
-//	15, 17, 18, 19, 20,
-	21, 22, 23, 24, 25,
-	26, 27, 28, 29, 30,
-	31, 33, 34, 35, 36,
-	37, 38, 39, 40, 41,
-	42, 43, 44, 45, 46,
-	47, 48, 49, 50, 51,
-	52, 53, 54, 55, 56,
-	57, 58, 59, 60, 61
+	// 40 default carriers.  avoiding 32 (gets aliasing from 16)
+	3, 4, 5, 6, 7,
+	8, 9, 10, 11, 12,
+	13, 14, 15, 16, 17, 
+	18, 19, 20, 21, 22, 
+	23, 24, 25, 26, 27, 
+	28, 29, 30, 31, 33, 
+	34, 35, 36, 37, 38, 
+	39, 40, 41, 42, 43
 };
 
 // make one of the possible standard carrier sets, skipping a range of carriers out of the
 // middle of the 40 defaults.
 //
-static const int kStandardCarrierSets = 8;
+static const int kStandardCarrierSets = 16;
 static void makeStandardCarrierSet(SoundplaneDriver::Carriers &carriers, int set)
 {
-	int skipStart = set*4 + 2;
-	skipStart = clamp(skipStart, 0, kSoundplaneSensorWidth);
-	int skipSize = 8;
+	int startOffset = 2;
+	int skipSize = 2;
+	int gapSize = 4;
+	int gapStart = set*skipSize + startOffset;
 	carriers[0] = carriers[1] = 0;
-	for(int i=2; i<skipStart; ++i)
+	for(int i=startOffset; i<gapStart; ++i)
 	{
 		carriers[i] = kModelDefaultCarriers[i];
 	}
-	for(int i=skipStart; i<kSoundplaneSensorWidth; ++i)
+	for(int i=gapStart; i<kSoundplaneSensorWidth; ++i)
 	{
-		carriers[i] = kModelDefaultCarriers[i + skipSize];
+		carriers[i] = kModelDefaultCarriers[i + gapSize];
 	}
 }
 
@@ -202,10 +188,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "z_thresh")
 			{
 				mTracker.setThresh(v);
-			}
-			else if (p == "lo_thresh")
-			{
-				mTracker.setLoThresh(v);
 			}
 			else if (p == "snap")
 			{
@@ -690,8 +672,8 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 	}
 	else if(mOutputEnabled)
 	{
-		// scale incoming data
-		float in, cmean;
+		// scale incoming data as multiple of mCalibrateMean
+		float in, cmeanInv;
 		const float kInputScale = 1.0f;
 		if (mHasCalibration)
 		{
@@ -701,8 +683,8 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 				{
 					// subtract calibrated zero
 					in = mSurface(i, j);
-					cmean = mCalibrateMean(i, j);
-					mSurface(i, j) = (in - cmean)*kInputScale;
+					cmeanInv = mCalibrateMeanInv(i, j);
+					mSurface(i, j) = ((in*cmeanInv) - 1.0f)*0.0625f;
 				}
 			}
 		}
@@ -711,7 +693,6 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		mTracker.setInputSignal(&mSurface);
 		mTracker.setOutputSignal(&mTouchFrame);
 		mTracker.process(1);
-
 		
  		sendTouchDataToZones();
 
@@ -1374,7 +1355,9 @@ void SoundplaneModel::endCalibrate()
 	mean.scale(1.f / calibrateFrames);
 	mCalibrateMean = mean;
 	mCalibrateMean.sigClamp(0.0001f, 2.f);
-
+	mCalibrateMeanInv.fill(1.f);
+	mCalibrateMeanInv.divide(mCalibrateMean);
+	
 	// get std deviation
 	for(int i=startFrame; i<endFrame; ++i)
 	{
@@ -1458,7 +1441,7 @@ void SoundplaneModel::nextSelectCarriersStep()
 	MLSignal dMean(kSoundplaneWidth, kSoundplaneHeight);
 	MLSignal mean(kSoundplaneWidth, kSoundplaneHeight);
 	MLSignal noise(kSoundplaneWidth, kSoundplaneHeight);
-
+	
 	// get mean
 	for(int i=startFrame; i<=endFrame; ++i)
 	{
@@ -1469,6 +1452,8 @@ void SoundplaneModel::nextSelectCarriersStep()
 	mean.scale(1.f / calibrateFrames);
 	mCalibrateMean = mean;
 	mCalibrateMean.sigClamp(0.0001f, 2.f);
+	mCalibrateMeanInv.fill(1.f);
+	mCalibrateMeanInv.divide(mCalibrateMean);
 
 	// get std deviation
 	for(int i=startFrame; i<endFrame; ++i)
@@ -1481,8 +1466,10 @@ void SoundplaneModel::nextSelectCarriersStep()
 	dSum.scale(1.f / calibrateFrames);
 	calibrateStdDev = dSum;
 	calibrateStdDev.sqrt();
+	mCalibrateStdDev = calibrateStdDev;
 
 	noise = calibrateStdDev;
+	noise.divide(mean);
 
 	// find maximum noise in any column for this set.  This is the "badness" value
 	// we use to compare carrier sets.

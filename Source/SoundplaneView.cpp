@@ -415,13 +415,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	*/
 	
 	pD = page1->addDial("lopass z", dialRect.withCenter(6.25, dialY), "lopass_z", c2);
-	pD->setRange(1., 100., 1.);	
-	pD->setDefault(50.);	
-	
-	
-	pD = page1->addDial("lo thresh", dialRect.withCenter(7.5, dialY), "lo_thresh", c2);
-	pD->setRange(0., 0.05, 0.001);	
-	pD->setDefault(0.01);	
+	pD->setRange(1., 250., 1.);	
+	pD->setDefault(100.);	
 	
 	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
 

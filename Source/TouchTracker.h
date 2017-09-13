@@ -62,7 +62,6 @@ public:
 	void clear();
 	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
-	void setLoThresh(float f);
 	void setLopassXY(float k); 	
 	void setLopassZ(float k); 	
 	
@@ -81,8 +80,11 @@ public:
 	// TODO these should use time-stamped ringbuffers to communicate with views
 	
 	const MLSignal& getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);  return mCalibratedSignal; } 
+	
 	const MLSignal& getSmoothedSignal() { std::lock_guard<std::mutex> lock(mSmoothedSignalMutex);  return mSmoothedSignal; } 
 	
+	const MLSignal& getCurvatureSignalX() { std::lock_guard<std::mutex> lock(mCurvatureSignalXMutex);  return mCurvatureSignalX; } 
+	const MLSignal& getCurvatureSignalY() { std::lock_guard<std::mutex> lock(mCurvatureSignalYMutex);  return mCurvatureSignalY; } 
 	const MLSignal& getCurvatureSignal() { std::lock_guard<std::mutex> lock(mCurvatureSignalMutex);  return mCurvatureSignal; } 
 	
 	SensorBitsArray getThresholdBits() { std::lock_guard<std::mutex> lock(mThresholdBitsMutex); return mThresholdBitsOut; }
@@ -133,6 +135,8 @@ private:
 	MLSignal mCurvatureSignalX;
 	MLSignal mCurvatureSignalY;
 	MLSignal mCurvatureSignal;
+	std::mutex mCurvatureSignalXMutex;
+	std::mutex mCurvatureSignalYMutex;
 	std::mutex mCurvatureSignalMutex;
 	
 	SensorBitsArray mThresholdBits;
