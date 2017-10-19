@@ -1,18 +1,21 @@
 // ThreadUtility.cpp
-//
-// Returns raw data frames from the Soundplane.  The frames are reclocked if needed (TODO)
-// to reconstruct a steady sample rate.
-//
-// Two threads are used to do this work.  A grab thread maintains a stream of
-// low-latency isochronous transfers. A process thread looks through the buffers
-// specified by these transfers every ms or so.  When new frames of data arrive,
-// the process thread reclocks them and pushes them to a ring buffer where they
-// can be read by clients.
 
 #include "ThreadUtility.h"
 
 #ifdef __APPLE__
 #include <mach/mach.h>
+#include <mach/mach_init.h>
+#include <mach/thread_policy.h>
+
+#include <pthread.h>
+
+#include <assert.h>
+#include <CoreServices/CoreServices.h>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#include <unistd.h>
+
+
 
 void setThreadPriority(pthread_t inThread, uint32_t inPriority, bool inIsFixed)
 {
@@ -20,10 +23,17 @@ void setThreadPriority(pthread_t inThread, uint32_t inPriority, bool inIsFixed)
     {
         // REAL-TIME / TIME-CONSTRAINT THREAD
         thread_time_constraint_policy_data_t    theTCPolicy;
+		
+		// times here are specified in Mach absolute time units.
+		mach_timebase_info_data_t sTimebaseInfo;
+		mach_timebase_info(&sTimebaseInfo);
 
-        theTCPolicy.period = 1000 * 1000;
-        theTCPolicy.computation = 50 * 1000;
-        theTCPolicy.constraint = 1000 * 1000;
+		uint64_t period_nano = 1000*1000;
+		uint64_t period_abs = (double)period_nano * (double)sTimebaseInfo.denom / (double)sTimebaseInfo.numer;
+
+		theTCPolicy.period = period_abs;
+        theTCPolicy.computation = period_abs/64;
+        theTCPolicy.constraint = period_abs/4;
         theTCPolicy.preemptible = true;
         thread_policy_set (pthread_mach_thread_np(inThread), THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t)&theTCPolicy, THREAD_TIME_CONSTRAINT_POLICY_COUNT);
     }
