@@ -33,6 +33,7 @@ SoundplaneOSCOutput::SoundplaneOSCOutput() :
 	mSerialNumber(0),
 	lastInfrequentTaskTime(0),
 	mKymaMode(false),
+	mKymaPort(8000),
     mGotNoteChangesThisFrame(false),
     mGotMatrixThisFrame(false)
 {
@@ -44,7 +45,8 @@ SoundplaneOSCOutput::SoundplaneOSCOutput() :
 	}
 	mUDPPacketStreams.resize(kNumUDPPorts);
 	
-	resetAllSockets();
+	mUDPSockets.clear();
+	mUDPSockets.resize(kNumUDPPorts);
 	
 	// create a vector of voices for each possible port offset
 	mOSCVoices.resize(kNumUDPPorts);
@@ -58,28 +60,69 @@ SoundplaneOSCOutput::~SoundplaneOSCOutput()
 {
 }
 
-void SoundplaneOSCOutput::connect(const char* name, int port)
+void SoundplaneOSCOutput::connect()
 {	
-	mCurrentBaseUDPPort = port;
-	resetAllSockets();
-	try
+	if(mKymaMode)
 	{
-		osc::OutboundPacketStream& p = getPacketStreamForOffset(0);
-		UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
-		if(!socket) return;
-		
-		p << osc::BeginBundleImmediate;
-		p << osc::BeginMessage( "/t3d/dr" );	
-		p << (osc::int32)mDataFreq;
-		p << osc::EndMessage;
-		p << osc::EndBundle;
-		socket->Send( p.Data(), p.Size() );
-		debug() << "SoundplaneOSCOutput:connected to " << name << ", port " << port << "\n";
+		try
+		{
+			MLConsole() << "SoundplaneOSCOutput: trying connect to Kyma on port " << mKymaPort << "\n";
+			
+			// use first socket for Kyma
+			mUDPPacketStreams[0] = std::unique_ptr< osc::OutboundPacketStream >
+				(new osc::OutboundPacketStream( mUDPBuffers[0].data(), kUDPOutputBufferSize ));
+			mUDPSockets[0] = std::unique_ptr< UdpTransmitSocket >
+				(new UdpTransmitSocket(IpEndpointName(kDefaultHostnameString, mKymaPort)));
+
+			osc::OutboundPacketStream& p = getPacketStreamForOffset(0);
+			UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
+			if(!socket) return;
+			
+			p << osc::BeginBundleImmediate;
+			p << osc::BeginMessage( "/t3d/dr" );	
+			p << (osc::int32)mDataFreq;
+			p << osc::EndMessage;
+			p << osc::EndBundle;
+			socket->Send( p.Data(), p.Size() );
+			MLConsole() << "                     connected to port " << mKymaPort << "\n";
+		}
+		catch(std::runtime_error err)
+		{
+			MLConsole() << "                     connect error: " << err.what() << "\n";
+		}
 	}
-	catch(std::runtime_error err)
+	else
 	{
-		debug() << "SoundplaneOSCOutput::connect error: " << err.what() << "\n";
-		mCurrentBaseUDPPort = kDefaultUDPPort;
+		// TODO open all sockets here ? 
+		try
+		{
+			MLConsole() << "SoundplaneOSCOutput: trying connect to ports starting at " << mCurrentBaseUDPPort << " \n";
+			
+			for(int portOffset = 0; portOffset < kNumUDPPorts; portOffset++)
+			{
+				mUDPPacketStreams[portOffset] = std::unique_ptr< osc::OutboundPacketStream >
+					(new osc::OutboundPacketStream( mUDPBuffers[portOffset].data(), kUDPOutputBufferSize ));
+				mUDPSockets[portOffset] = std::unique_ptr< UdpTransmitSocket >
+					(new UdpTransmitSocket(IpEndpointName(kDefaultHostnameString, mCurrentBaseUDPPort + portOffset)));
+				
+				osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);
+				UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
+				if(!socket) return;
+				
+				p << osc::BeginBundleImmediate;
+				p << osc::BeginMessage( "/t3d/dr" );	
+				p << (osc::int32)mDataFreq;
+				p << osc::EndMessage;
+				p << osc::EndBundle;
+				socket->Send( p.Data(), p.Size() );
+				MLConsole() << "                     connected to port " << mCurrentBaseUDPPort + portOffset << "\n";
+			}
+		}
+		catch(std::runtime_error err)
+		{
+			MLConsole() << "                     connect error: " << err.what() << "\n";
+			mCurrentBaseUDPPort = kDefaultUDPPort;
+		}
 	}
 }
 
@@ -90,7 +133,15 @@ int SoundplaneOSCOutput::getKymaMode()
 
 void SoundplaneOSCOutput::setKymaMode(bool m)
 {
+	// MLTEST
+	MLConsole() << "SoundplaneOSCOutput: kyma mode " << m << "\n";
 	mKymaMode = m;
+}
+
+void SoundplaneOSCOutput::setKymaPort(int p)
+{
+	MLConsole() << "SoundplaneOSCOutput: setting kyma port " << p << "\n";
+	mKymaPort = p;
 }
 
 void SoundplaneOSCOutput::setActive(bool v)
@@ -108,11 +159,13 @@ void SoundplaneOSCOutput::doInfrequentTasks()
 		osc::OutboundPacketStream& p = getPacketStreamForOffset(0);
 		UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
 
+		// tell the Kyma that we want to receive info on our listening port
 		p << osc::BeginBundleImmediate;
 		p << osc::BeginMessage( "/osc/respond_to" );	
 		p << (osc::int32)kDefaultUDPReceivePort;
 		p << osc::EndMessage;
 		
+		// tell Kyma we are a Soundplane
 		p << osc::BeginMessage( "/osc/notify/midi/Soundplane" );	
 		p << (osc::int32)1;
 		p << osc::EndMessage;
@@ -124,47 +177,24 @@ void SoundplaneOSCOutput::doInfrequentTasks()
 		// for each initialized socket, send data rate
 		for(int portOffset = 0; portOffset < kNumUDPPorts; portOffset++)
 		{
-			if(mSocketInitialized[portOffset])	
-			{
-				osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);
-				UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
-				if(!socket) return;
-				
-				// send data rate to receiver
-				p << osc::BeginBundleImmediate;
-				p << osc::BeginMessage( "/t3d/dr" );	
-				p << (osc::int32)mDataFreq;
-				p << osc::EndMessage;
-				p << osc::EndBundle;
-				socket->Send( p.Data(), p.Size() );
-			}
+			osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);
+			UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
+			if(!socket) return;
+			
+			// send data rate to receiver
+			p << osc::BeginBundleImmediate;
+			p << osc::BeginMessage( "/t3d/dr" );	
+			p << (osc::int32)mDataFreq;
+			p << osc::EndMessage;
+			p << osc::EndBundle;
+			socket->Send( p.Data(), p.Size() );
 		}
 	}
 }
 
-void SoundplaneOSCOutput::resetAllSockets()
-{
-	mUDPSockets.clear();
-	mUDPSockets.resize(kNumUDPPorts);
-	mSocketInitialized.resize(kNumUDPPorts);
-	mSocketInitialized = {false};
-}
-
-void SoundplaneOSCOutput::initializeSocket(int portOffset)
-{
-	mUDPPacketStreams[portOffset] = std::unique_ptr< osc::OutboundPacketStream >
-		(new osc::OutboundPacketStream( mUDPBuffers[portOffset].data(), kUDPOutputBufferSize ));
-	mUDPSockets[portOffset] = std::unique_ptr< UdpTransmitSocket >
-		(new UdpTransmitSocket(IpEndpointName(kDefaultHostnameString, mCurrentBaseUDPPort + portOffset)));
-	mSocketInitialized[portOffset] = true;
-}
 
 osc::OutboundPacketStream& SoundplaneOSCOutput::getPacketStreamForOffset(int portOffset)
 {
-	if(!mSocketInitialized[portOffset])
-	{
-		initializeSocket(portOffset);
-	}
 	osc::OutboundPacketStream& p (*mUDPPacketStreams[portOffset]);
 	p.Clear();
 	return p;
@@ -172,10 +202,6 @@ osc::OutboundPacketStream& SoundplaneOSCOutput::getPacketStreamForOffset(int por
 
 UdpTransmitSocket* SoundplaneOSCOutput::getTransmitSocketForOffset(int portOffset)
 {
-	if(!mSocketInitialized[portOffset])
-	{
-		initializeSocket(portOffset);
-	}
 	return &(*mUDPSockets[portOffset]);
 }
 
@@ -429,7 +455,6 @@ void SoundplaneOSCOutput::sendFrame()
 
 void SoundplaneOSCOutput::sendFrameToKyma()
 {
-	// Kyma uses default UDP port
 	osc::OutboundPacketStream& p = getPacketStreamForOffset(0);					 
 	UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
 	
@@ -439,12 +464,17 @@ void SoundplaneOSCOutput::sendFrameToKyma()
 		OSCVoice& v = mOSCVoices[0][voiceIdx];
 		osc::int32 touchID = voiceIdx; // 0-based for Kyma
 		osc::int32 offOn = 1;
+
 		if(v.mState == kVoiceStateOn)
 		{
+			MLConsole() << "Kyma: voice " << voiceIdx << " ON \n";
+			
 			offOn = -1;
 		}
 		else if(v.mState == kVoiceStateOff)
 		{
+			MLConsole() << "Kyma: voice " << voiceIdx << " OFF \n";
+			
 			offOn = 0; // TODO periodically turn off silent voices 
 		}
 		

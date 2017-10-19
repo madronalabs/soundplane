@@ -121,16 +121,21 @@ SoundplaneModel::SoundplaneModel() :
 	mServices.clear();
 	mServices.push_back(kOSCDefaultStr);
 	Browse(kLocalDotDomain, kUDPType);
-
+	
+	MLConsole() << "SoundplaneModel: listening for OSC on port " << kDefaultUDPReceivePort << "...\n";
+	listenToOSC(kDefaultUDPReceivePort);
+	
 	startModelTimer();
 }
 
 SoundplaneModel::~SoundplaneModel()
 {
-	// Ensure the SoundplaneDriver is town down before anything else in this
+	// Ensure the SoundplaneDriver is torn down before anything else in this
 	// object. This is important because otherwise there might be processing
 	// thread callbacks that fly around too late.
 	mpDriver.reset(new InertSoundplaneDriver());
+	
+	listenToOSC(0);	
 }
 
 void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newVal)
@@ -251,11 +256,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				bool b = v;
 				mTracker.setRotate(b);
 			}
-			else if (p == "pairs")
-			{
-				bool b = v;
-				mTracker.setPairs(b);
-			}
 			else if (p == "glissando")
 			{
 				mMIDIOutput.setGlissando(bool(v));
@@ -275,14 +275,15 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				mMIDIOutput.setBendRange(v);
 				sendParametersToZones();
 			}
+			
+			/*
+			 // MLTEST no manual connect
 			else if (p == "kyma")
 			{
 				bool b = v;
 				
 				// MLTEST
-				MLConsole() << "SoundplaneModel: kyma mode " << b << "\n";
-				
-				setKymaMode(b);
+				MLConsole() << "SoundplaneModel: kyma active " << b << "\n";
 				
 				if(b)
 				{
@@ -291,6 +292,8 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				
 				listenToOSC(b ? kDefaultUDPReceivePort : 0);
 			}
+			*/
+			
 			else if (p == "override_carriers")
 			{
 				bool b = v;				
@@ -321,8 +324,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				if(str == "default")
 				{
-					// connect via number directly to default port
-					mOSCOutput.connect(kDefaultHostnameString, kDefaultUDPPort);
+					mOSCOutput.connect();
 				}
 				else
 				{
@@ -515,12 +517,11 @@ void SoundplaneModel::didResolveAddress(NetService *pNetService)
 {
 	const std::string& serviceName = pNetService->getName();
 	const std::string& hostName = pNetService->getHostName();
-	const char* hostNameStr = hostName.c_str();
+//	const char* hostNameStr = hostName.c_str();
 	int port = pNetService->getPort();
 
 	// MLTEST
 	MLConsole() << "SoundplaneModel::didResolveAddress: RESOLVED net service to " << hostName << ", service " << serviceName << ", port " << port << "\n";
-	mOSCOutput.connect(hostNameStr, port);
 
 	// if we are talking to a kyma, set kyma mode
 	static const char* kymaStr = "beslime";
@@ -529,9 +530,15 @@ void SoundplaneModel::didResolveAddress(NetService *pNetService)
 	
 	if(isProbablyKyma)
 	{
-		MLConsole() << "setting Kyma mode.\n";
+		MLConsole() << "    setting Kyma mode.\n";
+
+		mOSCOutput.setKymaMode(true);
+		mOSCOutput.setKymaPort(port);
+		mMIDIOutput.setKymaMode(true);
 	}
-	setKymaMode(isProbablyKyma);
+	
+	mOSCOutput.connect();
+
 }
 
 
@@ -564,6 +571,25 @@ const std::vector<std::string>& SoundplaneModel::getServicesList()
 	return mServiceNames;
 }
 
+void SoundplaneModel::taskThread()
+{
+	std::chrono::time_point<std::chrono::system_clock> previous, now;
+	previous = now = std::chrono::system_clock::now();
+	while(1)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		now = std::chrono::system_clock::now();
+		int secondsInterval = std::chrono::duration_cast<std::chrono::seconds>(now - previous).count();		
+		if (secondsInterval >= 4)
+		{
+			previous = now;
+
+			doInfrequentTasks();
+			
+		}
+	}
+}
+
 void SoundplaneModel::initialize()
 {
 	mMIDIOutput.initialize();
@@ -571,6 +597,12 @@ void SoundplaneModel::initialize()
 	addListener(&mOSCOutput);
 
 	mpDriver = SoundplaneDriver::create(this);
+	
+	// create device grab thread
+	mTaskThread = std::thread(&SoundplaneModel::taskThread, this);
+	mTaskThread.detach();  // REVIEW:  is leaked ? 
+	
+
 
 	// TODO mem err handling
 	if (!mCalibrateData.setDims(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneCalibrateSize))
@@ -634,6 +666,7 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 
 void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data, int size)
 {
+	/*
 	uint64_t now = getMicroseconds();
     // once per second
 	if(now - mLastInfrequentTaskTime > 1000*1000)
@@ -641,7 +674,8 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 		doInfrequentTasks();
 		mLastInfrequentTaskTime = now;
 	}
-
+*/
+	
 	// read from driver's ring buffer to incoming surface
 	MLSample* pSurfaceData = mSurface.getBuffer();
 	memcpy(pSurfaceData, data, size * sizeof(float));
@@ -1158,14 +1192,6 @@ void SoundplaneModel::sendMessageToListeners()
     }
 }
 
-void SoundplaneModel::setKymaMode(bool m)
-{
-	mKymaMode = m;
-	mOSCOutput.setKymaMode(m);
-	mMIDIOutput.setKymaMode(m);
-
-}
-
 // --------------------------------------------------------------------------------
 //
 #pragma mark -
@@ -1237,6 +1263,8 @@ void SoundplaneModel::filterAndSendData()
 
 void SoundplaneModel::doInfrequentTasks()
 {
+	MLConsole() << "[poll]\n";
+	
 	PollNetServices();
 	mOSCOutput.doInfrequentTasks();
 	mMIDIOutput.doInfrequentTasks();
@@ -1594,3 +1622,5 @@ int getJSONInt(cJSON* pNode, const char* name)
     }
     return 0;
 }
+
+

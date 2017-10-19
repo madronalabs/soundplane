@@ -155,8 +155,6 @@ public:
 
 	SoundplaneMIDIOutput& getMIDIOutput() { return mMIDIOutput; }
 
-	void setKymaMode(bool m);
-
 	Vec2 xyToKeyGrid(Vec2 xy);
 
 private:
@@ -269,6 +267,10 @@ private:
 
 	// OSC services
 	std::vector<std::string> mServiceNames;
+	
+	void taskThread();
+	std::thread					mTaskThread;
+
 };
 
 // JSON utilities (to go where?)

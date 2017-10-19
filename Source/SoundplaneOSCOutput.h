@@ -56,10 +56,12 @@ public:
 	SoundplaneOSCOutput();
 	~SoundplaneOSCOutput();
 	
-	void connect(const char* name, int port);
 	int getKymaMode();
 	void setKymaMode(bool m);
-	
+	void setKymaPort(int p);
+
+	void connect();
+
     // SoundplaneDataListener
     void processSoundplaneMessage(const SoundplaneDataMessage* msg);
     
@@ -75,8 +77,7 @@ public:
 
 private:	
 	
-	void resetAllSockets();
-	void initializeSocket(int portOffset);
+	void initializeSocket(int port);
 	osc::OutboundPacketStream& getPacketStreamForOffset(int offset);
 	UdpTransmitSocket* getTransmitSocketForOffset(int portOffset);
 	void sendFrame();
@@ -98,7 +99,6 @@ private:
 	std::vector< std::vector < char > > mUDPBuffers;
 	std::vector< std::unique_ptr< osc::OutboundPacketStream > > mUDPPacketStreams;
 	std::vector< std::unique_ptr< UdpTransmitSocket > > mUDPSockets;
-	std::vector< bool > mSocketInitialized;
 	
 	int mCurrentBaseUDPPort;
 	osc::int32 mFrameId;
@@ -106,6 +106,7 @@ private:
 	
 	uint64_t lastInfrequentTaskTime;
 	bool mKymaMode;
+	int mKymaPort;
     bool mGotNoteChangesThisFrame;
     bool mGotMatrixThisFrame;
     SoundplaneDataMessage mMatrixMessage;
