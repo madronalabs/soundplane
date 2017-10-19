@@ -74,16 +74,17 @@ void SoundplaneOSCOutput::connect()
 			mUDPSockets[0] = std::unique_ptr< UdpTransmitSocket >
 				(new UdpTransmitSocket(IpEndpointName(kDefaultHostnameString, mKymaPort)));
 
-			osc::OutboundPacketStream& p = getPacketStreamForOffset(0);
+			osc::OutboundPacketStream* p = getPacketStreamForOffset(0);
+			if(!p) return;
 			UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
 			if(!socket) return;
 			
-			p << osc::BeginBundleImmediate;
-			p << osc::BeginMessage( "/t3d/dr" );	
-			p << (osc::int32)mDataFreq;
-			p << osc::EndMessage;
-			p << osc::EndBundle;
-			socket->Send( p.Data(), p.Size() );
+			*p << osc::BeginBundleImmediate;
+			*p << osc::BeginMessage( "/t3d/dr" );	
+			*p << (osc::int32)mDataFreq;
+			*p << osc::EndMessage;
+			*p << osc::EndBundle;
+			socket->Send( p->Data(), p->Size() );
 			MLConsole() << "                     connected to port " << mKymaPort << "\n";
 		}
 		catch(std::runtime_error err)
@@ -105,16 +106,17 @@ void SoundplaneOSCOutput::connect()
 				mUDPSockets[portOffset] = std::unique_ptr< UdpTransmitSocket >
 					(new UdpTransmitSocket(IpEndpointName(kDefaultHostnameString, mCurrentBaseUDPPort + portOffset)));
 				
-				osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);
+				osc::OutboundPacketStream* p = getPacketStreamForOffset(portOffset);
+				if(!p) return;
 				UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
 				if(!socket) return;
 				
-				p << osc::BeginBundleImmediate;
-				p << osc::BeginMessage( "/t3d/dr" );	
-				p << (osc::int32)mDataFreq;
-				p << osc::EndMessage;
-				p << osc::EndBundle;
-				socket->Send( p.Data(), p.Size() );
+				*p << osc::BeginBundleImmediate;
+				*p << osc::BeginMessage( "/t3d/dr" );	
+				*p << (osc::int32)mDataFreq;
+				*p << osc::EndMessage;
+				*p << osc::EndBundle;
+				socket->Send( p->Data(), p->Size() );
 				MLConsole() << "                     connected to port " << mCurrentBaseUDPPort + portOffset << "\n";
 			}
 		}
@@ -156,47 +158,51 @@ void SoundplaneOSCOutput::doInfrequentTasks()
 {
 	if(mKymaMode)
 	{
-		osc::OutboundPacketStream& p = getPacketStreamForOffset(0);
+		osc::OutboundPacketStream* p = getPacketStreamForOffset(0);
 		UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
-
+		if((!p) || (!socket)) return;
+		
 		// tell the Kyma that we want to receive info on our listening port
-		p << osc::BeginBundleImmediate;
-		p << osc::BeginMessage( "/osc/respond_to" );	
-		p << (osc::int32)kDefaultUDPReceivePort;
-		p << osc::EndMessage;
+		*p << osc::BeginBundleImmediate;
+		*p << osc::BeginMessage( "/osc/respond_to" );	
+		*p << (osc::int32)kDefaultUDPReceivePort;
+		*p << osc::EndMessage;
 		
 		// tell Kyma we are a Soundplane
-		p << osc::BeginMessage( "/osc/notify/midi/Soundplane" );	
-		p << (osc::int32)1;
-		p << osc::EndMessage;
-		p << osc::EndBundle;
-		socket->Send( p.Data(), p.Size() );
+		*p << osc::BeginMessage( "/osc/notify/midi/Soundplane" );	
+		*p << (osc::int32)1;
+		*p << osc::EndMessage;
+		*p << osc::EndBundle;
+		socket->Send( p->Data(), p->Size() );
 	}
 	else
 	{
 		// for each initialized socket, send data rate
 		for(int portOffset = 0; portOffset < kNumUDPPorts; portOffset++)
 		{
-			osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);
+			osc::OutboundPacketStream* p = getPacketStreamForOffset(portOffset);
 			UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
-			if(!socket) return;
+			if((!p) || (!socket)) return;
 			
 			// send data rate to receiver
-			p << osc::BeginBundleImmediate;
-			p << osc::BeginMessage( "/t3d/dr" );	
-			p << (osc::int32)mDataFreq;
-			p << osc::EndMessage;
-			p << osc::EndBundle;
-			socket->Send( p.Data(), p.Size() );
+			*p << osc::BeginBundleImmediate;
+			*p << osc::BeginMessage( "/t3d/dr" );	
+			*p << (osc::int32)mDataFreq;
+			*p << osc::EndMessage;
+			*p << osc::EndBundle;
+			socket->Send( p->Data(), p->Size() );
 		}
 	}
 }
 
 
-osc::OutboundPacketStream& SoundplaneOSCOutput::getPacketStreamForOffset(int portOffset)
+osc::OutboundPacketStream* SoundplaneOSCOutput::getPacketStreamForOffset(int portOffset)
 {
-	osc::OutboundPacketStream& p (*mUDPPacketStreams[portOffset]);
-	p.Clear();
+	osc::OutboundPacketStream* p = mUDPPacketStreams[portOffset].get();
+	if(p)
+	{
+		p->Clear();
+	}
 	return p;
 }
 
@@ -339,15 +345,15 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
 		// matrix is always sent to the default port. 
 		if(mGotMatrixThisFrame)
 		{
-			osc::OutboundPacketStream& p = getPacketStreamForOffset(0);					 
+			osc::OutboundPacketStream* p = getPacketStreamForOffset(0);					 
 			UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
-			if(!socket) return;
+			if((!p) || (!socket)) return;
 
-			p << osc::BeginMessage( "/t3d/matrix" );
-			p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
-			p << osc::EndMessage;
+			*p << osc::BeginMessage( "/t3d/matrix" );
+			*p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
+			*p << osc::EndMessage;
 			mGotMatrixThisFrame = false;
-			socket->Send( p.Data(), p.Size() );
+			socket->Send( p->Data(), p->Size() );
 		}
     }
 }
@@ -374,9 +380,9 @@ void SoundplaneOSCOutput::sendFrame()
 		if(pMsg->mType == controllerSym)
 		{
 			// send controller message: /t3d/[zoneName] val1 (val2) on port (3123 + offset).
-			osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);
+			osc::OutboundPacketStream* p = getPacketStreamForOffset(portOffset);
 			UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
-			if(!socket) return;
+			if((!p) || (!socket)) return;
 			
 			// int channel = pMsg->mData[1];
 			// int ctrlNum1 = pMsg->mData[2];
@@ -388,36 +394,36 @@ void SoundplaneOSCOutput::sendFrame()
 			std::string ctrlStr("/");
 			ctrlStr += (pMsg->mZoneName);
 			
-			p << osc::BeginMessage( ctrlStr.c_str() );
+			*p << osc::BeginMessage( ctrlStr.c_str() );
 			
 			// get control data by type and add to message
 			if(pMsg->mSubtype == xSym)
 			{
-				p << x;
+				*p << x;
 			}
 			else if(pMsg->mSubtype == ySym)
 			{
-				p << y;
+				*p << y;
 			}
 			else if (pMsg->mSubtype == xySym)
 			{
-				p << x << y;
+				*p << x << y;
 			}
 			else if (pMsg->mSubtype == zSym)
 			{
-				p << z;
+				*p << z;
 			}
 			else if (pMsg->mSubtype == toggleSym)
 			{
 				int t = (x > 0.5f);
-				p << t;
+				*p << t;
 			}
-			p << osc::EndMessage;
+			*p << osc::EndMessage;
 			
 			// clear
 			mMessagesByZone[i].mType = nullSym;
 			
-			socket->Send( p.Data(), p.Size() );
+			socket->Send( p->Data(), p->Size() );
 		}
 	}
 	
@@ -426,16 +432,16 @@ void SoundplaneOSCOutput::sendFrame()
 	{
 		// begin OSC bundle for this frame
 		// timestamp is now stored in the bundle, synchronizing all info for this frame.
-		osc::OutboundPacketStream& p = getPacketStreamForOffset(portOffset);					 
+		osc::OutboundPacketStream* p = getPacketStreamForOffset(portOffset);					 
 		UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
-		if(!socket) return;
+		if((!p) || (!socket)) return;
 		
-		p << osc::BeginBundle(mCurrFrameStartTime);
+		*p << osc::BeginBundle(mCurrFrameStartTime);
 		
 		// send frame start message
-		p << osc::BeginMessage( "/t3d/frm" );
-		p << mFrameId++ << mSerialNumber;
-		p << osc::EndMessage;
+		*p << osc::BeginMessage( "/t3d/frm" );
+		*p << mFrameId++ << mSerialNumber;
+		*p << osc::EndMessage;
 		
 		for(int voiceIdx=0; voiceIdx < kSoundplaneMaxTouches; ++voiceIdx)
 		{					
@@ -443,22 +449,23 @@ void SoundplaneOSCOutput::sendFrame()
 			osc::int32 touchID = voiceIdx + 1; // 1-based for OSC
 			
 			std::string address("/t3d/tch" + std::to_string(touchID));
-			p << osc::BeginMessage( address.c_str() );
-			p << v.x << v.y << v.z << v.note;
-			p << osc::EndMessage;						
+			*p << osc::BeginMessage( address.c_str() );
+			*p << v.x << v.y << v.z << v.note;
+			*p << osc::EndMessage;						
 		}
 		
-		p << osc::EndBundle;
-		socket->Send( p.Data(), p.Size() );
+		*p << osc::EndBundle;
+		socket->Send( p->Data(), p->Size() );
 	}
 }
 
 void SoundplaneOSCOutput::sendFrameToKyma()
 {
-	osc::OutboundPacketStream& p = getPacketStreamForOffset(0);					 
+	osc::OutboundPacketStream* p = getPacketStreamForOffset(0);					 
 	UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
+	if((!p) || (!socket)) return;
 	
-	p << osc::BeginBundleImmediate;
+	*p << osc::BeginBundleImmediate;
 	for(int voiceIdx=0; voiceIdx < kSoundplaneMaxTouches; ++voiceIdx)
 	{			
 		OSCVoice& v = mOSCVoices[0][voiceIdx];
@@ -480,14 +487,14 @@ void SoundplaneOSCOutput::sendFrameToKyma()
 		
 		if(v.mState != kVoiceStateInactive)
 		{
-			p << osc::BeginMessage( "/key" );	
-			p << touchID << offOn << v.note << v.z << v.y;
-			p << osc::EndMessage;
+			*p << osc::BeginMessage( "/key" );	
+			*p << touchID << offOn << v.note << v.z << v.y;
+			*p << osc::EndMessage;
 		}						
 	}
 	
-	p << osc::EndBundle;
-	socket->Send( p.Data(), p.Size() );
+	*p << osc::EndBundle;
+	socket->Send( p->Data(), p->Size() );
 }
 
 

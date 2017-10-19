@@ -78,7 +78,7 @@ public:
 private:	
 	
 	void initializeSocket(int port);
-	osc::OutboundPacketStream& getPacketStreamForOffset(int offset);
+	osc::OutboundPacketStream* getPacketStreamForOffset(int offset);
 	UdpTransmitSocket* getTransmitSocketForOffset(int portOffset);
 	void sendFrame();
 	void sendFrameToKyma();
