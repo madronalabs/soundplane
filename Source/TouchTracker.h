@@ -69,7 +69,6 @@ public:
 	void process(int);
 	
 	void setRotate(bool b);
-	void setPairs(bool b);
 	
 	typedef std::bitset<kSensorRows*kSensorCols> SensorBitsArray;	
 	typedef VectorArray2D<kSensorRows, kSensorCols> VectorsH;
@@ -212,8 +211,6 @@ private:
 	std::array<Vec4, kMaxTouches> reduceCrowdedTouches(const std::array<Vec4, kMaxTouches>& t);
 
 	std::array<Vec4, kMaxTouches> rotateTouches(const std::array<Vec4, kMaxTouches>& t);
-	std::array<Vec4, kMaxTouches> createPairsV(const std::array<Vec4, kMaxTouches>& t);
-	std::array<Vec4, kMaxTouches> createPairsH(const std::array<Vec4, kMaxTouches>& t);
 
 	std::array<Vec4, kMaxTouches> matchTouches(const std::array<Vec4, kMaxTouches>& x, const std::array<Vec4, kMaxTouches>& x1);
 	
