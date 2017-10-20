@@ -129,17 +129,6 @@ public:
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 	
-	TouchTracker::SensorBitsArray getThresholdBits() { return mTracker.getThresholdBits(); }
-	
-	TouchTracker::VectorsH getPingsHorizRaw() { return mTracker.getPingsHorizRaw(); }
-	TouchTracker::VectorsH getPingsHoriz() { return mTracker.getPingsHoriz(); }	
-	TouchTracker::VectorsV getPingsVertRaw() { return mTracker.getPingsVertRaw(); }
-	TouchTracker::VectorsV getPingsVert() { return mTracker.getPingsVert(); }
-	
-	TouchTracker::KeyStates getKeyStates() { return mTracker.getKeyStates(); }
-	
-	std::array<Vec4, TouchTracker::kMaxTouches> getPeaks() { return mTracker.getPeaks(); }
-	
 	std::array<Vec4, TouchTracker::kMaxTouches> getRawTouches() { return mTracker.getRawTouches(); }
 	
 	std::array<Vec4, TouchTracker::kMaxTouches> getTouches() { return mTracker.getTouches(); }

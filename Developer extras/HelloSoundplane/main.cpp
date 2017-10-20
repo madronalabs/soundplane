@@ -40,6 +40,8 @@ public:
 		else if (mFrameCounter == 0)
 		{
 			memcpy(mSurface.getBuffer(), data, sizeof(float) * size);
+			
+			// TODO even simple calibration should be dividing by rest value!
 			mSurface.subtract(mCalibration);
 			mSurface.scale(100.f);
 			mSurface.flipVertical();
@@ -69,10 +71,33 @@ int main(int argc, const char * argv[])
 	std::cout << "Hello, Soundplane?\n";
 	std::cout << "Initial device state: " << driver->getDeviceState() << std::endl;
 
-	for (;;)
+//	for (;;)
+	for(int i=0; i<5; ++i)
 	{
 		sleep(1);
+		
+		// ping the driver in order to let it know that we, its parent process, have not been killed
+		// or otherwise terminated. In the event of ungraceful termination of this main process, 
+		// the driver will not receive pings and therefore, shut itself down more gracefully.
+		// DERP
+		// this can't work for SIGKILL -- grab thread is in the same process, which is killed.
+		// driver->keepAlive();
+		
+		// TODO
+		
+		
+		// instead, change API so that driver does not create a process thread. owner must call process() repeatedly.
+		// This gives clients more flexibility.
+	
+		
+//		driver->process();
+		
 	}
+	
+	std::cout << "goodbye.\n";
 
     return 0;
 }
+		
+		
+

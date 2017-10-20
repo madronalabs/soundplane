@@ -131,9 +131,8 @@ SoundplaneModel::SoundplaneModel() :
 
 SoundplaneModel::~SoundplaneModel()
 {
-	// signal threads to shut down
+	// signal threads to shut down and wait
 	mShuttingDown = true;
-	
 	usleep(500*1000);
 	
 	if (mTaskThread.joinable())
@@ -425,7 +424,6 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("abs_rel", 0.);
 	setProperty("snap", 250.);
 	setProperty("vibrato", 0.5);
-
 
 	setProperty("midi_active", 0);
 	setProperty("midi_mpe", 1);
@@ -1058,7 +1056,7 @@ float responseCurve(float x, float c)
 void SoundplaneModel::sendTouchDataToZones()
 {
 	const float kTouchScaleToModel = 20.f;
-	float x, y, z;
+	float x, y, z, dz;
 	int age;
 
 	const float zscale = getFloatProperty("z_scale");
@@ -1074,9 +1072,10 @@ void SoundplaneModel::sendTouchDataToZones()
         x = mTouchFrame(xColumn, i);
         y = mTouchFrame(yColumn, i);
         z = mTouchFrame(zColumn, i);
+		dz = mTouchFrame(dzColumn, i);
 		age = mTouchFrame(ageColumn, i);
 		
- //        dz = mTouchFrame(dzColumn, i);
+		// TODO restore dz
 		
 		if(age > 0)
 		{
@@ -1112,7 +1111,7 @@ void SoundplaneModel::sendTouchDataToZones()
                 }
             }
 
-            // send index, xyz to zone
+            // send index, xyz, dz to zone
             int zoneIdx = mZoneMap(mCurrentKeyX[i], mCurrentKeyY[i]);
             if(zoneIdx >= 0)
             {

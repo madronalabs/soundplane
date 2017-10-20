@@ -122,6 +122,9 @@ public:
 	 * listener may be nullptr.
 	 */
 	static std::unique_ptr<SoundplaneDriver> create(SoundplaneDriverListener *listener);
+	
+	
+	
 
 	static float carrierToFrequency(int carrier);
 };

@@ -130,16 +130,18 @@ MacSoundplaneDriver::~MacSoundplaneDriver()
 	//
 	int totalWaitTime = 0;
 	int waitTimeMicrosecs = 1000;
+	printf("%d pending transactions, waiting...\n", mTransactionsInFlight);
 	while (mTransactionsInFlight > 0)
 	{
 		usleep(waitTimeMicrosecs);
 		totalWaitTime += waitTimeMicrosecs;
 
-		// waiting too long-- bail without cleaning up
+		// waiting too long-- bail without cleaning up buffers
 		if (totalWaitTime > 100*1000)
 		{
-			printf("WARNING: Soundplane driver could not finish pending transactions!\n");
-			return;
+			printf("WARNING: Soundplane driver could not finish pending transactions: %d remaining\n", mTransactionsInFlight);
+			intf = NULL;
+			break;
 		}
 	}
 
@@ -193,7 +195,9 @@ MacSoundplaneDriver::~MacSoundplaneDriver()
 }
 
 void MacSoundplaneDriver::init()
-{
+{	
+	MLConsole() << "MacSoundplaneDriver::init()\n";
+	
 	// create device grab thread
 	mGrabThread = std::thread(&MacSoundplaneDriver::grabThread, this);
 	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
@@ -420,6 +424,7 @@ void MacSoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg
 		case kIOReturnIsoTooOld:
 		default:
 			printf("isochComplete error: %s\n", io_err_string(result));
+			
 			// try to recover.
 			k1->setDeviceState(kDeviceConnected);
 			break;
@@ -429,15 +434,15 @@ void MacSoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg
 
 #ifdef SHOW_ALL_SEQUENCE_NUMBERS
 	int index = pNextTransactionBuffer->endpointIndex;
-	int start = getTransactionSequenceNumber(pNextTransaction, 0);
-	int end = getTransactionSequenceNumber(pNextTransactionBuffer, kSoundplaneANumIsochFrames - 1);
+	int start = pNextTransactionBuffer->getTransactionSequenceNumber(0);
+	int end = pNextTransactionBuffer->getTransactionSequenceNumber(kSoundplaneANumIsochFrames - 1);
 	printf("endpoint %d: %d - %d\n", index, start, end);
 	if (start > end)
 	{
 		for(int f=0; f<kSoundplaneANumIsochFrames; ++f)
 		{
 			if (f % 5 == 0) printf("\n");
-			printf("%d ", getTransactionSequenceNumber(pNextTransactionBuffer, f));
+			printf("%d ", pNextTransactionBuffer->getTransactionSequenceNumber(f));
 		}
 		printf("\n\n");
 	}
@@ -661,6 +666,8 @@ void MacSoundplaneDriver::removeDevice()
 	if (intf)
 	{
 		unsigned i, n;
+		
+		// TODO refactor, same as ~MacSoundplaneDriver
 
 		for (n = 0; n < kSoundplaneANumEndpoints; n++)
 		{
@@ -803,6 +810,7 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 			}
 			kr = IOObjectRelease(usbInterfaceRef);
 			usbInterfaceRef = 0;
+			
 			// have interface plugin, need interface interface
 			err = (*plugInInterface)->QueryInterface(plugInInterface, CFUUIDGetUUIDBytes(kIOUSBInterfaceInterfaceID192), (void **)(LPVOID)&intf);
 			kr = IODestroyPlugInInterface(plugInInterface);
@@ -934,9 +942,9 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 
 					// for each endpoint, schedule first transaction and
 					// a few buffers into the future
-					for (j = 0; j < kSoundplaneABuffersInFlight; j++)
+					for (i = 0; i < kSoundplaneANumEndpoints; i++)
 					{
-						for (i = 0; i < kSoundplaneANumEndpoints; i++)
+						for (j = 0; j < kSoundplaneABuffersInFlight; j++)
 						{
 							err = k1->scheduleIsoch(k1->getTransactionData(i, j));
 							if (kIOReturnSuccess != err)
@@ -998,7 +1006,7 @@ void MacSoundplaneDriver::deviceNotifyGeneral(void *refCon, io_service_t service
 #pragma mark main thread routines
 
 // This thread is responsible for finding and adding USB devices matching the Soundplane.
-// Execution is controlled by a Core Foundation (Cocoa) run loop.
+// Execution is controlled by a Core Foundation (Cocoa) run loop. // TODO why?!
 //
 void MacSoundplaneDriver::grabThread()
 {
@@ -1047,8 +1055,8 @@ void MacSoundplaneDriver::grabThread()
 		// Start the run loop. Now we'll receive notifications and remain looping here until the
 		// run loop is stopped with CFRunLoopStop or all the sources and timers are removed from
 		// the default run loop mode.
-		// For more information about how Core Foundation run loops behave, see ?un Loops?in
-		// Apple? Threading Programming Guide.
+		// For more information about how Core Foundation run loops behave, see Run Loops in
+		// Apple's Threading Programming Guide.
 		CFRunLoopRun();
 
 		// clean up
@@ -1398,6 +1406,10 @@ void MacSoundplaneDriver::processThread()
 	}
 }
 
+
+
+// listener callbaks: to remove TODO
+
 // write frame to buffer, reconstructing a constant clock from the data.
 // this may involve interpolating frames.
 //
@@ -1410,6 +1422,7 @@ void MacSoundplaneDriver::reclockFrameToBuffer(const SoundplaneOutputFrame& fram
 
 void MacSoundplaneDriver::setDeviceState(MLSoundplaneState n)
 {
+	std::cout << "device state: " << n << "\n";  // MLTEST
 	mState.store(n, std::memory_order_release);
 	mListener->deviceStateChanged(*this, n);
 }
@@ -1423,6 +1436,7 @@ void MacSoundplaneDriver::dumpDeviceData(float* pData, int size)
 {
 	mListener->handleDeviceDataDump(pData, size);
 }
+
 
 // -------------------------------------------------------------------------------
 #pragma mark transfer utilities

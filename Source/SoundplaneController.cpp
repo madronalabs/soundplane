@@ -184,12 +184,7 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("curvature x");
 	viewMenu->addItem("curvature y");
 	viewMenu->addItem("curvature");
-	viewMenu->addItem("peaks");
 	viewMenu->addItem("xy");
-	viewMenu->addItem("pings");
-	viewMenu->addItem("pings horiz");
-	viewMenu->addItem("pings vert");
-	viewMenu->addItem("key states");
 	viewMenu->addItem("raw touches");
 	viewMenu->addItem("touches");
 

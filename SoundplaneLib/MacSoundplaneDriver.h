@@ -15,13 +15,11 @@
 #include <IOKit/IOMessage.h>
 #include <IOKit/IOCFPlugIn.h>
 #include <IOKit/IOReturn.h>
-#include <mach/kern_return.h>
-
-#include <sys/time.h>
-#include <list>
 
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
+
+#include "MLDebug.h" // TEMP
 
 class MacSoundplaneDriver : public SoundplaneDriver
 {

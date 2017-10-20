@@ -42,14 +42,6 @@ private:
 	void drawSurfaceOverlay();
 	void renderXYGrid();
 
-	void renderPingsHoriz();
-	void renderPingsVert();
-	void renderPings();
-	
-	void renderKeyStates();
-
-	void renderPeaks();
-		
 	void renderTouches(std::array<Vec4, TouchTracker::kMaxTouches> t);
 	void renderRawTouches();
 	void renderFilteredTouches();

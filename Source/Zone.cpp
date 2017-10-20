@@ -238,6 +238,7 @@ void Zone::processTouchesNoteRow(const std::vector<bool>& freedTouches)
             float vibratoHP = (currentXPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;
 			
 			// send continue touch message
+			// is dz useful here or should it be 0?
             sendMessage("touch", "continue", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote, vibratoHP);
         }
     }

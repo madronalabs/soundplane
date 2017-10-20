@@ -18,13 +18,14 @@
 #include <array>
 #include <bitset>
 
-const int kTouchWidth = 8; // 8 columns in touch data: [x, y, z, dz, age, dt, note, ?] for each touch.
+const int kTouchWidth = 8; // 8 columns in touch data: [x, y, z, dz, age, unused...] for each touch.
 typedef enum
 {
 	xColumn = 0,
 	yColumn = 1,
 	zColumn = 2,
-	ageColumn = 3
+	dzColumn = 3,
+	ageColumn = 4
 } TouchSignalColumns;
 
 //std::ostream& operator<< (std::ostream& out, const Touch & t);
@@ -36,7 +37,6 @@ constexpr int kKeyRows = 5;
 constexpr int kKeyCols = 30;
 
 MLSignal smoothPressure(const MLSignal& inSignal); 
-
 
 template <size_t ARRAYS, size_t ARRAY_LENGTH >
 struct VectorArray2D
@@ -85,18 +85,6 @@ public:
 	const MLSignal& getCurvatureSignalX() { std::lock_guard<std::mutex> lock(mCurvatureSignalXMutex);  return mCurvatureSignalX; } 
 	const MLSignal& getCurvatureSignalY() { std::lock_guard<std::mutex> lock(mCurvatureSignalYMutex);  return mCurvatureSignalY; } 
 	const MLSignal& getCurvatureSignal() { std::lock_guard<std::mutex> lock(mCurvatureSignalMutex);  return mCurvatureSignal; } 
-	
-	SensorBitsArray getThresholdBits() { std::lock_guard<std::mutex> lock(mThresholdBitsMutex); return mThresholdBitsOut; }
-
-	VectorsH getPingsHorizRaw() { std::lock_guard<std::mutex> lock(mPingsHorizRawOutMutex); return mPingsHorizRawOut; }
-	VectorsH getPingsHoriz() { std::lock_guard<std::mutex> lock(mPingsHorizOutMutex); return mPingsHorizOut; }
-	
-	VectorsV getPingsVertRaw() { std::lock_guard<std::mutex> lock(mPingsVertRawOutMutex); return mPingsVertRawOut; }	
-	VectorsV getPingsVert() { std::lock_guard<std::mutex> lock(mPingsVertOutMutex); return mPingsVertOut; }	
-
-	KeyStates getKeyStates() { std::lock_guard<std::mutex> lock(mKeyStatesOutMutex); return mKeyStatesOut; }
-
-	std::array<Vec4, kMaxTouches> getPeaks() { std::lock_guard<std::mutex> lock(mPeaksOutMutex); return mPeaksOut; }
 	
 	std::array<Vec4, kMaxTouches> getRawTouches() { std::lock_guard<std::mutex> lock(mTouchesRawOutMutex); return mTouchesRawOut; }
 	
@@ -164,10 +152,6 @@ private:
 	// sorted order of touches for hysteresis
 	std::array<int, TouchTracker::kMaxTouches> mTouchSortOrder;
 	
-	// peaks
-	std::array<Vec4, kMaxTouches> mPeaks;
-	std::array<Vec4, kMaxTouches> mPeaksOut;
-	std::mutex mPeaksOutMutex;	
 	
 	// touches
 	std::array<Vec4, kMaxTouches> mTouchesRaw;
