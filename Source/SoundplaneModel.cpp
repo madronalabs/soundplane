@@ -78,7 +78,7 @@ SoundplaneModel::SoundplaneModel() :
 	mLastTimeDataWasSent(0),
 	mZoneModeTemp(0),
 	mCarrierMaskDirty(false),
-	mNeedsCarriersSet(true),
+	mNeedsCarriersSet(false),
 	mNeedsCalibrate(true),
 	mLastInfrequentTaskTime(0),
 	mCarriersMask(0xFFFFFFFF),
@@ -89,7 +89,8 @@ SoundplaneModel::SoundplaneModel() :
 	mTest(0),
 	mKymaIsConnected(0),
 	mKymaMode(false),
-	mTracker(kSoundplaneWidth, kSoundplaneHeight)
+	mTracker(kSoundplaneWidth, kSoundplaneHeight),
+	mShuttingDown(0)
 {
 	// setup geometry
 	mSurfaceWidthInv = 1.f / (float)mSurface.getWidth();
@@ -130,6 +131,17 @@ SoundplaneModel::SoundplaneModel() :
 
 SoundplaneModel::~SoundplaneModel()
 {
+	// signal threads to shut down
+	mShuttingDown = true;
+	
+	usleep(500*1000);
+	
+	if (mTaskThread.joinable())
+	{
+		mTaskThread.join();
+		printf("SoundplaneModel: task thread terminated.\n");
+	}
+	
 	// Ensure the SoundplaneDriver is torn down before anything else in this
 	// object. This is important because otherwise there might be processing
 	// thread callbacks that fly around too late.
@@ -297,23 +309,13 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "override_carriers")
 			{
 				bool b = v;				
-				if(b)
-				{
-					setCarriers(mOverrideCarriers);
-				}
-				else
-				{
-					setCarriers(mCarriers);
-				}
 				mDoOverrideCarriers = b;
+				mNeedsCarriersSet = true;
 			}
 			else if (p == "override_carrier_set")
 			{
 				makeStandardCarrierSet(mOverrideCarriers, v);
-				if(mDoOverrideCarriers)
-				{
-					setCarriers(mOverrideCarriers);
-				}
+				mNeedsCarriersSet = true;
 			}			
 		}
 		break;
@@ -372,7 +374,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				}
 			}
 		}
-			break;
+		break;
 		case MLProperty::kSignalProperty:
 		{
 			const MLSignal& sig = newVal.getSignalValue();
@@ -382,9 +384,12 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				assert(sig.getSize() == kSoundplaneSensorWidth);
 				for(int i=0; i<kSoundplaneSensorWidth; ++i)
 				{
-					mCarriers[i] = sig[i];
+					if(mCarriers[i] != sig[i])
+					{
+						mCarriers[i] = sig[i];
+						mNeedsCarriersSet = true;
+					}
 				}
-				mNeedsCarriersSet = true;
 			}
 			if(p == MLSymbol("tracker_calibration"))
 			{
@@ -538,9 +543,7 @@ void SoundplaneModel::didResolveAddress(NetService *pNetService)
 	}
 	
 	mOSCOutput.connect();
-
 }
-
 
 void SoundplaneModel::formatServiceName(const std::string& inName, std::string& outName)
 {
@@ -575,17 +578,15 @@ void SoundplaneModel::taskThread()
 {
 	std::chrono::time_point<std::chrono::system_clock> previous, now;
 	previous = now = std::chrono::system_clock::now();
-	while(1)
+	while(!mShuttingDown)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		now = std::chrono::system_clock::now();
 		int secondsInterval = std::chrono::duration_cast<std::chrono::seconds>(now - previous).count();		
-		if (secondsInterval >= 4)
+		if (secondsInterval >= 1)
 		{
 			previous = now;
-
 			doInfrequentTasks();
-			
 		}
 	}
 }
@@ -598,11 +599,7 @@ void SoundplaneModel::initialize()
 
 	mpDriver = SoundplaneDriver::create(this);
 	
-	// create device grab thread
 	mTaskThread = std::thread(&SoundplaneModel::taskThread, this);
-	mTaskThread.detach();  // REVIEW:  is leaked ? 
-	
-
 
 	// TODO mem err handling
 	if (!mCalibrateData.setDims(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneCalibrateSize))
@@ -649,7 +646,6 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 		case kDeviceHasIsochSync:
 			// get serial number and auto calibrate noise on sync detect
 			mOSCOutput.setSerialNumber((instrumentModel << 16) | driver.getSerialNumber());
-			mNeedsCarriersSet = true;
 			// output will be enabled at end of calibration.
 			mNeedsCalibrate = true;
 		break;
@@ -666,16 +662,6 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 
 void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data, int size)
 {
-	/*
-	uint64_t now = getMicroseconds();
-    // once per second
-	if(now - mLastInfrequentTaskTime > 1000*1000)
-	{
-		doInfrequentTasks();
-		mLastInfrequentTaskTime = now;
-	}
-*/
-	
 	// read from driver's ring buffer to incoming surface
 	MLSample* pSurfaceData = mSurface.getBuffer();
 	memcpy(pSurfaceData, data, size * sizeof(float));
@@ -706,9 +692,8 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 	}
 	else if(mOutputEnabled)
 	{
-		// scale incoming data as multiple of mCalibrateMean
+		// scale incoming data to reference mCalibrateMean = 1.0
 		float in, cmeanInv;
-		const float kInputScale = 1.0f;
 		if (mHasCalibration)
 		{
 			for(int j=0; j<mSurface.getHeight(); ++j)
@@ -1263,8 +1248,6 @@ void SoundplaneModel::filterAndSendData()
 
 void SoundplaneModel::doInfrequentTasks()
 {
-	MLConsole() << "[poll]\n";
-	
 	PollNetServices();
 	mOSCOutput.doInfrequentTasks();
 	mMIDIOutput.doInfrequentTasks();
@@ -1276,7 +1259,14 @@ void SoundplaneModel::doInfrequentTasks()
 	else if (mNeedsCarriersSet)
 	{
 		mNeedsCarriersSet = false;
-		setCarriers(mCarriers);
+		if(mDoOverrideCarriers)
+		{
+			setCarriers(mOverrideCarriers);
+		}
+		else
+		{
+			setCarriers(mCarriers);
+		}
 		mNeedsCalibrate = true;
 	}
 	else if (mNeedsCalibrate)
@@ -1300,9 +1290,6 @@ void SoundplaneModel::setCarriers(const SoundplaneDriver::Carriers& c)
 {
 	enableOutput(false);
 	mpDriver->setCarriers(c);
-	
-	// MLTEST
-	dumpCarriers(c);
 }
 
 int SoundplaneModel::enableCarriers(unsigned long mask)

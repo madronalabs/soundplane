@@ -270,6 +270,7 @@ private:
 	
 	void taskThread();
 	std::thread					mTaskThread;
+	int mShuttingDown;
 
 };
 
