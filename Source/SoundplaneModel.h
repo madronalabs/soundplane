@@ -62,17 +62,13 @@ public:
 	const std::vector<std::string>& getServicesList();
 	void formatServiceName(const std::string& inName, std::string& outName);
 
-	void initialize();
-	void clearTouchData();
-	void sendTouchDataToZones();
-    void sendMessageToListeners();
 
 	MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
 
 	void testCallback();
 	void processCallback();
-	void filterAndSendData();
 
+	
 	float getSampleHistory(int x, int y);
 
 	void getHistoryStats(float& mean, float& stdDev);
@@ -114,25 +110,19 @@ public:
 
 	void getMinMaxHistory(int n);
 	const MLSignal& getCorrelation();
+	
 	const MLSignal& getTouchFrame() { return mTouchFrame; }
 	const MLSignal& getTouchHistory() { return mTouchHistory; }
 	
 	const MLSignal getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
-	const MLSignal getCalibratedSignal() { return mTracker.getCalibratedSignal(); }
-	const MLSignal getSmoothedSignal() { return mTracker.getSmoothedSignal(); }
-	const MLSignal getCurvatureSignalX() { return mTracker.getCurvatureSignalX(); }
-	const MLSignal getCurvatureSignalY() { return mTracker.getCurvatureSignalY(); }
-	const MLSignal getCurvatureSignal() { return mTracker.getCurvatureSignal(); }
+	const MLSignal getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex); return mCalibratedSignal; }
 	
-	const MLSignal& getTrackerCalibrateSignal();
-	Vec3 getTrackerCalibratePeak();
+	const TouchTracker::TouchArray& getTouchArray() { return mTouchArray; }
+
+	
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 	
-	std::array<Vec4, TouchTracker::kMaxTouches> getRawTouches() { return mTracker.getRawTouches(); }
-	
-	std::array<Vec4, TouchTracker::kMaxTouches> getTouches() { return mTracker.getTouches(); }
-
 	const std::vector<ZonePtr>& getZones(){ return mZones; }
     const CriticalSection* getZoneLock() {return &mZoneLock;}
 
@@ -147,6 +137,17 @@ public:
 	Vec2 xyToKeyGrid(Vec2 xy);
 
 private:
+
+	// TODO order!
+	void trackTouches();
+	void initialize();
+	void clearTouchData();
+	void scaleTouchPressureData();
+	void sendTouchDataToZones();
+	void sendMessageToListeners();
+
+	
+	
 	void setTesting(bool testing);
 
 	void addListener(SoundplaneDataListener* pL) { mListeners.push_back(pL); }
@@ -187,8 +188,10 @@ private:
 	MLSignal mCalibrateData;
 
 	int	mMaxTouches;
+	TouchTracker::TouchArray mTouchArray; 
 	MLSignal mTouchFrame;
 	MLSignal mTouchHistory;
+	
 
 	bool mTesting;
 	bool mCalibrating;
@@ -209,7 +212,10 @@ private:
 
 	MLSignal mRawSignal;
 	std::mutex mRawSignalMutex;
-
+	
+	MLSignal mCalibratedSignal;
+	std::mutex mCalibratedSignalMutex;
+	
 	int mCalibrateCount; // samples in one calibrate step
 	int mCalibrateStep; // calibrate step from 0 - end
 	int mTotalCalibrateSteps;

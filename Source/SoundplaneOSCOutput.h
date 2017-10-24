@@ -77,6 +77,9 @@ public:
 
 private:	
 	
+	// MLTEST
+	std::mutex mProcessMutex;
+	
 	void initializeSocket(int port);
 	osc::OutboundPacketStream* getPacketStreamForOffset(int offset);
 	UdpTransmitSocket* getTransmitSocketForOffset(int portOffset);
@@ -99,6 +102,7 @@ private:
 	std::vector< std::vector < char > > mUDPBuffers;
 	std::vector< std::unique_ptr< osc::OutboundPacketStream > > mUDPPacketStreams;
 	std::vector< std::unique_ptr< UdpTransmitSocket > > mUDPSockets;
+
 	
 	int mCurrentBaseUDPPort;
 	osc::int32 mFrameId;

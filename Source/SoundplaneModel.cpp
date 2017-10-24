@@ -51,6 +51,25 @@ static void makeStandardCarrierSet(SoundplaneDriver::Carriers &carriers, int set
 	}
 }
 
+
+void touchArrayToFrame(TouchTracker::TouchArray* pArray, MLSignal* pFrame)
+{
+	// get references for syntax
+	TouchTracker::TouchArray& array = *pArray;
+	MLSignal& frame = *pFrame;
+	
+	for(int i = 0; i < TouchTracker::kMaxTouches; ++i)
+	{
+		TouchTracker::Touch t = array[i];
+		frame(xColumn, i) = t.x;
+		frame(yColumn, i) = t.y;
+		frame(zColumn, i) = t.z;
+		frame(dzColumn, i) = t.dz;
+		frame(ageColumn, i) = t.age;
+	}	
+}
+
+
 // --------------------------------------------------------------------------------
 //
 #pragma mark SoundplaneModel
@@ -59,6 +78,7 @@ SoundplaneModel::SoundplaneModel() :
 	mOutputEnabled(false),
 	mSurface(kSoundplaneWidth, kSoundplaneHeight),
 	mRawSignal(kSoundplaneWidth, kSoundplaneHeight),
+	mCalibratedSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTesting(false),
 	mCalibrating(false),
 	mSelectingCarriers(false),
@@ -127,6 +147,32 @@ SoundplaneModel::SoundplaneModel() :
 	listenToOSC(kDefaultUDPReceivePort);
 	
 	startModelTimer();
+	
+	mMIDIOutput.initialize();
+	addListener(&mMIDIOutput);
+	addListener(&mOSCOutput);
+	
+	mpDriver = SoundplaneDriver::create(this);
+	
+	mTaskThread = std::thread(&SoundplaneModel::taskThread, this);
+	
+	// TODO mem err handling
+	if (!mCalibrateData.setDims(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneCalibrateSize))
+	{
+		MLConsole() << "SoundplaneModel: out of memory!\n";
+	}
+	
+	mTouchFrame.setDims(kSoundplaneTouchWidth, TouchTracker::kMaxTouches);
+	
+	mTouchHistory.setDims(kSoundplaneTouchWidth, TouchTracker::kMaxTouches, kSoundplaneHistorySize);
+	
+	// make zone presets collection
+	File zoneDir = getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets");
+	debug() << "LOOKING for zones in " << zoneDir.getFileName() << "\n";
+	mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", zoneDir, "json"));
+	mZonePresets->processFilesImmediate();
+	mZonePresets->dump();
+
 }
 
 SoundplaneModel::~SoundplaneModel()
@@ -188,13 +234,10 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			else if (p == "max_touches")
 			{
 				debug() << "TOUCHES: " << v << "\n";
+				mMaxTouches = v;
 				mTracker.setMaxTouches(v);
 				mMIDIOutput.setMaxTouches(v);
 				mOSCOutput.setMaxTouches(v);
-			}
-			else if (p == "lopass_xy")
-			{
-				mTracker.setLopassXY(v);
 			}
 			else if (p == "lopass_z")
 			{
@@ -591,29 +634,6 @@ void SoundplaneModel::taskThread()
 
 void SoundplaneModel::initialize()
 {
-	mMIDIOutput.initialize();
-	addListener(&mMIDIOutput);
-	addListener(&mOSCOutput);
-
-	mpDriver = SoundplaneDriver::create(this);
-	
-	mTaskThread = std::thread(&SoundplaneModel::taskThread, this);
-
-	// TODO mem err handling
-	if (!mCalibrateData.setDims(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneCalibrateSize))
-	{
-		MLConsole() << "SoundplaneModel: out of memory!\n";
-	}
-
-	mTouchFrame.setDims(kTouchWidth, kSoundplaneMaxTouches);
-	mTouchHistory.setDims(kTouchWidth, kSoundplaneMaxTouches, kSoundplaneHistorySize);
-
-	// make zone presets collection
-	File zoneDir = getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets");
-	debug() << "LOOKING for zones in " << zoneDir.getFileName() << "\n";
-	mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", zoneDir, "json"));
-	mZonePresets->processFilesImmediate();
-	mZonePresets->dump();
 }
 
 int SoundplaneModel::getClientState(void)
@@ -690,7 +710,8 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 	}
 	else if(mOutputEnabled)
 	{
-		// scale incoming data to reference mCalibrateMean = 1.0
+		// scale incoming data to reference mCalibrateMean = 1.0 
+		const float kCalibrationScale = 1.0f;//0.0625f; 
 		float in, cmeanInv;
 		if (mHasCalibration)
 		{
@@ -701,21 +722,15 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 					// subtract calibrated zero
 					in = mSurface(i, j);
 					cmeanInv = mCalibrateMeanInv(i, j);
-					mSurface(i, j) = ((in*cmeanInv) - 1.0f)*0.0625f;
+					mSurface(i, j) = ((in*cmeanInv) - 1.0f)*kCalibrationScale;
 				}
 			}
+			{
+				std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);
+				mCalibratedSignal = mSurface;
+			}
+			trackTouches();		
 		}
-		
-		// send data to touch tracker.
-		mTracker.setInputSignal(&mSurface);
-		mTracker.setOutputSignal(&mTouchFrame);
-		mTracker.process(1);
-		
- 		sendTouchDataToZones();
-
-		mHistoryCtr++;
-		if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
-		mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
 	}
 }
 
@@ -1003,13 +1018,9 @@ Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy)
 
 void SoundplaneModel::clearTouchData()
 {
-	const int maxTouches = getFloatProperty("max_touches");
-	for(int i=0; i<maxTouches; ++i)
+	for(int i=0; i<TouchTracker::kMaxTouches; ++i)
 	{
-		mTouchFrame(xColumn, i) = 0;
-		mTouchFrame(yColumn, i) = 0;
-		mTouchFrame(zColumn, i) = 0;
-		mTouchFrame(ageColumn, i) = 0;
+		mTouchArray[i] = TouchTracker::Touch();
 	}
 }
 
@@ -1052,15 +1063,31 @@ float responseCurve(float x, float c)
 	return y;
 }
 
+void SoundplaneModel::scaleTouchPressureData()
+{
+	const float kTouchScaleToModel = 1.f;
+	const float zscale = getFloatProperty("z_scale");
+	const float zcurve = getFloatProperty("z_curve");
+	float x, y, z, dz;
+
+	for(int i=0; i<TouchTracker::kMaxTouches; ++i)
+	{
+		z = mTouchArray[i].z;
+
+		// apply adjustable force curve for z and clamp
+		z *= zscale * kTouchScaleToModel;
+		z = clamp(z, 0.f, 4.f);
+		z = responseCurve(z, zcurve);
+		mTouchArray[i].z = z;
+	}
+}
+
 // send raw touches to zones in order to generate note and controller events.
 void SoundplaneModel::sendTouchDataToZones()
 {
-	const float kTouchScaleToModel = 20.f;
 	float x, y, z, dz;
 	int age;
 
-	const float zscale = getFloatProperty("z_scale");
-	const float zcurve = getFloatProperty("z_curve");
 	const int maxTouches = getFloatProperty("max_touches");
 	const float hysteresis = getFloatProperty("hysteresis");
 
@@ -1069,22 +1096,18 @@ void SoundplaneModel::sendTouchDataToZones()
 
     for(int i=0; i<maxTouches; ++i)
 	{
-        x = mTouchFrame(xColumn, i);
-        y = mTouchFrame(yColumn, i);
-        z = mTouchFrame(zColumn, i);
-		dz = mTouchFrame(dzColumn, i);
-		age = mTouchFrame(ageColumn, i);
+		
+		x = mTouchArray[i].x;
+		y = mTouchArray[i].y;
+		z = mTouchArray[i].z;
+		dz = mTouchArray[i].dz;
+		age = mTouchArray[i].age;
+		
 		
 		// TODO restore dz
 		
 		if(age > 0)
 		{
- 			// apply adjustable force curve for z and clamp
-			z *= zscale * kTouchScaleToModel;
-			z = clamp(z, 0.f, 1.f);
-			z = responseCurve(z, zcurve);
-			mTouchFrame(zColumn, i) = z;
-
 			// get fractional key grid position (Soundplane A)
 			Vec2 keyXY (x, y);
 
@@ -1146,7 +1169,7 @@ void SoundplaneModel::sendTouchDataToZones()
     // send optional calibrated matrix
     if(mSendMatrixData)
     {		
-		MLSignal calibratedPressure = mTracker.getCalibratedSignal();
+		MLSignal calibratedPressure = getCalibratedSignal();
 		if(calibratedPressure.getHeight() == kSoundplaneHeight)
 		{
 			
@@ -1228,21 +1251,40 @@ void SoundplaneModel::testCallback()
 		}
 	}
 	
-	filterAndSendData();
+	trackTouches();
 }
 
-void SoundplaneModel::filterAndSendData()
+void SoundplaneModel::trackTouches()
 {
-	// send data to touch tracker.
-	mTracker.setInputSignal(&mSurface);					
-	mTracker.setOutputSignal(&mTouchFrame);
-	mTracker.process(1);
-	
-	sendTouchDataToZones();
-	
+	mTestCtr++;
+	if(mTestCtr >= 500)
+	{
+		mTestCtr = 0;
+	}
 	mHistoryCtr++;
 	if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
-	mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);			
+	
+	mTracker.process(&mSurface, mMaxTouches, &mTouchArray);
+	
+	scaleTouchPressureData();
+
+	// TODO mutex? 
+	touchArrayToFrame(&mTouchArray, &mTouchFrame);
+	
+	if(mTestCtr == 0)
+	{
+		debug() << "\n";
+		for(int i=0; i<mMaxTouches; ++i)
+		{
+			debug() << mTouchArray[i].z << " ";
+		}
+		debug() << "\n";
+		mTouchFrame.dump(debug(), true);
+	}
+	
+	mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
+
+	sendTouchDataToZones();
 }
 
 void SoundplaneModel::doInfrequentTasks()

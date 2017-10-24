@@ -395,8 +395,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	// ----
 	
 	pD = page1->addDial("thresh", dialRect.withCenter(2.5, dialY), "z_thresh", c2);
-	pD->setRange(0., 0.025, 0.001);	
-	pD->setDefault(0.005);	
+	pD->setRange(0., 0.1, 0.01);	
+	pD->setDefault(0.05);	
 	
 	pD = page1->addDial("z scale", dialRect.withCenter(3.75, dialY), "z_scale", c2);
 	pD->setRange(0.25, 5.0, 0.01);	
@@ -443,10 +443,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	page2->addTextButton("restore defaults", MLRect(0, 3., 3, 0.4), "restore_defaults");
 	
 	
-	// tracker calibration view
-	MLRect TCVRect(0, 4.f, 6.5, 3.);
-	mTrkCalView.setModel(pModel);
-	page2->addWidgetToView (&mTrkCalView, TCVRect, "trk_cal_view");
 
 	// console
 	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));

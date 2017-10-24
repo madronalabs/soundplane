@@ -42,9 +42,7 @@ private:
 	void drawSurfaceOverlay();
 	void renderXYGrid();
 
-	void renderTouches(std::array<Vec4, TouchTracker::kMaxTouches> t);
-	void renderRawTouches();
-	void renderFilteredTouches();
+	void renderTouches(TouchTracker::TouchArray t);
 	
 	void renderZGrid();
  	
@@ -67,8 +65,6 @@ private:
 	int mKeyHeight, mKeyWidth;
 	
 	int mCount; // TEMP
-	std::array<Vec4, TouchTracker::kMaxTouches> mTouchesToDraw;
-	std::array<Vec4, TouchTracker::kMaxTouches> mTouchesMaxFrame;
 	int mMaxRawTouches;
 
 };

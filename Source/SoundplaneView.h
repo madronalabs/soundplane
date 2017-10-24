@@ -10,7 +10,6 @@
 #include "SoundplaneGridView.h"
 #include "SoundplaneTouchGraphView.h"
 #include "SoundplaneZoneView.h"
-#include "TrackerCalibrateView.h"
 #include "SoundplaneModel.h"
 #include "MLButton.h"
 #include "MLDrawableButton.h"
@@ -131,9 +130,6 @@ private:
 	MLMenuButton* mpOSCServicesButton;
 	MLDial* mpMidiChannelDial;
 
-	// page 2
-	TrackerCalibrateView mTrkCalView;
-	
 	// misc
 	std::vector<MLWidget*> mpCarrierToggles; // TEMP TODO use getWidget()
 	std::vector<MLWidget*> mpCarrierLabels; // TEMP TODO use getWidget()

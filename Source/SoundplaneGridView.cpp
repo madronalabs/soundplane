@@ -199,12 +199,10 @@ void SoundplaneGridView::setModel(SoundplaneModel* m)
 void SoundplaneGridView::renderXYGrid()
 {
 	float fMax = mpModel->getFloatProperty("z_max");
-	
-//	const MLSignal calSignal = mpModel->getSmoothedSignal();
-	
+
 	
 	// MLTEST
-	const MLSignal calSignal = mpModel->getCurvatureSignal();
+	const MLSignal calSignal = mpModel->getCalibratedSignal();
 	
 	if((calSignal.getHeight() != mSensorHeight) || (calSignal.getWidth() != mSensorWidth)) return;
 	
@@ -334,10 +332,8 @@ void SoundplaneGridView::renderXYGrid()
 		}
 	}
 }
-
-
 	
-void SoundplaneGridView::renderTouches(std::array<Vec4, TouchTracker::kMaxTouches> newTouches)
+void SoundplaneGridView::renderTouches(TouchTracker::TouchArray newTouches)
 {
 	if (!mpModel) return;
 	
@@ -357,11 +353,9 @@ void SoundplaneGridView::renderTouches(std::array<Vec4, TouchTracker::kMaxTouche
 	int i = 0;
 	for(auto inx : xs)
 	{
-		if(!inx) break;
-		
-		float x = mKeyRangeX.convert(inx.x());
-		float y = mKeyRangeY.convert(inx.y());
-		float z = inx.z();
+		float x = mKeyRangeX.convert(inx.x);
+		float y = mKeyRangeY.convert(inx.y);
+		float z = inx.z;
 		
 		Vec4 dotColor(MLGL::getIndicatorColor(i));
 		dotColor[3] = 0.5f;
@@ -381,16 +375,6 @@ void SoundplaneGridView::renderTouches(std::array<Vec4, TouchTracker::kMaxTouche
 		rowInt++;
 		i++;
 	}
-}
-
-void SoundplaneGridView::renderRawTouches()
-{
-	renderTouches(mpModel->getRawTouches());
-}
-
-void SoundplaneGridView::renderFilteredTouches()
-{
-	renderTouches(mpModel->getTouches());
 }
 
 void SoundplaneGridView::renderZGrid()
@@ -424,30 +408,6 @@ void SoundplaneGridView::renderZGrid()
 	if(viewMode == "raw data")
 	{
 		viewSignal = mpModel->getRawSignal();
-	}
-	else if(viewMode == "calibrated")
-	{
-		viewSignal = mpModel->getCalibratedSignal();
-	}
-	else if(viewMode == "smoothed")
-	{
-		viewSignal = mpModel->getSmoothedSignal();
-		viewSignal.scale(0.05f);
-	}
-	else if(viewMode == "curvature")
-	{
-		viewSignal = mpModel->getCurvatureSignal();
-		viewSignal.scale(0.25f);
-	}
-	else if(viewMode == "curvature x")
-	{
-		viewSignal = mpModel->getCurvatureSignalX();
-		viewSignal.scale(0.25f);
-	}
-	else if(viewMode == "curvature y")
-	{
-		viewSignal = mpModel->getCurvatureSignalY();
-		viewSignal.scale(0.25f);
 	}
 	else
 	{
@@ -662,14 +622,9 @@ void SoundplaneGridView::renderOpenGL()
 		renderXYGrid();
 		drawSurfaceOverlay();
 	}
-	else if (viewMode == "raw touches")
-	{
-		renderRawTouches();
-		drawSurfaceOverlay();
-	}
 	else if (viewMode == "touches")
 	{
-		renderFilteredTouches();
+		renderTouches(mpModel->getTouchArray());
 		drawSurfaceOverlay();
 	}
 	else // raw, calibrated or smoothed

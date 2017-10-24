@@ -15,7 +15,6 @@ SoundplaneApp::SoundplaneApp() :
 void SoundplaneApp::initialise (const String& commandLine)
 {	
 	mpModel = new SoundplaneModel();
-	mpModel->initialize();
 	
 	mpController = new SoundplaneController(mpModel);
 	mpView = new SoundplaneView(mpModel, mpController, mpController);

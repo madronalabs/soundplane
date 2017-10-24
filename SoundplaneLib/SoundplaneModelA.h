@@ -29,6 +29,7 @@
 // arcane reason the data sent should be less than the negotiated size. So the negotiated size includes the
 // padding (388 bytes) while 386 bytes are typically received in any transaction.
 
+const int kSoundplaneTouchWidth = 8;
 const int kSoundplaneMaxTouches = 16;
 const int kSoundplaneCalibrateSize = 1024;
 const int kSoundplaneHistorySize = 2048;

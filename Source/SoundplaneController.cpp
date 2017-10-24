@@ -180,10 +180,6 @@ void SoundplaneController::setupMenus()
 	mMenuMap["viewmode"] = viewMenu;
 	viewMenu->addItem("raw data");
 	viewMenu->addItem("calibrated");
-	viewMenu->addItem("smoothed");
-	viewMenu->addItem("curvature x");
-	viewMenu->addItem("curvature y");
-	viewMenu->addItem("curvature");
 	viewMenu->addItem("xy");
 	viewMenu->addItem("raw touches");
 	viewMenu->addItem("touches");

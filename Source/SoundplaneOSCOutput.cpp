@@ -156,6 +156,9 @@ void SoundplaneOSCOutput::setActive(bool v)
 
 void SoundplaneOSCOutput::doInfrequentTasks()
 {
+	
+	return; // MLTEST
+	
 	if(mKymaMode)
 	{
 		osc::OutboundPacketStream* p = getPacketStreamForOffset(0);
@@ -213,7 +216,11 @@ UdpTransmitSocket* SoundplaneOSCOutput::getTransmitSocketForOffset(int portOffse
 
 void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* msg)
 {
-    static const MLSymbol startFrameSym("start_frame");
+	std::lock_guard<std::mutex> lock(mProcessMutex);
+	
+
+	// note: remove statics TODO
+	static const MLSymbol startFrameSym("start_frame");
     static const MLSymbol touchSym("touch");
     static const MLSymbol onSym("on");
     static const MLSymbol continueSym("continue");
@@ -227,7 +234,8 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
     static const MLSymbol endFrameSym("end_frame");
     static const MLSymbol matrixSym("matrix");
     static const MLSymbol nullSym;
-    
+	
+   
 	if (!mActive) return;
     MLSymbol type = msg->mType;
     MLSymbol subtype = msg->mSubtype;
@@ -451,6 +459,13 @@ void SoundplaneOSCOutput::sendFrame()
 			std::string address("/t3d/tch" + std::to_string(touchID));
 			*p << osc::BeginMessage( address.c_str() );
 			*p << v.x << v.y << v.z << v.note;
+			
+			// MLTEST
+			if(!p->IsMessageInProgress())
+			{
+				std::cout << "hey";
+			}
+			
 			*p << osc::EndMessage;						
 		}
 		

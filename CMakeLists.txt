@@ -58,8 +58,6 @@ set(SP_SOURCES
   Source/SoundplaneZoneView.h
   Source/TouchTracker.cpp
   Source/TouchTracker.h
-  Source/TrackerCalibrateView.cpp
-  Source/TrackerCalibrateView.h
   Source/Zone.cpp
   Source/Zone.h
 )
