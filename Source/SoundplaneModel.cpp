@@ -79,6 +79,7 @@ SoundplaneModel::SoundplaneModel() :
 	mSurface(kSoundplaneWidth, kSoundplaneHeight),
 	mRawSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mCalibratedSignal(kSoundplaneWidth, kSoundplaneHeight),
+	mSmoothedSignal(kSoundplaneWidth, kSoundplaneHeight),
 	mTesting(false),
 	mCalibrating(false),
 	mSelectingCarriers(false),
@@ -109,7 +110,7 @@ SoundplaneModel::SoundplaneModel() :
 	mTest(0),
 	mKymaIsConnected(0),
 	mKymaMode(false),
-	mTracker(kSoundplaneWidth, kSoundplaneHeight),
+	mTracker(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneSampleRate),
 	mShuttingDown(0)
 {
 	// setup geometry
@@ -121,8 +122,6 @@ SoundplaneModel::SoundplaneModel() :
 		mCurrentKeyX[i] = -1;
 		mCurrentKeyY[i] = -1;
 	}
-
-	mTracker.setSampleRate(kSoundplaneSampleRate);
 
 	// setup default carriers in case there are no saved carriers
 	for (int car=0; car<kSoundplaneSensorWidth; ++car)
@@ -235,7 +234,6 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			{
 				debug() << "TOUCHES: " << v << "\n";
 				mMaxTouches = v;
-				mTracker.setMaxTouches(v);
 				mMIDIOutput.setMaxTouches(v);
 				mOSCOutput.setMaxTouches(v);
 			}
@@ -711,7 +709,6 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 	else if(mOutputEnabled)
 	{
 		// scale incoming data to reference mCalibrateMean = 1.0 
-		const float kCalibrationScale = 1.0f;//0.0625f; 
 		float in, cmeanInv;
 		if (mHasCalibration)
 		{
@@ -722,7 +719,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 					// subtract calibrated zero
 					in = mSurface(i, j);
 					cmeanInv = mCalibrateMeanInv(i, j);
-					mSurface(i, j) = ((in*cmeanInv) - 1.0f)*kCalibrationScale;
+					mSurface(i, j) = ((in*cmeanInv) - 1.0f);
 				}
 			}
 			{
@@ -1068,11 +1065,10 @@ void SoundplaneModel::scaleTouchPressureData()
 	const float kTouchScaleToModel = 1.f;
 	const float zscale = getFloatProperty("z_scale");
 	const float zcurve = getFloatProperty("z_curve");
-	float x, y, z, dz;
 
 	for(int i=0; i<TouchTracker::kMaxTouches; ++i)
 	{
-		z = mTouchArray[i].z;
+		float z = mTouchArray[i].z;
 
 		// apply adjustable force curve for z and clamp
 		z *= zscale * kTouchScaleToModel;
@@ -1264,7 +1260,7 @@ void SoundplaneModel::trackTouches()
 	mHistoryCtr++;
 	if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
 	
-	mTracker.process(&mSurface, mMaxTouches, &mTouchArray);
+	mTracker.process(&mSurface, mMaxTouches, &mTouchArray, &mSmoothedSignal);
 	
 	scaleTouchPressureData();
 

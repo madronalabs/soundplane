@@ -116,9 +116,9 @@ public:
 	
 	const MLSignal getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
 	const MLSignal getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex); return mCalibratedSignal; }
+	const MLSignal getSmoothedSignal() { std::lock_guard<std::mutex> lock(mSmoothedSignalMutex); return mSmoothedSignal; }
 	
 	const TouchTracker::TouchArray& getTouchArray() { return mTouchArray; }
-
 	
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
@@ -146,8 +146,6 @@ private:
 	void sendTouchDataToZones();
 	void sendMessageToListeners();
 
-	
-	
 	void setTesting(bool testing);
 
 	void addListener(SoundplaneDataListener* pL) { mListeners.push_back(pL); }
@@ -215,7 +213,10 @@ private:
 	
 	MLSignal mCalibratedSignal;
 	std::mutex mCalibratedSignalMutex;
-	
+
+	MLSignal mSmoothedSignal;
+	std::mutex mSmoothedSignalMutex;
+
 	int mCalibrateCount; // samples in one calibrate step
 	int mCalibrateStep; // calibrate step from 0 - end
 	int mTotalCalibrateSteps;

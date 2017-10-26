@@ -200,14 +200,15 @@ void SoundplaneGridView::renderXYGrid()
 {
 	float fMax = mpModel->getFloatProperty("z_max");
 
-	
 	// MLTEST
-	const MLSignal calSignal = mpModel->getCalibratedSignal();
+	MLSignal calSignal = mpModel->getSmoothedSignal();
 	
 	if((calSignal.getHeight() != mSensorHeight) || (calSignal.getWidth() != mSensorWidth)) return;
+	calSignal.scale(0.25f);
 	
 	setupOrthoView();
-	float dotSize = fabs(mKeyRangeY(0.08f) - mKeyRangeY(0.f));
+
+	float dotSize = 100.f*fabs(mKeyRangeY(0.01f) - mKeyRangeY(0.f));
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	// draw stuff in immediate mode. 
@@ -274,7 +275,8 @@ void SoundplaneGridView::renderXYGrid()
 			Vec4 dataColor(MLGL::getIndicatorColor(t));
 			dataColor[3] = 0.75;
 			glColor4fv(&dataColor[0]);
-			MLGL::drawDot(Vec2(tx, ty), dotSize*10.0*tz);
+			Vec2 pos(tx, ty);
+			MLGL::drawDot(pos, tz*dotSize*displayScale);
 		}
 	}
 	
@@ -339,7 +341,7 @@ void SoundplaneGridView::renderTouches(TouchTracker::TouchArray newTouches)
 	
 	setupOrthoView();
 	
-	float dotSize = 100.f*fabs(mKeyRangeY(0.1f) - mKeyRangeY(0.f));
+	float dotSize = 100.f*fabs(mKeyRangeY(0.01f) - mKeyRangeY(0.f));
 	float displayScale = mpModel->getFloatProperty("display_scale");
 	
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -357,20 +359,23 @@ void SoundplaneGridView::renderTouches(TouchTracker::TouchArray newTouches)
 		float y = mKeyRangeY.convert(inx.y);
 		float z = inx.z;
 		
-		Vec4 dotColor(MLGL::getIndicatorColor(i));
-		dotColor[3] = 0.5f;
-		glColor4fv(&dotColor[0]);
-		
-		// draw dot on surface
-		Vec2 pos(x, y);
-		MLGL::drawDot(pos, z*dotSize*displayScale);
-		
-		// cross in center
-		float k = dotSize*0.01f;
-		dotColor[3] = 1.0f;
-		glColor4fv(&dotColor[0]);
-		MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
-		MLGL::drawLine(x, y - k, x, y + k, 2.0f*mViewScale);
+		if(z > 0.f)
+		{		
+			Vec4 dotColor(MLGL::getIndicatorColor(i));
+			dotColor[3] = 0.5f;
+			glColor4fv(&dotColor[0]);
+			
+			// draw dot on surface
+			Vec2 pos(x, y);
+			MLGL::drawDot(pos, z*dotSize*displayScale);
+			
+			// cross in center
+			float k = dotSize;
+			dotColor[3] = 1.0f;
+			glColor4fv(&dotColor[0]);
+			MLGL::drawLine(x - k, y, x + k, y, 2.0f*mViewScale);
+			MLGL::drawLine(x, y - k, x, y + k, 2.0f*mViewScale);			
+		}
 		
 		rowInt++;
 		i++;
@@ -412,6 +417,7 @@ void SoundplaneGridView::renderZGrid()
 	else
 	{
 		viewSignal = mpModel->getCalibratedSignal();
+		viewSignal.scale(0.05f);
 	}
 
 	// should be one compare for Vec2 signal dims

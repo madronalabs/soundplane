@@ -181,7 +181,6 @@ void SoundplaneController::setupMenus()
 	viewMenu->addItem("raw data");
 	viewMenu->addItem("calibrated");
 	viewMenu->addItem("xy");
-	viewMenu->addItem("raw touches");
 	viewMenu->addItem("touches");
 
 	mMenuMap["midi_device"] = MLMenuPtr(new MLMenu("midi_device"));

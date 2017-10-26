@@ -1,8 +1,5 @@
-void setRotate(bool b);
-
-
 // Part of the Soundplane client software by Madrona Labs.
-// Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
+// Copyright (c) 2017 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
 #include "TouchTracker.h"
@@ -11,6 +8,7 @@ void setRotate(bool b);
 
 using Touch = TouchTracker::Touch;
 using TouchArray = TouchTracker::TouchArray;
+using SensorFrame = TouchTracker::SensorFrame;
 
 // return city block distance between two touches with a "z importance" parameter.
 // if z scale is too small, zero touches will get matched with new active ones in the same position.
@@ -20,20 +18,63 @@ inline float cityBlockDistanceXYZ(Touch a, Touch b, float zScale)
 	return fabs(a.x - b.x) + fabs(a.y - b.y) + zScale*fabs(a.z - b.z);
 }
 
-TouchTracker::TouchTracker(int w, int h) :
+// SensorFrame
+
+SensorFrame::SensorFrame(int w, int h) : mWidth(w), mHeight(h), mpData(nullptr)
+{
+	mpData = new float[w*h];
+}
+
+SensorFrame::~SensorFrame()
+{
+	if(mpData) delete[] mpData;
+}
+
+SensorFrame& SensorFrame::operator=(const SensorFrame& b)
+{
+	mWidth = b.mWidth;
+	mHeight = b.mHeight;
+	std::copy(b.mpData, b.mpData + (mWidth*mHeight), mpData);
+	return *this;
+}
+
+void SensorFrame::add(const SensorFrame& b)
+{
+	const int n = (mWidth*mHeight);
+	for(int i=0; i<n; ++i)
+	{
+		mpData[i] += b.mpData[i];
+	}
+}
+
+void SensorFrame::scale(const float k)
+{
+	const int n = (mWidth*mHeight);
+	for(int i=0; i<n; ++i)
+	{
+		mpData[i] *= k;
+	}
+}
+
+// TouchTracker
+
+TouchTracker::TouchTracker(int w, int h, float sr) :
 	mWidth(w),
 	mHeight(h),
+	mSampleRate(sr),
 	mMaxTouchesPerFrame(0),
-	mSampleRate(1000.f),
 	mLopassZ(50.),
 	mRotate(false),
-	mPairs(false),
-	mCount(0)
+	mInput(w, h),
+	mInputZ1(w, h),
+	mInitialized(false)
 {
 	setThresh(0.1);
 	mFilteredInput.setDims(w, h);
 	mInput1.setDims(w, h);
 		
+	if(mInput.mpData && mInputZ1.mpData) mInitialized = true;
+	
 	for(int i = 0; i < kMaxTouches; i++)
 	{
 		mTouchSortOrder[i] = i;
@@ -82,7 +123,7 @@ void TouchTracker::clear()
 // set the threshold of curvature that will cause a touch. Note that this will not correspond with the pressure (z) values reported by touches. 
 void TouchTracker::setThresh(float f) 
 { 
-	mOnThreshold = clamp(f*4.f, 0.005f, 1.f); 
+	mOnThreshold = clamp(f, 0.005f, 1.f); 
 	mFilterThreshold = mOnThreshold * 0.5f; 
 	mOffThreshold = mOnThreshold * 0.75f; 
 }
@@ -117,17 +158,17 @@ MLSignal smoothPressureX(const MLSignal& in)
 		
 		i = 0; // left side
 		{
-			prOut[i] = pr2[i] + pr2[i+1];	
+			prOut[i] = (pr2[i] + pr2[i+1]);	
 		}
 		
 		for(i = 1; i < width - 1; i++) // center
 		{
-			prOut[i] = pr2[i-1] + pr2[i] + pr2[i+1];	
+			prOut[i] = (pr2[i-1] + pr2[i] + pr2[i+1]);	
 		}
 		
 		i = width - 1; // right side
 		{
-			prOut[i] = pr2[i-1] + pr2[i];	
+			prOut[i] = (pr2[i-1] + pr2[i]);	
 		}
 	}
 	return out;
@@ -138,7 +179,6 @@ MLSignal smoothPressureY(const MLSignal& in)
 	int i, j;
 	const float * pr1, * pr2, * pr3; // input row ptrs
 	float * prOut; 	
-	
 	
 	// MLTEST
 	// temp 
@@ -161,7 +201,7 @@ MLSignal smoothPressureY(const MLSignal& in)
 		
 		for(i = 0; i < width; i++) 
 		{
-			prOut[i] = pr2[i] + pr3[i];
+			(prOut[i] = pr2[i] + pr3[i]);
 		}
 	}
 	for(j = 1; j < height - 1; j++) // center rows
@@ -173,7 +213,7 @@ MLSignal smoothPressureY(const MLSignal& in)
 
 		for(i = 0; i < width; i++) 
 		{
-			prOut[i] = pr1[i] + pr2[i] + pr3[i];		
+			(prOut[i] = pr1[i] + pr2[i] + pr3[i]);		
 		}
 	}
 	j = height - 1;	// bottom row
@@ -184,25 +224,17 @@ MLSignal smoothPressureY(const MLSignal& in)
 		
 		for(i = 0; i < width; i++) 
 		{
-			prOut[i] = pr1[i] + pr2[i];
+			(prOut[i] = pr1[i] + pr2[i]);
 		}
 	}
 	return out;
 }
 
-			
-// --------------------------------------------------------------------------------
-
-#pragma mark process
-
-// 
-// TODO take pointer to input / output arrays. 
-
-// also pass max # of touches to output. 
-
-void TouchTracker::process(MLSignal* pIn, int maxTouches, TouchArray* pOut)
+void TouchTracker::process(const MLSignal* pIn, int maxTouches, TouchArray* pOut, MLSignal* pTest) // TEMP
 {	
 	if (!pIn || !pOut) return;
+	if(!mInitialized) return;
+	
 	setMaxTouches(maxTouches);
 	
 	// fixed IIR filter input
@@ -230,6 +262,7 @@ void TouchTracker::process(MLSignal* pIn, int maxTouches, TouchArray* pOut)
 	mFilteredInput = smoothPressureY(mFilteredInput);
 	mFilteredInput = smoothPressureY(mFilteredInput);
 	mFilteredInput.scale(1.f/64.f);
+	mFilteredInput = getCurvatureXY(mFilteredInput);
 
 	if(mMaxTouchesPerFrame > 0)
 	{
@@ -260,18 +293,13 @@ void TouchTracker::process(MLSignal* pIn, int maxTouches, TouchArray* pOut)
 			mTouches = rotateTouches(mTouches);
 		}	
 		
-		mTouches = clampTouches(mTouches);
+		mTouches = clampAndScaleTouches(mTouches);
 		
 
 	}
 
-
-	if (mCount++ > 1000) 
-	{
-		mCount = 0;			 
-	}   
-	
 	*pOut = mTouches;
+	*pTest = mFilteredInput;
 }
 
 MLSignal TouchTracker::getCurvatureX(const MLSignal& in)
@@ -308,7 +336,7 @@ MLSignal TouchTracker::getCurvatureX(const MLSignal& in)
 			
 			if(i >= 1)
 			{
-				cx(i - 1, j) = clamp(-ddz, 0.f, 1.f);
+				cx(i - 1, j) = std::max(-ddz, 0.f);
 			}
 		}
 	}	
@@ -349,7 +377,7 @@ MLSignal TouchTracker::getCurvatureY(const MLSignal& in)
 			dzm1 = dz;
 			if(j >= 1)
 			{
-				cy(i, j - 1) = clamp(-ddz, 0.f, 1.f);
+				cy(i, j - 1) = std::max(-ddz, 0.f);
 			}
 		}
 	}
@@ -368,9 +396,9 @@ MLSignal TouchTracker::getCurvatureXY(const MLSignal& in)
 	kxy = kx;
 	kxy.multiply(ky);
 	kxy.sqrt();
+	
 	return kxy;
-}
-
+} 
 
 Touch correctPeakX(Touch pos, const MLSignal& in) 
 {		
@@ -554,9 +582,16 @@ TouchArray TouchTracker::findTouches(const MLSignal& kxy)
 		Touch p = peaks[i];
 		if(p.z < mFilterThreshold) break;
 				
-		Touch px = correctPeakX(p, kxy);		
+		Touch px = correctPeakX(p, kxy);	
 		Touch pxy = correctPeakY(px, kxy);		
 		touches[i] = peakToTouch(pxy);	
+		
+		/*
+		if(nTouches == 1)
+		{
+			debug() << "y: " << pxy.y << " -> " << touches[i].y << "\n";
+		}
+		*/
 	}
 	
 	return touches;
@@ -667,18 +702,7 @@ TouchArray TouchTracker::sortTouchesWithHysteresis(const TouchArray& in, std::ar
 			
 			debug() << "\n";		 
 		}
-	previousSortedOrder = newSortedOrder;
-	
-	if(mCount == 0)
-	{
-		debug() << "sort: ";
-		for(int i = 0; i < mMaxTouchesPerFrame; i++)
-		{
-			//debug() << touches[i];
-		}
-		debug() << "\n";
-	}
-	
+	previousSortedOrder = newSortedOrder;	
 	return touches;
 }
 
@@ -690,16 +714,6 @@ TouchArray TouchTracker::limitNumberOfTouches(const TouchArray& in)
 	for(int i = mMaxTouchesPerFrame; i < kMaxTouches; i++)
 	{
 		touches[i] = Touch();
-	}
-	
-	if(mCount == 0)
-	{
-		debug() << "limit: ";
-		for(int i = 0; i < mMaxTouchesPerFrame; i++)
-		{
-			//debug() << touches[i];
-		}
-		debug() << "\n";
 	}
 	
 	return touches;
@@ -1055,9 +1069,9 @@ TouchArray TouchTracker::rotateTouches(const TouchArray& in)
 }
 
 // clamp touches and remove hysteresis threshold.
-TouchArray TouchTracker::clampTouches(const TouchArray& in)
+TouchArray TouchTracker::clampAndScaleTouches(const TouchArray& in)
 {
-	const float kTouchOutputScale = 1.f;// 16.f;
+	const float kTouchOutputScale = 4.f;
 	TouchArray out;
 	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{

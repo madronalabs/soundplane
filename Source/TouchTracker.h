@@ -55,37 +55,47 @@ public:
 	class SensorFrame
 	{
 	public:
-		float data[kSensorRows*kSensorCols];
+		SensorFrame(int w, int h);
+		~SensorFrame();
 		
+		SensorFrame& operator= (const SensorFrame& b);
+		void add (const SensorFrame& b);
+		void scale (const float k);
+
+		int mWidth;
+		int mHeight;
+		float* mpData;
 	};
 	
-	TouchTracker(int w, int h);
+	TouchTracker(int w, int h, float sr);
 	~TouchTracker();
-	
-	void setMaxTouches(int t);
 	
 	void clear();
 	void setRotate(bool b);	
-	void setSampleRate(float sr) { mSampleRate = sr; }
 	void setThresh(float f);
 	void setLopassZ(float k); 	
 	
 	// process input and get touches. creates one frame of touch data in buffer.
-	void process(MLSignal* pIn, int maxTouches, TouchArray* pOut);
+	void process(const MLSignal* pIn, int maxTouches, TouchArray* pOut, MLSignal* pTest);
 	
 private:
 	
 	int mWidth;
 	int mHeight;
-	
-	//
+	float mSampleRate;	
 	int mMaxTouchesPerFrame;
-	float mSampleRate;
 	float mLopassZ;	
+	bool mRotate;	
+	int mCount; // debug frame counter
 	
 	float mFilterThreshold;
 	float mOnThreshold;
 	float mOffThreshold;
+	
+	SensorFrame mInput;
+	SensorFrame mInputZ1;
+	
+	bool mInitialized;
 	
 	MLSignal mFilteredInput;
 	MLSignal mInput1;
@@ -93,37 +103,33 @@ private:
 	// sorted order of touches for hysteresis
 	std::array<int, kMaxTouches> mTouchSortOrder;
 	
-	// touches
-
 	TouchArray mTouches;
 	
 	// filter histories
 	TouchArray mTouchesMatch1;
 	TouchArray mTouches2; 
-
 	
 	std::array<int, kMaxTouches> mRotateShuffleOrder;
-	bool mRotate;
-	bool mPairs;
 	
-	int mCount; // debug frame counter
+	void setMaxTouches(int t);	
 	
+	MLSignal getCurvatureX(const MLSignal& in);
+	MLSignal getCurvatureY(const MLSignal& in);
+	MLSignal getCurvatureXY(const MLSignal& in);	
+
 	TouchArray findTouches(const MLSignal& in);
 	TouchArray rotateTouches(const TouchArray& t);
 	TouchArray matchTouches(const TouchArray& x, const TouchArray& x1);
 	TouchArray filterTouchesXYAdaptive(const TouchArray& x, const TouchArray& x1);
 	TouchArray filterTouchesZ(const TouchArray& x, const TouchArray& x1, float upFreq, float downFreq);
 	TouchArray exileUnusedTouches(const TouchArray& x1, const TouchArray& x2);
-	TouchArray clampTouches(const TouchArray& x);
+	TouchArray clampAndScaleTouches(const TouchArray& x);
 	void outputTouches(TouchArray touches);
 	
 	// unused
 	TouchArray sortTouchesWithHysteresis(const TouchArray& t, std::array<int, kMaxTouches>& currentSortedOrder);
 	TouchArray limitNumberOfTouches(const TouchArray& t);
-	
-	MLSignal getCurvatureX(const MLSignal& in);
-	MLSignal getCurvatureY(const MLSignal& in);
-	MLSignal getCurvatureXY(const MLSignal& in);
+
 
 };
 

@@ -79,17 +79,14 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		float indLight[4];
 		float indDarker[4];
 		const float* co = MLGL::getIndicatorColor(j);
-		
-		// brighten
-		for(int i=0; i<4; ++i) // really?!
+		for(int i=0; i<4; ++i) // brighten indicator color, TODO move to utilities
 		{
 			indDark[i] = co[i];
 			indLight[i] = clamp(co[i] + 0.3f, 0.f, 1.f);
 			indDarker[i] = clamp(co[i] - 0.3f, 0.f, 1.f);
-		}
-		
-		glColor4fv(indLight);
-		
+		}	
+		indDark[3] = indLight[3] = indDarker[3] = 1.f;
+		glColor4fv(indLight);		
 		MLRect r(0, 0, numSize, numSize);		
 		MLRect tr = r.translated(Vec2(margin, margin + j*frameOffset + (frameHeight - numSize)/2));				
 		int age = currentTouch(ageColumn, j);		
@@ -116,15 +113,13 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		frameXRange.convertTo(MLRange(0, (float)kSoundplaneHistorySize));		
 		MLRange frameYRange(1., 0.);
 		frameYRange.convertTo(MLRange(fr.bottom(), fr.top()));
-		
 		glBegin(GL_LINES);
 		for(int i=fr.left() + 1; i<fr.right()-1; ++i)
 		{
-			int time = frameXRange(i);		
-			
+			int time = frameXRange(i);					
 			float force = touchHistory(2, j, time);
-			float y = frameYRange.convert(force);
-			
+			force = clamp(force, 0.f, 1.f);
+			float y = frameYRange.convert(force);			
 			// draw line
 			glVertex2f(i, fr.top());	
 			glVertex2f(i, y);				
