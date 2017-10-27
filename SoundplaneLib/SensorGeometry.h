@@ -6,20 +6,9 @@
 
 namespace SensorGeometry
 {
-
 constexpr int width = 64;
 constexpr int height = 8;
 constexpr int elements = width*height;
-
-
 };
 
-class SensorFrame
-{
-public:
-	//SensorFrame();
-	//~SensorFrame();
-	
-	// SensorFrame& operator= (const SensorFrame& b);
-	std::array<float, SensorGeometry::elements> mData;
-};
+typedef std::array<float, SensorGeometry::elements> SensorFrame;

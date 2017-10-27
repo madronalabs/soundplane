@@ -57,7 +57,7 @@ SensorFrame add(const SensorFrame& a, const SensorFrame& b)
 	SensorFrame out;
 	for(int i=0; i<SensorGeometry::elements; ++i)
 	{
-		out.mData[i] = a.mData[i] + b.mData[i];
+		out[i] = a[i] + b[i];
 	}
 	return out;
 }
@@ -67,7 +67,7 @@ SensorFrame multiply(const SensorFrame& a, const SensorFrame& b)
 	SensorFrame out;
 	for(int i=0; i<SensorGeometry::elements; ++i)
 	{
-		out.mData[i] = a.mData[i]*b.mData[i];
+		out[i] = a[i]*b[i];
 	}
 	return out;
 }
@@ -77,7 +77,7 @@ SensorFrame scale(const SensorFrame& b, const float k)
 	SensorFrame out;
 	for(int i=0; i<SensorGeometry::elements; ++i)
 	{
-		out.mData[i] = b.mData[i]*k;
+		out[i] = b[i]*k;
 	}
 	return out;
 }
@@ -87,7 +87,7 @@ SensorFrame max(const SensorFrame& b, const float k)
 	SensorFrame out;
 	for(int i=0; i<SensorGeometry::elements; ++i)
 	{
-		out.mData[i] = std::max(b.mData[i], k);
+		out[i] = std::max(b[i], k);
 	}
 	return out;
 }
@@ -97,7 +97,7 @@ SensorFrame sqrt(const SensorFrame& b)
 	SensorFrame out;
 	for(int i=0; i<SensorGeometry::elements; ++i)
 	{
-		out.mData[i] = sqrt(b.mData[i]);
+		out[i] = sqrt(b[i]);
 	}
 	return out;
 }
@@ -119,7 +119,7 @@ SensorFrame getCurvatureX(const SensorFrame& in)
 		{
 			if(within(i, 0, SensorGeometry::width))
 			{
-				z = in.mData[j*SensorGeometry::width + i];
+				z = in[j*SensorGeometry::width + i];
 			}
 			else
 			{
@@ -132,7 +132,7 @@ SensorFrame getCurvatureX(const SensorFrame& in)
 			
 			if(i >= 1)
 			{
-				out.mData[(j)*SensorGeometry::width + i - 1] = std::max(-ddz, 0.f);
+				out[(j)*SensorGeometry::width + i - 1] = std::max(-ddz, 0.f);
 			}
 		}
 	}	
@@ -156,7 +156,7 @@ SensorFrame getCurvatureY(const SensorFrame& in)
 		{
 			if(within(j, 0, SensorGeometry::height))
 			{
-				z = in.mData[j*SensorGeometry::width + i];
+				z = in[j*SensorGeometry::width + i];
 			}
 			else
 			{
@@ -169,7 +169,7 @@ SensorFrame getCurvatureY(const SensorFrame& in)
 			dzm1 = dz;
 			if(j >= 1)
 			{
-				out.mData[(j - 1)*SensorGeometry::width + i] = std::max(-ddz, 0.f);
+				out[(j - 1)*SensorGeometry::width + i] = std::max(-ddz, 0.f);
 			}
 		}
 	}
@@ -259,8 +259,8 @@ SensorFrame smoothPressureX(const SensorFrame& in)
 	for(j = 0; j < SensorGeometry::height; j++)
 	{
 		// row ptrs
-		pr2 = (in.mData.data() + (j*SensorGeometry::width));
-		prOut = (out.mData.data() + (j*SensorGeometry::width));
+		pr2 = (in.data() + (j*SensorGeometry::width));
+		prOut = (out.data() + (j*SensorGeometry::width));
 		
 		i = 0; // left side
 		{
@@ -290,9 +290,9 @@ SensorFrame smoothPressureY(const SensorFrame& in)
 	
 	j = 0;	// top row
 	{
-		pr2 = (in.mData.data() + j*SensorGeometry::width);
-		pr3 = (in.mData.data() + (j + 1)*SensorGeometry::width);
-		prOut = (out.mData.data() + j*SensorGeometry::width);
+		pr2 = (in.data() + j*SensorGeometry::width);
+		pr3 = (in.data() + (j + 1)*SensorGeometry::width);
+		prOut = (out.data() + j*SensorGeometry::width);
 		
 		for(i = 0; i < SensorGeometry::width; i++) 
 		{
@@ -301,10 +301,10 @@ SensorFrame smoothPressureY(const SensorFrame& in)
 	}
 	for(j = 1; j < SensorGeometry::height - 1; j++) // center rows
 	{
-		pr1 = (in.mData.data() + (j - 1)*SensorGeometry::width);
-		pr2 = (in.mData.data() + j*SensorGeometry::width);
-		pr3 = (in.mData.data() + (j + 1)*SensorGeometry::width);
-		prOut = (out.mData.data() + j*SensorGeometry::width);
+		pr1 = (in.data() + (j - 1)*SensorGeometry::width);
+		pr2 = (in.data() + j*SensorGeometry::width);
+		pr3 = (in.data() + (j + 1)*SensorGeometry::width);
+		prOut = (out.data() + j*SensorGeometry::width);
 
 		for(i = 0; i < SensorGeometry::width; i++) 
 		{
@@ -313,9 +313,9 @@ SensorFrame smoothPressureY(const SensorFrame& in)
 	}
 	j = SensorGeometry::height - 1;	// bottom row
 	{
-		pr1 = (in.mData.data() + (j - 1)*SensorGeometry::width);
-		pr2 = (in.mData.data() + j*SensorGeometry::width);
-		prOut = (out.mData.data() + j*SensorGeometry::width);
+		pr1 = (in.data() + (j - 1)*SensorGeometry::width);
+		pr2 = (in.data() + j*SensorGeometry::width);
+		prOut = (out.data() + j*SensorGeometry::width);
 		
 		for(i = 0; i < SensorGeometry::width; i++) 
 		{
@@ -392,9 +392,9 @@ Touch correctPeakX(Touch pos, const SensorFrame& in)
 	
 	if(within(x, 1, w - 1))
 	{
-		float a = in.mData[y*w + x - 1];
-		float b = in.mData[y*w + x];
-		float c = in.mData[y*w + x + 1];
+		float a = in[y*w + x - 1];
+		float b = in[y*w + x];
+		float c = in[y*w + x + 1];
 		float p = ((a - c)/(a - 2.f*b + c))*0.5f;
 		float fx = x + clamp(p, -maxCorrect, maxCorrect);										
 		newPos = Touch(fx, pos.y, pos.z, 0.f, 0);
@@ -415,20 +415,20 @@ Touch correctPeakY(Touch pos, const SensorFrame& in)
 	if(y <= 0)
 	{
 		a = 0;
-		b = in.mData[y*w + x];
-		c = in.mData[(y + 1)*w + x];
+		b = in[y*w + x];
+		c = in[(y + 1)*w + x];
 	}
 	else if(y >= h - 1)
 	{
-		a = in.mData[(y - 1)*w + x];
-		b = in.mData[y*w + x];
+		a = in[(y - 1)*w + x];
+		b = in[y*w + x];
 		c = 0;
 	}
 	else
 	{
-		a = in.mData[(y - 1)*w + x];
-		b = in.mData[y*w + x];
-		c = in.mData[(y + 1)*w + x];
+		a = in[(y - 1)*w + x];
+		b = in[y*w + x];
+		c = in[(y + 1)*w + x];
 	}
 	float p = ((a - c)/(a - 2.f*b + c))*0.5f;		
 	float fy = y + clamp(p, -maxCorrect, maxCorrect);							
@@ -485,7 +485,7 @@ TouchArray TouchTracker::findTouches(const SensorFrame& in)
 	constexpr int kMaxPeaks = kMaxTouches*2;
 	constexpr int w = SensorGeometry::width;
 	constexpr int h = SensorGeometry::height;
-	const float* pIn = in.mData.data();
+	const float* pIn = in.data();
 	int i, j;
 	
 	std::array<Touch, kMaxPeaks> peaks;
@@ -552,7 +552,7 @@ TouchArray TouchTracker::findTouches(const SensorFrame& in)
 			// if peak
 			if (mapRow[i])
 			{
-				float z = in.mData[j*w + i];
+				float z = in[j*w + i];
 				peaks[nPeaks++] = Touch(i, j, z, 0.f, 0);
 				if (nPeaks >= kMaxPeaks) break;
 			}
@@ -578,7 +578,6 @@ TouchArray TouchTracker::findTouches(const SensorFrame& in)
 
 	return touches;
 }
-
 
 // match incoming touches in x with previous frame of touches in x1.
 // for each possible touch slot, output the touch x closest in location to the previous frame.
@@ -738,7 +737,7 @@ TouchArray TouchTracker::matchTouches(const TouchArray& x, const TouchArray& x1)
 //
 TouchArray TouchTracker::filterTouchesXYAdaptive(const TouchArray& in, const TouchArray& inz1)
 {
-	// these filter settings have a big and sort of delicate impact on play feel, so they are not user settable at this point
+	// these filter settings have a big and sort of delicate impact on play feel, so they are not user settable
 	const float kFixedXYFreqMax = 20.f;
 	const float kFixedXYFreqMin = 1.f;
 	

@@ -5,8 +5,6 @@
 
 #pragma once
 
-#define debug()	std::cout
-
 #include <iostream>
 #include <cmath>
 #include <list>

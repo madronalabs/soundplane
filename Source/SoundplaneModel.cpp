@@ -678,14 +678,14 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 MLSignal sensorFrameToSignal(const SensorFrame &f)
 {
 	MLSignal out(SensorGeometry::width, SensorGeometry::height);
-	std::copy(f.mData.data(), f.mData.data() + SensorGeometry::elements, out.getBuffer());
+	std::copy(f.data(), f.data() + SensorGeometry::elements, out.getBuffer());
 	return out;
 }
 
 SensorFrame signalToSensorFrame(const MLSignal& in)
 {
 	SensorFrame out;
-	std::copy(in.getConstBuffer(), in.getConstBuffer() + SensorGeometry::elements, out.mData.data());
+	std::copy(in.getConstBuffer(), in.getConstBuffer() + SensorGeometry::elements, out.data());
 	return out;
 }
 
