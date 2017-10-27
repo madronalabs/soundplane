@@ -6,6 +6,7 @@
 #define __SOUNDPLANE_MODEL_A__
 
 #include <array>
+#include "SensorGeometry.h"
 
 // Soundplane data format:
 // The Soundplane Model A sends frames of data over USB using an isochronous interface with two endpoints.
@@ -39,7 +40,6 @@ const float kSoundplaneVibratoAmount = 5.;
 
 const int kSoundplaneAKeyWidth = 30;
 const int kSoundplaneAKeyHeight = 5;
-
 const int kSoundplaneAMaxZones = 150;
 
 // Soundplane A hardware
@@ -49,18 +49,19 @@ const int kSoundplaneASampleRate = 125000;
 const int kSoundplaneAFFTSize = 128;
 const int kSoundplaneANumCarriers = 32;
 const int kSoundplaneAPickupsPerBoard = 8;
-const int kSoundplaneATaxelsPerSurface = kSoundplaneANumCarriers*kSoundplaneAPickupsPerBoard; // 256
-const int kSoundplaneSensorWidth = 32;
+
+const int kSoundplaneNumCarriers = 32;
 const int kSoundplanePossibleCarriers = 64;
-const int kSoundplaneWidth = 64;
-const int kSoundplaneHeight = 8;
 const float kMaxFrameDiff = 8.0f;
+
+static constexpr int kSoundplaneOutputFrameLength = SensorGeometry::width * SensorGeometry::height;
+using SoundplaneOutputFrame = std::array<float, kSoundplaneOutputFrameLength>;
 
 // Soundplane A USB firmware
 const int kSoundplaneANumEndpoints = 2;
 const int kSoundplaneAEndpointStartIdx = 1;
 const int kSoundplaneADataBitsPerTaxel = 12;
-const int kSoundplaneAPackedDataSize = (kSoundplaneATaxelsPerSurface * kSoundplaneADataBitsPerTaxel / 8); // 384 bytes
+const int kSoundplaneAPackedDataSize = (kSoundplaneANumCarriers*kSoundplaneAPickupsPerBoard*kSoundplaneADataBitsPerTaxel / 8); // 384 bytes
 const int kSoundplaneAlternateSetting = 1;
 
 typedef struct
@@ -86,7 +87,7 @@ const int kSoundplaneAUpdateFrequency = 1;
 //
 extern const char* kSoundplaneAName;
 
-extern const unsigned char kDefaultCarriers[kSoundplaneSensorWidth];
+extern const unsigned char kDefaultCarriers[kSoundplaneNumCarriers];
 
 // USB device requests and indexes
 //
@@ -112,8 +113,6 @@ typedef enum
   kDevGapInSequence = 2
 } MLSoundplaneErrorType;
 
-static constexpr int kSoundplaneOutputFrameLength = kSoundplaneWidth * kSoundplaneHeight;
-using SoundplaneOutputFrame = std::array<float, kSoundplaneOutputFrameLength>;
 void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, SoundplaneOutputFrame& dest);
 void K1_clear_edges(SoundplaneOutputFrame& dest);
 float frameDiff(const SoundplaneOutputFrame& p0, const SoundplaneOutputFrame& p1);

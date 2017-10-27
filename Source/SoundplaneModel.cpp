@@ -45,7 +45,7 @@ static void makeStandardCarrierSet(SoundplaneDriver::Carriers &carriers, int set
 	{
 		carriers[i] = kModelDefaultCarriers[i];
 	}
-	for(int i=gapStart; i<kSoundplaneSensorWidth; ++i)
+	for(int i=gapStart; i<kSoundplaneNumCarriers; ++i)
 	{
 		carriers[i] = kModelDefaultCarriers[i + gapSize];
 	}
@@ -76,18 +76,18 @@ void touchArrayToFrame(TouchTracker::TouchArray* pArray, MLSignal* pFrame)
 
 SoundplaneModel::SoundplaneModel() :
 	mOutputEnabled(false),
-	mSurface(kSoundplaneWidth, kSoundplaneHeight),
-	mRawSignal(kSoundplaneWidth, kSoundplaneHeight),
-	mCalibratedSignal(kSoundplaneWidth, kSoundplaneHeight),
-	mSmoothedSignal(kSoundplaneWidth, kSoundplaneHeight),
+	mSurface(SensorGeometry::width, SensorGeometry::height),
+	mRawSignal(SensorGeometry::width, SensorGeometry::height),
+	mCalibratedSignal(SensorGeometry::width, SensorGeometry::height),
+	mSmoothedSignal(SensorGeometry::width, SensorGeometry::height),
 	mTesting(false),
 	mCalibrating(false),
 	mSelectingCarriers(false),
 	mDynamicCarriers(true),
-	mCalibrateSum(kSoundplaneWidth, kSoundplaneHeight),
-	mCalibrateMean(kSoundplaneWidth, kSoundplaneHeight),
-	mCalibrateMeanInv(kSoundplaneWidth, kSoundplaneHeight),
-	mCalibrateStdDev(kSoundplaneWidth, kSoundplaneHeight),
+	mCalibrateSum(SensorGeometry::width, SensorGeometry::height),
+	mCalibrateMean(SensorGeometry::width, SensorGeometry::height),
+	mCalibrateMeanInv(SensorGeometry::width, SensorGeometry::height),
+	mCalibrateStdDev(SensorGeometry::width, SensorGeometry::height),
 	//
 	mHasCalibration(false),
 	//
@@ -110,7 +110,6 @@ SoundplaneModel::SoundplaneModel() :
 	mTest(0),
 	mKymaIsConnected(0),
 	mKymaMode(false),
-	mTracker(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneSampleRate),
 	mShuttingDown(0)
 {
 	// setup geometry
@@ -124,7 +123,7 @@ SoundplaneModel::SoundplaneModel() :
 	}
 
 	// setup default carriers in case there are no saved carriers
-	for (int car=0; car<kSoundplaneSensorWidth; ++car)
+	for (int car=0; car<kSoundplaneNumCarriers; ++car)
 	{
 		mCarriers[car] = kModelDefaultCarriers[car];
 	}
@@ -156,7 +155,7 @@ SoundplaneModel::SoundplaneModel() :
 	mTaskThread = std::thread(&SoundplaneModel::taskThread, this);
 	
 	// TODO mem err handling
-	if (!mCalibrateData.setDims(kSoundplaneWidth, kSoundplaneHeight, kSoundplaneCalibrateSize))
+	if (!mCalibrateData.setDims(SensorGeometry::width, SensorGeometry::height, kSoundplaneCalibrateSize))
 	{
 		MLConsole() << "SoundplaneModel: out of memory!\n";
 	}
@@ -421,8 +420,8 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			if(p == MLSymbol("carriers"))
 			{
 				// get carriers from signal
-				assert(sig.getSize() == kSoundplaneSensorWidth);
-				for(int i=0; i<kSoundplaneSensorWidth; ++i)
+				assert(sig.getSize() == kSoundplaneNumCarriers);
+				for(int i=0; i<kSoundplaneNumCarriers; ++i)
 				{
 					if(mCarriers[i] != sig[i])
 					{
@@ -676,10 +675,24 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 
 #pragma mark 
 
+MLSignal sensorFrameToSignal(const SensorFrame &f)
+{
+	MLSignal out(SensorGeometry::width, SensorGeometry::height);
+	std::copy(f.mData.data(), f.mData.data() + SensorGeometry::elements, out.getBuffer());
+	return out;
+}
+
+SensorFrame signalToSensorFrame(const MLSignal& in)
+{
+	SensorFrame out;
+	std::copy(in.getConstBuffer(), in.getConstBuffer() + SensorGeometry::elements, out.mData.data());
+	return out;
+}
+
 void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data, int size)
 {
 	// read from driver's ring buffer to incoming surface
-	MLSample* pSurfaceData = mSurface.getBuffer();
+	float* pSurfaceData = mSurface.getBuffer();
 	memcpy(pSurfaceData, data, size * sizeof(float));
 
 	// store surface for raw output
@@ -726,6 +739,7 @@ void SoundplaneModel::receivedFrame(SoundplaneDriver& driver, const float* data,
 				std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);
 				mCalibratedSignal = mSurface;
 			}
+			
 			trackTouches();		
 		}
 	}
@@ -1044,7 +1058,7 @@ void SoundplaneModel::sendParametersToZones()
     }
 }
 
-// c over [0 - 1] fades from sqrt(x) -> x -> x^2
+// c over [0 - 1] fades response from sqrt(x) -> x -> x^2
 //
 float responseCurve(float x, float c)
 {
@@ -1062,19 +1076,24 @@ float responseCurve(float x, float c)
 
 void SoundplaneModel::scaleTouchPressureData()
 {
-	const float kTouchScaleToModel = 1.f;
 	const float zscale = getFloatProperty("z_scale");
 	const float zcurve = getFloatProperty("z_curve");
+	const float dzScale = 0.125f;
 
 	for(int i=0; i<TouchTracker::kMaxTouches; ++i)
 	{
 		float z = mTouchArray[i].z;
-
-		// apply adjustable force curve for z and clamp
-		z *= zscale * kTouchScaleToModel;
+		z *= zscale;
 		z = clamp(z, 0.f, 4.f);
 		z = responseCurve(z, zcurve);
 		mTouchArray[i].z = z;
+		
+		// for note-ons, use same z scale controls as pressure
+		float dz = mTouchArray[i].dz*dzScale;
+		dz *= zscale;		
+		dz = clamp(dz, 0.f, 1.f);
+		dz = responseCurve(dz, zcurve);
+		mTouchArray[i].dz = dz;
 	}
 }
 
@@ -1098,9 +1117,6 @@ void SoundplaneModel::sendTouchDataToZones()
 		z = mTouchArray[i].z;
 		dz = mTouchArray[i].dz;
 		age = mTouchArray[i].age;
-		
-		
-		// TODO restore dz
 		
 		if(age > 0)
 		{
@@ -1135,7 +1151,7 @@ void SoundplaneModel::sendTouchDataToZones()
             if(zoneIdx >= 0)
             {
                 ZonePtr zone = mZones[zoneIdx];
-                zone->addTouchToFrame(i, x, y, mCurrentKeyX[i], mCurrentKeyY[i], z, z);
+                zone->addTouchToFrame(i, x, y, mCurrentKeyX[i], mCurrentKeyY[i], z, dz);
             }
         }
 	}
@@ -1166,15 +1182,15 @@ void SoundplaneModel::sendTouchDataToZones()
     if(mSendMatrixData)
     {		
 		MLSignal calibratedPressure = getCalibratedSignal();
-		if(calibratedPressure.getHeight() == kSoundplaneHeight)
+		if(calibratedPressure.getHeight() == SensorGeometry::height)
 		{
 			
 			mMessage.mType = MLSymbol("matrix");
-			for(int j = 0; j < kSoundplaneHeight; ++j)
+			for(int j = 0; j < SensorGeometry::height; ++j)
 			{
-				for(int i = 0; i < kSoundplaneWidth; ++i)
+				for(int i = 0; i < SensorGeometry::width; ++i)
 				{
-					mMessage.mMatrix[j*kSoundplaneWidth + i] = calibratedPressure(i, j);
+					mMessage.mMatrix[j*SensorGeometry::width + i] = calibratedPressure(i, j);
 				}
 			}
 			sendMessageToListeners();
@@ -1259,25 +1275,18 @@ void SoundplaneModel::trackTouches()
 	}
 	mHistoryCtr++;
 	if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
+		
+	mSensorFrame = signalToSensorFrame(mSurface);
 	
-	mTracker.process(&mSurface, mMaxTouches, &mTouchArray, &mSmoothedSignal);
+	mTracker.process(&mSensorFrame, mMaxTouches, &mTouchArray, &mSmoothedFrame);
+	
+	mSmoothedSignal = sensorFrameToSignal(mSmoothedFrame);
 	
 	scaleTouchPressureData();
 
 	// TODO mutex? 
 	touchArrayToFrame(&mTouchArray, &mTouchFrame);
-	
-	if(mTestCtr == 0)
-	{
-		debug() << "\n";
-		for(int i=0; i<mMaxTouches; ++i)
-		{
-			debug() << mTouchArray[i].z << " ";
-		}
-		debug() << "\n";
-		mTouchFrame.dump(debug(), true);
-	}
-	
+
 	mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
 
 	sendTouchDataToZones();
@@ -1315,8 +1324,8 @@ void SoundplaneModel::doInfrequentTasks()
 
 void SoundplaneModel::setDefaultCarriers()
 {
-	MLSignal cSig(kSoundplaneSensorWidth);
-	for (int car=0; car<kSoundplaneSensorWidth; ++car)
+	MLSignal cSig(kSoundplaneNumCarriers);
+	for (int car=0; car<kSoundplaneNumCarriers; ++car)
 	{
 		cSig[car] = kModelDefaultCarriers[car];
 	}
@@ -1344,7 +1353,7 @@ void SoundplaneModel::dumpCarriers(const SoundplaneDriver::Carriers& carriers)
 {
 	debug() << "\n------------------\n";
 	debug() << "carriers: \n";
-	for(int i=0; i<kSoundplaneSensorWidth; ++i)
+	for(int i=0; i<kSoundplaneNumCarriers; ++i)
 	{
 		int c = carriers[i];
 		debug() << i << ": " << c << " ["<< SoundplaneDriver::carrierToFrequency(c) << "Hz] \n";
@@ -1391,11 +1400,11 @@ void SoundplaneModel::endCalibrate()
 	int endFrame = kSoundplaneCalibrateSize - skipFrames;
 	float calibrateFrames = endFrame - startFrame + 1;
 
-	MLSignal calibrateSum(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal calibrateStdDev(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal dSum(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal dMean(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal mean(kSoundplaneWidth, kSoundplaneHeight);
+	MLSignal calibrateSum(SensorGeometry::width, SensorGeometry::height);
+	MLSignal calibrateStdDev(SensorGeometry::width, SensorGeometry::height);
+	MLSignal dSum(SensorGeometry::width, SensorGeometry::height);
+	MLSignal dMean(SensorGeometry::width, SensorGeometry::height);
+	MLSignal mean(SensorGeometry::width, SensorGeometry::height);
 
 	// get mean
 	for(int i=startFrame; i<=endFrame; ++i)
@@ -1487,12 +1496,12 @@ void SoundplaneModel::nextSelectCarriersStep()
 	int startFrame = skipFrames;
 	int endFrame = kSoundplaneCalibrateSize - skipFrames;
 	float calibrateFrames = endFrame - startFrame + 1;
-	MLSignal calibrateSum(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal calibrateStdDev(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal dSum(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal dMean(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal mean(kSoundplaneWidth, kSoundplaneHeight);
-	MLSignal noise(kSoundplaneWidth, kSoundplaneHeight);
+	MLSignal calibrateSum(SensorGeometry::width, SensorGeometry::height);
+	MLSignal calibrateStdDev(SensorGeometry::width, SensorGeometry::height);
+	MLSignal dSum(SensorGeometry::width, SensorGeometry::height);
+	MLSignal dMean(SensorGeometry::width, SensorGeometry::height);
+	MLSignal mean(SensorGeometry::width, SensorGeometry::height);
+	MLSignal noise(SensorGeometry::width, SensorGeometry::height);
 	
 	// get mean
 	for(int i=startFrame; i<=endFrame; ++i)
@@ -1529,13 +1538,13 @@ void SoundplaneModel::nextSelectCarriersStep()
 	float maxNoiseFreq = 0;
 	float noiseSum;
 	int startSkip = 2;
-	for(int col = startSkip; col<kSoundplaneSensorWidth; ++col)
+	for(int col = startSkip; col<kSoundplaneNumCarriers; ++col)
 	{
 		noiseSum = 0;
 		int carrier = mCarriers[col];
 		float cFreq = SoundplaneDriver::carrierToFrequency(carrier);
 
-		for(int row=0; row<kSoundplaneHeight; ++row)
+		for(int row=0; row<SensorGeometry::height; ++row)
 		{
 			noiseSum += noise(col, row);
 		}
@@ -1593,8 +1602,8 @@ void SoundplaneModel::endSelectCarriers()
 
 	// set chosen carriers as model parameter so they will be saved
 	// this will trigger a recalibrate
-	MLSignal cSig(kSoundplaneSensorWidth);
-	for (int car=0; car<kSoundplaneSensorWidth; ++car)
+	MLSignal cSig(kSoundplaneNumCarriers);
+	for (int car=0; car<kSoundplaneNumCarriers; ++car)
 	{
 		cSig[car] = mCarriers[car];
 	}

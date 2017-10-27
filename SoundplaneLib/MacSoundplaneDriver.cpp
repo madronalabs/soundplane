@@ -101,7 +101,7 @@ MacSoundplaneDriver::MacSoundplaneDriver(SoundplaneDriverListener* listener) :
 		busFrameNumber[i] = 0;
 	}
 
-	for(int i=0; i < kSoundplaneSensorWidth; ++i)
+	for(int i=0; i < kSoundplaneNumCarriers; ++i)
 	{
 		mCurrentCarriers[i] = kDefaultCarriers[i];
 	}
@@ -1339,8 +1339,8 @@ void MacSoundplaneDriver::processThread()
 							{
 								// possible sensor glitch.  also occurs when changing carriers.
 								reportDeviceError(kDevDataDiffTooLarge, startupCtr, 0, df, 0.);
-								dumpDeviceData(pPrevFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
-								dumpDeviceData(pWorkingFrame.data(), kSoundplaneWidth * kSoundplaneHeight);
+								dumpDeviceData(pPrevFrame.data(), SensorGeometry::width * SensorGeometry::height);
+								dumpDeviceData(pWorkingFrame.data(), SensorGeometry::width * SensorGeometry::height);
 								startupCtr = 0;
 							}
 						}

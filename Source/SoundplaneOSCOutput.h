@@ -15,7 +15,7 @@
 #include "MLTime.h"
 #include "SoundplaneDataListener.h"
 #include "SoundplaneModelA.h"
-#include "TouchTracker.h"
+//#include "TouchTracker.h"
 #include "JuceHeader.h"
 
 #include "OscOutboundPacketStream.h"

@@ -37,7 +37,7 @@ void SoundplaneDriver::dumpCarriers() const
 {
 	printf( "-----------------\n");
 	const auto carriers = getCarriers();
-	for(int i=0; i < kSoundplaneSensorWidth; ++i)
+	for(int i=0; i < kSoundplaneNumCarriers; ++i)
 	{
 		printf("carrier idx %d : %f Hz\n" ,i , carrierToFrequency(carriers[i]));
 	}

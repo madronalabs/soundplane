@@ -11,7 +11,7 @@ const char* kSoundplaneAName = ("Soundplane Model A");
 // default carriers.  avoiding 32 (always bad)
 // in use these should be overridden by the selected carriers.
 //
-const unsigned char kDefaultCarriers[kSoundplaneSensorWidth] =
+const unsigned char kDefaultCarriers[kSoundplaneNumCarriers] =
 {
 	0, 0, 4, 5, 6, 7, 8, 9, 10, 11,
 	12, 13, 14, 15, 16, 17, 18, 19,
@@ -99,12 +99,12 @@ float frameDiff(const SoundplaneOutputFrame& p0, const SoundplaneOutputFrame& p1
 
 void dumpFrame(float* frame)
 {
-	for(int j=0; j<kSoundplaneHeight; ++j)
+	for(int j=0; j<SensorGeometry::height; ++j)
 	{
 		printf("row %d: ", j);
-		for(int i=0; i<kSoundplaneWidth; ++i)
+		for(int i=0; i<SensorGeometry::width; ++i)
 		{
-			printf("%f ", frame[j*kSoundplaneWidth + i]);
+			printf("%f ", frame[j*SensorGeometry::width + i]);
 		}
 		printf("\n");
 	}

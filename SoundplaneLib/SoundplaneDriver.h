@@ -89,11 +89,11 @@ public:
 
 	/**
 	 * Returns a pointer to the array of current carriers. The array length
-	 * is kSoundplaneSensorWidth.
+	 * is kSoundplaneNumCarriers.
 	 */
 	virtual const unsigned char *getCarriers() const = 0;
 
-	using Carriers = std::array<unsigned char, kSoundplaneSensorWidth>;
+	using Carriers = std::array<unsigned char, kSoundplaneNumCarriers>;
 	/**
 	 * Calls to setCarriers fail if getDeviceState() == kNoDevice
 	 */
@@ -122,9 +122,6 @@ public:
 	 * listener may be nullptr.
 	 */
 	static std::unique_ptr<SoundplaneDriver> create(SoundplaneDriverListener *listener);
-	
-	
-	
 
 	static float carrierToFrequency(int carrier);
 };

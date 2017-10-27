@@ -28,6 +28,15 @@
 #include "Zone.h"
 #include "SoundplaneBinaryData.h"
 
+typedef enum
+{
+	xColumn = 0,
+	yColumn = 1,
+	zColumn = 2,
+	dzColumn = 3,
+	ageColumn = 4
+} TouchSignalColumns;
+
 class SoundplaneModel :
 	public SoundplaneDriverListener,
 	public MLOSCListener,
@@ -78,7 +87,7 @@ public:
 	void setDefaultCarriers();
 	void setCarriers(const SoundplaneDriver::Carriers& c);
 	int enableCarriers(unsigned long mask);
-	int getNumCarriers() { return kSoundplaneSensorWidth; }
+	int getNumCarriers() { return kSoundplaneNumCarriers; }
 	void dumpCarriers(const SoundplaneDriver::Carriers& carriers);
 
 	void enableOutput(bool b);
@@ -182,9 +191,11 @@ private:
 
 	uint64_t mLastTimeDataWasSent;
 
-	MLSignal mSurface;
+	SensorFrame mSensorFrame;
+	MLSignal mSurface; 
 	MLSignal mCalibrateData;
 
+	
 	int	mMaxTouches;
 	TouchTracker::TouchArray mTouchArray; 
 	MLSignal mTouchFrame;
@@ -214,6 +225,7 @@ private:
 	MLSignal mCalibratedSignal;
 	std::mutex mCalibratedSignalMutex;
 
+	SensorFrame mSmoothedFrame;
 	MLSignal mSmoothedSignal;
 	std::mutex mSmoothedSignalMutex;
 

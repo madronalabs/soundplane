@@ -97,7 +97,7 @@ private:
 	uint8_t						payloadIndex[kSoundplaneANumEndpoints];
 
 	std::atomic<MLSoundplaneState> mState;
-	unsigned char mCurrentCarriers[kSoundplaneSensorWidth];
+	unsigned char mCurrentCarriers[kSoundplaneNumCarriers];
 
 	// mListener may be nullptr
 	SoundplaneDriverListener* const mListener;

@@ -22,8 +22,8 @@ class HelloSoundplaneDriverListener : public SoundplaneDriverListener
 {
 public:
 	HelloSoundplaneDriverListener()	:
-		mSurface(kSoundplaneWidth, kSoundplaneHeight),
-		mCalibration(kSoundplaneWidth, kSoundplaneHeight) {}
+		mSurface(SensorGeometry::width, SensorGeometry::height),
+		mCalibration(SensorGeometry::width, SensorGeometry::height) {}
 
 	virtual void deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneState s) override
 	{

@@ -4,11 +4,43 @@
 
 #include "TouchTracker.h"
 
-#include <algorithm>
+constexpr float kTwoPi = 3.1415926535f*2.f;
 
 using Touch = TouchTracker::Touch;
 using TouchArray = TouchTracker::TouchArray;
-using SensorFrame = TouchTracker::SensorFrame;
+
+template <class c>
+inline c (clamp)(const c& x, const c& min, const c& max)
+{
+	return (x < min) ? min : (x > max ? max : x);
+}
+
+// within range, including start, excluding end value.
+template <class c>
+inline bool (within)(const c& x, const c& min, const c& max)
+{
+	return ((x >= min) && (x < max));
+}
+
+inline float lerp(const float a, const float b, const float m)
+{
+	return(a + m*(b-a));
+}
+
+inline float unlerp(const float a, const float b, const float x)
+{
+	return(x - a)/(b-a);
+}
+
+inline float mapRange(const float a, const float b, const float c, const float d, const float x)
+{
+	return lerp(c, d, unlerp(a, b, x));
+}
+
+inline float mapAndClipRange(const float a, const float b, const float c, const float d, const float x)
+{
+	return lerp(c, d, clamp(unlerp(a, b, x), 0.f, 1.f));
+}
 
 // return city block distance between two touches with a "z importance" parameter.
 // if z scale is too small, zero touches will get matched with new active ones in the same position.
@@ -18,66 +50,150 @@ inline float cityBlockDistanceXYZ(Touch a, Touch b, float zScale)
 	return fabs(a.x - b.x) + fabs(a.y - b.y) + zScale*fabs(a.z - b.z);
 }
 
-// SensorFrame
+// SensorFrame utilities
 
-SensorFrame::SensorFrame(int w, int h) : mWidth(w), mHeight(h), mpData(nullptr)
+SensorFrame add(const SensorFrame& a, const SensorFrame& b)
 {
-	mpData = new float[w*h];
-}
-
-SensorFrame::~SensorFrame()
-{
-	if(mpData) delete[] mpData;
-}
-
-SensorFrame& SensorFrame::operator=(const SensorFrame& b)
-{
-	mWidth = b.mWidth;
-	mHeight = b.mHeight;
-	std::copy(b.mpData, b.mpData + (mWidth*mHeight), mpData);
-	return *this;
-}
-
-void SensorFrame::add(const SensorFrame& b)
-{
-	const int n = (mWidth*mHeight);
-	for(int i=0; i<n; ++i)
+	SensorFrame out;
+	for(int i=0; i<SensorGeometry::elements; ++i)
 	{
-		mpData[i] += b.mpData[i];
+		out.mData[i] = a.mData[i] + b.mData[i];
 	}
+	return out;
 }
 
-void SensorFrame::scale(const float k)
+SensorFrame multiply(const SensorFrame& a, const SensorFrame& b)
 {
-	const int n = (mWidth*mHeight);
-	for(int i=0; i<n; ++i)
+	SensorFrame out;
+	for(int i=0; i<SensorGeometry::elements; ++i)
 	{
-		mpData[i] *= k;
+		out.mData[i] = a.mData[i]*b.mData[i];
 	}
+	return out;
 }
+
+SensorFrame scale(const SensorFrame& b, const float k)
+{
+	SensorFrame out;
+	for(int i=0; i<SensorGeometry::elements; ++i)
+	{
+		out.mData[i] = b.mData[i]*k;
+	}
+	return out;
+}
+
+SensorFrame max(const SensorFrame& b, const float k)
+{
+	SensorFrame out;
+	for(int i=0; i<SensorGeometry::elements; ++i)
+	{
+		out.mData[i] = std::max(b.mData[i], k);
+	}
+	return out;
+}
+
+SensorFrame sqrt(const SensorFrame& b)
+{
+	SensorFrame out;
+	for(int i=0; i<SensorGeometry::elements; ++i)
+	{
+		out.mData[i] = sqrt(b.mData[i]);
+	}
+	return out;
+}
+
+SensorFrame getCurvatureX(const SensorFrame& in)
+{
+	SensorFrame out;
+	
+	// rows
+	for(int j=0; j<SensorGeometry::height; ++j)
+	{
+		float z = 0.f;
+		float zm1 = 0.f;
+		float dz = 0.f;
+		float dzm1 = 0.f;
+		float ddz = 0.f;
+		
+		for(int i=0; i <= SensorGeometry::width; ++i)
+		{
+			if(within(i, 0, SensorGeometry::width))
+			{
+				z = in.mData[j*SensorGeometry::width + i];
+			}
+			else
+			{
+				z = 0.f;
+			}
+			dz = z - zm1;
+			ddz = dz - dzm1;					
+			zm1 = z;
+			dzm1 = dz;
+			
+			if(i >= 1)
+			{
+				out.mData[(j)*SensorGeometry::width + i - 1] = std::max(-ddz, 0.f);
+			}
+		}
+	}	
+	
+	return out;
+}
+
+SensorFrame getCurvatureY(const SensorFrame& in)
+{
+	SensorFrame out;
+	
+	// cols
+	for(int i=0; i<SensorGeometry::width; ++i)
+	{
+		float z = 0.f;
+		float zm1 = 0.f;
+		float dz = 0.f;
+		float dzm1 = 0.f;
+		float ddz = 0.f;
+		for(int j=0; j <= SensorGeometry::height; ++j)
+		{
+			if(within(j, 0, SensorGeometry::height))
+			{
+				z = in.mData[j*SensorGeometry::width + i];
+			}
+			else
+			{
+				z = 0.f;
+			}
+			
+			dz = z - zm1;
+			ddz = dz - dzm1;					
+			zm1 = z;
+			dzm1 = dz;
+			if(j >= 1)
+			{
+				out.mData[(j - 1)*SensorGeometry::width + i] = std::max(-ddz, 0.f);
+			}
+		}
+	}
+	
+	return out;
+}
+
+SensorFrame getCurvatureXY(const SensorFrame& in)
+{
+	return sqrt(multiply(getCurvatureX(in), getCurvatureY(in)));
+} 
 
 // TouchTracker
 
-TouchTracker::TouchTracker(int w, int h, float sr) :
-	mWidth(w),
-	mHeight(h),
-	mSampleRate(sr),
+TouchTracker::TouchTracker() :
+	mSampleRate(1000.f),
 	mMaxTouchesPerFrame(0),
 	mLopassZ(50.),
-	mRotate(false),
-	mInput(w, h),
-	mInputZ1(w, h),
-	mInitialized(false)
+	mRotate(false)
 {
 	setThresh(0.1);
-	mFilteredInput.setDims(w, h);
-	mInput1.setDims(w, h);
-		
-	if(mInput.mpData && mInputZ1.mpData) mInitialized = true;
 	
 	for(int i = 0; i < kMaxTouches; i++)
 	{
-		mTouchSortOrder[i] = i;
 		mRotateShuffleOrder[i] = i;
 	}
 }
@@ -97,7 +213,6 @@ void TouchTracker::setMaxTouches(int t)
 		// reset shuffle order
 		for(int i = 0; i < kMaxTouches; i++)
 		{
-			mTouchSortOrder[i] = i;
 			mRotateShuffleOrder[i] = i;
 		}
 	}
@@ -133,40 +248,31 @@ void TouchTracker::setLopassZ(float k)
 	mLopassZ = k; 
 }
 
-MLSignal smoothPressureX(const MLSignal& in)
+SensorFrame smoothPressureX(const SensorFrame& in)
 {
 	int i, j;
 	const float * pr2;
-	float * prOut; 	
+	float * prOut; 		
+
+	SensorFrame out;
 	
-	// MLTEST
-	// temp 
-	int width = in.getWidth();
-	int height = in.getHeight();
-	MLSignal out(width, height);
-	
-	const float* pIn = in.getBuffer();
-	float* pOut = out.getBuffer();
-	
-	int wb = in.getWidthBits();
-	
-	for(j = 0; j < height; j++)
+	for(j = 0; j < SensorGeometry::height; j++)
 	{
 		// row ptrs
-		pr2 = (pIn + (j << wb));
-		prOut = (pOut + (j << wb));
+		pr2 = (in.mData.data() + (j*SensorGeometry::width));
+		prOut = (out.mData.data() + (j*SensorGeometry::width));
 		
 		i = 0; // left side
 		{
 			prOut[i] = (pr2[i] + pr2[i+1]);	
 		}
 		
-		for(i = 1; i < width - 1; i++) // center
+		for(i = 1; i < SensorGeometry::width - 1; i++) // center
 		{
 			prOut[i] = (pr2[i-1] + pr2[i] + pr2[i+1]);	
 		}
 		
-		i = width - 1; // right side
+		i = SensorGeometry::width - 1; // right side
 		{
 			prOut[i] = (pr2[i-1] + pr2[i]);	
 		}
@@ -174,55 +280,44 @@ MLSignal smoothPressureX(const MLSignal& in)
 	return out;
 }
 
-MLSignal smoothPressureY(const MLSignal& in)
+SensorFrame smoothPressureY(const SensorFrame& in)
 {
 	int i, j;
 	const float * pr1, * pr2, * pr3; // input row ptrs
 	float * prOut; 	
 	
-	// MLTEST
-	// temp 
-	int width = in.getWidth();
-	int height = in.getHeight();
-	MLSignal out(width, height);
-	
-	
-	const float* pIn = in.getBuffer();
-	float* pOut = out.getBuffer();
-	
-	int wb = in.getWidthBits();
-	
+	SensorFrame out;
 	
 	j = 0;	// top row
 	{
-		pr2 = (pIn + (j << wb));
-		pr3 = (pIn + ((j + 1) << wb));
-		prOut = (pOut + (j << wb) );
+		pr2 = (in.mData.data() + j*SensorGeometry::width);
+		pr3 = (in.mData.data() + (j + 1)*SensorGeometry::width);
+		prOut = (out.mData.data() + j*SensorGeometry::width);
 		
-		for(i = 0; i < width; i++) 
+		for(i = 0; i < SensorGeometry::width; i++) 
 		{
 			(prOut[i] = pr2[i] + pr3[i]);
 		}
 	}
-	for(j = 1; j < height - 1; j++) // center rows
+	for(j = 1; j < SensorGeometry::height - 1; j++) // center rows
 	{
-		pr1 = (pIn + ((j - 1) << wb));
-		pr2 = (pIn + (j << wb));
-		pr3 = (pIn + ((j + 1) << wb));
-		prOut = (pOut + (j << wb));
+		pr1 = (in.mData.data() + (j - 1)*SensorGeometry::width);
+		pr2 = (in.mData.data() + j*SensorGeometry::width);
+		pr3 = (in.mData.data() + (j + 1)*SensorGeometry::width);
+		prOut = (out.mData.data() + j*SensorGeometry::width);
 
-		for(i = 0; i < width; i++) 
+		for(i = 0; i < SensorGeometry::width; i++) 
 		{
 			(prOut[i] = pr1[i] + pr2[i] + pr3[i]);		
 		}
 	}
-	j = height - 1;	// bottom row
+	j = SensorGeometry::height - 1;	// bottom row
 	{
-		pr1 = (pIn + ((j - 1) << wb));
-		pr2 = (pIn + (j << wb));
-		prOut = (pOut + (j << wb));
+		pr1 = (in.mData.data() + (j - 1)*SensorGeometry::width);
+		pr2 = (in.mData.data() + j*SensorGeometry::width);
+		prOut = (out.mData.data() + j*SensorGeometry::width);
 		
-		for(i = 0; i < width; i++) 
+		for(i = 0; i < SensorGeometry::width; i++) 
 		{
 			(prOut[i] = pr1[i] + pr2[i]);
 		}
@@ -230,48 +325,37 @@ MLSignal smoothPressureY(const MLSignal& in)
 	return out;
 }
 
-void TouchTracker::process(const MLSignal* pIn, int maxTouches, TouchArray* pOut, MLSignal* pTest) // TEMP
+void TouchTracker::process(const SensorFrame* pIn, int maxTouches, TouchArray* pOut, SensorFrame* pCurvatureOut)
 {	
 	if (!pIn || !pOut) return;
-	if(!mInitialized) return;
 	
 	setMaxTouches(maxTouches);
 	
 	// fixed IIR filter input
 	float k = 0.25f;
-	mFilteredInput = *pIn;
-	mFilteredInput.scale(k);	
-	mInput1.scale(1.0 - k);
-	mFilteredInput.add(mInput1);
-	mInput1 = mFilteredInput;
+	mInput = scale(*pIn, k);	
+	mInputZ1 = scale(mInputZ1, 1.0 - k);
+	mInput = add(mInput, mInputZ1);
+	mInputZ1 = mInput;
 
 	// filter out any negative values. negative values can show up from capacitive coupling near edges,
 	// from motion or bending of the whole instrument, 
 	// from the elastic layer deforming and pushing up on the sensors near a touch. 
-	mFilteredInput.sigMax(0.f);
+	mInput = max(mInput, 0.f);
 
 	// a lot of filtering is needed here for Soundplane A to make sure peaks are in centers of touches.
 	// it also reduces noise. 
 	// the down side is, contiguous touches are harder to tell apart. a smart blob-shape algorithm
 	// can make up for this later, with this filtering still intact.				
-	mFilteredInput = smoothPressureX(mFilteredInput);
-	mFilteredInput = smoothPressureX(mFilteredInput);
-	mFilteredInput = smoothPressureX(mFilteredInput);
-	mFilteredInput = smoothPressureX(mFilteredInput);
-	mFilteredInput = smoothPressureY(mFilteredInput);
-	mFilteredInput = smoothPressureY(mFilteredInput);
-	mFilteredInput = smoothPressureY(mFilteredInput);
-	mFilteredInput.scale(1.f/64.f);
-	mFilteredInput = getCurvatureXY(mFilteredInput);
+	mInput = smoothPressureX(smoothPressureX(smoothPressureX(smoothPressureX(mInput))));	
+	mInput = smoothPressureY(smoothPressureY(smoothPressureY(mInput)));
+	mInput = getCurvatureXY(scale(mInput, 1.f/64.f));
 
 	if(mMaxTouchesPerFrame > 0)
 	{
-		mTouches = findTouches(mFilteredInput);
+		mTouches = findTouches(mInput);
 					
-		// sort touches by z. 
-		std::sort(mTouches.begin(), mTouches.begin() + kMaxTouches, [](Touch a, Touch b){ return a.z > b.z; } );
-		
-		// match -> position filter -> fixed z filter -> feedback
+		// match -> position filter -> feedback
 		mTouches = matchTouches(mTouches, mTouchesMatch1);	
 		mTouches = filterTouchesXYAdaptive(mTouches, mTouchesMatch1);
 		mTouchesMatch1 = mTouches;
@@ -283,10 +367,8 @@ void TouchTracker::process(const MLSignal* pIn, int maxTouches, TouchArray* pOut
 		// after variable filter, exile decayed touches so they are not matched. Note this affects match feedback!
 		mTouchesMatch1 = exileUnusedTouches(mTouchesMatch1, mTouches);
 								
-		//	TODO hysteresis after matching to prevent glitching when there are more
+		// TODO hysteresis after matching to prevent glitching when there are more
 		// physical touches than mMaxTouchesPerFrame and touches are stolen
-//			mTouches = sortTouchesWithHysteresis(mTouches, mTouchSortOrder);			
-//			mTouches = limitNumberOfTouches(mTouches);
 		
 		if(mRotate)
 		{
@@ -294,125 +376,25 @@ void TouchTracker::process(const MLSignal* pIn, int maxTouches, TouchArray* pOut
 		}	
 		
 		mTouches = clampAndScaleTouches(mTouches);
-		
-
 	}
-
+	
 	*pOut = mTouches;
-	*pTest = mFilteredInput;
+	*pCurvatureOut = mInput;
 }
 
-MLSignal TouchTracker::getCurvatureX(const MLSignal& in)
-{
-	const int w = kSensorCols;
-	const int h = kSensorRows;
-	
-	// TODO no dynamic signals MLTEST
-	MLSignal cx(w, h);
-	
-	// rows
-	for(int j=0; j<h; ++j)
-	{
-		float z = 0.f;
-		float zm1 = 0.f;
-		float dz = 0.f;
-		float dzm1 = 0.f;
-		float ddz = 0.f;
-		
-		for(int i=0; i <= w; ++i)
-		{
-			if(within(i, 0, w))
-			{
-				z = in(i, j);
-			}
-			else
-			{
-				z = 0.f;
-			}
-			dz = z - zm1;
-			ddz = dz - dzm1;					
-			zm1 = z;
-			dzm1 = dz;
-			
-			if(i >= 1)
-			{
-				cx(i - 1, j) = std::max(-ddz, 0.f);
-			}
-		}
-	}	
-		
-	return cx;
-}
-
-MLSignal TouchTracker::getCurvatureY(const MLSignal& in)
-{
-	const int w = kSensorCols;
-	const int h = kSensorRows;
-	
-	// TODO no dynamic signals MLTEST
-	MLSignal cy(w, h);
-	
-	// cols
-	for(int i=0; i<w; ++i)
-	{
-		float z = 0.f;
-		float zm1 = 0.f;
-		float dz = 0.f;
-		float dzm1 = 0.f;
-		float ddz = 0.f;
-		for(int j=0; j <= h; ++j)
-		{
-			if(within(j, 0, h))
-			{
-				z = in(i, j);
-			}
-			else
-			{
-				z = 0.f;
-			}
-			
-			dz = z - zm1;
-			ddz = dz - dzm1;					
-			zm1 = z;
-			dzm1 = dz;
-			if(j >= 1)
-			{
-				cy(i, j - 1) = std::max(-ddz, 0.f);
-			}
-		}
-	}
-
-	return cy;
-}
-
-MLSignal TouchTracker::getCurvatureXY(const MLSignal& in)
-{
-	MLSignal kx(in);
-	MLSignal ky(in);
-	MLSignal kxy(in);
-	
-	kx = getCurvatureX(kx);
-	ky = getCurvatureY(ky);
-	kxy = kx;
-	kxy.multiply(ky);
-	kxy.sqrt();
-	
-	return kxy;
-} 
-
-Touch correctPeakX(Touch pos, const MLSignal& in) 
+Touch correctPeakX(Touch pos, const SensorFrame& in) 
 {		
 	Touch newPos = pos;
 	const float maxCorrect = 0.5f;
-	const int w = kSensorCols;
+	const int w = SensorGeometry::width;
 	int x = pos.x;
 	int y = pos.y;
 	
 	if(within(x, 1, w - 1))
 	{
-		float a = in(x - 1, y);
-		float b = in(x, y);
-		float c = in(x + 1, y);
+		float a = in.mData[y*w + x - 1];
+		float b = in.mData[y*w + x];
+		float c = in.mData[y*w + x + 1];
 		float p = ((a - c)/(a - 2.f*b + c))*0.5f;
 		float fx = x + clamp(p, -maxCorrect, maxCorrect);										
 		newPos = Touch(fx, pos.y, pos.z, 0.f, 0);
@@ -421,10 +403,11 @@ Touch correctPeakX(Touch pos, const MLSignal& in)
 	return newPos;
 }
 
-Touch correctPeakY(Touch pos, const MLSignal& in) 
+Touch correctPeakY(Touch pos, const SensorFrame& in) 
 {		
 	const float maxCorrect = 0.5f;
-	const int h = kSensorRows;
+	const int w = SensorGeometry::width;
+	const int h = SensorGeometry::height;
 	int x = pos.x;
 	int y = pos.y;
 	
@@ -432,20 +415,20 @@ Touch correctPeakY(Touch pos, const MLSignal& in)
 	if(y <= 0)
 	{
 		a = 0;
-		b = in(x, y);
-		c = in(x, y + 1);
+		b = in.mData[y*w + x];
+		c = in.mData[(y + 1)*w + x];
 	}
 	else if(y >= h - 1)
 	{
-		a = in(x, y - 1);
-		b = in(x, y);
+		a = in.mData[(y - 1)*w + x];
+		b = in.mData[y*w + x];
 		c = 0;
 	}
 	else
 	{
-		a = in(x, y - 1);
-		b = in(x, y);
-		c = in(x, y + 1);
+		a = in.mData[(y - 1)*w + x];
+		b = in.mData[y*w + x];
+		c = in.mData[(y + 1)*w + x];
 	}
 	float p = ((a - c)/(a - 2.f*b + c))*0.5f;		
 	float fy = y + clamp(p, -maxCorrect, maxCorrect);							
@@ -456,10 +439,10 @@ float sensorToKeyY(float sy)
 {
 	float ky = 0.f;
 	
-	// Soundplane A as measured.
 	constexpr int mapSize = 6;
 	
-	// these y locations depend on the amount of smoothing done in smoothPressureX / smoothPressureY.
+	// Soundplane A as measured.
+	// NOTE: these y locations depend on the amount of smoothing done in smoothPressureX / smoothPressureY.
 	constexpr std::array<float, mapSize> sensorMap{{0.7, 1.2, 2.7, 4.3, 5.8, 6.3}};
 	constexpr std::array<float, mapSize> keyMap{{0.01, 1., 2., 3., 4., 4.99}};
 	
@@ -473,7 +456,7 @@ float sensorToKeyY(float sy)
 	}
 	else
 	{
-		// TODO piecewise map MLRange type
+		// piecewise linear map
 		for(int i = 1; i<mapSize; ++i)
 		{
 			if(sy <= sensorMap[i])
@@ -491,25 +474,24 @@ float sensorToKeyY(float sy)
 
 Touch peakToTouch(Touch p)
 {
-	MLRange sensorToKeyX(3.5f, 59.5f, 1.f, 29.f);
-	return Touch(sensorToKeyX(p.x), sensorToKeyY(p.y), p.z, 0.f, 0);
+	return Touch(mapRange(3.5f, 59.5f, 1.f, 29.f, p.x), sensorToKeyY(p.y), p.z, 0.f, 0);
 }
 
 // quick touch finder based on peaks of curvature. 
 // this works well, but a different approach based on blob sizes / shapes could do a much better
 // job with contiguous keys.
-TouchArray TouchTracker::findTouches(const MLSignal& kxy)
+TouchArray TouchTracker::findTouches(const SensorFrame& in)
 {
 	constexpr int kMaxPeaks = kMaxTouches*2;
-	const int w = kSensorCols;
-	const int h = kSensorRows;	
+	constexpr int w = SensorGeometry::width;
+	constexpr int h = SensorGeometry::height;
+	const float* pIn = in.mData.data();
 	int i, j;
 	
-	// TODO preallocate
-	std::array<Touch, kMaxTouches*2> peaks;
+	std::array<Touch, kMaxPeaks> peaks;
 	TouchArray touches;
-	std::array<std::bitset<kSensorCols>, kSensorRows> map;
-					
+	std::array<std::bitset<w>, h> map;
+	
 	// get peaks
 	float f11, f12, f13;
 	float f21, f22, f23;
@@ -517,24 +499,29 @@ TouchArray TouchTracker::findTouches(const MLSignal& kxy)
 	
 	j = 0;
 	{
-		std::bitset<kSensorCols>& row = map[j];
+		auto& row = map[j];
+		const float* pRow2 = pIn + (j)*w; 
+		const float* pRow3 = pIn + (j + 1)*w; 
 		for(i = 1; i < w - 1; ++i)
 		{
-			f21 = kxy(i - 1, j    ); f22 = kxy(i, j    ); f23 = kxy(i + 1, j    );
-			f31 = kxy(i - 1, j + 1); f32 = kxy(i, j + 1); f33 = kxy(i + 1, j + 1);
+			f21 = pRow2[i - 1]; f22 = pRow2[i]; f23 = pRow2[i + 1];
+			f31 = pRow3[i - 1]; f32 = pRow3[i]; f33 = pRow3[1 + 1];
 			row[i] = (f22 > f21) && (f22 > mFilterThreshold) && (f22 > f23)
-				&& (f22 > f31) && (f22 > f32) && (f22 > f33);
+			&& (f22 > f31) && (f22 > f32) && (f22 > f33);
 		}
 	}
 	
 	for (j = 1; j < h - 1; ++j)
 	{
-		std::bitset<kSensorCols>& row = map[j];
+		auto& row = map[j];
+		const float* pRow1 = pIn + (j - 1)*w; 
+		const float* pRow2 = pIn + (j)*w; 
+		const float* pRow3 = pIn + (j + 1)*w; 
 		for(i = 1; i < w - 1; ++i)
 		{
-			f11 = kxy(i - 1, j - 1); f12 = kxy(i, j - 1); f13 = kxy(i + 1, j - 1);
-			f21 = kxy(i - 1, j    ); f22 = kxy(i, j    ); f23 = kxy(i + 1, j    );
-			f31 = kxy(i - 1, j + 1); f32 = kxy(i, j + 1); f33 = kxy(i + 1, j + 1);
+			f11 = pRow1[i - 1]; f12 = pRow1[i]; f13 = pRow1[i + 1];
+			f21 = pRow2[i - 1]; f22 = pRow2[i]; f23 = pRow2[i + 1];
+			f31 = pRow3[i - 1]; f32 = pRow3[i]; f33 = pRow3[1 + 1];
 			row[i] = (f22 > f11) && (f22 > f12) && (f22 > f13)
 				&& (f22 > f21) && (f22 > mFilterThreshold) && (f22 > f23)
 				&& (f22 > f31) && (f22 > f32) && (f22 > f33);
@@ -543,11 +530,13 @@ TouchArray TouchTracker::findTouches(const MLSignal& kxy)
 	
 	j = h - 1;
 	{
-		std::bitset<kSensorCols>& row = map[j];
+		auto& row = map[j];
+		const float* pRow1 = pIn + (j - 1)*w; 
+		const float* pRow2 = pIn + (j)*w; 
 		for(i = 1; i < w - 1; ++i)
 		{
-			f11 = kxy(i - 1, j - 1); f12 = kxy(i, j - 1); f13 = kxy(i + 1, j - 1);
-			f21 = kxy(i - 1, j    ); f22 = kxy(i, j    ); f23 = kxy(i + 1, j    );
+			f11 = pRow1[i - 1]; f12 = pRow1[i]; f13 = pRow1[i + 1];
+			f21 = pRow2[i - 1]; f22 = pRow2[i]; f23 = pRow2[i + 1];
 			row[i] = (f22 > f11) && (f22 > f12) && (f22 > f13)
 				&& (f22 > f21) && (f22 > mFilterThreshold) && (f22 > f23);
 		}
@@ -557,13 +546,13 @@ TouchArray TouchTracker::findTouches(const MLSignal& kxy)
 	int nPeaks = 0;
 	for (int j=0; j<h; j++)
 	{
-		std::bitset<kSensorCols>& mapRow = map[j];
-		for (int i=0; i < mWidth; i++)
+		auto& mapRow = map[j];
+		for (int i=0; i < w; i++)
 		{
 			// if peak
 			if (mapRow[i])
 			{
-				float z = kxy(i, j);
+				float z = in.mData[j*w + i];
 				peaks[nPeaks++] = Touch(i, j, z, 0.f, 0);
 				if (nPeaks >= kMaxPeaks) break;
 			}
@@ -582,140 +571,11 @@ TouchArray TouchTracker::findTouches(const MLSignal& kxy)
 		Touch p = peaks[i];
 		if(p.z < mFilterThreshold) break;
 				
-		Touch px = correctPeakX(p, kxy);	
-		Touch pxy = correctPeakY(px, kxy);		
+		Touch px = correctPeakX(p, in);	
+		Touch pxy = correctPeakY(px, in);			
 		touches[i] = peakToTouch(pxy);	
-		
-		/*
-		if(nTouches == 1)
-		{
-			debug() << "y: " << pxy.y << " -> " << touches[i].y << "\n";
-		}
-		*/
 	}
-	
-	return touches;
-}
 
-
-// sort the input touches in z order. A hysteresis offset for each array member prevents members from changing order too often.
-// side effect: the new sorted order is written to the currentSortedOrder array.
-//
-// TODO: just storing the shuffle transform to sorted order, and not letting it change often, may be a clearer algorithm?
-//
-TouchArray TouchTracker::sortTouchesWithHysteresis(const TouchArray& in, std::array<int, TouchTracker::kMaxTouches>& previousSortedOrder)
-{	
-	const float kHysteresisOffset = 0.01f; // TODO adjust
-	
-	TouchArray preSort(in); // TEMP
-	TouchArray postSort(in); // TEMP
-	TouchArray touches(in);
-	std::array<int, TouchTracker::kMaxTouches> newSortedOrder;
-	
-	// count input touches
-	int n = 0;
-	for(int i=0; i<kMaxTouches; ++i)
-	{
-		if(preSort[i].z == 0.f) break;
-		n++;
-	}
-	
-	// sort by x first to give stable initial order
-	std::sort(preSort.begin(), preSort.begin() + kMaxTouches, [](Touch a, Touch b){ return a.x > b.x; } );
-	
-	postSort = preSort; // TEMP
-	
-	// add multiples of hysteresis offset to input data according to previous sorted order
-	for(int i = 0; i < kMaxTouches; i++)
-	{
-		int v = kMaxTouches - i;
-		postSort[previousSortedOrder[i]].z += (v*kHysteresisOffset);
-		postSort[i].age = i; // stash index in age
-	}
-	
-	std::sort(postSort.begin(), postSort.begin() + kMaxTouches, [](Touch a, Touch b){ return a.z > b.z; } );
-	
-	// get new sorted order
-	for(int i = 0; i < kMaxTouches; i++)
-	{
-		newSortedOrder[i] = postSort[i].age;
-	}
-	
-	// get touches in sorted order without hysteresis
-	for(int i = 0; i < kMaxTouches; i++)
-	{
-		touches[i] = preSort[newSortedOrder[i]];
-	}	
-	
-	// compare sorted orders
-	bool orderChanged = false;
-	for(int i=0; i<kMaxTouches; ++i)
-	{
-		if(previousSortedOrder[i] != newSortedOrder[i])
-		{
-			orderChanged = true;
-			break;
-		}
-	}
-	
-	if(0)
-		if(n > 1)
-		{
-			
-			debug() << "\n    inputs: ";		
-			for(int i=0; i<kMaxTouches; ++i)
-			{			
-				debug() << in[i].z << " ";
-			}
-			
-			debug() << "\n    pre: ";		
-			for(int i=0; i<kMaxTouches; ++i)
-			{			
-				debug() << preSort[i].z << " ";
-			}
-			
-			debug() << "\n    post: ";		
-			for(int i=0; i<kMaxTouches; ++i)
-			{			
-				debug() << postSort[i].z << " ";
-			}
-			
-			
-			debug() << "\n   prev: ";
-			for(int i = 0; i < kMaxTouches; i++)
-			{
-				debug() << previousSortedOrder[i] << " ";
-			}
-			
-			debug() << "\n   new: ";
-			for(int i = 0; i < kMaxTouches; i++)
-			{
-				debug() << newSortedOrder[i] << " ";
-			}
-			
-			debug() << "\n    outputs: ";
-			
-			for(int i=0; i<kMaxTouches; ++i)
-			{			
-				debug() << touches[i].z << " ";
-			}
-			
-			debug() << "\n";		 
-		}
-	previousSortedOrder = newSortedOrder;	
-	return touches;
-}
-
-TouchArray TouchTracker::limitNumberOfTouches(const TouchArray& in)
-{	
-	TouchArray touches(in);
-	
-	// limit number of touches by overwriting with zeroes
-	for(int i = mMaxTouchesPerFrame; i < kMaxTouches; i++)
-	{
-		touches[i] = Touch();
-	}
-	
 	return touches;
 }
 
@@ -724,9 +584,8 @@ TouchArray TouchTracker::limitNumberOfTouches(const TouchArray& in)
 // for each possible touch slot, output the touch x closest in location to the previous frame.
 // if the incoming touch is a continuation of the previous one, set its age (w) to 1, otherwise to 0. 
 // if there is no incoming touch to match with a previous one at index i, and no new touch needs index i, the position at index i will be maintained.
-//
 
-// TODO first touch below filter threshold(?) is on one index, then active touch switches index?! 
+// TODO first touch below filter threshold(?) is on one index, then active touch switches index?! investigate.
 
 TouchArray TouchTracker::matchTouches(const TouchArray& x, const TouchArray& x1)
 {
@@ -800,7 +659,7 @@ TouchArray TouchTracker::matchTouches(const TouchArray& x, const TouchArray& x1)
 	std::array<bool, kMaxTouches> currWrittenToNew; 
 	currWrittenToNew.fill(false);
 	
-	// first, continue well-matched nonzero touches
+	// first, continue mutually matched  touches
 	for(int i=0; i<mMaxTouchesPerFrame; ++i)
 	{
 		if(mutualMatches[i])
@@ -808,7 +667,6 @@ TouchArray TouchTracker::matchTouches(const TouchArray& x, const TouchArray& x1)
 			int j = reverseMatchIdx[i];
 			Touch curr = x[i];		
 			Touch prev = x1[j];
-	//		if((curr.z() > mFilterThreshold) && (prev.z() > mFilterThreshold))
 			{			
 				// touch is continued, mark as connected and write to new touches
 				curr.age = (cityBlockDistanceXYZ(prev, curr, 0.f) < kMaxConnectDist);						
@@ -880,12 +738,9 @@ TouchArray TouchTracker::matchTouches(const TouchArray& x, const TouchArray& x1)
 //
 TouchArray TouchTracker::filterTouchesXYAdaptive(const TouchArray& in, const TouchArray& inz1)
 {
-	float sr = 1000.f; // Soundplane A
-	
 	// these filter settings have a big and sort of delicate impact on play feel, so they are not user settable at this point
 	const float kFixedXYFreqMax = 20.f;
 	const float kFixedXYFreqMin = 1.f;
-	MLRange zToXYFreq(0., 0.02, kFixedXYFreqMin, kFixedXYFreqMax); 
 	
 	TouchArray out;
 	
@@ -904,8 +759,8 @@ TouchArray TouchTracker::filterTouchesXYAdaptive(const TouchArray& in, const Tou
 		if(age > 0) 
 		{
 			// get xy coeffs, adaptive based on z
-			float freq = zToXYFreq.convertAndClip(z);			
-			float omegaXY = freq*kMLTwoPi/sr;
+			float freq = mapAndClipRange(0., 0.02, kFixedXYFreqMin, kFixedXYFreqMax, z); 			
+			float omegaXY = freq*kTwoPi/mSampleRate;
 			float kXY = expf(-omegaXY);
 			float a0XY = 1.f - kXY;
 			float b1XY = kXY;
@@ -928,12 +783,11 @@ TouchArray TouchTracker::filterTouchesXYAdaptive(const TouchArray& in, const Tou
 
 TouchArray TouchTracker::filterTouchesZ(const TouchArray& in, const TouchArray& inz1, float upFreq, float downFreq)
 {
-	const float sr = 1000.f;
-	const float omegaUp = upFreq*kMLTwoPi/sr;
+	const float omegaUp = upFreq*kTwoPi/mSampleRate;
 	const float kUp = expf(-omegaUp);
 	const float a0Up = 1.f - kUp;
 	const float b1Up = kUp;
-	const float omegaDown = downFreq*kMLTwoPi/sr;
+	const float omegaDown = downFreq*kTwoPi/mSampleRate;
 	const float kDown = expf(-omegaDown);
 	const float a0Down = 1.f - kDown;
 	const float b1Down = kDown;
@@ -950,9 +804,6 @@ TouchArray TouchTracker::filterTouchesZ(const TouchArray& in, const TouchArray& 
 		int age1 = inz1[i].age;		
 
 		float newZ, newAge;
-		
-		// filter z fixed for note-on velocity
-		
 		
 		// filter z variable
 		float dz = z - z1;
@@ -986,7 +837,7 @@ TouchArray TouchTracker::filterTouchesZ(const TouchArray& in, const TouchArray& 
 			newAge = age1 + 1;
 		}
 		
-		out[i] = Touch(x, y, newZ, 0.f, newAge);
+		out[i] = Touch(x, y, newZ, dz, newAge);
 	}
 	
 	return out;
@@ -1068,7 +919,6 @@ TouchArray TouchTracker::rotateTouches(const TouchArray& in)
 	return touches;
 }
 
-// clamp touches and remove hysteresis threshold.
 TouchArray TouchTracker::clampAndScaleTouches(const TouchArray& in)
 {
 	const float kTouchOutputScale = 4.f;
@@ -1079,12 +929,10 @@ TouchArray TouchTracker::clampAndScaleTouches(const TouchArray& in)
 		
 		if(t.x != t.x)
 		{
-			debug() << i << "x!";
 			t.x = (0.f);
 		}
 		if(t.y != t.y)
 		{
-			debug() << i << "y!";
 			t.y = (0.f);
 		}
 				
@@ -1098,3 +946,4 @@ TouchArray TouchTracker::clampAndScaleTouches(const TouchArray& in)
 	}
 	return out;
 }
+

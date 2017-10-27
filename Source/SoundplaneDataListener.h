@@ -28,7 +28,7 @@ struct SoundplaneDataMessage
 	int mOffset;				// offset for OSC port or MIDI channel
     std::string mZoneName;
     float mData[8];
-    float mMatrix[kSoundplaneWidth*kSoundplaneHeight];
+    float mMatrix[SensorGeometry::width*SensorGeometry::height];
 };
 
 class SoundplaneDataListener
