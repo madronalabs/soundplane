@@ -31,3 +31,9 @@ void InertSoundplaneDriver::setCarriers(const Carriers& carriers)
 void InertSoundplaneDriver::enableCarriers(unsigned long mask)
 {
 }
+
+SoundplaneDriver::returnValue InertSoundplaneDriver::process(SensorFrame* pOut)
+{
+	return returnValue();
+}
+

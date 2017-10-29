@@ -24,6 +24,8 @@ public:
 	virtual const unsigned char *getCarriers() const override;
 	virtual void setCarriers(const Carriers& carriers) override;
 	virtual void enableCarriers(unsigned long mask) override;
+	
+	SoundplaneDriver::returnValue process(SensorFrame* pOut) override;
 
 private:
 	void processThread();

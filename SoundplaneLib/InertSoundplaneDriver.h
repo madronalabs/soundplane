@@ -19,6 +19,8 @@ public:
 	virtual void setCarriers(const Carriers& carriers) override;
 	virtual void enableCarriers(unsigned long mask) override;
 
+	virtual returnValue process(SensorFrame* pOut) override;
+
 private:
 
 	/**

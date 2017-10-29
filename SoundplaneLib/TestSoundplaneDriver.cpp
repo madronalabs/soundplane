@@ -79,3 +79,11 @@ void TestSoundplaneDriver::processThread()
 		}
 	}
 }
+
+
+SoundplaneDriver::returnValue TestSoundplaneDriver::process(SensorFrame* pOut)
+{
+	return returnValue();
+}
+
+
