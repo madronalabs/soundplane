@@ -56,7 +56,7 @@ void TestSoundplaneDriver::enableCarriers(unsigned long mask)
 
 void TestSoundplaneDriver::processThread()
 {
-	SoundplaneOutputFrame frame;
+	SensorFrame frame;
 
 	uint64_t startTime = getMicroseconds();
 	uint64_t sentPackets = 0;

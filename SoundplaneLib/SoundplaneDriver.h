@@ -60,13 +60,9 @@ public:
 	 * invoked in an interrupt context.
 	 */
 	virtual void handleDeviceError(int errorType, int di1, int di2, float df1, float df2) {}
-
-	/**
-	 * This callback may be invoked from an arbitrary thread, but is never
-	 * invoked in an interrupt context.
-	 */
-	virtual void handleDeviceDataDump(const float* pData, int size) {}
 };
+
+
 
 class SoundplaneDriver
 {
@@ -74,6 +70,18 @@ public:
 	virtual ~SoundplaneDriver() = default;
 
 	virtual MLSoundplaneState getDeviceState() const = 0;
+		
+	// device state is now returned from process() along with any error codes.
+	typedef struct 
+	{
+		uint8_t deviceState;
+		uint8_t errorCode;
+		uint8_t unused1;
+		uint8_t unused2;
+	}
+	returnValue;
+	
+	virtual returnValue process(SensorFrame* pOut) = 0;
 
 	/**
 	 * Returns the firmware version of the connected Soundplane device. The

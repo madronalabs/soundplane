@@ -19,13 +19,12 @@ const unsigned char kDefaultCarriers[kSoundplaneNumCarriers] =
 	28, 29, 30, 31, 33, 34
 };
 
-
 // --------------------------------------------------------------------------------
 #pragma mark unpacking data
 
 // combine two surface payloads to a single buffer of floating point pressure values.
 //
-void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, SoundplaneOutputFrame& dest)
+void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, SensorFrame& dest)
 {
 	float *pDest = dest.data();
 	unsigned short a, b;
@@ -71,7 +70,7 @@ void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, SoundplaneOutp
 
 // set data from edge carriers, unused on Soundplane A, to duplicate
 // actual data nearby.
-void K1_clear_edges(SoundplaneOutputFrame& dest)
+void K1_clear_edges(SensorFrame& dest)
 {
 	float *pDest = dest.data();
 	float *pDestRow;
@@ -87,7 +86,7 @@ void K1_clear_edges(SoundplaneOutputFrame& dest)
 	}
 }
 
-float frameDiff(const SoundplaneOutputFrame& p0, const SoundplaneOutputFrame& p1)
+float frameDiff(const SensorFrame& p0, const SensorFrame& p1)
 {
 	float sum = 0.f;
 	for(int i = 0; i < p0.size(); i++)

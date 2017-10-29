@@ -71,6 +71,8 @@ int main(int argc, const char * argv[])
 	std::cout << "Hello, Soundplane?\n";
 	std::cout << "Initial device state: " << driver->getDeviceState() << std::endl;
 
+	std::cout << sizeof(SoundplaneDriver::returnValue); 
+	
 //	for (;;)
 	for(int i=0; i<5; ++i)
 	{

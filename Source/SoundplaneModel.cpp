@@ -664,11 +664,9 @@ void SoundplaneModel::deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneS
 			// output will be enabled at end of calibration.
 			mNeedsCalibrate = true;
 		break;
+			
+		default:
 		case kDeviceIsTerminating:
-		break;
-		case kDeviceSuspend:
-		break;
-		case kDeviceResume:
 		break;
 	}
 }
@@ -764,34 +762,6 @@ void SoundplaneModel::handleDeviceError(int errorType, int data1, int data2, flo
 			MLConsole() << "SoundplaneModel::handleDeviceError: unknown error!\n";
 			break;
 	}
-}
-
-void SoundplaneModel::handleDeviceDataDump(const float* pData, int size)
-{
-	if(mSelectingCarriers) return;
-
-	debug() << "----------------------------------------------------------------\n ";
-	int c = 0;
-	int w = getWidth();
-	int row = 0;
-	debug() << std::setprecision(2);
-
-	debug() << "[0] ";
-	for(int i=0; i<size; ++i)
-	{
-		debug() << pData[i] << " ";
-		c++;
-		if(c >= w)
-		{
-			debug() << "\n";
-			c = 0;
-			if (i < (size - 1))
-			{
-				debug() << "[" << ++row << "] ";
-			}
-		}
-	}
-	debug() << "\n";
 }
 
 // get a string that explains what Soundplane hardware and firmware and client versions are running.

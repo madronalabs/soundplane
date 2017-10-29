@@ -57,7 +57,6 @@ public:
 	virtual void deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneState s) override;
 	virtual void receivedFrame(SoundplaneDriver& driver, const float* data, int size) override;
 	virtual void handleDeviceError(int errorType, int data1, int data2, float fd1, float fd2) override;
-	virtual void handleDeviceDataDump(const float* pData, int size) override;
 
 	// MLOSCListener
 	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint) override;

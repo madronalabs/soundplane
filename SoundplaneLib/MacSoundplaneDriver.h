@@ -28,6 +28,8 @@ public:
 	~MacSoundplaneDriver();
 
 	void init();
+	
+	virtual SoundplaneDriver::returnValue process(SensorFrame* pOut) override;
 
 	virtual MLSoundplaneState getDeviceState() const override;
 	virtual uint16_t getFirmwareVersion() const override;
@@ -38,6 +40,8 @@ public:
 	virtual void enableCarriers(unsigned long mask) override;
 
 private:
+	
+	
 	struct K1IsocTransaction
 	{
 		UInt64						busFrameNumber = 0;
@@ -52,6 +56,9 @@ private:
 		void setSequenceNumber(int f, uint16_t s);
 	};
 
+	int createLowLatencyBuffers();
+	int destroyLowLatencyBuffers();
+	
 	IOReturn scheduleIsoch(K1IsocTransaction *t);
 	static void isochComplete(void *refCon, IOReturn result, void *arg0);
 
@@ -70,10 +77,9 @@ private:
 	void grabThread();
 	void processThread();
 
-	void reclockFrameToBuffer(const SoundplaneOutputFrame& frame);
+	void reclockFrameToBuffer(const SensorFrame& frame);
 	void setDeviceState(MLSoundplaneState n);
 	void reportDeviceError(int errCode, int d1, int d2, float df1, float df2);
-	void dumpDeviceData(float* pData, int size);
 
 	static int getStringDescriptor(IOUSBDeviceInterface187 **dev, uint8_t descIndex, char *destBuf, uint16_t maxLen, uint16_t lang);
 	void dumpTransactions(int bufferIndex, int frameIndex);

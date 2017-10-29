@@ -156,42 +156,84 @@ MacSoundplaneDriver::~MacSoundplaneDriver()
 	// wait some more
 	//
 	usleep(100*1000);
+	
+	removeDevice();	
+}
 
-	if (dev)
+int MacSoundplaneDriver::createLowLatencyBuffers()
+{
+	IOReturn err;
+	
+	// create and setup transaction data structures for each buffer in each isoch endpoint
+	for (int i = 0; i < kSoundplaneANumEndpoints; i++)
 	{
-		kr = (*dev)->USBDeviceClose(dev);
-		kr = (*dev)->Release(dev);
-		dev = NULL;
-	}
-	kr = IOObjectRelease(notification);
-
-	// clean up transaction data.
-	//
-	// Doing this with any transactions pending WILL cause a kernel panic!
-	//
-	if (intf)
-	{
-		unsigned i, n;
-		for (n = 0; n < kSoundplaneANumEndpoints; n++)
+		for (int j = 0; j < kSoundplaneABuffers; j++)
 		{
-			for (i = 0; i < kSoundplaneABuffers; i++)
+			K1IsocTransaction* t = getTransactionData(i, j);
+			t->endpointNum = kSoundplaneAEndpointStartIdx + i;
+			t->endpointIndex = i;
+			t->bufIndex = j;
+			size_t payloadSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
+			
+			err = (*intf)->LowLatencyCreateBuffer(intf, (void **)&t->payloads, payloadSize, kUSBLowLatencyReadBuffer);
+			if (kIOReturnSuccess != err)
 			{
-				K1IsocTransaction* t = getTransactionData(n, i);
-				if (t->payloads)
+				fprintf(stderr, "createLowLatencyBuffers: could not create payload buffer #%d (%08x)\n", j, err);
+				return false;
+			}
+			bzero(t->payloads, payloadSize);
+			
+			size_t isocFrameSize = kSoundplaneANumIsochFrames * sizeof(IOUSBLowLatencyIsocFrame);
+			err = (*intf)->LowLatencyCreateBuffer(intf, (void **)&t->isocFrames, isocFrameSize, kUSBLowLatencyFrameListBuffer);
+			if (kIOReturnSuccess != err)
+			{
+				fprintf(stderr, "createLowLatencyBuffers: could not create frame list buffer #%d (%08x)\n", j, err);
+				return false;
+			}
+			bzero(t->isocFrames, isocFrameSize);
+			t->parent = this;
+		}
+	}
+	return true;
+}
+
+int MacSoundplaneDriver::destroyLowLatencyBuffers()
+{
+	IOReturn err;
+	
+	debug() << "destroyLowLatencyBuffers: \n";
+	
+	for (int i = 0; i < kSoundplaneANumEndpoints; i++)
+	{
+		for (int j = 0; j < kSoundplaneABuffers; j++)
+		{
+			K1IsocTransaction* t = getTransactionData(i, j);
+			if (t->payloads)
+			{
+				err = (*intf)->LowLatencyDestroyBuffer(intf, t->payloads);
+				if (kIOReturnSuccess != err)
 				{
-					(*intf)->LowLatencyDestroyBuffer(intf, t->payloads);
-					t->payloads = NULL;
+					fprintf(stderr, "destroyLowLatencyBuffers: could not destroy payload buffer #%d (%08x)\n", j, err);
+					return false;
 				}
-				if (t->isocFrames)
+				t->payloads = NULL;
+			}
+			if (t->isocFrames)
+			{
+				err = (*intf)->LowLatencyDestroyBuffer(intf, t->isocFrames);
+				if (kIOReturnSuccess != err)
 				{
-					(*intf)->LowLatencyDestroyBuffer(intf, t->isocFrames);
-					t->isocFrames = NULL;
+					fprintf(stderr, "destroyLowLatencyBuffers: could not destroy frame list buffer #%d (%08x)\n", j, err);
+					return false;
 				}
+				t->isocFrames = NULL;
 			}
 		}
-		kr = (*intf)->Release(intf);
-		intf = NULL;
 	}
+
+	debug() << "    OK.\n";
+	
+	return true;
 }
 
 void MacSoundplaneDriver::init()
@@ -355,8 +397,6 @@ number has already passed. This is normal.
 //
 // The OS X low latency async code requires all transfer data to be in special blocks created by
 // LowLatencyCreateBuffer() to manage communication with the kernel.
-// These are made in deviceAdded() when a Soundplane is connected.
-//
 IOReturn MacSoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
 {
 	if (!dev) return kIOReturnNoDevice;
@@ -413,7 +453,6 @@ void MacSoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg
 	MLSoundplaneState state = k1->getDeviceState();
 	if (state == kNoDevice) return;
 	if (state == kDeviceIsTerminating) return;
-	if (state == kDeviceSuspend) return;
 
 	switch (result)
 	{
@@ -654,7 +693,6 @@ IOReturn MacSoundplaneDriver::setBusFrameNumber()
 	return kIOReturnSuccess;
 }
 
-
 void MacSoundplaneDriver::removeDevice()
 {
 	IOReturn err;
@@ -662,34 +700,7 @@ void MacSoundplaneDriver::removeDevice()
 	setDeviceState(kNoDevice);
 
 	printf("Soundplane A removed.\n");
-
-	if (intf)
-	{
-		unsigned i, n;
-		
-		// TODO refactor, same as ~MacSoundplaneDriver
-
-		for (n = 0; n < kSoundplaneANumEndpoints; n++)
-		{
-			for (i = 0; i < kSoundplaneABuffers; i++)
-			{
-				K1IsocTransaction* t = getTransactionData(n, i);
-				if (t->payloads)
-				{
-					err = (*intf)->LowLatencyDestroyBuffer(intf, t->payloads);
-					t->payloads = NULL;
-				}
-				if (t->isocFrames)
-				{
-					err = (*intf)->LowLatencyDestroyBuffer(intf, t->isocFrames);
-					t->isocFrames = NULL;
-				}
-			}
-		}
-		kr = (*intf)->Release(intf);
-		intf = NULL;
-	}
-
+	
 	if (dev)
 	{
 		printf("closing device.\n");
@@ -698,6 +709,17 @@ void MacSoundplaneDriver::removeDevice()
 		dev = NULL;
 	}
 	kr = IOObjectRelease(notification);
+	
+	// clean up transaction data.
+	//
+	// Doing this with any transactions pending WILL cause a kernel panic!
+	//
+	if (intf)
+	{
+		destroyLowLatencyBuffers();
+		kr = (*intf)->Release(intf);
+		intf = NULL;
+	}
 }
 
 // deviceAdded() is called by the callback set up in the grab thread when a new Soundplane device is found.
@@ -712,7 +734,9 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 	io_service_t				usbInterfaceRef;
 	IOCFPlugInInterface			**plugInInterface = NULL;
 	IOUSBDeviceInterface187		**dev = NULL;	// 182, 187, 197
-	IOUSBInterfaceInterface192	**intf;
+	
+	IOUSBInterfaceInterface192	**intf; // ?! 
+	
 	IOUSBFindInterfaceRequest	req;
 	ULONG						res;
 	SInt32						score;
@@ -725,8 +749,14 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 	int							i, j;
 	uint8_t						n;
 
+	int test = 0;
+	debug() << "\ndeviceAdded: \n";
+
 	while ((usbDeviceRef = IOIteratorNext(iterator)))
 	{
+		
+		debug() << test++ << " ";
+		
         kr = IOCreatePlugInInterfaceForService(usbDeviceRef, kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID, &plugInInterface, &score);
         if ((kIOReturnSuccess != kr) || !plugInInterface)
         {
@@ -905,38 +935,18 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 							goto close;
 						}
 					}
-					// create and setup transaction data structures for each buffer in each isoch endpoint
-					for (i = 0; i < kSoundplaneANumEndpoints; i++)
-					{
-						for (j = 0; j < kSoundplaneABuffers; j++)
-						{
-							k1->getTransactionData(i, j)->endpointNum = kSoundplaneAEndpointStartIdx + i;
-							k1->getTransactionData(i, j)->endpointIndex = i;
-							k1->getTransactionData(i, j)->bufIndex = j;
-							size_t payloadSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
+					
+					if(!k1->createLowLatencyBuffers()) goto close;
 
-							err = (*intf)->LowLatencyCreateBuffer(intf, (void **)&k1->getTransactionData(i, j)->payloads, payloadSize, kUSBLowLatencyReadBuffer);
-							if (kIOReturnSuccess != err)
-							{
-								fprintf(stderr, "could not create read buffer #%d (%08x)\n", j, err);
-								goto close;
-							}
-							bzero(k1->getTransactionData(i, j)->payloads, payloadSize);
-
-							size_t isocFrameSize = kSoundplaneANumIsochFrames * sizeof(IOUSBLowLatencyIsocFrame);
-							err = (*intf)->LowLatencyCreateBuffer(intf, (void **)&k1->getTransactionData(i, j)->isocFrames, isocFrameSize, kUSBLowLatencyFrameListBuffer);
-							if (kIOReturnSuccess != err)
-							{
-								fprintf(stderr, "could not create frame list buffer #%d (%08x)\n", j, err);
-								goto close;
-							}
-							bzero(k1->getTransactionData(i, j)->isocFrames, isocFrameSize);
-							k1->getTransactionData(i, j)->parent = k1;
-						}
-					}
+					debug() << "    deviceAdded got isoch interface...\n";
+					
+					// TODO this should not set device state, rather have its own flag for grab thread -> caller thread comms.
 
 					// set initial state before isoch schedule
 					k1->setDeviceState(kDeviceConnected);
+					
+					
+										
 					err = k1->setBusFrameNumber();
 					assert(!err);
 
@@ -1081,15 +1091,15 @@ void MacSoundplaneDriver::processThread()
 	unsigned char* pPayload1 = 0;
 	uint16_t curBytes0, curBytes1;
 	uint16_t nextBytes0, nextBytes1;
-	SoundplaneOutputFrame pWorkingFrame;
-	SoundplaneOutputFrame pPrevFrame;
-
+	SensorFrame pWorkingFrame;
+	SensorFrame pPrevFrame;
+	
 	// transaction data buffer index, 0 to kSoundplaneABuffers-1
 	int bufferIndex = 0;
-
+	
 	// current frame within transaction buffer, 0 to kSoundplaneANumIsochFrames-1
 	int frameIndex = 0;
-
+	
 	int droppedTransactions = 0;
 	int framesReceived = 0;
 	int badXfers = 0;
@@ -1100,15 +1110,11 @@ void MacSoundplaneDriver::processThread()
 	bool printThis = false;
 	bool lost = true;
 	bool advance = false;
-
+	
 	while(getDeviceState() != kDeviceIsTerminating)
 	{
 		// wait for grab and initialization
 		while (getDeviceState() == kNoDevice)
-		{
-			usleep(100*1000);
-		}
-		while (getDeviceState() == kDeviceSuspend)
 		{
 			usleep(100*1000);
 		}
@@ -1127,7 +1133,7 @@ void MacSoundplaneDriver::processThread()
 					maxTransactionStartFrame = frame;
 				}
 			}
-
+			
 			// found at least one scheduled transaction: read backwards through all transactions
 			// to get most recent complete frame.
 			if (maxIdx >= 0)
@@ -1135,14 +1141,14 @@ void MacSoundplaneDriver::processThread()
 				int seq0, seq1;
 				seq0 = seq1 = 0;
 				lost = true;
-
+				
 				for(bufferIndex=maxIdx; (bufferIndex >= 0) && lost; bufferIndex--)
 				{
 					for(frameIndex=kSoundplaneANumIsochFrames - 1; (frameIndex >= 0) && lost; frameIndex--)
 					{
 						int l0 = getSequenceNumber(0, bufferIndex, frameIndex);
 						int l1 = getSequenceNumber(1, bufferIndex, frameIndex);
-
+						
 						if (l0)
 							seq0 = l0;
 						if (l1)
@@ -1154,7 +1160,7 @@ void MacSoundplaneDriver::processThread()
 							curSeqNum0 = maxSeqNum0 = seq0;
 							curSeqNum1 = maxSeqNum1 = seq1;
 							currentCompleteSequence = std::min(curSeqNum0, curSeqNum1);
-
+							
 							// finally, we have sync.
 							//
 							Carriers carriers;
@@ -1165,7 +1171,7 @@ void MacSoundplaneDriver::processThread()
 						}
 					}
 				}
-
+				
 				if (!lost)
 				{
 					printf("connecting at sequence numbers: %d / %d\n", curSeqNum0, curSeqNum1);
@@ -1173,66 +1179,7 @@ void MacSoundplaneDriver::processThread()
 			}
 			usleep(100*1000);
 		}
-
-		// resume: for now just like kDeviceConnected, but without default carriers
-		//
-		while(getDeviceState() == kDeviceResume)
-		{
-			// initialize: find latest scheduled transaction
-			UInt64 maxTransactionStartFrame = 0;
-			int maxIdx = -1;
-			for(int j=0; j < kSoundplaneABuffers; ++j)
-			{
-				K1IsocTransaction* t = getTransactionData(0, j);
-				UInt64 frame = t->busFrameNumber;
-				if(frame > maxTransactionStartFrame)
-				{
-					maxIdx = j;
-					maxTransactionStartFrame = frame;
-				}
-			}
-
-			// found at least one scheduled transaction: read backwards through all transactions
-			// to get most recent complete frame.
-			if (maxIdx >= 0)
-			{
-				int seq0, seq1;
-				seq0 = seq1 = 0;
-				lost = true;
-
-				for(bufferIndex=maxIdx; (bufferIndex >= 0) && lost; bufferIndex--)
-				{
-					for(frameIndex=kSoundplaneANumIsochFrames - 1; (frameIndex >= 0) && lost; frameIndex--)
-					{
-						int l0 = getSequenceNumber(0, bufferIndex, frameIndex);
-						int l1 = getSequenceNumber(1, bufferIndex, frameIndex);
-
-						if (l0)
-							seq0 = l0;
-						if (l1)
-							seq1 = l1;
-						if (seq0 && seq1)
-						{
-							bufferIndex++;
-							frameIndex++;
-							curSeqNum0 = maxSeqNum0 = seq0;
-							curSeqNum1 = maxSeqNum1 = seq1;
-							currentCompleteSequence = std::min(curSeqNum0, curSeqNum1);
-
-							setDeviceState(kDeviceHasIsochSync);
-							lost = false;
-						}
-					}
-				}
-
-				if (!lost)
-				{
-					printf("resuming at sequence numbers: %d / %d\n", curSeqNum0, curSeqNum1);
-				}
-			}
-			usleep(100*1000);
-		}
-
+		
 		while(getDeviceState() == kDeviceHasIsochSync)
 		{
 			// look ahead by 1 frame to see if data was received for either surface of next frame
@@ -1240,25 +1187,25 @@ void MacSoundplaneDriver::processThread()
 			int lookahead = 1;
 			nextBytes0 = getTransferBytesReceived(0, bufferIndex, frameIndex, lookahead);
 			nextBytes1 = getTransferBytesReceived(1, bufferIndex, frameIndex, lookahead);
-
+			
 			// does next frame contain something ?
 			// if so, we know this frame is done.
 			// checking curBytes for this frame is not enough,
 			// because it seems current count may be filled in
 			// before payload.
 			advance = (nextBytes0 || nextBytes1);
-
+			
 			if (advance)
 			{
 				waiting = 0;
 				gotNext++;
-
+				
 				// see what data was received for current frame.  The Soundplane A always returns
 				// either a full packet of 386 bytes, or 0.
 				//
 				curBytes0 = getTransferBytesReceived(0, bufferIndex, frameIndex);
 				curBytes1 = getTransferBytesReceived(1, bufferIndex, frameIndex);
-
+				
 				// get sequence numbers from current frame
 				if (curBytes0)
 				{
@@ -1279,7 +1226,7 @@ void MacSoundplaneDriver::processThread()
 				{
 					newestCompleteSequence = std::max(maxSeqNum0, maxSeqNum1);
 				}
-
+				
 				// if this is different from the most recent sequence sent,
 				// send new sequence to buffer.
 				if (newestCompleteSequence != currentCompleteSequence)
@@ -1291,12 +1238,12 @@ void MacSoundplaneDriver::processThread()
 						reportDeviceError(kDevGapInSequence, currentCompleteSequence, newestCompleteSequence, 0., 0.);
 						printThis = true;
 						gaps++;
-
+						
 						// TODO try to recover if too many gaps near each other
 					}
-
+					
 					currentCompleteSequence = newestCompleteSequence;
-
+					
 					// scan backwards in buffers from current position to get payloads matching currentCompleteSequence
 					// TODO save indices
 					//
@@ -1322,7 +1269,7 @@ void MacSoundplaneDriver::processThread()
 							break;
 						}
 					}
-
+					
 					if (pPayload0 && pPayload1)
 					{
 						K1_unpack_float2(pPayload0, pPayload1, pWorkingFrame);
@@ -1339,8 +1286,6 @@ void MacSoundplaneDriver::processThread()
 							{
 								// possible sensor glitch.  also occurs when changing carriers.
 								reportDeviceError(kDevDataDiffTooLarge, startupCtr, 0, df, 0.);
-								dumpDeviceData(pPrevFrame.data(), SensorGeometry::width * SensorGeometry::height);
-								dumpDeviceData(pWorkingFrame.data(), SensorGeometry::width * SensorGeometry::height);
 								startupCtr = 0;
 							}
 						}
@@ -1349,11 +1294,11 @@ void MacSoundplaneDriver::processThread()
 							// wait for initialization
 							startupCtr++;
 						}
-
+						
 						std::copy(pWorkingFrame.begin(), pWorkingFrame.end(), pPrevFrame.begin());
 					}
 				}
-
+				
 				// increment current frame / buffer position
 				if (++frameIndex >= kSoundplaneANumIsochFrames)
 				{
@@ -1373,23 +1318,23 @@ void MacSoundplaneDriver::processThread()
 					setDeviceState(kNoDevice);
 				}
 			}
-
+			
 			if (printThis)
 			{
 				if (dev)
 				{
-		//			AbsoluteTime atTime;
-		//			UInt64 bf;
-		//			OSErr err = (*dev)->GetBusFrameNumber(dev, &bf, &atTime);
-		//			k1->dumpTransactions(bufferIndex, frameIndex);
-
+					//			AbsoluteTime atTime;
+					//			UInt64 bf;
+					//			OSErr err = (*dev)->GetBusFrameNumber(dev, &bf, &atTime);
+					//			k1->dumpTransactions(bufferIndex, frameIndex);
+					
 					printf("current seq num: %d / %d\n", curSeqNum0, curSeqNum1);
-		//			printf("now: %u:%u\n", (int)atTime.hi, (int)atTime.lo);
+					//			printf("now: %u:%u\n", (int)atTime.hi, (int)atTime.lo);
 					printf("process: gaps %d, dropped %d, gotNext %d \n", gaps, droppedTransactions, gotNext);
 					printf("process: good frames %d, bad xfers %d \n", framesReceived, badXfers);
 					printf("process: current sequence: [%d, %d] \n", maxSeqNum0, maxSeqNum1);
 					printf("process: transactions in flight: %d\n", mTransactionsInFlight);
-
+					
 					droppedTransactions = 0;
 					framesReceived = 0;
 					badXfers = 0;
@@ -1399,11 +1344,289 @@ void MacSoundplaneDriver::processThread()
 				}
 				printThis = false;
 			}
-
+			
 			// wait .5 ms
 			usleep(500);
 		}
 	}
+}
+
+
+SoundplaneDriver::returnValue MacSoundplaneDriver::process(SensorFrame* pOut)
+{
+	returnValue r;
+	
+	uint16_t curSeqNum0, curSeqNum1;
+	uint16_t maxSeqNum0, maxSeqNum1;
+	uint16_t currentCompleteSequence = 0;
+	uint16_t newestCompleteSequence = 0;
+	unsigned char* pPayload0 = 0;
+	unsigned char* pPayload1 = 0;
+	uint16_t curBytes0, curBytes1;
+	uint16_t nextBytes0, nextBytes1;
+	SensorFrame pWorkingFrame;
+	SensorFrame pPrevFrame;
+	
+	// transaction data buffer index, 0 to kSoundplaneABuffers-1
+	int bufferIndex = 0;
+	
+	// current frame within transaction buffer, 0 to kSoundplaneANumIsochFrames-1
+	int frameIndex = 0;
+	
+	int droppedTransactions = 0;
+	int framesReceived = 0;
+	int badXfers = 0;
+	int zeros = 0;
+	int gaps = 0;
+	int waiting = 0;
+	int gotNext = 0;
+	bool printThis = false;
+	bool lost = true;
+	bool advance = false;
+
+	int state = getDeviceState();
+	switch(state)
+	{
+		case kNoDevice:
+			//usleep(100*1000);
+			// look for info from grab thread
+			break;
+			
+		case kDeviceConnected:
+		{
+			// initialize: find latest scheduled transaction
+			UInt64 maxTransactionStartFrame = 0;
+			int maxIdx = -1;
+			for(int j=0; j < kSoundplaneABuffers; ++j)
+			{
+				K1IsocTransaction* t = getTransactionData(0, j);
+				UInt64 frame = t->busFrameNumber;
+				if(frame > maxTransactionStartFrame)
+				{
+					maxIdx = j;
+					maxTransactionStartFrame = frame;
+				}
+			}
+			
+			// found at least one scheduled transaction: read backwards through all transactions
+			// to get most recent complete frame.
+			if (maxIdx >= 0)
+			{
+				int seq0, seq1;
+				seq0 = seq1 = 0;
+				lost = true;
+				
+				for(bufferIndex=maxIdx; (bufferIndex >= 0) && lost; bufferIndex--)
+				{
+					for(frameIndex=kSoundplaneANumIsochFrames - 1; (frameIndex >= 0) && lost; frameIndex--)
+					{
+						int l0 = getSequenceNumber(0, bufferIndex, frameIndex);
+						int l1 = getSequenceNumber(1, bufferIndex, frameIndex);
+						
+						if (l0)
+							seq0 = l0;
+						if (l1)
+							seq1 = l1;
+						if (seq0 && seq1)
+						{
+							bufferIndex++;
+							frameIndex++;
+							curSeqNum0 = maxSeqNum0 = seq0;
+							curSeqNum1 = maxSeqNum1 = seq1;
+							currentCompleteSequence = std::min(curSeqNum0, curSeqNum1);
+							
+							// finally, we have sync.
+							//
+							Carriers carriers;
+							std::copy(kDefaultCarriers, kDefaultCarriers + sizeof(kDefaultCarriers), carriers.begin());
+							setCarriers(carriers);
+							setDeviceState(kDeviceHasIsochSync);
+							lost = false;
+						}
+					}
+				}
+				
+				if (!lost)
+				{
+					printf("connecting at sequence numbers: %d / %d\n", curSeqNum0, curSeqNum1);
+				}
+			}
+			// usleep(100*1000);
+			break;
+		}
+		
+		case kDeviceHasIsochSync:
+		{
+			// look ahead by 1 frame to see if data was received for either surface of next frame
+			//
+			int lookahead = 1;
+			nextBytes0 = getTransferBytesReceived(0, bufferIndex, frameIndex, lookahead);
+			nextBytes1 = getTransferBytesReceived(1, bufferIndex, frameIndex, lookahead);
+			
+			// does next frame contain something ?
+			// if so, we know this frame is done.
+			// checking curBytes for this frame is not enough,
+			// because it seems current count may be filled in
+			// before payload.
+			advance = (nextBytes0 || nextBytes1);
+			
+			if (advance)
+			{
+				waiting = 0;
+				gotNext++;
+				
+				// see what data was received for current frame.  The Soundplane A always returns
+				// either a full packet of 386 bytes, or 0.
+				//
+				curBytes0 = getTransferBytesReceived(0, bufferIndex, frameIndex);
+				curBytes1 = getTransferBytesReceived(1, bufferIndex, frameIndex);
+				
+				// get sequence numbers from current frame
+				if (curBytes0)
+				{
+					curSeqNum0 = getSequenceNumber(0, bufferIndex, frameIndex);
+					maxSeqNum0 = curSeqNum0;
+				}
+				if (curBytes1)
+				{
+					curSeqNum1 = getSequenceNumber(1, bufferIndex, frameIndex);
+					maxSeqNum1 = curSeqNum1;
+				}
+				// get newest sequence number for which we have all surfaces
+				if (maxSeqNum0 && maxSeqNum1) // look for next in sequence
+				{
+					newestCompleteSequence = std::min(maxSeqNum0, maxSeqNum1);
+				}
+				else // handle zero wrap
+				{
+					newestCompleteSequence = std::max(maxSeqNum0, maxSeqNum1);
+				}
+				
+				// if this is different from the most recent sequence sent,
+				// send new sequence to buffer.
+				if (newestCompleteSequence != currentCompleteSequence)
+				{
+					// look for gaps
+					int sequenceWanted = ((int)currentCompleteSequence + 1)&0x0000FFFF;
+					if (newestCompleteSequence != sequenceWanted)
+					{
+						reportDeviceError(kDevGapInSequence, currentCompleteSequence, newestCompleteSequence, 0., 0.);
+						printThis = true;
+						gaps++;
+						
+						// TODO try to recover if too many gaps near each other
+					}
+					
+					currentCompleteSequence = newestCompleteSequence;
+					
+					// scan backwards in buffers from current position to get payloads matching currentCompleteSequence
+					// TODO save indices
+					//
+					pPayload0 = pPayload1 = 0;
+					int b = bufferIndex;
+					int f = frameIndex;
+					for(int k = 0; k > -kSoundplaneABuffers * kSoundplaneANumIsochFrames; k--)
+					{
+						int seq0 = getSequenceNumber(0, b, f, k);
+						if (seq0 == currentCompleteSequence)
+						{
+							pPayload0 = getPayloadPtr(0, b, f, k);
+						}
+						int seq1 = getSequenceNumber(1, b, f, k);
+						if (seq1 == currentCompleteSequence)
+						{
+							pPayload1 = getPayloadPtr(1, b, f, k);
+						}
+						if (pPayload0 && pPayload1)
+						{
+							// printf("[%d] \n", currentCompleteSequence);
+							framesReceived++;
+							break;
+						}
+					}
+					
+					if (pPayload0 && pPayload1)
+					{
+						K1_unpack_float2(pPayload0, pPayload1, pWorkingFrame);
+						K1_clear_edges(pWorkingFrame);
+						if(startupCtr > kSoundplaneStartupFrames)
+						{
+							float df = frameDiff(pPrevFrame, pWorkingFrame);
+							if (df < kMaxFrameDiff)
+							{
+								// we are OK, the data gets out normally
+								reclockFrameToBuffer(pWorkingFrame);
+							}
+							else
+							{
+								// possible sensor glitch.  also occurs when changing carriers.
+								reportDeviceError(kDevDataDiffTooLarge, startupCtr, 0, df, 0.);
+								startupCtr = 0;
+							}
+						}
+						else
+						{
+							// wait for initialization
+							startupCtr++;
+						}
+						
+						std::copy(pWorkingFrame.begin(), pWorkingFrame.end(), pPrevFrame.begin());
+					}
+				}
+				
+				// increment current frame / buffer position
+				if (++frameIndex >= kSoundplaneANumIsochFrames)
+				{
+					frameIndex = 0;
+					bufferIndex++;
+					bufferIndex &= kSoundplaneABuffersMask;
+				}
+			}
+			else
+			{
+				waiting++;
+				// NOT WORKING
+				if (waiting > 1000) // delay amount? -- try reconnect
+				{
+					printf("RESYNCHING\n");
+					waiting = 0;
+					setDeviceState(kNoDevice);
+				}
+			}
+			
+			if (printThis)
+			{
+				if (dev)
+				{
+					//			AbsoluteTime atTime;
+					//			UInt64 bf;
+					//			OSErr err = (*dev)->GetBusFrameNumber(dev, &bf, &atTime);
+					//			k1->dumpTransactions(bufferIndex, frameIndex);
+					
+					printf("current seq num: %d / %d\n", curSeqNum0, curSeqNum1);
+					//			printf("now: %u:%u\n", (int)atTime.hi, (int)atTime.lo);
+					printf("process: gaps %d, dropped %d, gotNext %d \n", gaps, droppedTransactions, gotNext);
+					printf("process: good frames %d, bad xfers %d \n", framesReceived, badXfers);
+					printf("process: current sequence: [%d, %d] \n", maxSeqNum0, maxSeqNum1);
+					printf("process: transactions in flight: %d\n", mTransactionsInFlight);
+					
+					droppedTransactions = 0;
+					framesReceived = 0;
+					badXfers = 0;
+					zeros = 0;
+					gaps = 0;
+					gotNext = 0;
+				}
+				printThis = false;
+			}
+			
+			// wait .5 ms
+			// sleep(500);
+		}
+		break;
+			
+	}
+
 }
 
 
@@ -1413,30 +1636,30 @@ void MacSoundplaneDriver::processThread()
 // write frame to buffer, reconstructing a constant clock from the data.
 // this may involve interpolating frames.
 //
-void MacSoundplaneDriver::reclockFrameToBuffer(const SoundplaneOutputFrame& frame)
+void MacSoundplaneDriver::reclockFrameToBuffer(const SensorFrame& frame)
 {
 	// currently, clock is ignored and we simply ship out data as quickly as possible.
 	// TODO timestamps that will allow reconstituting the data with lower jitter.
+	
 	mListener->receivedFrame(*this, frame.data(), frame.size());
+	
 }
 
 void MacSoundplaneDriver::setDeviceState(MLSoundplaneState n)
 {
 	std::cout << "device state: " << n << "\n";  // MLTEST
 	mState.store(n, std::memory_order_release);
+	
+	
 	mListener->deviceStateChanged(*this, n);
+	
+	
 }
 
 void MacSoundplaneDriver::reportDeviceError(int errCode, int d1, int d2, float df1, float df2)
 {
 	mListener->handleDeviceError(errCode, d1, d2, df1, df2);
 }
-
-void MacSoundplaneDriver::dumpDeviceData(float* pData, int size)
-{
-	mListener->handleDeviceDataDump(pData, size);
-}
-
 
 // -------------------------------------------------------------------------------
 #pragma mark transfer utilities

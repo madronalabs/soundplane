@@ -47,15 +47,13 @@ const uint16_t kSoundplaneUSBVendor = 0x0451;
 const uint16_t kSoundplaneUSBProduct = 0x5100;
 const int kSoundplaneASampleRate = 125000;
 const int kSoundplaneAFFTSize = 128;
+
 const int kSoundplaneANumCarriers = 32;
 const int kSoundplaneAPickupsPerBoard = 8;
 
 const int kSoundplaneNumCarriers = 32;
 const int kSoundplanePossibleCarriers = 64;
 const float kMaxFrameDiff = 8.0f;
-
-static constexpr int kSoundplaneOutputFrameLength = SensorGeometry::width * SensorGeometry::height;
-using SoundplaneOutputFrame = std::array<float, kSoundplaneOutputFrameLength>;
 
 // Soundplane A USB firmware
 const int kSoundplaneANumEndpoints = 2;
@@ -113,9 +111,9 @@ typedef enum
   kDevGapInSequence = 2
 } MLSoundplaneErrorType;
 
-void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, SoundplaneOutputFrame& dest);
-void K1_clear_edges(SoundplaneOutputFrame& dest);
-float frameDiff(const SoundplaneOutputFrame& p0, const SoundplaneOutputFrame& p1);
+void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, SensorFrame& dest);
+void K1_clear_edges(SensorFrame& dest);
+float frameDiff(const SensorFrame& p0, const SensorFrame& p1);
 void dumpFrame(float* frame);
 
 #endif // __SOUNDPLANE_MODEL_A__
