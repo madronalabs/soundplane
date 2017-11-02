@@ -4,7 +4,7 @@
 
 #include "InertSoundplaneDriver.h"
 
-MLSoundplaneState InertSoundplaneDriver::getDeviceState() const
+int InertSoundplaneDriver::getDeviceState() const
 {
 	return kNoDevice;
 }

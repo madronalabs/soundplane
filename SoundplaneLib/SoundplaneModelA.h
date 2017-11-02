@@ -6,7 +6,7 @@
 #define __SOUNDPLANE_MODEL_A__
 
 #include <array>
-#include "SensorGeometry.h"
+#include "SensorFrame.h"
 
 // Soundplane data format:
 // The Soundplane Model A sends frames of data over USB using an isochronous interface with two endpoints.
@@ -101,15 +101,6 @@ typedef enum
   kRequestCarriersIndex = 0,
   kRequestMaskIndex = 1
 } MLSoundplaneUSBRequestIndex;
-
-// device states
-//
-typedef enum
-{
-  kDevNoErr = 0,
-  kDevDataDiffTooLarge = 1,
-  kDevGapInSequence = 2
-} MLSoundplaneErrorType;
 
 void K1_unpack_float2(unsigned char *pSrc0, unsigned char *pSrc1, SensorFrame& dest);
 void K1_clear_edges(SensorFrame& dest);

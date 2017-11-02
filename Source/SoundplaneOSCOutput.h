@@ -15,7 +15,6 @@
 #include "MLTime.h"
 #include "SoundplaneDataListener.h"
 #include "SoundplaneModelA.h"
-//#include "TouchTracker.h"
 #include "JuceHeader.h"
 
 #include "OscOutboundPacketStream.h"
@@ -30,7 +29,7 @@ const int kDefaultUDPPort = 3123;
 const int kNumUDPPorts = 16;
 
 // Soundplane app input port for Kyma and other config messages
-const int kDefaultUDPReceivePort = 3124; // 3122?
+const int kDefaultUDPReceivePort = 3122; 
 
 const int kUDPOutputBufferSize = 4096;
 
@@ -73,7 +72,7 @@ public:
 	void setSerialNumber(int s) { mSerialNumber = s; }
 	void notify(int connected);
 	
-	void doInfrequentTasks();
+	void doInfrequentTasks() { mDoInfrequentTasks.set(); }
 
 private:	
 	
@@ -83,8 +82,12 @@ private:
 	void initializeSocket(int port);
 	osc::OutboundPacketStream* getPacketStreamForOffset(int offset);
 	UdpTransmitSocket* getTransmitSocketForOffset(int portOffset);
+	
 	void sendFrame();
 	void sendFrameToKyma();
+	void sendInfrequentData();
+	void sendInfrequentDataToKyma();
+	void sendMatrix(const SoundplaneDataMessage* msg);
 
 	int mMaxTouches;	
 	
@@ -102,7 +105,31 @@ private:
 	std::vector< std::vector < char > > mUDPBuffers;
 	std::vector< std::unique_ptr< osc::OutboundPacketStream > > mUDPPacketStreams;
 	std::vector< std::unique_ptr< UdpTransmitSocket > > mUDPSockets;
-
+	
+	// TODO: this would be a great place to use a compare and swap 
+	class ThreadSafeFlag
+	{
+	public:
+		ThreadSafeFlag(){}
+		~ThreadSafeFlag(){}
+		void set()
+		{
+			std::lock_guard<std::mutex> lock(mMutex);
+			mFlag = true;
+		}
+		inline bool wasSet()
+		{
+			std::lock_guard<std::mutex> lock(mMutex);
+			bool r = mFlag;
+			mFlag = false;
+			return r;
+		}
+	private:
+		bool mFlag;
+		std::mutex mMutex;
+	};
+	
+	ThreadSafeFlag mDoInfrequentTasks;
 	
 	int mCurrentBaseUDPPort;
 	osc::int32 mFrameId;

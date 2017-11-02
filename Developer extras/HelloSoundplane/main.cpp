@@ -13,87 +13,116 @@
 
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
-#include "MLSignal.h"
-
-namespace
-{
-
-class HelloSoundplaneDriverListener : public SoundplaneDriverListener
-{
-public:
-	HelloSoundplaneDriverListener()	:
-		mSurface(SensorGeometry::width, SensorGeometry::height),
-		mCalibration(SensorGeometry::width, SensorGeometry::height) {}
-
-	virtual void deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneState s) override
-	{
-		std::cout << "Device state changed: " << s << std::endl;
-	}
-
-	virtual void receivedFrame(SoundplaneDriver& driver, const float* data, int size) override
-	{
-		if (!mHasCalibration)
-		{
-			memcpy(mCalibration.getBuffer(), data, sizeof(float) * size);
-			mHasCalibration = true;
-		}
-		else if (mFrameCounter == 0)
-		{
-			memcpy(mSurface.getBuffer(), data, sizeof(float) * size);
-			
-			// TODO even simple calibration should be dividing by rest value!
-			mSurface.subtract(mCalibration);
-			mSurface.scale(100.f);
-			mSurface.flipVertical();
-
-			std::cout << "\n";
-			mSurface.dumpASCII(std::cout);
-			mSurface.dump(std::cout);
-		}
-
-		mFrameCounter = (mFrameCounter + 1) % 1000;
-	}
-
-private:
-	int mFrameCounter = 0;
-	bool mHasCalibration = false;
-	MLSignal mSurface;
-	MLSignal mCalibration;
-};
-
-}
 
 int main(int argc, const char * argv[])
-{
-	HelloSoundplaneDriverListener listener;
-	const auto driver = SoundplaneDriver::create(&listener);
-
-	std::cout << "Hello, Soundplane?\n";
-	std::cout << "Initial device state: " << driver->getDeviceState() << std::endl;
-
-	std::cout << sizeof(SoundplaneDriver::returnValue); 
+{	
+	SensorFrame frame;
+	SensorFrame calibrateSum, calibrateMean;
+	SensorFrame calibratedFrame;
+	int calibrateSamples = 0;
 	
-//	for (;;)
-	for(int i=0; i<5; ++i)
+	const auto driver = SoundplaneDriver::create();
+	const int kTestDuration = 8; // seconds
+
+	std::cout << "Hello, Soundplane!\n";
+	
+	int secondsSinceStart = 0;
+	int previousSecondsSinceStart = 0;
+	int frameCounter = 0;
+	int noFrameCounter = 0;
+	int gapCounter = 0;
+	bool calibrating = false;
+	std::chrono::time_point<std::chrono::system_clock> previous, now, start, calibrateStart;
+	start = previous = now = std::chrono::system_clock::now();
+	
+	// wait for connect, then calibrate
+	while(secondsSinceStart < kTestDuration)
 	{
-		sleep(1);
+		SoundplaneDriver::returnValue r = driver->process(&frame);
+		now = std::chrono::system_clock::now();
+		previousSecondsSinceStart = secondsSinceStart;
+		secondsSinceStart = std::chrono::duration_cast<std::chrono::seconds>(now - start).count();	
+
+		if(r.errorCode == kDevNoErr)
+		{
+			switch(r.deviceState)
+			{
+				case kNoDevice:
+					break;
+				case kDeviceConnected:
+					break;
+				case kDeviceHasIsochSync:
+					if(r.stateChanged)
+					{
+						// if we just changed state to isoch sync, begin calibration
+						calibrating = true;
+						calibrateSum = multiply(calibrateSum, 0.f);
+						calibrateSamples = 0.f;
+						calibrateStart = now;
+						std::cout << "calibrating, don't touch...\n";
+					}
+					else
+					{
+						if(calibrating)
+						{
+							// gather calibration
+							calibrateSum = add(calibrateSum, frame);
+							calibrateSamples++;
+							std::cout << ".";
+							
+							int secondsCalibrating = std::chrono::duration_cast<std::chrono::seconds>(now - calibrateStart).count();		
+							if(secondsCalibrating > 0)
+							{
+								// finish calibration
+								calibrating = false;
+								std::cout << "calibrate done.\n";
+								calibrateMean = divide(calibrateSum, calibrateSamples);
+							}
+						}
+						else
+						{
+							// every frame, just count frames
+							{
+								frameCounter++;
+							}
+						}
+					}
+					break;
+				case kDeviceIsTerminating:
+				default:
+					break;
+			}
+		}
+		else if(r.errorCode == kDevNoNewFrame)
+		{
+			noFrameCounter++;
+		}
+		else if(r.errorCode == kDevGapInSequence)
+		{
+			gapCounter++;
+		}
+						
+		// if synched, print calibrated pressure data every second 
+		if((r.deviceState == kDeviceHasIsochSync) && (previousSecondsSinceStart != secondsSinceStart))
+		{
+			std::cout << "seconds since start: " << secondsSinceStart << "   frames: " << frameCounter << 
+			"   no frames: " << noFrameCounter << "   gaps: " << gapCounter << "\n";
+			calibratedFrame = multiply(calibrate(frame, calibrateMean), 2.f);							
+			dumpFrameAsASCII(std::cout, calibratedFrame);
+			
+			std::cout << "\n";
+			frameCounter = noFrameCounter = gapCounter = 0;
+		}
 		
-		// ping the driver in order to let it know that we, its parent process, have not been killed
-		// or otherwise terminated. In the event of ungraceful termination of this main process, 
-		// the driver will not receive pings and therefore, shut itself down more gracefully.
-		// DERP
-		// this can't work for SIGKILL -- grab thread is in the same process, which is killed.
-		// driver->keepAlive();
-		
-		// TODO
-		
-		
-		// instead, change API so that driver does not create a process thread. owner must call process() repeatedly.
-		// This gives clients more flexibility.
-	
-		
-//		driver->process();
-		
+		// sleep, longer if not synched
+		if(r.deviceState == kDeviceHasIsochSync)
+		{
+			std::this_thread::sleep_for(std::chrono::microseconds(500));
+		}
+		else
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}		
 	}
 	
 	std::cout << "goodbye.\n";

@@ -20,11 +20,19 @@ class SoundplaneApp :
 {
 public:
     SoundplaneApp();
-    ~SoundplaneApp(){}
-
-    void initialise (const String& commandLine);
+	~SoundplaneApp();
 	
-    void shutdown();
+	// real init and shutdown should be done here, according to JUCE docs
+	void initialise (const String& commandLine);
+	void shutdown();
+	
+	/*
+	void systemRequestedQuit() override;
+	
+	void suspended() override {}
+	void resumed() override {}
+	void unhandledException(const std::exception*, const String&, int) override {}
+	*/
 	
     const String getApplicationName()
     {
@@ -43,9 +51,11 @@ private:
 	
 	void setDefaultWindowSize();
 	
-	SoundplaneModel* mpModel;
+	// using raw ptrs because we need to control destruction order 
+	SoundplaneModel* mpModel;	
 	SoundplaneView* mpView;
 	SoundplaneController* mpController;	
+	
 	std::unique_ptr<MLAppState> mpModelState;
 	std::unique_ptr<MLAppState> mpViewState;
 	std::unique_ptr<MLAppWindow> mpWindow;

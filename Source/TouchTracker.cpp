@@ -50,138 +50,6 @@ inline float cityBlockDistanceXYZ(Touch a, Touch b, float zScale)
 	return fabs(a.x - b.x) + fabs(a.y - b.y) + zScale*fabs(a.z - b.z);
 }
 
-// SensorFrame utilities
-
-SensorFrame add(const SensorFrame& a, const SensorFrame& b)
-{
-	SensorFrame out;
-	for(int i=0; i<SensorGeometry::elements; ++i)
-	{
-		out[i] = a[i] + b[i];
-	}
-	return out;
-}
-
-SensorFrame multiply(const SensorFrame& a, const SensorFrame& b)
-{
-	SensorFrame out;
-	for(int i=0; i<SensorGeometry::elements; ++i)
-	{
-		out[i] = a[i]*b[i];
-	}
-	return out;
-}
-
-SensorFrame scale(const SensorFrame& b, const float k)
-{
-	SensorFrame out;
-	for(int i=0; i<SensorGeometry::elements; ++i)
-	{
-		out[i] = b[i]*k;
-	}
-	return out;
-}
-
-SensorFrame max(const SensorFrame& b, const float k)
-{
-	SensorFrame out;
-	for(int i=0; i<SensorGeometry::elements; ++i)
-	{
-		out[i] = std::max(b[i], k);
-	}
-	return out;
-}
-
-SensorFrame sqrt(const SensorFrame& b)
-{
-	SensorFrame out;
-	for(int i=0; i<SensorGeometry::elements; ++i)
-	{
-		out[i] = sqrt(b[i]);
-	}
-	return out;
-}
-
-SensorFrame getCurvatureX(const SensorFrame& in)
-{
-	SensorFrame out;
-	
-	// rows
-	for(int j=0; j<SensorGeometry::height; ++j)
-	{
-		float z = 0.f;
-		float zm1 = 0.f;
-		float dz = 0.f;
-		float dzm1 = 0.f;
-		float ddz = 0.f;
-		
-		for(int i=0; i <= SensorGeometry::width; ++i)
-		{
-			if(within(i, 0, SensorGeometry::width))
-			{
-				z = in[j*SensorGeometry::width + i];
-			}
-			else
-			{
-				z = 0.f;
-			}
-			dz = z - zm1;
-			ddz = dz - dzm1;					
-			zm1 = z;
-			dzm1 = dz;
-			
-			if(i >= 1)
-			{
-				out[(j)*SensorGeometry::width + i - 1] = std::max(-ddz, 0.f);
-			}
-		}
-	}	
-	
-	return out;
-}
-
-SensorFrame getCurvatureY(const SensorFrame& in)
-{
-	SensorFrame out;
-	
-	// cols
-	for(int i=0; i<SensorGeometry::width; ++i)
-	{
-		float z = 0.f;
-		float zm1 = 0.f;
-		float dz = 0.f;
-		float dzm1 = 0.f;
-		float ddz = 0.f;
-		for(int j=0; j <= SensorGeometry::height; ++j)
-		{
-			if(within(j, 0, SensorGeometry::height))
-			{
-				z = in[j*SensorGeometry::width + i];
-			}
-			else
-			{
-				z = 0.f;
-			}
-			
-			dz = z - zm1;
-			ddz = dz - dzm1;					
-			zm1 = z;
-			dzm1 = dz;
-			if(j >= 1)
-			{
-				out[(j - 1)*SensorGeometry::width + i] = std::max(-ddz, 0.f);
-			}
-		}
-	}
-	
-	return out;
-}
-
-SensorFrame getCurvatureXY(const SensorFrame& in)
-{
-	return sqrt(multiply(getCurvatureX(in), getCurvatureY(in)));
-} 
-
 // TouchTracker
 
 TouchTracker::TouchTracker() :
@@ -325,16 +193,16 @@ SensorFrame smoothPressureY(const SensorFrame& in)
 	return out;
 }
 
-void TouchTracker::process(const SensorFrame* pIn, int maxTouches, TouchArray* pOut, SensorFrame* pCurvatureOut)
+void TouchTracker::process(const SensorFrame& in, int maxTouches, TouchArray* pOut, SensorFrame* pCurvatureOut)
 {	
-	if (!pIn || !pOut) return;
+	if (!pCurvatureOut || !pOut) return;
 	
 	setMaxTouches(maxTouches);
 	
 	// fixed IIR filter input
 	float k = 0.25f;
-	mInput = scale(*pIn, k);	
-	mInputZ1 = scale(mInputZ1, 1.0 - k);
+	mInput = multiply(in, k);	
+	mInputZ1 = multiply(mInputZ1, 1.0 - k);
 	mInput = add(mInput, mInputZ1);
 	mInputZ1 = mInput;
 
@@ -349,7 +217,7 @@ void TouchTracker::process(const SensorFrame* pIn, int maxTouches, TouchArray* p
 	// can make up for this later, with this filtering still intact.				
 	mInput = smoothPressureX(smoothPressureX(smoothPressureX(smoothPressureX(mInput))));	
 	mInput = smoothPressureY(smoothPressureY(smoothPressureY(mInput)));
-	mInput = getCurvatureXY(scale(mInput, 1.f/64.f));
+	mInput = getCurvatureXY(multiply(mInput, 1.f/64.f));
 
 	if(mMaxTouchesPerFrame > 0)
 	{

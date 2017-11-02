@@ -38,7 +38,6 @@ typedef enum
 } TouchSignalColumns;
 
 class SoundplaneModel :
-	public SoundplaneDriverListener,
 	public MLOSCListener,
 	public MLNetServiceHub,
 	public MLModel
@@ -47,36 +46,36 @@ public:
 
 	SoundplaneModel();
 	~SoundplaneModel();
-
+	
 	// MLModel
     void doPropertyChangeAction(MLSymbol , const MLProperty & ) override;
 
 	void setAllPropertiesToDefaults();
-
-	// SoundplaneDriverListener
-	virtual void deviceStateChanged(SoundplaneDriver& driver, MLSoundplaneState s) override;
-	virtual void receivedFrame(SoundplaneDriver& driver, const float* data, int size) override;
-	virtual void handleDeviceError(int errorType, int data1, int data2, float fd1, float fd2) override;
+	
+	// start a thread to run process() in a loop. This is needed for platforms on which we can't just
+	// run our own main event loop.
+	void startProcessThread();
+	
+	
+	SoundplaneDriver::returnValue process();
 
 	// MLOSCListener
 	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint) override;
 	void ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint) override;
 
 	// MLNetServiceHub
-	void didResolveAddress(NetService *pNetService);
+	void didResolveAddress(NetService *pNetService) override;
 
 	// OSC services
 	void refreshServices();
 	const std::vector<std::string>& getServicesList();
 	void formatServiceName(const std::string& inName, std::string& outName);
 
-
 	MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
 
 	void testCallback();
 	void processCallback();
 
-	
 	float getSampleHistory(int x, int y);
 
 	void getHistoryStats(float& mean, float& stdDev);
@@ -121,7 +120,6 @@ public:
 	
 	const MLSignal& getTouchFrame() { return mTouchFrame; }
 	const MLSignal& getTouchHistory() { return mTouchHistory; }
-	
 	const MLSignal getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
 	const MLSignal getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex); return mCalibratedSignal; }
 	const MLSignal getSmoothedSignal() { std::lock_guard<std::mutex> lock(mSmoothedSignalMutex); return mSmoothedSignal; }
@@ -147,14 +145,12 @@ public:
 private:
 
 	// TODO order!
-	void trackTouches();
+	void trackTouches(const SensorFrame& frame);
 	void initialize();
 	void clearTouchData();
 	void scaleTouchPressureData();
 	void sendTouchDataToZones();
 	void sendMessageToListeners();
-
-	void setTesting(bool testing);
 
 	void addListener(SoundplaneDataListener* pL) { mListeners.push_back(pL); }
 	SoundplaneListenerList mListeners;
@@ -192,14 +188,11 @@ private:
 
 	SensorFrame mSensorFrame;
 	MLSignal mSurface; 
-	MLSignal mCalibrateData;
 
-	
 	int	mMaxTouches;
 	TouchTracker::TouchArray mTouchArray; 
 	MLSignal mTouchFrame;
-	MLSignal mTouchHistory;
-	
+	MLSignal mTouchHistory;	
 
 	bool mTesting;
 	bool mCalibrating;
@@ -213,11 +206,10 @@ private:
 	SoundplaneDriver::Carriers mCarriers;
 
 	bool mHasCalibration;
-	MLSignal mCalibrateSum;
-	MLSignal mCalibrateMean;
-	MLSignal mCalibrateMeanInv;
-	MLSignal mCalibrateStdDev;
 
+	SensorFrameStats mStats;
+	SensorFrame mCalibrateMeanInv;
+	
 	MLSignal mRawSignal;
 	std::mutex mRawSignalMutex;
 	
@@ -228,7 +220,6 @@ private:
 	MLSignal mSmoothedSignal;
 	std::mutex mSmoothedSignalMutex;
 
-	int mCalibrateCount; // samples in one calibrate step
 	int mCalibrateStep; // calibrate step from 0 - end
 	int mTotalCalibrateSteps;
 	int mSelectCarriersStep;
@@ -260,7 +251,6 @@ private:
 	bool mDoOverrideCarriers;
 	SoundplaneDriver::Carriers mOverrideCarriers;
 	
-	
 	int mTest;
 
 	std::vector<float> mMaxNoiseByCarrierSet;
@@ -275,10 +265,13 @@ private:
 	// OSC services
 	std::vector<std::string> mServiceNames;
 	
-	void taskThread();
-	std::thread					mTaskThread;
+	void infrequentTaskThread();
+	std::thread					mInfrequentTaskThread;
+	
+	void processThread();
+	std::thread					mProcessThread;
+	
 	int mShuttingDown;
-
 };
 
 // JSON utilities (to go where?)

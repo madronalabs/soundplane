@@ -14,7 +14,7 @@
 #include <bitset>
 #include <algorithm>
 
-#include "SensorGeometry.h"
+#include "SensorFrame.h"
 
 class TouchTracker
 {
@@ -45,7 +45,7 @@ public:
 	void setLopassZ(float k); 	
 	
 	// process input and get touches. creates one frame of touch data in buffer.
-	void process(const SensorFrame* pIn, int maxTouches, TouchArray* pOut, SensorFrame* pTest);
+	void process(const SensorFrame& in, int maxTouches, TouchArray* pOut, SensorFrame* pTest);
 	
 private:
 

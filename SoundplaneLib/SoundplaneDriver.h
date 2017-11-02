@@ -22,61 +22,31 @@ typedef enum
   kDeviceIsTerminating = 3,  // The driver is shutting down
   kDeviceSuspend = 4,  // Seems to be unused (?)
   kDeviceResume = 5  // Seems to be unused (?)
-} MLSoundplaneState;
-
-class SoundplaneDriver;
-
-class SoundplaneDriverListener
-{
-public:
-	SoundplaneDriverListener() {}
-	virtual ~SoundplaneDriverListener() {}
-
-	/**
-	 * This callback may be invoked from an arbitrary thread, even from an
-	 * interrupt context, so be careful! However, when s is
-	 * kDeviceIsTerminating, the callback is never invoked from an interrupt
-	 * context, so in that particular case it is safe to block.
-	 *
-	 * For each state change, there will be exactly one deviceStateChanged
-	 * invocation. However, these calls may arrive simultaneously or out of
-	 * order, so be careful!
-	 *
-	 * Please note that by the time the callback is invoked with a given state
-	 * s, the SoundplaneDriver might already have moved to another state, so
-	 * it might be that s != driver->getDeviceState().
-	 */
-	virtual void deviceStateChanged(SoundplaneDriver &driver, MLSoundplaneState s) {}
-
-	/**
-	 * Invoked whenever the SoundplaneDriver receives a frame of data from the
-	 * Soundplane. This is invoked on a processing thread of the driver, always
-	 * from the same thread.
-	 */
-	virtual void receivedFrame(SoundplaneDriver &driver, const float* data, int size) {}
-
-	/**
-	 * This callback may be invoked from an arbitrary thread, but is never
-	 * invoked in an interrupt context.
-	 */
-	virtual void handleDeviceError(int errorType, int di1, int di2, float df1, float df2) {}
 };
 
-
+// device errors
+//
+typedef enum
+{
+	kDevNoErr = 0,
+	kDevNoNewFrame = 1,
+	kDevDataDiffTooLarge = 2,
+	kDevGapInSequence = 3
+};
 
 class SoundplaneDriver
 {
 public:
 	virtual ~SoundplaneDriver() = default;
 
-	virtual MLSoundplaneState getDeviceState() const = 0;
+	virtual int getDeviceState() const = 0;
 		
 	// device state is now returned from process() along with any error codes.
 	typedef struct 
 	{
 		uint8_t deviceState;
 		uint8_t errorCode;
-		uint8_t unused1;
+		uint8_t stateChanged;
 		uint8_t unused2;
 	}
 	returnValue;
@@ -126,10 +96,8 @@ public:
 	/**
 	 * Create a SoundplaneDriver object that is appropriate for the current
 	 * platform.
-	 *
-	 * listener may be nullptr.
 	 */
-	static std::unique_ptr<SoundplaneDriver> create(SoundplaneDriverListener *listener);
+	static std::unique_ptr<SoundplaneDriver> create();
 
 	static float carrierToFrequency(int carrier);
 };

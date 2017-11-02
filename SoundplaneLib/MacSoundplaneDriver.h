@@ -24,14 +24,11 @@
 class MacSoundplaneDriver : public SoundplaneDriver
 {
 public:
-	MacSoundplaneDriver(SoundplaneDriverListener* listener);
+	MacSoundplaneDriver();
 	~MacSoundplaneDriver();
 
-	void init();
-	
 	virtual SoundplaneDriver::returnValue process(SensorFrame* pOut) override;
 
-	virtual MLSoundplaneState getDeviceState() const override;
 	virtual uint16_t getFirmwareVersion() const override;
 	virtual std::string getSerialNumberString() const override;
 
@@ -59,6 +56,17 @@ private:
 	int createLowLatencyBuffers();
 	int destroyLowLatencyBuffers();
 	
+	virtual int getDeviceState() const override
+	{
+		return mState;
+	}	
+
+	inline void setDeviceState(int n)
+	{
+		std::lock_guard<std::mutex> lock(mDeviceStateLock);
+		mState = n;
+	}
+
 	IOReturn scheduleIsoch(K1IsocTransaction *t);
 	static void isochComplete(void *refCon, IOReturn result, void *arg0);
 
@@ -70,16 +78,11 @@ private:
 	unsigned char* getPayloadPtr(int endpoint, int buf, int frame, int offset = 0);
 
 	IOReturn setBusFrameNumber();
-	void removeDevice();
 	static void deviceAdded(void *refCon, io_iterator_t iterator);
 	static void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
 
 	void grabThread();
-	void processThread();
-
-	void reclockFrameToBuffer(const SensorFrame& frame);
-	void setDeviceState(MLSoundplaneState n);
-	void reportDeviceError(int errCode, int d1, int d2, float df1, float df2);
+	void destroyDevice();
 
 	static int getStringDescriptor(IOUSBDeviceInterface187 **dev, uint8_t descIndex, char *destBuf, uint16_t maxLen, uint16_t lang);
 	void dumpTransactions(int bufferIndex, int frameIndex);
@@ -89,7 +92,6 @@ private:
 	int startupCtr;
 
 	std::thread					mGrabThread;
-	std::thread					mProcessThread;
 
 	IONotificationPortRef		notifyPort;
 	io_iterator_t				matchedIter;
@@ -102,11 +104,52 @@ private:
 	K1IsocTransaction			transactionData[kSoundplaneANumEndpoints * kSoundplaneABuffers];
 	uint8_t						payloadIndex[kSoundplaneANumEndpoints];
 
-	std::atomic<MLSoundplaneState> mState;
+	int mState;
+	std::mutex mDeviceStateLock;
+	
 	unsigned char mCurrentCarriers[kSoundplaneNumCarriers];
-
+	
+	// TODO refactor duplicate signal code here
+	
+	// used by grab thread to signal presence of a new device
+	bool mDeviceFound;
+	std::mutex mDeviceFoundLock;
+	
+	// TODO: this would be a great place to use a compare and swap
+	inline void setDeviceFound()
+	{
+		std::lock_guard<std::mutex> lock(mDeviceFoundLock);
+		mDeviceFound = true;
+	}
+	inline bool wasDeviceFound()
+	{
+		std::lock_guard<std::mutex> lock(mDeviceFoundLock);
+		bool r = mDeviceFound;
+		mDeviceFound = false;
+		return r;
+	}
+	
+	
+	// used to signal removal of a device
+	bool mDeviceRemoved;
+	std::mutex mDeviceRemovedLock;
+	
+	// TODO: this would be a great place to use a compare and swap
+	inline void setDeviceRemoved()
+	{
+		std::lock_guard<std::mutex> lock(mDeviceRemovedLock);
+		mDeviceRemoved = true;
+	}
+	inline bool wasDeviceRemoved()
+	{
+		std::lock_guard<std::mutex> lock(mDeviceRemovedLock);
+		bool r = mDeviceRemoved;
+		mDeviceRemoved = false;
+		return r;
+	}
+	
 	// mListener may be nullptr
-	SoundplaneDriverListener* const mListener;
+//	SoundplaneDriverListener* const mListener;
 };
 
 #endif // __MAC_SOUNDPLANE_DRIVER__

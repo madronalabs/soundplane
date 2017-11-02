@@ -154,51 +154,6 @@ void SoundplaneOSCOutput::setActive(bool v)
 	mFrameId = 0;
 }
 
-void SoundplaneOSCOutput::doInfrequentTasks()
-{
-	
-	return; // MLTEST
-	
-	if(mKymaMode)
-	{
-		osc::OutboundPacketStream* p = getPacketStreamForOffset(0);
-		UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
-		if((!p) || (!socket)) return;
-		
-		// tell the Kyma that we want to receive info on our listening port
-		*p << osc::BeginBundleImmediate;
-		*p << osc::BeginMessage( "/osc/respond_to" );	
-		*p << (osc::int32)kDefaultUDPReceivePort;
-		*p << osc::EndMessage;
-		
-		// tell Kyma we are a Soundplane
-		*p << osc::BeginMessage( "/osc/notify/midi/Soundplane" );	
-		*p << (osc::int32)1;
-		*p << osc::EndMessage;
-		*p << osc::EndBundle;
-		socket->Send( p->Data(), p->Size() );
-	}
-	else
-	{
-		// for each initialized socket, send data rate
-		for(int portOffset = 0; portOffset < kNumUDPPorts; portOffset++)
-		{
-			osc::OutboundPacketStream* p = getPacketStreamForOffset(portOffset);
-			UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
-			if((!p) || (!socket)) return;
-			
-			// send data rate to receiver
-			*p << osc::BeginBundleImmediate;
-			*p << osc::BeginMessage( "/t3d/dr" );	
-			*p << (osc::int32)mDataFreq;
-			*p << osc::EndMessage;
-			*p << osc::EndBundle;
-			socket->Send( p->Data(), p->Size() );
-		}
-	}
-}
-
-
 osc::OutboundPacketStream* SoundplaneOSCOutput::getPacketStreamForOffset(int portOffset)
 {
 	osc::OutboundPacketStream* p = mUDPPacketStreams[portOffset].get();
@@ -218,7 +173,6 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
 {
 	std::lock_guard<std::mutex> lock(mProcessMutex);
 	
-
 	// note: remove statics TODO
 	static const MLSymbol startFrameSym("start_frame");
     static const MLSymbol touchSym("touch");
@@ -235,7 +189,6 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
     static const MLSymbol matrixSym("matrix");
     static const MLSymbol nullSym;
 	
-   
 	if (!mActive) return;
     MLSymbol type = msg->mType;
     MLSymbol subtype = msg->mSubtype;
@@ -342,10 +295,18 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
 			if(mKymaMode)
 			{
 				sendFrameToKyma();
+				if(mDoInfrequentTasks.wasSet())
+				{
+					sendInfrequentDataToKyma();
+				}
 			}
 			else
 			{
 				sendFrame();
+				if(mDoInfrequentTasks.wasSet())
+				{
+					sendInfrequentData();
+				}
 			}
 		}
 		
@@ -353,15 +314,7 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
 		// matrix is always sent to the default port. 
 		if(mGotMatrixThisFrame)
 		{
-			osc::OutboundPacketStream* p = getPacketStreamForOffset(0);					 
-			UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
-			if((!p) || (!socket)) return;
-
-			*p << osc::BeginMessage( "/t3d/matrix" );
-			*p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
-			*p << osc::EndMessage;
-			mGotMatrixThisFrame = false;
-			socket->Send( p->Data(), p->Size() );
+			sendMatrix(msg);
 		}
     }
 }
@@ -460,12 +413,6 @@ void SoundplaneOSCOutput::sendFrame()
 			*p << osc::BeginMessage( address.c_str() );
 			*p << v.x << v.y << v.z << v.note;
 			
-			// MLTEST
-			if(!p->IsMessageInProgress())
-			{
-				std::cout << "hey";
-			}
-			
 			*p << osc::EndMessage;						
 		}
 		
@@ -512,5 +459,54 @@ void SoundplaneOSCOutput::sendFrameToKyma()
 	socket->Send( p->Data(), p->Size() );
 }
 
+void SoundplaneOSCOutput::sendInfrequentData()
+{
+	// for each initialized socket, send data rate
+	for(int portOffset = 0; portOffset < kNumUDPPorts; portOffset++)
+	{
+		osc::OutboundPacketStream* p = getPacketStreamForOffset(portOffset);
+		UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
+		if((!p) || (!socket)) return;
+		
+		// send data rate to receiver
+		*p << osc::BeginBundleImmediate;
+		*p << osc::BeginMessage( "/t3d/dr" );	
+		*p << (osc::int32)mDataFreq;
+		*p << osc::EndMessage;
+		*p << osc::EndBundle;
+		socket->Send( p->Data(), p->Size() );
+	}
+}
 
+void SoundplaneOSCOutput::sendInfrequentDataToKyma()
+{
+	osc::OutboundPacketStream* p = getPacketStreamForOffset(0);
+	UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
+	if((!p) || (!socket)) return;
 	
+	// tell the Kyma that we want to receive info on our listening port
+	*p << osc::BeginBundleImmediate;
+	*p << osc::BeginMessage( "/osc/respond_to" );	
+	*p << (osc::int32)kDefaultUDPReceivePort;
+	*p << osc::EndMessage;
+	
+	// tell Kyma we are a Soundplane
+	*p << osc::BeginMessage( "/osc/notify/midi/Soundplane" );	
+	*p << (osc::int32)1;
+	*p << osc::EndMessage;
+	*p << osc::EndBundle;
+	socket->Send( p->Data(), p->Size() );
+}
+
+void SoundplaneOSCOutput::sendMatrix(const SoundplaneDataMessage* msg)
+{
+	osc::OutboundPacketStream* p = getPacketStreamForOffset(0);					 
+	UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
+	if((!p) || (!socket)) return;
+
+	*p << osc::BeginMessage( "/t3d/matrix" );
+	*p << osc::Blob( &(msg->mMatrix), sizeof(msg->mMatrix) );
+	*p << osc::EndMessage;
+	mGotMatrixThisFrame = false;
+	socket->Send( p->Data(), p->Size() );	
+}
