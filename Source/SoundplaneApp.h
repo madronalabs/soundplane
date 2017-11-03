@@ -26,14 +26,6 @@ public:
 	void initialise (const String& commandLine);
 	void shutdown();
 	
-	/*
-	void systemRequestedQuit() override;
-	
-	void suspended() override {}
-	void resumed() override {}
-	void unhandledException(const std::exception*, const String&, int) override {}
-	*/
-	
     const String getApplicationName()
     {
 		return MLProjectInfo::projectName;
@@ -55,10 +47,11 @@ private:
 	SoundplaneModel* mpModel;	
 	SoundplaneView* mpView;
 	SoundplaneController* mpController;	
+	MLAppWindow* mpWindow;
 	
 	std::unique_ptr<MLAppState> mpModelState;
 	std::unique_ptr<MLAppState> mpViewState;
-	std::unique_ptr<MLAppWindow> mpWindow;
+
 };
 
 // This macro creates the application's main() function.

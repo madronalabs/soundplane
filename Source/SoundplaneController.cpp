@@ -13,12 +13,12 @@ SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
 	MLReporter()
 {
 	MLReporter::listenTo(mpSoundplaneModel);
-	
 	startTimer(250);
 }
 
 SoundplaneController::~SoundplaneController()
 {
+	stopTimer();
 	masterReference.clear();
 }
 	

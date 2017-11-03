@@ -27,7 +27,7 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpController->initialize();	
 	mpView->initialize();		// ?
 
-	mpWindow = std::unique_ptr<MLAppWindow>(new MLAppWindow());	
+	mpWindow = new MLAppWindow();	
 	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
 
 	// add view to window but retain ownership here
@@ -39,14 +39,15 @@ void SoundplaneApp::initialise (const String& commandLine)
 	// generate a persistent state for the application's view. 
 	mpViewState = std::unique_ptr<MLAppState>(new MLAppState(mpView, "View", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
 
-	MLConsole() << "Starting Soundplane...\n";
-
+	MLConsole() << "Starting Soundplane...\n";	
+	// separate thread needed for JUCE-based app
+	mpModel->startProcessThread();
+	
 	#if GLX
 	mpWindow->setUsingOpenGL(true);
 	#endif
 	mpWindow->setVisible(true);
 
-	// do setup first time or after trashed prefs, or if control is held down
 	if (!mpModelState->loadStateFromAppStateFile()) 
 	{
 		setDefaultWindowSize();
@@ -55,17 +56,16 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpController->fetchAllProperties();
 	mpView->goToPage(0);
 
-	if(mpViewState->loadStateFromAppStateFile())
-	{
-		mpView->updateAllProperties();	
-	}
-	else
+	ModifierKeys k = ModifierKeys::getCurrentModifiersRealtime();
+	if((k.isCommandDown()) || (!mpViewState->loadStateFromAppStateFile()))
 	{
 		setDefaultWindowSize();
 	}
-	
-	// separate thread needed for JUCE-based app
-	mpModel->startProcessThread();
+	else
+	{
+		mpView->updateAllProperties();	
+	}
+
 }
 	
 void SoundplaneApp::shutdown()
@@ -77,6 +77,7 @@ void SoundplaneApp::shutdown()
 	mpViewState->saveStateToStateFile();
 
 	delete mpView;
+	delete mpWindow;
 	delete mpController;
 	delete mpModel;
 }

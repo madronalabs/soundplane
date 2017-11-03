@@ -198,9 +198,7 @@ void SoundplaneGridView::setModel(SoundplaneModel* m)
 
 void SoundplaneGridView::renderXYGrid()
 {
-	float fMax = mpModel->getFloatProperty("z_max");
-
-	// MLTEST
+	float viewScale = mpModel->getFloatProperty("display_scale");
 	MLSignal calSignal = mpModel->getSmoothedSignal();
 	
 	if((calSignal.getHeight() != mSensorHeight) || (calSignal.getWidth() != mSensorWidth)) return;
@@ -221,15 +219,13 @@ void SoundplaneGridView::renderXYGrid()
 	Vec4 green(0.3f, 0.9f, 0.3f, 1.f);
 	Vec4 blue2(0.1f, 0.1f, 0.5f, 1.f);
 	
-	// calSignal is not right sometimes
-	
 	// fill calibrated data areas
 	for(int j=0; j<mSensorHeight; ++j)
 	{
 		// Soundplane A-specific
 		for(int i=mLeftSensor; i<mRightSensor; ++i)
 		{
-			float mix = (calSignal)(i, j) / fMax;
+			float mix = (calSignal)(i, j)*viewScale*20.f;
 			mix *= displayScale * 0.5f;
 			mix = clamp(mix, 0.f, 1.f);
 			Vec4 dataColor = vlerp(gray, lightGray, mix);

@@ -83,37 +83,22 @@ SensorFrame signalToSensorFrame(const MLSignal& in)
 
 SoundplaneModel::SoundplaneModel() :
 	mOutputEnabled(false),
-
 	mSurface(SensorGeometry::width, SensorGeometry::height),
 	mRawSignal(SensorGeometry::width, SensorGeometry::height),
 	mCalibratedSignal(SensorGeometry::width, SensorGeometry::height),
 	mSmoothedSignal(SensorGeometry::width, SensorGeometry::height),
-
-	mTesting(false),
 	mCalibrating(false),
 	mSelectingCarriers(false),
 	mDynamicCarriers(true),
-	//
 	mHasCalibration(false),
-//	mCalibrateCount(0),
-	//
 	mZoneMap(kSoundplaneAKeyWidth, kSoundplaneAKeyHeight),
-
 	mHistoryCtr(0),
-	mTestCtr(0),
-
-	mLastTimeDataWasSent(0),
-	mZoneModeTemp(0),
 	mCarrierMaskDirty(false),
 	mNeedsCarriersSet(false),
 	mNeedsCalibrate(true),
 	mLastInfrequentTaskTime(0),
 	mCarriersMask(0xFFFFFFFF),
 	mDoOverrideCarriers(false),
-	//
-	//mOSCListenerThread(0),
-	//mpUDPReceiveSocket(nullptr),
-	mTest(0),
 	mKymaIsConnected(0),
 	mKymaMode(false),
 	mShuttingDown(0)
@@ -547,10 +532,9 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 {
 	// parameter defaults and creation
 	setProperty("max_touches", 4);
-	setProperty("lopass_xy", 50.);
-	setProperty("lopass_z", 50.);
+	setProperty("lopass_z", 100.);
 
-	setProperty("z_thresh", 0.01);
+	setProperty("z_thresh", 0.05);
 	setProperty("z_scale", 1.);
 	setProperty("z_curve", 0.5);
 	setProperty("display_scale", 1.);
@@ -752,17 +736,13 @@ const char* SoundplaneModel::getHardwareStr()
 			break;
 		case kDeviceConnected:
 		case kDeviceHasIsochSync:
-
 			serial_number = mpDriver->getSerialNumberString();
-
 			v = mpDriver->getFirmwareVersion();
 			a = v >> 8 & 0x0F;
 			b = v >> 4 & 0x0F,
 			c = v & 0x0F;
-
 			snprintf(mHardwareStr, miscStrSize, "%s #%s, firmware %d.%d.%d", kSoundplaneAName, serial_number.c_str(), a, b, c);
 			break;
-
 		default:
 			snprintf(mHardwareStr, miscStrSize, "?");
 			break;
@@ -1027,8 +1007,7 @@ void SoundplaneModel::sendTouchDataToZones()
 	yRange.convertTo(MLRange(0., 1.));
 
     for(int i=0; i<maxTouches; ++i)
-	{
-		
+	{		
 		x = mTouchArray[i].x;
 		y = mTouchArray[i].y;
 		z = mTouchArray[i].z;
@@ -1128,80 +1107,20 @@ void SoundplaneModel::sendMessageToListeners()
     }
 }
 
-// --------------------------------------------------------------------------------
-//
-#pragma mark -
-
-const int kTestLength = 8000;
-
-void SoundplaneModel::testCallback()
-{	
-	mSurface.clear();
-	
-	int h = mSurface.getWidth();
-	int v = mSurface.getHeight();
-	
-	// make kernel (where is 2D Gaussian utility?)
-	MLSignal k;
-	int kSize = 5;
-	float kr = (float)kSize*0.5f;
-	float amp = 0.25f;
-	k.setDims(5, 5);
-	k.addDeinterpolatedLinear(kr, kr, amp);
-	float kc, ke, kk;
-	kc = 4.f/16.f; ke = 2.f/16.f; kk=1.f/16.f;
-	k.convolve3x3r(kc, ke, kk);
-	
-	// get phase
-	mTestCtr++;
-	if(mTestCtr >= kTestLength)
-	{
-		mTestCtr = 0;
-	}
-	float omega = kMLTwoPi*(float)mTestCtr/(float)kTestLength;
-	
-	MLRange xRange(-1, 1, 0 - kr + 1.f, h - kr - 1.f);
-	MLRange yRange(-1, 1, 0 - kr + 1.f, v - kr - 1.f);
-	
-	float x = xRange(cosf(omega));
-	float y = yRange(sinf(omega*3.f));
-	float z = clamp(sinf(omega*9.f) + 0.75f, 0.f, 1.f);
-
-	// draw touches
-	k.scale(z);
-	mSurface.add2D(k, Vec2(x, y));
-	
-	// add noise
-	for(int j=0; j< v; j++)
-	{
-		for(int i=0; i < h; i++)
-		{
-			mSurface(i, j) += fabs(MLRand())*0.01f;
-		}
-	}
-	
-	//trackTouches();
-}
-
 void SoundplaneModel::trackTouches(const SensorFrame& frame)
 {
-	mTestCtr++;
-	if(mTestCtr >= 500)
-	{
-		mTestCtr = 0;
-	}
-	mHistoryCtr++;
-	if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
-		
 	mTracker.process(frame, mMaxTouches, &mTouchArray, &mSmoothedFrame);
-	
 	mSmoothedSignal = sensorFrameToSignal(mSmoothedFrame);
-	
 	scaleTouchPressureData();
 
-	// TODO mutex? 
-	touchArrayToFrame(&mTouchArray, &mTouchFrame);
-
+	// convert array of touches to Signal for display, history
+	{
+		std::lock_guard<std::mutex> lock(mTouchFrameMutex); 
+		touchArrayToFrame(&mTouchArray, &mTouchFrame);
+	}
+	
+	mHistoryCtr++;
+	if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
 	mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
 
 	sendTouchDataToZones();

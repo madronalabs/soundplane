@@ -56,7 +56,6 @@ public:
 	// run our own main event loop.
 	void startProcessThread();
 	
-	
 	SoundplaneDriver::returnValue process();
 
 	// MLOSCListener
@@ -118,7 +117,7 @@ public:
 	void getMinMaxHistory(int n);
 	const MLSignal& getCorrelation();
 	
-	const MLSignal& getTouchFrame() { return mTouchFrame; }
+	const MLSignal& getTouchFrame() { std::lock_guard<std::mutex> lock(mTouchFrameMutex); return mTouchFrame; }
 	const MLSignal& getTouchHistory() { return mTouchHistory; }
 	const MLSignal getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
 	const MLSignal getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex); return mCalibratedSignal; }
@@ -171,12 +170,6 @@ private:
 	void doInfrequentTasks();
 	uint64_t mLastInfrequentTaskTime;
 
-	/**
-	 * Please note that it is not safe to access this member from the processing
-	 * thread: It is nulled out by the destructor before the SoundplaneDriver
-	 * is torn down. (It would not be safe to not null it out either because
-	 * then the pointer would point to an object that's being destroyed.)
-	 */
 	std::unique_ptr<SoundplaneDriver> mpDriver;
 	int mSerialNumber;
 
@@ -184,17 +177,15 @@ private:
 	SoundplaneOSCOutput mOSCOutput;
     SoundplaneDataMessage mMessage;
 
-	uint64_t mLastTimeDataWasSent;
-
 	SensorFrame mSensorFrame;
 	MLSignal mSurface; 
 
 	int	mMaxTouches;
 	TouchTracker::TouchArray mTouchArray; 
 	MLSignal mTouchFrame;
+	std::mutex mTouchFrameMutex;
 	MLSignal mTouchHistory;	
 
-	bool mTesting;
 	bool mCalibrating;
 	bool mSelectingCarriers;
 	bool mRaw;
@@ -240,9 +231,6 @@ private:
 	TouchTracker mTracker;
 
 	int mHistoryCtr;
-	int mTestCtr;
-
-	int mZoneModeTemp;
 	bool mCarrierMaskDirty;
 	bool mNeedsCarriersSet;
 	bool mNeedsCalibrate;
