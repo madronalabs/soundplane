@@ -7,7 +7,7 @@
 #include "ThreadUtility.h"
 //#include "InertSoundplaneDriver.h"
 
-static const std::string kOSCDefaultStr("localhost:3123 (default)");
+static const std::string kOSCDefaultStr("default");
 const char *kUDPType      =   "_osc._udp";
 const char *kLocalDotDomain   =   "local.";
 
@@ -95,7 +95,7 @@ SoundplaneModel::SoundplaneModel() :
 	mHistoryCtr(0),
 	mCarrierMaskDirty(false),
 	mNeedsCarriersSet(false),
-	mNeedsCalibrate(true),
+	mNeedsCalibrate(false),
 	mLastInfrequentTaskTime(0),
 	mCarriersMask(0xFFFFFFFF),
 	mDoOverrideCarriers(false),
@@ -178,7 +178,8 @@ void SoundplaneModel::startProcessThread()
 	mProcessThread = std::thread(&SoundplaneModel::processThread, this);
 	
 	// TODO pass realtime percentage of time -- test
-	setThreadPriority(mProcessThread.native_handle(), 96, true);
+	// setThreadPriority(mProcessThread.native_handle(), 96, true);
+	// MLTEST
 }
 
 void SoundplaneModel::processThread()
@@ -446,7 +447,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			const std::string& str = newVal.getStringValue();
 			if(p == "osc_service_name")
 			{
-				if(str == "default")
+				if(str == kOSCDefaultStr)
 				{
 					mOSCOutput.connect();
 				}
@@ -1149,7 +1150,7 @@ void SoundplaneModel::doInfrequentTasks()
 		}
 		mNeedsCalibrate = true;
 	}
-	else if (mNeedsCalibrate)
+	else if (mNeedsCalibrate && (!mSelectingCarriers))
 	{
 		mNeedsCalibrate = false;
 		beginCalibrate();

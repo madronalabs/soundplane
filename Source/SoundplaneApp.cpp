@@ -65,7 +65,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 	{
 		mpView->updateAllProperties();	
 	}
-
 }
 	
 void SoundplaneApp::shutdown()
