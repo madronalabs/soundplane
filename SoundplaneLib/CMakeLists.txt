@@ -5,8 +5,6 @@ set(SP_DRIVER_SOURCES
   SoundplaneDriver.h
   SoundplaneModelA.cpp
   SoundplaneModelA.h
-  TestSoundplaneDriver.cpp
-  TestSoundplaneDriver.h
   ThreadUtility.cpp
   ThreadUtility.h
   )

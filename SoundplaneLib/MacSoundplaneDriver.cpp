@@ -681,9 +681,6 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 	int							i, j;
 	uint8_t						n;
 
-
-	debug() << "\ndevice added: \n";
-
 	while ((usbDeviceRef = IOIteratorNext(iterator)))
 	{
         kr = IOCreatePlugInInterfaceForService(usbDeviceRef, kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID, &plugInInterface, &score);
@@ -1331,7 +1328,6 @@ SoundplaneDriver::returnValue MacSoundplaneDriver::process(SensorFrame* pOut)
 			break;
 			
 		default:
-			debug() << "   unknown device state " << oldState << "! \n";
 			break;
 	}
 
