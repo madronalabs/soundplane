@@ -5,7 +5,8 @@
 
 #include "SoundplaneTouchGraphView.h"
 
-SoundplaneTouchGraphView::SoundplaneTouchGraphView() :
+SoundplaneTouchGraphView::SoundplaneTouchGraphView(MLWidget* pContainer) :
+	MLWidget(pContainer),
 	mpModel(nullptr)
 {
 	setInterceptsMouseClicks (false, false);	
@@ -82,8 +83,8 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		for(int i=0; i<4; ++i) // brighten indicator color, TODO move to utilities
 		{
 			indDark[i] = co[i];
-			indLight[i] = clamp(co[i] + 0.3f, 0.f, 1.f);
-			indDarker[i] = clamp(co[i] - 0.3f, 0.f, 1.f);
+			indLight[i] = ml::clamp(co[i] + 0.3f, 0.f, 1.f);
+			indDarker[i] = ml::clamp(co[i] - 0.3f, 0.f, 1.f);
 		}	
 		indDark[3] = indLight[3] = indDarker[3] = 1.f;
 		glColor4fv(indLight);		
@@ -118,7 +119,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 		{
 			int time = frameXRange(i);					
 			float force = touchHistory(2, j, time);
-			force = clamp(force, 0.f, 1.f);
+			force =  ml::clamp(force, 0.f, 1.f);
 			float y = frameYRange.convert(force);			
 			// draw line
 			glVertex2f(i, fr.top());	

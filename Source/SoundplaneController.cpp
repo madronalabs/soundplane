@@ -5,7 +5,7 @@
 
 #include "SoundplaneController.h"
 
-static void menuItemChosenCallback (int result, WeakReference<SoundplaneController> wpC, MLSymbol menuName);
+static void menuItemChosenCallback (int result, WeakReference<SoundplaneController> wpC, ml::Symbol menuName);
 
 SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
 	mpSoundplaneModel(pModel),
@@ -24,7 +24,7 @@ SoundplaneController::~SoundplaneController()
 	
 #pragma mark MLWidget::Listener
 
-void SoundplaneController::handleWidgetAction(MLWidget* w, MLSymbol action, MLSymbol p, const MLProperty& val)
+void SoundplaneController::handleWidgetAction(MLWidget* w, ml::Symbol action, ml::Symbol p, const MLProperty& val)
 {
 	if(action == "click") // handle momentary buttons.
 	{
@@ -117,9 +117,9 @@ void SoundplaneController::timerCallback()
 	
 // process a file from one of the Model's collections. Currenlty unused but will be used when file
 // collections update menus constantly in the background. 
-void SoundplaneController::processFileFromCollection (MLSymbol action, const MLFile& file, const MLFileCollection& collection, int idx, int size)
+void SoundplaneController::processFileFromCollection (ml::Symbol action, const MLFile file, const MLFileCollection& collection, int idx, int size)
 {
-	MLSymbol collName = collection.getName();
+	ml::Symbol collName = collection.getName();
     if(collName == "touch_preset")
     {
 
@@ -135,7 +135,7 @@ void SoundplaneController::setView(SoundplaneView* v)
 	mpSoundplaneView = v; 
 }
 
-static void menuItemChosenCallback (int result, WeakReference<SoundplaneController> wpC, MLSymbol menuName)
+static void menuItemChosenCallback (int result, WeakReference<SoundplaneController> wpC, ml::Symbol menuName)
 {
 	SoundplaneController* pC = wpC;
 	
@@ -193,7 +193,7 @@ void SoundplaneController::setupMenus()
 }	
 
 
-MLMenu* SoundplaneController::findMenuByName(MLSymbol menuName)
+MLMenu* SoundplaneController::findMenuByName(ml::Symbol menuName)
 {
 	MLMenu* r = nullptr;
 	MLMenuMapT::iterator menuIter(mMenuMap.find(menuName));
@@ -205,7 +205,7 @@ MLMenu* SoundplaneController::findMenuByName(MLSymbol menuName)
 	return r;
 }
 
-void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
+void SoundplaneController::showMenu (ml::Symbol menuName, ml::Symbol instigatorName)
 {
 	if(!mpSoundplaneView) return;
 	if(!mpSoundplaneModel) return;
@@ -256,7 +256,7 @@ void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 			{
                 const int u = pInstigator->getWidgetGridUnitSize();
                 int height = ((float)u)*0.35f;
-                height = clamp(height, 12, 128);
+				height = ml::clamp(height, 12, 128);
 				JuceMenuPtr juceMenu = menu->getJuceMenu();
 				juceMenu->showMenuAsync (PopupMenu::Options().withTargetComponent(pInstComp).withStandardItemHeight(height),
 										 ModalCallbackFunction::withParam(menuItemChosenCallback,
@@ -267,7 +267,7 @@ void SoundplaneController::showMenu (MLSymbol menuName, MLSymbol instigatorName)
 	}
 }
 
-void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
+void SoundplaneController::menuItemChosen(ml::Symbol menuName, int result)
 {
 	if (result > 0)
 	{
@@ -284,7 +284,9 @@ void SoundplaneController::menuItemChosen(MLSymbol menuName, int result)
 			MLMenu* menu = findMenuByName(menuName);
 			if (menu != nullptr)
 			{
-				mpSoundplaneModel->setProperty(menuName, menu->getMenuItemPath(result));
+				// TODO getMenuItemPath returns Text
+				const std::string fullName = menu->getMenuItemPath(result);
+				mpSoundplaneModel->setProperty(menuName, ml::TextFragment(fullName.c_str()));				
 			}
 		}
  	}
@@ -303,7 +305,10 @@ void SoundplaneController::doZonePresetMenu(int result)
     std::string zoneStr;
 	std::string fullName ("error: preset not found!");
 	MLMenuPtr menu = mMenuMap["zone_preset"];
-	mpSoundplaneModel->setPropertyImmediate("zone_preset", menu->getMenuItemPath(result));            
+	
+	// TODO text item paths
+	std::string itemStr = menu->getMenuItemPath(result);
+	mpSoundplaneModel->setPropertyImmediate("zone_preset", itemStr.c_str());            
 }
 
 void SoundplaneController::doOSCServicesMenu(int result)
@@ -320,8 +325,8 @@ void SoundplaneController::doOSCServicesMenu(int result)
 		MLMenuPtr menu = mMenuMap["osc_service_name"];
 		fullName = menu->getMenuItemPath(result);	
     }
-	
-	mpSoundplaneModel->setProperty("osc_service_name", fullName);
+
+	mpSoundplaneModel->setProperty("osc_service_name", fullName.c_str());
 }
 
 class SoundplaneSetupThread : public ThreadWithProgressWindow

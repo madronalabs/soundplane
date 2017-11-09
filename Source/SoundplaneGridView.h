@@ -6,10 +6,10 @@
 #ifndef __SOUNDPLANE_GRID_VIEW__
 #define __SOUNDPLANE_GRID_VIEW__
 
-#include "MLGL.h"
+#include "MLApp/MLGL.h"
 #include "SoundplaneModel.h"
-#include "MLUI.h"
-#include "MLWidget.h"
+#include "LookAndFeel/MLUI.h"
+#include "MLJuceApp/MLWidget.h"
 #include "MLLookAndFeel.h"
 
 #ifndef GL_BGRA_EXT
@@ -24,11 +24,11 @@ class SoundplaneGridView  :
 	public MLWidget
 {
 public:
-    SoundplaneGridView();
+    SoundplaneGridView(MLWidget* pContainer);
     ~SoundplaneGridView();
 	
 	// MLModelListener implementation
-	void doPropertyChangeAction(MLSymbol , const MLProperty & );
+	void doPropertyChangeAction(ml::Symbol , const MLProperty & );
 	
 	void setModel(SoundplaneModel* m);
 	

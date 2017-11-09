@@ -8,7 +8,7 @@
 
 #include "JuceHeader.h"
 
-#include "MLUIBinaryData.h"
+#include "LookAndFeel/MLUIBinaryData.h"
 #include "SoundplaneModel.h"
 #include "SoundplaneView.h"
 #include "MLReporter.h"
@@ -17,7 +17,7 @@
 #include "MLButton.h"
 #include "MLDial.h"
 
-#include "MLNetServiceHub.h"
+#include "MLApp/MLNetServiceHub.h"
 #include "MLFileCollection.h"
 
 extern const char *kUDPType;
@@ -36,10 +36,10 @@ public:
     ~SoundplaneController();
 
 	// MLWidget::Listener
-	void handleWidgetAction(MLWidget* w, MLSymbol action, MLSymbol target, const MLProperty& val = MLProperty());
+	void handleWidgetAction(MLWidget* w, ml::Symbol action, ml::Symbol target, const MLProperty& val = MLProperty());
 	
 	// MLFileCollection::Listener
-	void processFileFromCollection (MLSymbol action, const MLFile& f, const MLFileCollection& collection, int idx, int size);
+	void processFileFromCollection (ml::Symbol action, const MLFile f, const MLFileCollection& collection, int idx, int size) override;
 	
 	// juce::Timer
 	void timerCallback();
@@ -48,9 +48,9 @@ public:
 	void shutdown();
 	
 	// menus
-	void showMenu (MLSymbol menuName, MLSymbol instigatorName);
-	void menuItemChosen(MLSymbol menuName, int result);	
-	MLMenu* findMenuByName(MLSymbol menuName); // TODO move into new controller base class
+	void showMenu (ml::Symbol menuName, ml::Symbol instigatorName);
+	void menuItemChosen(ml::Symbol menuName, int result);	
+	MLMenu* findMenuByName(ml::Symbol menuName); // TODO move into new controller base class
 	void setupMenus();
     void doZonePresetMenu(int result);
 	void doOSCServicesMenu(int result);

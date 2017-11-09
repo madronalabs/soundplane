@@ -1,6 +1,6 @@
 set(SP_DRIVER_SOURCES
-  InertSoundplaneDriver.cpp
-  InertSoundplaneDriver.h
+  SensorFrame.cpp
+  SensorFrame.h
   SoundplaneDriver.cpp
   SoundplaneDriver.h
   SoundplaneModelA.cpp
@@ -28,7 +28,7 @@ else(SP_USE_LIBUSB)
 endif()
 
 add_library(soundplanelib ${SP_DRIVER_SOURCES})
-target_link_libraries(soundplanelib madronalib)
+target_link_libraries(soundplanelib)
 target_include_directories(soundplanelib PUBLIC .)
 
 if(SP_USE_LIBUSB)

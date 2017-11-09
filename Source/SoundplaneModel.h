@@ -10,21 +10,21 @@
 #include <map>
 #include <stdint.h>
 
-#include "MLDebug.h"
-#include "MLTime.h"
-#include "MLModel.h"
+//#include "MLDebug.h"
+//#include "MLTime.h"
+#include "MLApp/MLModel.h"
 #include "SoundplaneModelA.h"
 #include "SoundplaneDriver.h"
-#include "SoundplaneDataListener.h"
-#include "MLOSCListener.h"
-#include "MLNetServiceHub.h"
+//#include "SoundplaneDataListener.h"
+#include "core/MLOSCListener.h"
+#include "MLApp/MLNetServiceHub.h"
 #include "TouchTracker.h"
 #include "SoundplaneMIDIOutput.h"
 #include "SoundplaneOSCOutput.h"
-#include "MLSymbol.h"
-#include "MLParameter.h"
-#include "MLFileCollection.h"
-#include "cJSON.h"
+#include "core/MLSymbol.h"
+//#include "core/MLParameter.h"
+#include "MLJuceApp/MLFileCollection.h"
+#include "cJSON/cJSON.h"
 #include "Zone.h"
 #include "SoundplaneBinaryData.h"
 
@@ -48,7 +48,7 @@ public:
 	~SoundplaneModel();
 	
 	// MLModel
-    void doPropertyChangeAction(MLSymbol , const MLProperty & ) override;
+    void doPropertyChangeAction(ml::Symbol , const MLProperty & ) override;
 
 	void setAllPropertiesToDefaults();
 	
@@ -247,8 +247,8 @@ private:
 	bool mKymaMode;
 	int mKymaIsConnected; // TODO more custom clients
 
-    MLFileCollectionPtr mTouchPresets;
-    MLFileCollectionPtr mZonePresets;
+	std::unique_ptr<MLFileCollection> mTouchPresets;
+    std::unique_ptr<MLFileCollection> mZonePresets;
 
 	// OSC services
 	std::vector<std::string> mServiceNames;

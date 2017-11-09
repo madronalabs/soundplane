@@ -6,6 +6,7 @@
 #ifndef __SOUNDPLANE_APP__
 #define __SOUNDPLANE_APP__
 
+#include "MLProjectInfo.h"
 #include "JuceHeader.h"
 #include "SoundplaneModel.h"
 #include "SoundplaneView.h"

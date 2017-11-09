@@ -8,11 +8,11 @@
 
 #include "Zone.h"
 
-static const MLSymbol zoneTypes[kZoneTypes] = {"note_row", "x", "y", "xy", "z", "toggle"};
+static const ml::Symbol zoneTypes[kZoneTypes] = {"note_row", "x", "y", "xy", "z", "toggle"};
 static const float kVibratoFilterFreq = 12.0f;
 
 // turn zone type name into enum type. names above must match ZoneType enum.
-int Zone::symbolToZoneType(MLSymbol s)
+int Zone::symbolToZoneType(ml::Symbol s)
 {
     int zoneTypeNum = -1;
     for(int i=0; i<kZoneTypes; ++i)
@@ -89,7 +89,7 @@ void Zone::setBounds(MLRect b)
 void Zone::setSnapFreq(float f)
 {
     float snapFreq = 1000.f / (f + 1.);
-    snapFreq = clamp(snapFreq, 1.f, 1000.f);
+    snapFreq = ml::clamp(snapFreq, 1.f, 1000.f);
     for(int i=0; i<kSoundplaneMaxTouches; ++i)
     {
         mNoteFilters[i].setOnePole(snapFreq);
@@ -219,12 +219,12 @@ void Zone::processTouchesNoteRow(const std::vector<bool>& freedTouches)
 			if(retrig)
 			{
 				// sliding from key to key- get retrigger velocity from current z
-				t1dz = clamp(t1z * 0.01f, 0.0001f, 1.f);
+				t1dz = ml::clamp(t1z * 0.01f, 0.0001f, 1.f);
 			}
 			else
 			{
 				// clamp note-on dz for use as velocity later. 
-				t1dz = clamp(t1dz, 0.0001f, 1.f);
+				t1dz = ml::clamp(t1dz, 0.0001f, 1.f);
 			}
 			sendMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
@@ -258,7 +258,7 @@ void Zone::processTouchesNoteOffs(std::vector<bool>& freedTouches)
         
         float t2x = t2.pos.x();
         float xPos = mXRange(t2x) - mBounds.left();
-		xPos = clamp(xPos, 0.f, mBounds.width());
+		xPos = ml::clamp(xPos, 0.f, mBounds.width());
 		float scaleNote;
         if(mQuantize)
         {
@@ -360,7 +360,7 @@ void Zone::processTouchesControllerX()
     if(getNumberOfActiveTouches() > 0)
     {
         Vec3 avgPos = getAveragePositionOfActiveTouches();
-        mValue[0] = clamp(avgPos.x(), 0.f, 1.f);
+        mValue[0] = ml::clamp(avgPos.x(), 0.f, 1.f);
         // TODO add zone attribute to scale value to full range
         sendMessage("controller", "x", mZoneID, 0, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], 0, 0);
     }
@@ -371,7 +371,7 @@ void Zone::processTouchesControllerY()
     if(getNumberOfActiveTouches() > 0)
     {
         Vec3 avgPos = getAveragePositionOfActiveTouches();
-        mValue[1] = clamp(avgPos.y(), 0.f, 1.f);
+        mValue[1] = ml::clamp(avgPos.y(), 0.f, 1.f);
         sendMessage("controller", "y", mZoneID, 0, mControllerNum1, mControllerNum2, mControllerNum3, 0, mValue[1], 0);
     }    
 }
@@ -381,8 +381,8 @@ void Zone::processTouchesControllerXY()
     if(getNumberOfActiveTouches() > 0)
     {
         Vec3 avgPos = getAveragePositionOfActiveTouches();
-        mValue[0] = clamp(avgPos.x(), 0.f, 1.f);
-        mValue[1] = clamp(avgPos.y(), 0.f, 1.f);
+        mValue[0] = ml::clamp(avgPos.x(), 0.f, 1.f);
+        mValue[1] = ml::clamp(avgPos.y(), 0.f, 1.f);
         sendMessage("controller", "xy", mZoneID, 0, mControllerNum1, mControllerNum2, mControllerNum3, mValue[0], mValue[1], 0);
     }
 }
@@ -404,11 +404,11 @@ void Zone::processTouchesControllerPressure()
     {
         z = getMaxZOfActiveTouches();
     }
-    mValue[0] = clamp(z, 0.f, 1.f);
+    mValue[0] = ml::clamp(z, 0.f, 1.f);
     sendMessage("controller", "z", mZoneID, 0, mControllerNum1, mControllerNum2, mControllerNum3, 0, 0, mValue[0]);
 }
 
-void Zone::sendMessage(MLSymbol type, MLSymbol subtype, float a, float b, float c, float d, float e, float f, float g, float h)
+void Zone::sendMessage(ml::Symbol type, ml::Symbol subtype, float a, float b, float c, float d, float e, float f, float g, float h)
 {
     mMessage.mType = type;
     mMessage.mSubtype = subtype;

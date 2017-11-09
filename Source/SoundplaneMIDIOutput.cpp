@@ -3,6 +3,7 @@
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
+#include "MLDebug.h"
 #include "SoundplaneMIDIOutput.h"
 
 const std::string kSoundplaneMIDIDeviceName("Soundplane IAC out");
@@ -84,7 +85,6 @@ SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mDataFreq(250.),
 	mGotControllerChanges(false),
 	mPressureActive(false),
-	mLastTimeNRPNWasSent(0),
 	mBendRange(36),
 	mTranspose(0),
 	mHysteresis(0.5f),
@@ -93,8 +93,7 @@ SoundplaneMIDIOutput::SoundplaneMIDIOutput() :
 	mMPEChannels(0),
 	mChannel(1),
 	mKymaMode(false),
-	mVerbose(false),
-	mLastTimeVerbosePrint(0)
+	mVerbose(false)
 {
 #ifdef DEBUG
 	//mVerbose = true;
@@ -289,7 +288,7 @@ int SoundplaneMIDIOutput::getMPEMainChannel()
 
 int SoundplaneMIDIOutput::getMPEVoiceChannel(int voice)
 {
-	return 2 + clamp(voice, 0, 14);
+	return 2 + ml::clamp(voice, 0, 14);
 }
 
 int SoundplaneMIDIOutput::getVoiceChannel(int v)
@@ -321,21 +320,21 @@ int SoundplaneMIDIOutput::getMIDIPitchBend(MIDIVoice* pVoice)
 	}
 	bendAmount += 8192.f;
 	ip = bendAmount;
-	ip = clamp(ip, 0, 16383);
+	ip = ml::clamp(ip, 0, 16383);
 	return ip;
 }
 
 int SoundplaneMIDIOutput::getMIDIVelocity(MIDIVoice* pVoice)
 {
 	float fVel = pVoice->dz*20000.f;
-	return clamp((int)fVel, 10, 127);
+	return ml::clamp((int)fVel, 10, 127);
 }
 
 int SoundplaneMIDIOutput::getRetriggerVelocity(MIDIVoice* pVoice)
 {
 	// get retrigger velocity from current z
 	float fVel = pVoice->z*127.f;
-	return clamp((int)fVel, 10, 127);
+	return ml::clamp((int)fVel, 10, 127);
 }
 
 int SoundplaneMIDIOutput::getMostRecentVoice()
@@ -361,26 +360,26 @@ int SoundplaneMIDIOutput::getMostRecentVoice()
 
 void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage* msg)
 {
-    static const MLSymbol startFrameSym("start_frame");
-    static const MLSymbol touchSym("touch");
-	static const MLSymbol retrigSym("retrig");
-    static const MLSymbol onSym("on");
-    static const MLSymbol continueSym("continue");
-    static const MLSymbol offSym("off");
-    static const MLSymbol controllerSym("controller");
-    static const MLSymbol xSym("x");
-    static const MLSymbol ySym("y");
-    static const MLSymbol xySym("xy");
-    static const MLSymbol zSym("z");
-    static const MLSymbol toggleSym("toggle");
-    static const MLSymbol endFrameSym("end_frame");
-    static const MLSymbol matrixSym("matrix");
-    static const MLSymbol nullSym;
+    static const ml::Symbol startFrameSym("start_frame");
+    static const ml::Symbol touchSym("touch");
+	static const ml::Symbol retrigSym("retrig");
+    static const ml::Symbol onSym("on");
+    static const ml::Symbol continueSym("continue");
+    static const ml::Symbol offSym("off");
+    static const ml::Symbol controllerSym("controller");
+    static const ml::Symbol xSym("x");
+    static const ml::Symbol ySym("y");
+    static const ml::Symbol xySym("xy");
+    static const ml::Symbol zSym("z");
+    static const ml::Symbol toggleSym("toggle");
+    static const ml::Symbol endFrameSym("end_frame");
+    static const ml::Symbol matrixSym("matrix");
+    static const ml::Symbol nullSym;
     
 	if (!mActive) return;
 	if (!mpCurrentDevice) return;
-    MLSymbol type = msg->mType;
-    MLSymbol subtype = msg->mSubtype;
+    ml::Symbol type = msg->mType;
+    ml::Symbol subtype = msg->mSubtype;
     
     int i;
 	float x, y, z, dz, note, vibrato;
@@ -388,9 +387,11 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
     if(type == startFrameSym)
     {
 		setupVoiceChannels();
-        const uint64_t dataPeriodMicrosecs = 1000*1000 / mDataFreq;		
-        mCurrFrameStartTime = getMicroseconds();
-        if (mCurrFrameStartTime > mLastFrameStartTime + (uint64_t)dataPeriodMicrosecs)
+		
+        const int dataPeriodMicrosecs = 1000*1000 / mDataFreq;		
+		mCurrFrameStartTime = std::chrono::system_clock::now();		
+		int micros = std::chrono::duration_cast<std::chrono::microseconds>(mCurrFrameStartTime - mLastFrameStartTime).count();
+        if (micros > dataPeriodMicrosecs)
         {
             mLastFrameStartTime = mCurrFrameStartTime;
             mTimeToSendNewFrame = true;
@@ -428,14 +429,14 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
 			pVoice->age = 1;
 			
 			// get nearest integer note
-			pVoice->mMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
+			pVoice->mMIDINote = ml::clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
 			pVoice->mMIDIVel = getMIDIVelocity(pVoice);
 			pVoice->mSendNoteOn = true;
 			
 			// send pressure right away at note on
 			if(mPressureActive)
 			{
-				int newPressure = clamp((int)(pVoice->z*128.f), 0, 127);
+				int newPressure = ml::clamp((int)(pVoice->z*128.f), 0, 127);
 				if(newPressure != pVoice->mMIDIPressure)
 				{
 					pVoice->mMIDIPressure = newPressure;
@@ -448,7 +449,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
 			// retrigger notes for glissando mode when sliding from key to key within a zone.
 			if(mGlissando)
 			{
-				int newMIDINote = clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
+				int newMIDINote = ml::clamp((int)lround(pVoice->note) + mTranspose, 1, 127);
 				if(newMIDINote != pVoice->mMIDINote)
 				{
 					pVoice->mMIDINote = newMIDINote;
@@ -462,7 +463,7 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
 			// get the new MIDI pressure from the z value of the voice
 			if(mPressureActive)
 			{
-				int newPressure = clamp((int)(pVoice->z*128.f), 0, 127);
+				int newPressure = ml::clamp((int)(pVoice->z*128.f), 0, 127);
 				if(mTimeToSendNewFrame)
 				{
 					pVoice->mMIDIPressure = newPressure;
@@ -482,14 +483,14 @@ void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneDataMessage*
 						pVoice->mSendPitchBend = true;
 					}			
 					
-					int ix = clamp((int)(pVoice->x*128.f), 0, 127);
+					int ix = ml::clamp((int)(pVoice->x*128.f), 0, 127);
 					if(ix != pVoice->mMIDIXCtrl)
 					{                    
 						pVoice->mMIDIXCtrl = ix;
 						pVoice->mSendXCtrl = true;
 					}
 					
-					int iy = clamp((int)(pVoice->y*128.f), 0, 127);
+					int iy = ml::clamp((int)(pVoice->y*128.f), 0, 127);
 					if(iy != pVoice->mMIDIYCtrl)
 					{
 						pVoice->mMIDIYCtrl = iy;
@@ -618,13 +619,13 @@ void SoundplaneMIDIOutput::sendMIDIVoiceMessages()
 
 void SoundplaneMIDIOutput::sendMIDIControllerMessages()
 {
-	static const MLSymbol controllerSym("controller");
-	static const MLSymbol xSym("x");
-	static const MLSymbol ySym("y");
-	static const MLSymbol xySym("xy");
-	static const MLSymbol zSym("z");
-	static const MLSymbol toggleSym("toggle");
-	static const MLSymbol nullSym("");
+	static const ml::Symbol controllerSym("controller");
+	static const ml::Symbol xSym("x");
+	static const ml::Symbol ySym("y");
+	static const ml::Symbol xySym("xy");
+	static const ml::Symbol zSym("z");
+	static const ml::Symbol toggleSym("toggle");
+	static const ml::Symbol nullSym("");
 	
 	// for each zone, send and clear any controller messages received since last frame
 	for(int i=0; i<kSoundplaneAMaxZones; ++i)
@@ -643,9 +644,9 @@ void SoundplaneMIDIOutput::sendMIDIControllerMessages()
 			float y = pMsg->mData[6];
 			float z = pMsg->mData[7];
 			
-			int ix = clamp((int)(x*128.f), 0, 127);
-			int iy = clamp((int)(y*128.f), 0, 127);
-			int iz = clamp((int)(z*128.f), 0, 127);
+			int ix = ml::clamp((int)(x*128.f), 0, 127);
+			int iy = ml::clamp((int)(y*128.f), 0, 127);
+			int iz = ml::clamp((int)(z*128.f), 0, 127);
 			
 			// use channel from zone, or default to channel dial setting.
 			int channel = (zoneChan > 0) ? (zoneChan) : (mChannel);
@@ -692,10 +693,10 @@ void SoundplaneMIDIOutput::doInfrequentTasks()
 void SoundplaneMIDIOutput::pollKymaViaMIDI()
 {
 	// send NRPN with Soundplane identifier every few secs. for Kyma.
-	const uint64_t nrpnPeriodMicrosecs = 1000*1000*4;
-	uint64_t now = getMicroseconds();
-	
-	if (now > mLastTimeNRPNWasSent + nrpnPeriodMicrosecs)
+	const int nrpnPeriodMicrosecs = 1000*1000*4;
+	std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+	int micros = std::chrono::duration_cast<std::chrono::microseconds>(now - mLastTimeNRPNWasSent).count();
+	if (micros > nrpnPeriodMicrosecs)
 	{
 		mLastTimeNRPNWasSent = now;
 		// set NRPN
@@ -749,7 +750,7 @@ void SoundplaneMIDIOutput::setBendRange(int r)
 
 void SoundplaneMIDIOutput::setMaxTouches(int t)
 {
-    mVoices = clamp(t, 0, kMaxMIDIVoices);
+    mVoices = ml::clamp(t, 0, kMaxMIDIVoices);
     if (mMPEMode && mpCurrentDevice)
     {
         int globalChannel=mChannel;
@@ -786,8 +787,11 @@ void SoundplaneMIDIOutput::sendPitchbendRange()
 
 void SoundplaneMIDIOutput::dumpVoices()
 {
-	const uint64_t verbosePeriodMicrosecs = 1000*1000*1;
-	if (mCurrFrameStartTime > mLastTimeVerbosePrint + verbosePeriodMicrosecs)
+	const int verbosePeriodMicrosecs = 1000*1000*1;
+	
+	int micros = std::chrono::duration_cast<std::chrono::microseconds>(mCurrFrameStartTime - mLastTimeVerbosePrint).count();
+	
+	if (micros > verbosePeriodMicrosecs)
 	{
 		// dump voices
 		debug() << "----------------------\n";
@@ -800,7 +804,7 @@ void SoundplaneMIDIOutput::dumpVoices()
 			MIDIVoice* pVoice = &mMIDIVoices[i];					
 			
 			int ip = getMIDIPitchBend(pVoice);						
-			int iz = clamp((int)(pVoice->z*128.f), 0, 127);
+			int iz = ml::clamp((int)(pVoice->z*128.f), 0, 127);
 			
 			debug() << "v" << i << ": CHAN=" << getVoiceChannel(i) << " BEND = " << ip << " Z = " << iz << "\n";
 		}

@@ -14,7 +14,7 @@
 
 // device states
 //
-typedef enum
+enum
 {
   kNoDevice = 0,  // No device has been found yet
   kDeviceConnected = 1,  // A device has been found, but isochronous transfer isn't yet up
@@ -26,7 +26,7 @@ typedef enum
 
 // device errors
 //
-typedef enum
+enum
 {
 	kDevNoErr = 0,
 	kDevNoNewFrame = 1,

@@ -9,16 +9,16 @@
 #include <vector>
 #include <list>
 #include <memory>
+#include <chrono>
 #include <stdint.h>
 
 #include "MLDebug.h"
-#include "MLTime.h"
 #include "SoundplaneDataListener.h"
 #include "SoundplaneModelA.h"
 #include "JuceHeader.h"
 
-#include "OscOutboundPacketStream.h"
-#include "UdpSocket.h"
+#include "OSC/osc/OscOutboundPacketStream.h"
+#include "OSC/ip/UdpSocket.h"
 
 extern const char* kDefaultHostnameString;
 
@@ -67,7 +67,7 @@ public:
 	void setDataFreq(float f) { mDataFreq = f; }
 	
 	void setActive(bool v);
-	void setMaxTouches(int t) { mMaxTouches = clamp(t, 0, kSoundplaneMaxTouches); }
+	void setMaxTouches(int t) { mMaxTouches = ml::clamp(t, 0, kSoundplaneMaxTouches); }
 	
 	void setSerialNumber(int s) { mSerialNumber = s; }
 	void notify(int connected);
@@ -98,9 +98,11 @@ private:
     SoundplaneDataMessage mMessagesByZone[kSoundplaneAMaxZones];
     
 	float mDataFreq;
-	uint64_t mCurrFrameStartTime;
-	uint64_t mLastFrameStartTime;
     bool mTimeToSendNewFrame;
+	
+	std::chrono::time_point<std::chrono::system_clock> mCurrFrameStartTime;
+	std::chrono::time_point<std::chrono::system_clock> mLastFrameStartTime;
+	std::chrono::time_point<std::chrono::system_clock> lastInfrequentTaskTime;
 
 	std::vector< std::vector < char > > mUDPBuffers;
 	std::vector< std::unique_ptr< osc::OutboundPacketStream > > mUDPPacketStreams;
@@ -135,7 +137,6 @@ private:
 	osc::int32 mFrameId;
 	int mSerialNumber;
 	
-	uint64_t lastInfrequentTaskTime;
 	bool mKymaMode;
 	int mKymaPort;
     bool mGotNoteChangesThisFrame;

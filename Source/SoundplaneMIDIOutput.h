@@ -10,14 +10,15 @@
 
 #include <vector>
 #include <memory>
+#include <chrono>
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "MLDebug.h"
+
 //#include "TouchTracker.h"
 #include "SoundplaneModelA.h"
 #include "SoundplaneDataListener.h"
-#include "MLTime.h"
+//#include "MLTime.h"
 
 const int kMaxMIDIVoices = 16;
 
@@ -150,13 +151,16 @@ private:
 	juce::MidiOutput* mpCurrentDevice;
 	
 	float mDataFreq;
-    uint64_t mCurrFrameStartTime;
-	uint64_t mLastFrameStartTime;
-    bool mTimeToSendNewFrame;
+
+	std::chrono::time_point<std::chrono::system_clock> mCurrFrameStartTime;
+	std::chrono::time_point<std::chrono::system_clock> mLastFrameStartTime;
+	std::chrono::time_point<std::chrono::system_clock> mLastTimeVerbosePrint;
+	std::chrono::time_point<std::chrono::system_clock> mLastTimeNRPNWasSent;
+	
+	bool mTimeToSendNewFrame;
 	bool mGotControllerChanges;
     
 	bool mPressureActive;
-	uint64_t mLastTimeNRPNWasSent;
 
 	int mBendRange;
 	int mTranspose;
@@ -173,7 +177,7 @@ private:
 	
 	bool mKymaMode;
 	bool mVerbose;
-	uint64_t mLastTimeVerbosePrint;
+
 };
 
 

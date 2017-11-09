@@ -6,8 +6,9 @@
 #include "SoundplaneModel.h"
 #include "ThreadUtility.h"
 //#include "InertSoundplaneDriver.h"
+#include "MLProjectInfo.h"
 
-static const std::string kOSCDefaultStr("default");
+static const ml::Text kOSCDefaultStr("default");
 const char *kUDPType      =   "_osc._udp";
 const char *kLocalDotDomain   =   "local.";
 
@@ -126,7 +127,7 @@ SoundplaneModel::SoundplaneModel() :
 	// start Browsing OSC services
 	mServiceNames.clear();
 	mServices.clear();
-	mServices.push_back(kOSCDefaultStr);
+	mServices.push_back(std::string(kOSCDefaultStr.getText()));
 	Browse(kLocalDotDomain, kUDPType);
 	MLConsole() << "SoundplaneModel: listening for OSC on port " << kDefaultUDPReceivePort << "...\n";
 	listenToOSC(kDefaultUDPReceivePort);
@@ -143,9 +144,9 @@ SoundplaneModel::SoundplaneModel() :
 	mTouchHistory.setDims(kSoundplaneTouchWidth, TouchTracker::kMaxTouches, kSoundplaneHistorySize);
 	
 	// make zone presets collection
-	File zoneDir = getDefaultFileLocation(kPresetFiles).getChildFile("ZonePresets");
+	File zoneDir = getDefaultFileLocation(kPresetFiles, MLProjectInfo::makerName, MLProjectInfo::projectName).getChildFile("ZonePresets");
 	debug() << "LOOKING for zones in " << zoneDir.getFileName() << "\n";
-	mZonePresets = MLFileCollectionPtr(new MLFileCollection("zone_preset", zoneDir, "json"));
+	mZonePresets = std::unique_ptr<MLFileCollection>(new MLFileCollection("zone_preset", zoneDir, "json"));
 	mZonePresets->processFilesImmediate();
 	mZonePresets->dump();
 }
@@ -277,7 +278,7 @@ SoundplaneDriver::returnValue SoundplaneModel::process()
 	return r;
 }
 
-void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newVal)
+void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
 {
 	// debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
 
@@ -287,13 +288,13 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 		case MLProperty::kFloatProperty:
 		{
 			float v = newVal.getFloatValue();
-			if (p.withoutFinalNumber() == MLSymbol("carrier_toggle"))
+			if (ml::textUtils::stripFinalNumber(p) == ml::Symbol("carrier_toggle"))
 			{
 				// toggles changed -- mute carriers
 				unsigned long mask = 0;
 				for(int i=0; i<32; ++i)
 				{
-					MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
+					ml::Symbol tSym = ml::textUtils::addFinalNumber(ml::Symbol("carrier_toggle"), i);
 					bool on = (int)(getFloatProperty(tSym));
 					mask = mask | (on << i);
 				}
@@ -307,7 +308,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				bool on = (bool)(v);
 				for(int i=0; i<32; ++i)
 				{
-					MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
+					ml::Symbol tSym = ml::textUtils::addFinalNumber(ml::Symbol("carrier_toggle"), i);
 					setProperty(tSym, on);
 				}
 				mCarriersMask = on ? ~0 : 0;
@@ -442,12 +443,15 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 			}			
 		}
 		break;
-		case MLProperty::kStringProperty:
+		case MLProperty::kTextProperty:
 		{
-			const std::string& str = newVal.getStringValue();
+			// TODO clean up, use text for everything
+			ml::Text strText = newVal.getTextValue();
+			std::string str (strText.getText());
+			
 			if(p == "osc_service_name")
 			{
-				if(str == kOSCDefaultStr)
+				if(strText == ml::Text(kOSCDefaultStr))
 				{
 					mOSCOutput.connect();
 				}
@@ -474,15 +478,15 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 				// look for built in zone map names.
 				if(str == "chromatic")
 				{
-					setProperty("zone_JSON", std::string(SoundplaneBinaryData::chromatic_json));
+					setProperty("zone_JSON", (SoundplaneBinaryData::chromatic_json));
 				}
 				else if(str == "rows in fourths")
 				{
-					setProperty("zone_JSON", std::string(SoundplaneBinaryData::rows_in_fourths_json));
+					setProperty("zone_JSON", (SoundplaneBinaryData::rows_in_fourths_json));
 				}
 				else if(str == "rows in octaves")
 				{
-					setProperty("zone_JSON", std::string(SoundplaneBinaryData::rows_in_octaves_json));
+					setProperty("zone_JSON", (SoundplaneBinaryData::rows_in_octaves_json));
 				}
 				// if not built in, load a zone map file.
 				else
@@ -492,7 +496,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 					{
 						File zoneFile = f.getJuceFile();
 						String stateStr(zoneFile.loadFileAsString());
-						setPropertyImmediate("zone_JSON", std::string(stateStr.toUTF8()));
+						setPropertyImmediate("zone_JSON", (stateStr.toUTF8()));
 					}
 				}
 			}
@@ -501,7 +505,7 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 		case MLProperty::kSignalProperty:
 		{
 			const MLSignal& sig = newVal.getSignalValue();
-			if(p == MLSymbol("carriers"))
+			if(p == ml::Symbol("carriers"))
 			{
 				// get carriers from signal
 				assert(sig.getSize() == kSoundplaneNumCarriers);
@@ -514,11 +518,11 @@ void SoundplaneModel::doPropertyChangeAction(MLSymbol p, const MLProperty & newV
 					}
 				}
 			}
-			if(p == MLSymbol("tracker_calibration"))
+			if(p == ml::Symbol("tracker_calibration"))
 			{
 //				mTracker.setCalibration(sig);
 			}
-			if(p == MLSymbol("tracker_normalize"))
+			if(p == ml::Symbol("tracker_normalize"))
 			{
 //				mTracker.setNormalizeMap(sig);
 			}
@@ -577,7 +581,7 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 
 	for(int i=0; i<32; ++i)
 	{
-		setProperty(MLSymbol("carrier_toggle").withFinalNumber(i), 1);
+		setProperty(ml::textUtils::addFinalNumber("carrier_toggle", i), 1);
 	}
 }
 
@@ -611,7 +615,7 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 			MLConsole() << " arg = " << a1 << "\n";
 						
 			// set voice count to a1
-			int newTouches = clamp((int)a1, 0, kSoundplaneMaxTouches);
+			int newTouches = ml::clamp((int)a1, 0, kSoundplaneMaxTouches);
 
 			// Kyma is sending 0 sometimes, which there is probably
 			// no reason to respond to
@@ -855,7 +859,7 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
             if(pZoneType)
             {
                 // get zone type and type specific attributes
-                MLSymbol typeSym(pZoneType->valuestring);
+                ml::Symbol typeSym(pZoneType->valuestring);
                 int zoneTypeNum = Zone::symbolToZoneType(typeSym);
                 if(zoneTypeNum >= 0)
                 {
@@ -915,12 +919,12 @@ Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy)
 {
 	MLRange xRange(4.5f, 60.5f);
 	xRange.convertTo(MLRange(1.5f, 29.5f));
-	float kx = clamp(xRange(xy.x()), 0.f, (float)kSoundplaneAKeyWidth);
+	float kx = ml::clamp(xRange(xy.x()), 0.f, (float)kSoundplaneAKeyWidth);
 
 	MLRange yRange(1., 6.);  // Soundplane A as measured with kNormalizeThresh = .125
 	yRange.convertTo(MLRange(1.f, 4.f));
     float scaledY = yRange(xy.y());
-	float ky = clamp(scaledY, 0.f, (float)kSoundplaneAKeyHeight);
+	float ky = ml::clamp(scaledY, 0.f, (float)kSoundplaneAKeyHeight);
 
 	return Vec2(kx, ky);
 }
@@ -982,14 +986,14 @@ void SoundplaneModel::scaleTouchPressureData()
 	{
 		float z = mTouchArray[i].z;
 		z *= zscale;
-		z = clamp(z, 0.f, 4.f);
+		z = ml::clamp(z, 0.f, 4.f);
 		z = responseCurve(z, zcurve);
 		mTouchArray[i].z = z;
 		
 		// for note-ons, use same z scale controls as pressure
 		float dz = mTouchArray[i].dz*dzScale;
 		dz *= zscale;		
-		dz = clamp(dz, 0.f, 1.f);
+		dz = ml::clamp(dz, 0.f, 1.f);
 		dz = responseCurve(dz, zcurve);
 		mTouchArray[i].dz = dz;
 	}
@@ -1054,7 +1058,7 @@ void SoundplaneModel::sendTouchDataToZones()
 	}
 
     // tell listeners we are starting this frame.
-    mMessage.mType = MLSymbol("start_frame");
+    mMessage.mType = ml::Symbol("start_frame");
 	sendMessageToListeners();
 
     // process note offs for each zone
@@ -1082,7 +1086,7 @@ void SoundplaneModel::sendTouchDataToZones()
 		if(calibratedPressure.getHeight() == SensorGeometry::height)
 		{
 			
-			mMessage.mType = MLSymbol("matrix");
+			mMessage.mType = ml::Symbol("matrix");
 			for(int j = 0; j < SensorGeometry::height; ++j)
 			{
 				for(int i = 0; i < SensorGeometry::width; ++i)
@@ -1095,7 +1099,7 @@ void SoundplaneModel::sendTouchDataToZones()
     }
 
     // tell listeners we are done with this frame.
-    mMessage.mType = MLSymbol("end_frame");
+    mMessage.mType = ml::Symbol("end_frame");
 	sendMessageToListeners();
 }
 

@@ -18,8 +18,7 @@
 #include "MLMultiButton.h"
 #include "MLEnvelope.h"
 #include "MLProgressBar.h"
-#include "MLPolynomialWidget.h"
-#include "MLVector.h"
+#include "MLVectorDeprecated.h"
 #include "MLAppView.h"
 #include "MLPageView.h"
 #include "SoundplaneBinaryData.h"
@@ -87,7 +86,7 @@ public:
     ~SoundplaneView();
 	
 	// MLModelListener implementation
-	void doPropertyChangeAction(MLSymbol p, const MLProperty & newVal);
+	void doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal);
 
     void initialize();
     void paint (Graphics& g);
@@ -121,8 +120,6 @@ private:
 	MLTextButton* mpCalibrateButton;
 	MLTextButton* mpClearButton;
 	MLMenuButton* mpViewModeButton;
-	
-	MLPolynomialWidget* mpCurveGraph;
 	
 	// page 1
 	SoundplaneZoneView mGLView3;

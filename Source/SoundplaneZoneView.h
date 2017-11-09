@@ -9,7 +9,7 @@
 #include "JuceHeader.h"
 #include "SoundplaneModel.h"
 #include "MLLookAndFeel.h"
-#include "MLVector.h"
+#include "MLVectorDeprecated.h"
 
 #ifdef _WIN32
  #include <windows.h>
@@ -26,7 +26,7 @@ class SoundplaneZoneView  :
 	public MLWidget
 {
 public:
-    SoundplaneZoneView();
+    SoundplaneZoneView(MLWidget*);
     ~SoundplaneZoneView();
     
     void mouseDrag (const MouseEvent& e);

@@ -4,6 +4,7 @@
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
 #include "SoundplaneView.h"
+#include "MLProjectInfo.h"
 
 // --------------------------------------------------------------------------------
 #pragma mark header view
@@ -60,7 +61,10 @@ SoundplaneFooterView::SoundplaneFooterView(SoundplaneModel* pModel, MLWidget::Li
 	mCalibrateProgress(0.)
 {
     setWidgetName("soundplane_footer_view");
-	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
+
+	// setup application's look and feel 
+	MLLookAndFeel* myLookAndFeel = &(getRootViewResources(this).mLookAndFeel);
+	if(!myLookAndFeel) return;
 	
 	float labelWidth = 6.;
 	float w = kSoundplaneViewGridUnitsX;
@@ -143,13 +147,15 @@ void SoundplaneFooterView::paint (Graphics& g)
 // --------------------------------------------------------------------------------
 SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep) :
 	MLAppView(pResp, pRep),
+	mGridView(this),
+	mTouchView(this),
+	mGLView3(this),
 	mpFooter(0),
 	mpPages(0),
 	mpModel(pModel),
 	mCalibrateState(-1),
 	mSoundplaneClientState(-1),
 	mSoundplaneDeviceState(-1),
-	mpCurveGraph(0),
 	mpViewModeButton(0),
 	mpMIDIDeviceButton(0), 
 	mpOSCServicesButton(0),
@@ -157,9 +163,10 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 {
     setWidgetName("soundplane_view");
 	//pModel->addListener(this);
-    
+
 	// setup application's look and feel 
-	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
+	MLLookAndFeel* myLookAndFeel = &(getRootViewResources(this).mLookAndFeel);
+	if(!myLookAndFeel) return;
 	LookAndFeel::setDefaultLookAndFeel (myLookAndFeel);	
 	myLookAndFeel->setGradientMode(1); // A->B->A
 	myLookAndFeel->setGlobalTextScale(1.0f);
@@ -328,7 +335,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(9.75, 9.), "osc_service_name");
 	
 	// additional parameter views allow us to adapt UI based on Model properties.
-	page0->addPropertyView("midi_mpe", this, MLSymbol("mpe")); 	
+	page0->addPropertyView("midi_mpe", this, ml::Symbol("mpe")); 	
 
     // --------------------------------------------------------------------------------
 	// page 1 - raw touches
@@ -359,12 +366,11 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	mpCarrierLabels.resize(c);
 	for(int i=0; i<c; ++i)
 	{
-		MLSymbol tSym = MLSymbol("carrier_toggle").withFinalNumber(i);
+		ml::Symbol tSym = ml::textUtils::addFinalNumber("carrier_toggle", i);
 		mpCarrierToggles[i] = page1->addToggleButton("", toggleRectTiny.withCenter(i*0.3 + 1., 5), tSym, c2);
 		sprintf(numBuf, "%d", i);	
 		mpCarrierLabels[i] = page1->addLabel(numBuf, toggleRectTiny.withCenter(i*0.3 + 1., 4.75));
 	}
-
 	
 	mpCarriersOverrideToggle = page1->addToggleButton("override", toggleRect.withCenter(12, 5), "override_carriers", c2);
 	mpCarriersOverrideDial = page1->addDial("with set", dialRectSmall.withCenter(13, 5), "override_carrier_set", c2);
@@ -423,10 +429,10 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 //	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
 
 	// add parameter views handled directly by this Widget
-	page1->addPropertyView("viewmode", this, MLSymbol("viewmode"));	
+	page1->addPropertyView("viewmode", this, ml::Symbol("viewmode"));	
 	
 	// grid view gets viewmode changes
-	page1->addPropertyView("viewmode", &mGridView, MLSymbol("viewmode"));
+	page1->addPropertyView("viewmode", &mGridView, ml::Symbol("viewmode"));
 
     // --------------------------------------------------------------------------------
     // page 2 - expert stuff
@@ -473,13 +479,13 @@ SoundplaneView::~SoundplaneView()
 // MLModelListener implementation
 // an updateChangedParams() or updateAllParams() is needed to get these actions sent by the Model.
 //
-void SoundplaneView::doPropertyChangeAction(MLSymbol p, const MLProperty & val)
+void SoundplaneView::doPropertyChangeAction(ml::Symbol p, const MLProperty & val)
 {
 	bool handled = false;
 	if(p == "viewmode")
 	{
 		handled = true;
-		const std::string& v = val.getStringValue();
+		const ml::Text v = val.getTextValue();
 		if(v == "raw data")
 		{
 			makeCarrierTogglesVisible(1);
@@ -589,7 +595,7 @@ void SoundplaneView::makeCarrierTogglesVisible(int v)
 	int carriers = mpCarrierToggles.size();
 	for(int i=0; i<carriers; ++i)
 	{
-		//MLWidget* pw = getWidget(MLSymbol("carrier_toggle").withFinalNumber(i));
+		//MLWidget* pw = getWidget(ml::Symbol("carrier_toggle").withFinalNumber(i));
 		
 		MLWidget* pw = mpCarrierToggles[i];
 		if(pw)
@@ -613,20 +619,19 @@ void SoundplaneView::setMIDIDeviceString(const std::string& str)
 {	
 	// TODO auto get button text from menu code
 	if(mpMIDIDeviceButton)
-		mpMIDIDeviceButton->setProperty("text", str);
+		mpMIDIDeviceButton->setProperty("text", str.c_str());
 }
 
 void SoundplaneView::setOSCServicesString(const std::string& str)
 {	
 	// TODO auto get button text from menu code
 	if(mpOSCServicesButton)
-		mpOSCServicesButton->setProperty("text", str);
+		mpOSCServicesButton->setProperty("text", str.c_str());
 }
 
 void SoundplaneView::paint (Graphics& g)
 {
-	MLLookAndFeel* myLookAndFeel = MLLookAndFeel::getInstance();
-	
+	MLLookAndFeel* myLookAndFeel = &(getRootViewResources(this).mLookAndFeel);
 	myLookAndFeel->drawBackground(g, this);	
 
 	// TEST paint grid

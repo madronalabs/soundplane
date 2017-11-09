@@ -31,7 +31,8 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
 
 	// add view to window but retain ownership here
-	mpWindow->setContent(mpView);
+	bool resizeToFit = true;
+	mpWindow->setContentNonOwned(mpView, resizeToFit);
 
 	// generate a persistent state for the Model
 	mpModelState = std::unique_ptr<MLAppState>(new MLAppState(mpModel, "", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));

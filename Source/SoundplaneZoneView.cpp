@@ -5,7 +5,8 @@
 
 #include "SoundplaneZoneView.h"
 
-SoundplaneZoneView::SoundplaneZoneView() :
+SoundplaneZoneView::SoundplaneZoneView(MLWidget* pContainer) :
+	MLWidget (pContainer),
 	mpModel(nullptr)
 {
 	setInterceptsMouseClicks (false, false);	

@@ -6,8 +6,8 @@
 #ifndef __SOUNDPLANE_TOUCH_GRAPH_VIEW__
 #define __SOUNDPLANE_TOUCH_GRAPH_VIEW__
 
-#include "MLUI.h"
-#include "MLWidget.h"
+#include "LookAndFeel/MLUI.h"
+#include "MLJuceApp/MLWidget.h"
 #include "MLLookAndFeel.h"
 #include "SoundplaneModel.h"
 #include "MLGL.h"
@@ -25,7 +25,7 @@ class SoundplaneTouchGraphView  :
 	public MLWidget
 {
 public:
-    SoundplaneTouchGraphView();
+    SoundplaneTouchGraphView(MLWidget* pContainer);
     ~SoundplaneTouchGraphView();
  
 	void setupOrthoView();

@@ -6,8 +6,8 @@
 #ifndef __SOUNDPLANE_DATA_LISTENER__
 #define __SOUNDPLANE_DATA_LISTENER__
 
-#include "MLSignal.h"
-#include "MLModel.h"
+#include "core/MLSignal.h"
+#include "MLApp/MLModel.h"
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
 
@@ -23,8 +23,8 @@ enum VoiceState
 
 struct SoundplaneDataMessage
 {
-    MLSymbol mType;
-    MLSymbol mSubtype;
+	ml::Symbol mType;
+    ml::Symbol mSubtype;
 	int mOffset;				// offset for OSC port or MIDI channel
     std::string mZoneName;
     float mData[8];

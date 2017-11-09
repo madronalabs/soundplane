@@ -6,7 +6,8 @@
 #include "SoundplaneGridView.h"
 #include "SoundplaneBinaryData.h"
 
-SoundplaneGridView::SoundplaneGridView() :
+SoundplaneGridView::SoundplaneGridView(MLWidget* pContainer) :
+	MLWidget(pContainer),
 	mpModel(nullptr),
 	mInitialized(false),
 	mResized(false),
@@ -26,7 +27,7 @@ SoundplaneGridView::~SoundplaneGridView()
 }
 
 // MLModelListener implementation
-void SoundplaneGridView::doPropertyChangeAction(MLSymbol p, const MLProperty & v)
+void SoundplaneGridView::doPropertyChangeAction(ml::Symbol p, const MLProperty & v)
 {
 }
 
@@ -37,7 +38,7 @@ void SoundplaneGridView::drawInfoBox(Vec3 pos, char* text, int colorIndex)
 	int viewH = getBackingLayerHeight();
 	
 	int len = strlen(text);
-	clamp(len, 0, 32);
+	ml::clamp(len, 0, 32);
 	
 	float margin = 5*viewScale;
 	float charWidth = 10*viewScale; 
@@ -227,7 +228,7 @@ void SoundplaneGridView::renderXYGrid()
 		{
 			float mix = (calSignal)(i, j)*viewScale*20.f;
 			mix *= displayScale * 0.5f;
-			mix = clamp(mix, 0.f, 1.f);
+			mix = ml::clamp(mix, 0.f, 1.f);
 			Vec4 dataColor = vlerp(gray, lightGray, mix);
 			
 			glColor4fv(&dataColor[0]);
@@ -404,7 +405,7 @@ void SoundplaneGridView::renderZGrid()
 	float sh = myAspect*r/soundplaneAspect;
 	ySensorRange.convertTo(MLRange(-sh, sh));
 	
-	const std::string& viewMode = getStringProperty("viewmode");
+	const ml::Text viewMode = getTextProperty("viewmode");
 	MLSignal viewSignal;
 	if(viewMode == "raw data")
 	{
@@ -468,7 +469,7 @@ void SoundplaneGridView::renderZGrid()
 				float x = xSensorRange.convert(i);
 				float y = ySensorRange.convert(j);
 				float z = viewSignal(i, j);
-				if(zeroClip) { z = max(z, 0.f); }
+				if(zeroClip) { z = ml::max(z, 0.f); }
 				float zMean = (z + preOffset)*gridScale;
 				glVertex3f(x, y, -zMean);
 			}
@@ -483,14 +484,14 @@ void SoundplaneGridView::renderZGrid()
 					float x1 = xSensorRange.convert(i);
 					float y1 = ySensorRange.convert(j);
 					float z = viewSignal(i, j);
-					if(zeroClip) { z = max(z, 0.f); }
+					if(zeroClip) { z = ml::max(z, 0.f); }
 					float z1 = (z + preOffset)*gridScale;
 					glVertex3f(x1, y1, -z1);
 					
 					float x2 = xSensorRange.convert(i + 1);
 					float y2 = ySensorRange.convert(j);
 					z = viewSignal(i + 1, j);
-					if(zeroClip) { z = max(z, 0.f); }
+					if(zeroClip) { z = ml::max(z, 0.f); }
 					float z2 = (z + preOffset)*gridScale;
 					glVertex3f(x2, y2, -z2);
 				}
@@ -514,7 +515,7 @@ void SoundplaneGridView::renderZGrid()
 				float x = xSensorRange.convert(i);
 				float y = ySensorRange.convert(j);
 				float z0 = viewSignal(i, j);
-				if(zeroClip) { z0 = max(z0, 0.f); }
+				if(zeroClip) { z0 = ml::max(z0, 0.f); }
 				float z = (z0 + preOffset)*gridScale;
 				glVertex3f(x, y, -z);
 			}
@@ -529,7 +530,7 @@ void SoundplaneGridView::renderZGrid()
 				float x = xSensorRange.convert(i);
 				float y = ySensorRange.convert(j);
 				float z0 = viewSignal(i, j);
-				if(zeroClip) { z0 = max(z0, 0.f); }
+				if(zeroClip) { z0 = ml::max(z0, 0.f); }
 				float z = (z0 + preOffset)*gridScale;
 				glVertex3f(x, y, -z);
 			}
@@ -617,7 +618,7 @@ void SoundplaneGridView::renderOpenGL()
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     const Colour c = findColour(MLLookAndFeel::backgroundColor);	
 	OpenGLHelpers::clear (c);
-	const std::string& viewMode = getStringProperty("viewmode");
+	const ml::Text viewMode = getTextProperty("viewmode");
 	
 	if (viewMode == "xy")
 	{

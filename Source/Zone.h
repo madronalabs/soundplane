@@ -9,15 +9,15 @@
 #ifndef __Soundplane__SoundplaneZone__
 #define __Soundplane__SoundplaneZone__
 
-#include "MLDSPUtils.h"
-#include "MLTime.h"
+//#include "MLDSPUtils.h"
+//#include "MLTime.h"
 #include "MLModel.h"
 #include "SoundplaneModelA.h"
 #include "SoundplaneDriver.h"
-#include "SoundplaneDataListener.h"
+//#include "SoundplaneDataListener.h"
 #include "MLOSCListener.h"
-#include "NetService.h"
-#include "NetServiceBrowser.h"
+#include "OSC/zeroconf/NetService.h"
+#include "OSC/zeroconf/NetServiceBrowser.h"
 #include "TouchTracker.h"
 #include "SoundplaneMIDIOutput.h"
 #include "SoundplaneOSCOutput.h"
@@ -28,7 +28,7 @@
 #include <list>
 #include <map>
 
-#include "cJSON.h"
+#include "cJSON/cJSON.h"
 
 enum ZoneType
 {
@@ -66,7 +66,7 @@ public:
     Zone(const SoundplaneListenerList& l);
     ~Zone();
 
-    static int symbolToZoneType(MLSymbol s);
+    static int symbolToZoneType(ml::Symbol s);
 
     void clearTouches();
     void addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz);
@@ -87,7 +87,7 @@ public:
 	int getOffset() const { return mOffset; }
 
     // return values on [0..1]
-    float getValue(int i) const { return mValue[clamp(i, 0, kZoneValArraySize - 1)]; }
+	float getValue(int i) const { return mValue[ml::clamp(i, 0, kZoneValArraySize - 1)]; }
     float getXValue() const { return getValue(0); }
     float getYValue() const { return getValue(1); }
 
@@ -145,7 +145,7 @@ private:
     void processTouchesControllerXY();
     void processTouchesControllerToggle();
     void processTouchesControllerPressure();
-    void sendMessage(MLSymbol type, MLSymbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);
+    void sendMessage(ml::Symbol type, ml::Symbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);
     void sendMessageToListeners();
     
     bool mNeedsRedraw;

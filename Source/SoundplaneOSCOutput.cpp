@@ -27,11 +27,9 @@ OSCVoice::~OSCVoice()
 
 SoundplaneOSCOutput::SoundplaneOSCOutput() :
 	mDataFreq(250.),
-	mLastFrameStartTime(0),
 	mCurrentBaseUDPPort(kDefaultUDPPort),
 	mFrameId(0),
 	mSerialNumber(0),
-	lastInfrequentTaskTime(0),
 	mKymaMode(false),
 	mKymaPort(8000),
     mGotNoteChangesThisFrame(false),
@@ -174,33 +172,36 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
 	std::lock_guard<std::mutex> lock(mProcessMutex);
 	
 	// note: remove statics TODO
-	static const MLSymbol startFrameSym("start_frame");
-    static const MLSymbol touchSym("touch");
-    static const MLSymbol onSym("on");
-    static const MLSymbol continueSym("continue");
-    static const MLSymbol offSym("off");
-    static const MLSymbol controllerSym("controller");
-    static const MLSymbol xSym("x");
-    static const MLSymbol ySym("y");
-    static const MLSymbol xySym("xy");
-    static const MLSymbol zSym("z");
-    static const MLSymbol toggleSym("toggle");
-    static const MLSymbol endFrameSym("end_frame");
-    static const MLSymbol matrixSym("matrix");
-    static const MLSymbol nullSym;
+	static const ml::Symbol startFrameSym("start_frame");
+    static const ml::Symbol touchSym("touch");
+    static const ml::Symbol onSym("on");
+    static const ml::Symbol continueSym("continue");
+    static const ml::Symbol offSym("off");
+    static const ml::Symbol controllerSym("controller");
+    static const ml::Symbol xSym("x");
+    static const ml::Symbol ySym("y");
+    static const ml::Symbol xySym("xy");
+    static const ml::Symbol zSym("z");
+    static const ml::Symbol toggleSym("toggle");
+    static const ml::Symbol endFrameSym("end_frame");
+    static const ml::Symbol matrixSym("matrix");
+    static const ml::Symbol nullSym;
 	
 	if (!mActive) return;
-    MLSymbol type = msg->mType;
-    MLSymbol subtype = msg->mSubtype;
+    ml::Symbol type = msg->mType;
+    ml::Symbol subtype = msg->mSubtype;
     
     int voiceIdx, offset;
 	float x, y, z, dz, note, vibrato;
     
     if(type == startFrameSym)
     {
-        const uint64_t dataPeriodMicrosecs = 1000*1000 / mDataFreq;
-        mCurrFrameStartTime = getMicroseconds();
-        if (mCurrFrameStartTime > mLastFrameStartTime + (uint64_t)dataPeriodMicrosecs)
+        const int dataPeriodMicrosecs = 1000*1000 / mDataFreq;
+		
+		mCurrFrameStartTime = std::chrono::system_clock::now();
+		int msecs = std::chrono::duration_cast<std::chrono::microseconds>(mCurrFrameStartTime - mLastFrameStartTime).count();
+		
+        if (msecs > dataPeriodMicrosecs)
         {
             mLastFrameStartTime = mCurrFrameStartTime;
             mTimeToSendNewFrame = true;
@@ -321,13 +322,13 @@ void SoundplaneOSCOutput::processSoundplaneMessage(const SoundplaneDataMessage* 
 
 void SoundplaneOSCOutput::sendFrame()
 {
-	static const MLSymbol controllerSym("controller");
-	static const MLSymbol xSym("x");
-	static const MLSymbol ySym("y");
-	static const MLSymbol xySym("xy");
-	static const MLSymbol zSym("z");
-	static const MLSymbol toggleSym("toggle");
-	static const MLSymbol nullSym;	
+	static const ml::Symbol controllerSym("controller");
+	static const ml::Symbol xSym("x");
+	static const ml::Symbol ySym("y");
+	static const ml::Symbol xySym("xy");
+	static const ml::Symbol zSym("z");
+	static const ml::Symbol toggleSym("toggle");
+	static const ml::Symbol nullSym;	
 
 	float x, y, z;
 	
@@ -397,7 +398,8 @@ void SoundplaneOSCOutput::sendFrame()
 		UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
 		if((!p) || (!socket)) return;
 		
-		*p << osc::BeginBundle(mCurrFrameStartTime);
+		osc::uint64 micros = std::chrono::duration_cast<std::chrono::microseconds>(mCurrFrameStartTime.time_since_epoch()).count();
+		*p << osc::BeginBundle(micros);
 		
 		// send frame start message
 		*p << osc::BeginMessage( "/t3d/frm" );

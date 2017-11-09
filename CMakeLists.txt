@@ -22,26 +22,31 @@ if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 endif()
 
 set(ML_JUCE_HEADER_PATH "${CMAKE_SOURCE_DIR}/Source")
+
+# add madronalib
 if(NOT SP_MADRONALIB_DIR)
   set(SP_MADRONALIB_DIR "${CMAKE_SOURCE_DIR}/external/madronalib")
 endif()
-
 add_subdirectory(${SP_MADRONALIB_DIR})
+
+# add soundplane library 
 add_subdirectory(SoundplaneLib)
 
+# add madronalib as source
+#add_subdirectory(external/madronalib)
+
+
+# add soundplane app sources
 set(SP_SOURCES
   Data/SoundplaneBinaryData/SoundplaneBinaryData.cpp
   Data/SoundplaneBinaryData/SoundplaneBinaryData.h
-  Source/AppConfig.h
-  Source/Filters2D.cpp
-  Source/Filters2D.h
   Source/JuceHeader.h
+  Source/AppConfig.h
   Source/MLProjectInfo.h
   Source/SoundplaneApp.cpp
   Source/SoundplaneApp.h
   Source/SoundplaneController.cpp
   Source/SoundplaneController.h
-  Source/SoundplaneDataListener.h
   Source/SoundplaneGridView.cpp
   Source/SoundplaneGridView.h
   Source/SoundplaneMIDIOutput.cpp
@@ -86,13 +91,36 @@ set_target_properties(${EXECUTABLE_NAME}
   MACOSX_BUNDLE_SHORT_VERSION_STRING "${SP_VERSION}"
   MACOSX_BUNDLE_BUNDLE_NAME "${PROJECT_NAME}"
   )
+
 target_link_libraries(${EXECUTABLE_NAME} madronalib)
+
 target_link_libraries(${EXECUTABLE_NAME} soundplanelib)
-target_include_directories(${EXECUTABLE_NAME} PRIVATE "${ML_JUCE_DIR}")
+
+if(APPLE)
+   target_link_libraries(${EXECUTABLE_NAME} "-framework CoreFoundation")
+   target_link_libraries(${EXECUTABLE_NAME} "-framework IOKit")
+else(APPLE)
+
+endif()
+
+# target_include_directories(${EXECUTABLE_NAME} PRIVATE "${ML_JUCE_DIR}")
 target_include_directories(${EXECUTABLE_NAME} PRIVATE Data/SoundplaneBinaryData)
+target_include_directories(${EXECUTABLE_NAME} PRIVATE external/madronalib/external/juce/JUCE)
+target_include_directories(${EXECUTABLE_NAME} PRIVATE external/madronalib/source)
+
+
+# add include directories for madronalib
+target_include_directories(${EXECUTABLE_NAME} PRIVATE external/madronalib/source)
+target_include_directories(${EXECUTABLE_NAME} PRIVATE external/madronalib/source/core)
+target_include_directories(${EXECUTABLE_NAME} PRIVATE external/madronalib/source/DSP)
+target_include_directories(${EXECUTABLE_NAME} PRIVATE external/madronalib/source/LookAndFeel)
+target_include_directories(${EXECUTABLE_NAME} PRIVATE external/madronalib/source/MLApp)
+target_include_directories(${EXECUTABLE_NAME} PRIVATE external/madronalib/source/MLJuceApp)
+target_include_directories(${EXECUTABLE_NAME} PRIVATE external/madronalib/external)
+
+
 install(TARGETS ${EXECUTABLE_NAME} DESTINATION usr/bin)
 
-add_subdirectory("Developer extras")
 
 # Linux package generation
 install(FILES Data/59-soundplane.rules DESTINATION /lib/udev/rules.d)
