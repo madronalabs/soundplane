@@ -23,7 +23,7 @@ int main(int argc, const char * argv[])
 	
 	const auto driver = SoundplaneDriver::create();
 	
-	const int kTestDuration = 8; // seconds
+	const int kTestDuration = 4; // seconds
 	
 	std::cout << "Hello, Soundplane!\n";
 	
@@ -89,7 +89,7 @@ int main(int argc, const char * argv[])
 						}
 					}
 					break;
-				case kDeviceIsTerminating:
+
 				default:
 					break;
 			}
@@ -103,16 +103,22 @@ int main(int argc, const char * argv[])
 			gapCounter++;
 		}
 		
-		// if synched, print calibrated pressure data every second 
-		if((r.deviceState == kDeviceHasIsochSync) && (previousSecondsSinceStart != secondsSinceStart))
+		// print the seconds
+		if(previousSecondsSinceStart != secondsSinceStart)
 		{
-			std::cout << "seconds since start: " << secondsSinceStart << "   frames: " << frameCounter << 
-			"   no frames: " << noFrameCounter << "   gaps: " << gapCounter << "\n";
-			calibratedFrame = multiply(calibrate(frame, calibrateMean), 2.f);							
-			dumpFrameAsASCII(std::cout, calibratedFrame);
+			std::cout << "seconds: " << secondsSinceStart << " \n";
 			
-			std::cout << "\n";
-			frameCounter = noFrameCounter = gapCounter = 0;
+			// if synched, print calibrated pressure data 
+			if(r.deviceState == kDeviceHasIsochSync) 
+			{
+				std::cout << "   frames: " << frameCounter << 
+				"   no frames: " << noFrameCounter << "   gaps: " << gapCounter << "\n";
+				calibratedFrame = multiply(calibrate(frame, calibrateMean), 2.f);							
+				dumpFrameAsASCII(std::cout, calibratedFrame);
+				
+				std::cout << "\n";
+				frameCounter = noFrameCounter = gapCounter = 0;
+			}
 		}
 		
 		// sleep, longer if not synched

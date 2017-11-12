@@ -13,6 +13,7 @@
 
 #include <vector>
 
+#include <iostream> // TEMP
 #include "ThreadUtility.h"
 
 #if DEBUG
@@ -90,9 +91,7 @@ MacSoundplaneDriver::MacSoundplaneDriver() :
 	startupCtr(0),
 	dev(0),
 	intf(0),
-	mState(kNoDevice),
-	mDeviceFound(false),
-	mDeviceRemoved(false),
+	mDeviceState(kNoDevice),
 	notifyPort(0),
 	matchedIter(0),
 	notification(0)
@@ -121,25 +120,33 @@ MacSoundplaneDriver::~MacSoundplaneDriver()
 
 	kern_return_t	kr;
 
-	// set device removed flag, after which process() will call destroyDevice()
-	setDeviceRemoved();
-	process(nullptr);
+	{
+		
+//		std::cout << "~MacSoundplaneDriver, state " << getDeviceState() << " \n";
+		
+		std::lock_guard<std::mutex> lock(mDeviceStateMutex);
+		setDeviceState(kDeviceClosing);
 
-	// stop any device added / removed notifications and iterator
-	if(notifyPort)
-	{
-		IONotificationPortDestroy(notifyPort);
-		notifyPort = 0;
-	}
-	if (matchedIter)
-	{
-		IOObjectRelease(matchedIter);
-		matchedIter = 0;
-	}
-	if(notification)
-	{
-		kr = IOObjectRelease(notification);	
-		notification = 0;
+		// stop any device added / removed notifications and iterator
+		if(notifyPort)
+		{
+			IONotificationPortDestroy(notifyPort);
+			notifyPort = 0;
+		}
+		if (matchedIter)
+		{
+			IOObjectRelease(matchedIter);
+			matchedIter = 0;
+		}
+		if(notification)
+		{
+			kr = IOObjectRelease(notification);	
+			notification = 0;
+		}
+
+		destroyDevice();
+		
+		setDeviceState(kNoDevice);
 	}
 }
 
@@ -247,7 +254,7 @@ std::string MacSoundplaneDriver::getSerialNumberString() const
 			r = getStringDescriptor(dev, idx, buffer, sizeof(buffer), 0);
 		}
 
-		// exctract returned string from wchars.
+		// extract returned string from wchars.
 		for(int i=0; i < r - 2; ++i)
 		{
 			buffer[i] = buffer[i*2 + 2];
@@ -358,41 +365,39 @@ number has already passed. This is normal.
 // LowLatencyCreateBuffer() to manage communication with the kernel.
 IOReturn MacSoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
 {
-	if ((!dev) || (!intf)) return kIOReturnNoDevice;
+//	if ((!dev) || (!intf)) return kIOReturnNoDevice;
 
-	int state = getDeviceState();
-	
-	if (state == kNoDevice) return kIOReturnNotReady;
-	if (state == kDeviceIsTerminating) return kIOReturnNotReady;
-	
-	IOReturn err;
-	assert(t);
+	IOReturn err = kIOReturnNoDevice;
 
-	t->parent = this;
-	t->busFrameNumber = busFrameNumber[t->endpointIndex];
-
-	for (int k = 0; k < kSoundplaneANumIsochFrames; k++)
+	if(mDeviceState != kNoDevice) 
 	{
-		t->isocFrames[k].frStatus = 0;
-		t->isocFrames[k].frReqCount = sizeof(SoundplaneADataPacket);
-		t->isocFrames[k].frActCount = 0;
-		t->isocFrames[k].frTimeStamp.hi = 0;
-		t->isocFrames[k].frTimeStamp.lo = 0;
-		t->setSequenceNumber(k, 0);
+		assert(t);
+
+		t->parent = this;
+		t->busFrameNumber = busFrameNumber[t->endpointIndex];
+
+		for (int k = 0; k < kSoundplaneANumIsochFrames; k++)
+		{
+			t->isocFrames[k].frStatus = 0;
+			t->isocFrames[k].frReqCount = sizeof(SoundplaneADataPacket);
+			t->isocFrames[k].frActCount = 0;
+			t->isocFrames[k].frTimeStamp.hi = 0;
+			t->isocFrames[k].frTimeStamp.lo = 0;
+			t->setSequenceNumber(k, 0);
+		}
+
+		size_t payloadSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
+		bzero(t->payloads, payloadSize);
+
+	#ifdef SHOW_BUS_FRAME_NUMBER
+		fprintf(stderr, "read(%d, %p, %llu, %p, %p)\n", t->endpointNum, t->payloads, t->busFrameNumber, t->isocFrames, t);
+	#endif
+		err = (*intf)->LowLatencyReadIsochPipeAsync(intf, t->endpointNum, t->payloads,
+			t->busFrameNumber, kSoundplaneANumIsochFrames, kSoundplaneAUpdateFrequency, t->isocFrames, isochComplete, t);
+
+		busFrameNumber[t->endpointIndex] += kSoundplaneANumIsochFrames;
+		mTransactionsInFlight++;
 	}
-
-	size_t payloadSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
-	bzero(t->payloads, payloadSize);
-
-#ifdef SHOW_BUS_FRAME_NUMBER
-	fprintf(stderr, "read(%d, %p, %llu, %p, %p)\n", t->endpointNum, t->payloads, t->busFrameNumber, t->isocFrames, t);
-#endif
-	err = (*intf)->LowLatencyReadIsochPipeAsync(intf, t->endpointNum, t->payloads,
-		t->busFrameNumber, kSoundplaneANumIsochFrames, kSoundplaneAUpdateFrequency, t->isocFrames, isochComplete, t);
-
-	busFrameNumber[t->endpointIndex] += kSoundplaneANumIsochFrames;
-	mTransactionsInFlight++;
-
 	return err;
 }
 
@@ -408,46 +413,52 @@ void MacSoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg
 	MacSoundplaneDriver *k1 = t->parent;
 	assert(k1);
 
+//	std::cout << "isochComplete, state " << k1->getDeviceState() << " \n";
+
+//	std::lock_guard<std::mutex> lock(k1->getDeviceStateMutex());
+	
 	int state = k1->getDeviceState();
-	
-	k1->mTransactionsInFlight--;
-	
-	switch (result)
+	if(state != kNoDevice) 
 	{
-		case kIOReturnSuccess:
-			if((state == kDeviceConnected) || (state == kDeviceHasIsochSync))
-			{				
-				K1IsocTransaction *pNextTransactionBuffer = k1->getTransactionData(t->endpointIndex, (t->bufIndex + kSoundplaneABuffersInFlight) & kSoundplaneABuffersMask);
-				
-#ifdef SHOW_ALL_SEQUENCE_NUMBERS
-				
-				int index = pNextTransactionBuffer->endpointIndex;
-				int start = pNextTransactionBuffer->getTransactionSequenceNumber(0);
-				int end = pNextTransactionBuffer->getTransactionSequenceNumber(kSoundplaneANumIsochFrames - 1);
-				std::cout << "endpoint " << index << ": " << start << " - " << end << "\n";
-				if (start > end)
-				{
-					for(int f=0; f<kSoundplaneANumIsochFrames; ++f)
+		k1->mTransactionsInFlight--;
+		
+		switch (result)
+		{
+			case kIOReturnSuccess:
+				if((state == kDeviceConnected) || (state == kDeviceHasIsochSync))
+				{				
+					K1IsocTransaction *pNextTransactionBuffer = k1->getTransactionData(t->endpointIndex, (t->bufIndex + kSoundplaneABuffersInFlight) & kSoundplaneABuffersMask);
+					
+	#ifdef SHOW_ALL_SEQUENCE_NUMBERS
+					
+					int index = pNextTransactionBuffer->endpointIndex;
+					int start = pNextTransactionBuffer->getTransactionSequenceNumber(0);
+					int end = pNextTransactionBuffer->getTransactionSequenceNumber(kSoundplaneANumIsochFrames - 1);
+					std::cout << "endpoint " << index << ": " << start << " - " << end << "\n";
+					if (start > end)
 					{
-						if (f % 5 == 0) {std::cout << "\n";}
-						std::cout << pNextTransactionBuffer->getTransactionSequenceNumber(f) << " ";
+						for(int f=0; f<kSoundplaneANumIsochFrames; ++f)
+						{
+							if (f % 5 == 0) {std::cout << "\n";}
+							std::cout << pNextTransactionBuffer->getTransactionSequenceNumber(f) << " ";
+						}
+						std::cout << "\n\n";
 					}
-					std::cout << "\n\n";
+	#endif
+					err = k1->scheduleIsoch(pNextTransactionBuffer);
 				}
-#endif
-				err = k1->scheduleIsoch(pNextTransactionBuffer);
-			}
-			break;
-		case kIOReturnUnderrun:
-		case kIOReturnIsoTooOld:
-			
-			// try to recover?
-			// k1->setDeviceState(kDeviceConnected);
-			
-		case kIOReturnAborted: // returned when Soundplane is unplugged
-		default:
-			printf("isochComplete error: %s\n", io_err_string(result));
-			break;
+				break;
+			case kIOReturnUnderrun:
+			case kIOReturnIsoTooOld:
+				
+				// try to recover?
+				// k1->setDeviceState(kDeviceConnected);
+				
+			case kIOReturnAborted: // returned when Soundplane is unplugged
+			default:
+				printf("isochComplete error: %s\n", io_err_string(result));
+				break;
+		}
 	}
 }
 
@@ -864,23 +875,27 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 					
 					if(!k1->createLowLatencyBuffers()) goto close;
 
-					k1->setDeviceFound();
-					k1->process(nullptr);
-															
-					err = k1->setBusFrameNumber();
-					assert(!err);
-
-					// for each endpoint, schedule first transaction and
-					// a few buffers into the future
-					for (i = 0; i < kSoundplaneANumEndpoints; i++)
 					{
-						for (j = 0; j < kSoundplaneABuffersInFlight; j++)
+//						std::cout << "deviceAdded, state " << k1->getDeviceState() << " \n";
+
+						std::lock_guard<std::mutex> lock(k1->getDeviceStateMutex());
+						k1->setDeviceState(kDeviceConnected);
+															
+						err = k1->setBusFrameNumber();
+						assert(!err);
+
+						// for each endpoint, schedule first transaction and
+						// a few buffers into the future
+						for (i = 0; i < kSoundplaneANumEndpoints; i++)
 						{
-							err = k1->scheduleIsoch(k1->getTransactionData(i, j));
-							if (kIOReturnSuccess != err)
+							for (j = 0; j < kSoundplaneABuffersInFlight; j++)
 							{
-								show_io_err("scheduleIsoch", err);
-								goto close;
+								err = k1->scheduleIsoch(k1->getTransactionData(i, j));
+								if (kIOReturnSuccess != err)
+								{
+									show_io_err("scheduleIsoch", err);
+									goto close;
+								}
 							}
 						}
 					}
@@ -928,8 +943,12 @@ void MacSoundplaneDriver::deviceNotifyGeneral(void *refCon, io_service_t service
 
 	if (kIOMessageServiceIsTerminated == messageType)
 	{
-		// set device removed flag, the next process() will destroy the device
-		k1->setDeviceRemoved();
+//		std::cout << "deviceNotifyGeneral, state " << k1->getDeviceState() << " \n";
+
+		std::lock_guard<std::mutex> lock(k1->getDeviceStateMutex());
+		k1->setDeviceState(kDeviceClosing);
+		k1->destroyDevice();
+		k1->setDeviceState(kNoDevice);
 	}
 }
 
@@ -992,7 +1011,6 @@ void MacSoundplaneDriver::grabThread()
 	}
 }
 
-// called by process() when wasDeviceRemoved() returns true
 void MacSoundplaneDriver::destroyDevice()
 {
 	//IOReturn err;
@@ -1040,17 +1058,12 @@ void MacSoundplaneDriver::destroyDevice()
 		kr = (*dev)->Release(dev);
 		dev = NULL;
 	}
+
 }
 
 SoundplaneDriver::returnValue MacSoundplaneDriver::process(SensorFrame* pOut)
 {
 	returnValue r {0};
-	int oldState = getDeviceState();
-	
-	// note that these clear the found / removed flags!
-	bool found = wasDeviceFound();
-	bool removed = wasDeviceRemoved();	
-	int newState = oldState;
 	
 	static uint16_t curSeqNum0 = 0;
 	static uint16_t curSeqNum1 = 0;
@@ -1077,19 +1090,16 @@ SoundplaneDriver::returnValue MacSoundplaneDriver::process(SensorFrame* pOut)
 	int waiting = 0;
 	int gotNext = 0;
 	bool printThis = false;
-	
-	if(removed)
+
+	//std::cout << "process, state " << getDeviceState() << " \n";
+
+	std::lock_guard<std::mutex> lock(mDeviceStateMutex);
+	int previousState = mDeviceState;
+
+	switch(mDeviceState)
 	{
-		newState = kDeviceIsTerminating;
-	}
-	else switch(oldState)
-	{
-		case kNoDevice:
-			// look for device found by grab thread			
-			if(found)
-			{
-				newState = kDeviceConnected;
-			}			
+		case kNoDevice:		
+			// nothing here-- grab thread must get us to the connected state
 			break;			
 		case kDeviceConnected:
 		{
@@ -1140,7 +1150,7 @@ SoundplaneDriver::returnValue MacSoundplaneDriver::process(SensorFrame* pOut)
 							std::copy(kDefaultCarriers, kDefaultCarriers + sizeof(kDefaultCarriers), carriers.begin());
 							setCarriers(carriers);
 							
-							newState = kDeviceHasIsochSync;
+							mDeviceState = kDeviceHasIsochSync;
 							lost = false;
 						}
 					}
@@ -1287,12 +1297,12 @@ SoundplaneDriver::returnValue MacSoundplaneDriver::process(SensorFrame* pOut)
 			{
 				waiting++;
 				// NOT WORKING
-				if (waiting > 1000) // delay amount? -- try reconnect
+				if (waiting > 1000) // delay amount? -- try to resync
 				{
 					printf("RESYNCHING\n");
 					waiting = 0;
 					
-					newState = kDeviceConnected;
+					mDeviceState = kDeviceConnected;
 				}
 			}
 			
@@ -1323,23 +1333,13 @@ SoundplaneDriver::returnValue MacSoundplaneDriver::process(SensorFrame* pOut)
 	
 		break;
 			
-		case kDeviceIsTerminating:
-			newState = kNoDevice;
-			break;
-			
 		default:
 			break;
 	}
 
-	setDeviceState(newState);	
-	
-	if(newState == kDeviceIsTerminating)
-	{
-		destroyDevice();
-	}	
-	
-	r.deviceState = newState;
-	r.stateChanged = (newState != oldState);
+	// return current state and changed flag
+	r.deviceState = mDeviceState;
+	r.stateChanged = (mDeviceState != previousState);
 	return r;
 }
 

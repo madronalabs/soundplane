@@ -34,8 +34,18 @@ public:
 	virtual void setCarriers(const Carriers& carriers) override;
 	virtual void enableCarriers(unsigned long mask) override;
 
-private:
+	std::mutex& getDeviceStateMutex() { return mDeviceStateMutex; }
+	int getDeviceState() const override
+	{
+		return mDeviceState;
+	}	
+	void setDeviceState(int state)
+	{
+		mDeviceState = state;
+	}	
+	void destroyDevice();
 	
+private:
 	
 	struct K1IsocTransaction
 	{
@@ -54,17 +64,6 @@ private:
 	int createLowLatencyBuffers();
 	int destroyLowLatencyBuffers();
 	
-	virtual int getDeviceState() const override
-	{
-		return mState;
-	}	
-
-	inline void setDeviceState(int n)
-	{
-		std::lock_guard<std::mutex> lock(mDeviceStateLock);
-		mState = n;
-	}
-
 	IOReturn scheduleIsoch(K1IsocTransaction *t);
 	static void isochComplete(void *refCon, IOReturn result, void *arg0);
 
@@ -80,7 +79,6 @@ private:
 	static void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
 
 	void grabThread();
-	void destroyDevice();
 
 	static int getStringDescriptor(IOUSBDeviceInterface187 **dev, uint8_t descIndex, char *destBuf, uint16_t maxLen, uint16_t lang);
 	void dumpTransactions(int bufferIndex, int frameIndex);
@@ -102,13 +100,14 @@ private:
 	K1IsocTransaction			transactionData[kSoundplaneANumEndpoints * kSoundplaneABuffers];
 	uint8_t						payloadIndex[kSoundplaneANumEndpoints];
 
-	int mState;
-	std::mutex mDeviceStateLock;
+	int mDeviceState;
+	std::mutex mDeviceStateMutex;
 	
 	unsigned char mCurrentCarriers[kSoundplaneNumCarriers];
 	
 	// TODO refactor duplicate signal code here
 	
+	/*
 	// used by grab thread to signal presence of a new device
 	bool mDeviceFound;
 	std::mutex mDeviceFoundLock;
@@ -126,8 +125,9 @@ private:
 		mDeviceFound = false;
 		return r;
 	}
+	*/
 	
-	
+	/*
 	// used to signal removal of a device
 	bool mDeviceRemoved;
 	std::mutex mDeviceRemovedLock;
@@ -145,6 +145,7 @@ private:
 		mDeviceRemoved = false;
 		return r;
 	}
+	*/
 	
 	// mListener may be nullptr
 //	SoundplaneDriverListener* const mListener;

@@ -16,12 +16,10 @@
 //
 enum
 {
-  kNoDevice = 0,  // No device has been found yet
-  kDeviceConnected = 1,  // A device has been found, but isochronous transfer isn't yet up
-  kDeviceHasIsochSync = 2,  // The main mode
-  kDeviceIsTerminating = 3,  // The driver is shutting down
-  kDeviceSuspend = 4,  // Seems to be unused (?)
-  kDeviceResume = 5  // Seems to be unused (?)
+	kNoDevice = 0,  // No device is connected
+	kDeviceConnected = 1,  // A device has been found by the grab thread, but isochronous transfer isn't yet up
+	kDeviceHasIsochSync = 2,  // The main mode, isochronous transfers have been completed.
+	kDeviceClosing = 3  // destroying, allowing isoch transactions to finish
 };
 
 // device errors
@@ -39,8 +37,6 @@ class SoundplaneDriver
 public:
 	virtual ~SoundplaneDriver() = default;
 
-	virtual int getDeviceState() const = 0;
-		
 	// device state is now returned from process() along with any error codes.
 	typedef struct 
 	{
@@ -52,6 +48,8 @@ public:
 	returnValue;
 	
 	virtual returnValue process(SensorFrame* pOut) = 0;
+
+	virtual int getDeviceState() const = 0;
 
 	/**
 	 * Returns the firmware version of the connected Soundplane device. The

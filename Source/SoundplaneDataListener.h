@@ -6,8 +6,8 @@
 #ifndef __SOUNDPLANE_DATA_LISTENER__
 #define __SOUNDPLANE_DATA_LISTENER__
 
-#include "core/MLSignal.h"
-#include "MLApp/MLModel.h"
+#include "MLSignal.h"
+#include "MLModel.h"
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
 
