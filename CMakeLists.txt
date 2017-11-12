@@ -22,12 +22,13 @@ if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 endif()
 
 set(ML_JUCE_HEADER_PATH "${CMAKE_SOURCE_DIR}/Source")
+
 if(NOT SP_MADRONALIB_DIR)
   set(SP_MADRONALIB_DIR "${CMAKE_SOURCE_DIR}/external/madronalib")
 endif()
 
 
-SET(BUILD_NEW_ONLY OFF CACHE BOOL)
+SET(BUILD_NEW_ONLY OFF)
 
 add_subdirectory(${SP_MADRONALIB_DIR})
 add_subdirectory(SoundplaneLib)
@@ -88,9 +89,12 @@ set_target_properties(${EXECUTABLE_NAME}
   MACOSX_BUNDLE_BUNDLE_NAME "${PROJECT_NAME}"
   )
 target_link_libraries(${EXECUTABLE_NAME} madronalib)
-target_link_libraries(${EXECUTABLE_NAME} soundplanelib)
+
 target_include_directories(${EXECUTABLE_NAME} PRIVATE "${ML_JUCE_DIR}")
 target_include_directories(${EXECUTABLE_NAME} PRIVATE Data/SoundplaneBinaryData)
+
+target_link_libraries(${EXECUTABLE_NAME} soundplanelib)
+
 install(TARGETS ${EXECUTABLE_NAME} DESTINATION usr/bin)
 
 # Linux package generation
