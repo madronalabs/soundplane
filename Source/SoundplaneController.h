@@ -8,7 +8,7 @@
 
 #include "JuceHeader.h"
 
-#include "LookAndFeel/MLUIBinaryData.h"
+#include "MLUIBinaryData.h"
 #include "SoundplaneModel.h"
 #include "SoundplaneView.h"
 #include "MLReporter.h"
@@ -17,7 +17,7 @@
 #include "MLButton.h"
 #include "MLDial.h"
 
-#include "MLApp/MLNetServiceHub.h"
+#include "MLNetServiceHub.h"
 #include "MLFileCollection.h"
 
 extern const char *kUDPType;

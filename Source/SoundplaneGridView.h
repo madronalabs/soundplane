@@ -6,10 +6,10 @@
 #ifndef __SOUNDPLANE_GRID_VIEW__
 #define __SOUNDPLANE_GRID_VIEW__
 
-#include "MLApp/MLGL.h"
+#include "MLGL.h"
 #include "SoundplaneModel.h"
-#include "LookAndFeel/MLUI.h"
-#include "MLJuceApp/MLWidget.h"
+#include "MLUI.h"
+#include "MLWidget.h"
 #include "MLLookAndFeel.h"
 
 #ifndef GL_BGRA_EXT

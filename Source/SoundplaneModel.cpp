@@ -227,7 +227,6 @@ SoundplaneDriver::returnValue SoundplaneModel::process()
 					break;
 				}
 				default:
-				case kDeviceIsTerminating:
 					break;
 			}
 		}		
