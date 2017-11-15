@@ -1,4 +1,4 @@
-
+	
 // Part of the Soundplane client software by Madrona Labs.
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
@@ -8,7 +8,9 @@
 SoundplaneApp::SoundplaneApp() :
 	mpModel(0),
 	mpView(0),
-	mpController(0)
+	mpController(0),
+	mpBorder(0),
+	mpWindow(0)
 {
 }
 
@@ -22,17 +24,29 @@ void SoundplaneApp::initialise (const String& commandLine)
 
 	mpController = new SoundplaneController(mpModel);
 	mpView = new SoundplaneView(mpModel, mpController, mpController);
+	
+	mpBorder = new MLAppBorder(mpView);
+	mpBorder->makeResizer(mpView);
+	mpBorder->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
+	mpBorder->setBounds(mpView->getBounds());
+	
+	// add view to window but retain ownership here
+	bool resizeToFit = true;
+	
+	mpWindow = new MLAppWindow();	
+	mpWindow->setContentNonOwned(mpBorder, resizeToFit);
+	
+	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
+	
+	// setBounds(mpView->getBounds());  // MLTEST NX
+	
+	mpBorder->addAndMakeVisible(mpView);
 	mpController->setView(mpView);
 
 	mpController->initialize();	
-	mpView->initialize();		// ?
+	mpView->initialize();		// MLTEST NX to remove
 
-	mpWindow = new MLAppWindow();	
-	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
 
-	// add view to window but retain ownership here
-	bool resizeToFit = true;
-	mpWindow->setContentNonOwned(mpView, resizeToFit);
 
 	// generate a persistent state for the Model
 	mpModelState = std::unique_ptr<MLAppState>(new MLAppState(mpModel, "", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
@@ -44,9 +58,8 @@ void SoundplaneApp::initialise (const String& commandLine)
 	// separate thread needed for JUCE-based app
 	mpModel->startProcessThread();
 	
-	#if GLX
 	mpWindow->setUsingOpenGL(true);
-	#endif
+
 	mpWindow->setVisible(true);
 
 	if (!mpModelState->loadStateFromAppStateFile()) 
@@ -76,10 +89,14 @@ void SoundplaneApp::shutdown()
 	mpViewState->updateAllProperties();
 	mpViewState->saveStateToStateFile();
 
-	delete mpView;
-	delete mpWindow;
+	if(mpController) mpController->setView(0);
+
 	delete mpController;
 	delete mpModel;
+	delete mpView;
+	delete mpBorder;
+	delete mpWindow;
+	
 }
 
 void SoundplaneApp::setDefaultWindowSize()

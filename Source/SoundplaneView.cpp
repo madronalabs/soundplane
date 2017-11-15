@@ -178,7 +178,9 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	float width = kSoundplaneViewGridUnitsX;
 	float height = kSoundplaneViewGridUnitsY;
 	float footerHeight = 0.5f;
-    
+	
+	setBounds(0, 0, 640, 480); // MLTEST
+	
 	mpFooter = new SoundplaneFooterView(pModel, pResp, pRep);
 
 	mpFooter->setGridBounds(MLRect(0, height - footerHeight, width, footerHeight));
@@ -632,10 +634,11 @@ void SoundplaneView::setOSCServicesString(const std::string& str)
 void SoundplaneView::paint (Graphics& g)
 {
 	MLLookAndFeel* myLookAndFeel = &(getRootViewResources(this).mLookAndFeel);
+	
+	// MLTEST paint grid
+	myLookAndFeel->drawUnitGrid(g, this);	
+	
 	myLookAndFeel->drawBackground(g, this);	
-
-	// TEST paint grid
-	//myLookAndFeel->drawUnitGrid(g);	
 }
 
 void SoundplaneView::goToPage (int page)

@@ -49,6 +49,7 @@ private:
 	SoundplaneView* mpView;
 	SoundplaneController* mpController;	
 	MLAppWindow* mpWindow;
+	MLAppBorder* mpBorder;
 	
 	std::unique_ptr<MLAppState> mpModelState;
 	std::unique_ptr<MLAppState> mpViewState;

@@ -11,7 +11,7 @@ SoundplaneZoneView::SoundplaneZoneView(MLWidget* pContainer) :
 {
 	setInterceptsMouseClicks (false, false);	
 	MLWidget::setComponent(this);
-    setupGL(this);
+    setupGL();
 }
 
 SoundplaneZoneView::~SoundplaneZoneView()
@@ -243,7 +243,8 @@ void SoundplaneZoneView::renderZones()
 void SoundplaneZoneView::renderOpenGL()
 {
 	if (!mpModel) return;
-    if(!getGLContext()->isAttached()) return;
+	if (!mpGLContext) return;
+    if(!mpGLContext->isAttached()) return;
     {
         const Colour c = findColour(MLLookAndFeel::backgroundColor);
         OpenGLHelpers::clear (c);

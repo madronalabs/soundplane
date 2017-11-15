@@ -27,7 +27,7 @@ else(SP_USE_LIBUSB)
     )
 endif()
 
-add_library(soundplanelib ${SP_DRIVER_SOURCES})
+add_library(soundplanelib STATIC ${SP_DRIVER_SOURCES})
 target_link_libraries(soundplanelib)
 target_include_directories(soundplanelib PUBLIC .)
 

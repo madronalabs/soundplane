@@ -11,7 +11,7 @@ SoundplaneTouchGraphView::SoundplaneTouchGraphView(MLWidget* pContainer) :
 {
 	setInterceptsMouseClicks (false, false);	
 	MLWidget::setComponent(this);
-	setupGL(this);
+	setupGL();
 }
 
 SoundplaneTouchGraphView::~SoundplaneTouchGraphView()

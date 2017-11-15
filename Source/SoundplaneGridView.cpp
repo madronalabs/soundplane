@@ -18,8 +18,8 @@ SoundplaneGridView::SoundplaneGridView(MLWidget* pContainer) :
 
 {
 	setInterceptsMouseClicks (false, false);
-	MLWidget::setComponent(this);
-    MLWidget::setupGL(this);
+	setComponent(this);
+    setupGL();
 }
 
 SoundplaneGridView::~SoundplaneGridView()

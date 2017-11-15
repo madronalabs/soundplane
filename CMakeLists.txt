@@ -1,4 +1,9 @@
+# soundplane/CMakeLists.txt
+# root CMake file for soundplane project.
+
 cmake_minimum_required(VERSION 2.8.12)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum OS X deployment version")
+
 project(soundplane)
 
 set(PROJECT_NAME Soundplane)
@@ -9,6 +14,7 @@ set(SP_VERSION "${SP_VERSION_MAJOR}.${SP_VERSION_MINOR}.${SP_VERSION_UPDATE}")
 
 if(APPLE)
   set(EXECUTABLE_NAME Soundplane)
+
 else(APPLE)
   set(EXECUTABLE_NAME soundplane)
 endif()
@@ -26,10 +32,16 @@ if(NOT SP_MADRONALIB_DIR)
   set(SP_MADRONALIB_DIR "${CMAKE_SOURCE_DIR}/external/madronalib")
 endif()
 
+# set options to turn off extras and include madronalib
 
+set(BUILD_NEW_ONLY OFF CACHE BOOL "Build the examples" FORCE)
+set(ML_BUILD_EXAMPLES OFF CACHE BOOL "Build the examples" FORCE)
+set(ML_BUILD_TESTS OFF CACHE BOOL "Build the examples" FORCE)
 
 add_subdirectory(${SP_MADRONALIB_DIR})
 add_subdirectory(SoundplaneLib)
+
+add_subdirectory(${SP_MADRONALIB_DIR}/external/juce)
 
 set(SP_SOURCES
   Data/SoundplaneBinaryData/SoundplaneBinaryData.cpp
@@ -81,12 +93,16 @@ target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/exter
 target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/external/")
 target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/external/juce/JUCE")
 
+target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/core")
+target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/DSP")
+target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/MLApp")
+target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/MLJuceApp")
+target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/LookAndFeel")
 
 target_include_directories(${EXECUTABLE_NAME} PRIVATE "${ML_JUCE_DIR}")
 target_include_directories(${EXECUTABLE_NAME} PRIVATE Data/SoundplaneBinaryData)
 
-# TESTING
-target_include_directories(${EXECUTABLE_NAME} PRIVATE "${ML_JUCE_DIR}")
+target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/SoundplaneLib/")
 
 set_source_files_properties(${ICON_FULL_PATH} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 set_target_properties(${EXECUTABLE_NAME}
@@ -98,8 +114,10 @@ set_target_properties(${EXECUTABLE_NAME}
   MACOSX_BUNDLE_SHORT_VERSION_STRING "${SP_VERSION}"
   MACOSX_BUNDLE_BUNDLE_NAME "${PROJECT_NAME}"
   )
+
 target_link_libraries(${EXECUTABLE_NAME} madronalib)
 target_link_libraries(${EXECUTABLE_NAME} soundplanelib)
+
 
 install(TARGETS ${EXECUTABLE_NAME} DESTINATION usr/bin)
 

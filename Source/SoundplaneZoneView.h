@@ -30,9 +30,10 @@ public:
     ~SoundplaneZoneView();
     
     void mouseDrag (const MouseEvent& e);
-    void renderOpenGL();
  	void setModel(SoundplaneModel* m);
-	
+
+	void renderOpenGL() override;
+
 private:
     void drawDot(Vec2 pos, float r);
     void renderGrid();
