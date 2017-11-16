@@ -16,6 +16,12 @@ SoundplaneApp::SoundplaneApp() :
 
 SoundplaneApp::~SoundplaneApp()
 {
+	
+	delete mpController;
+	delete mpModel;
+	delete mpView;
+	delete mpBorder;
+	delete mpWindow;
 }
 
 void SoundplaneApp::initialise (const String& commandLine)
@@ -35,8 +41,15 @@ void SoundplaneApp::initialise (const String& commandLine)
 	
 	mpWindow = new MLAppWindow();	
 	mpWindow->setContentNonOwned(mpBorder, resizeToFit);
-	
 	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
+	mpWindow->setUsingOpenGL(true);
+	mpWindow->setVisible(true);
+	
+
+	mpWindow->setConstrainer (mpBorder->getConstrainer());
+	
+
+	
 	
 	// setBounds(mpView->getBounds());  // MLTEST NX
 	
@@ -45,7 +58,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 
 	mpController->initialize();	
 	mpView->initialize();		// MLTEST NX to remove
-
 
 
 	// generate a persistent state for the Model
@@ -58,9 +70,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 	// separate thread needed for JUCE-based app
 	mpModel->startProcessThread();
 	
-	mpWindow->setUsingOpenGL(true);
-
-	mpWindow->setVisible(true);
 
 	if (!mpModelState->loadStateFromAppStateFile()) 
 	{
@@ -90,12 +99,6 @@ void SoundplaneApp::shutdown()
 	mpViewState->saveStateToStateFile();
 
 	if(mpController) mpController->setView(0);
-
-	delete mpController;
-	delete mpModel;
-	delete mpView;
-	delete mpBorder;
-	delete mpWindow;
 	
 }
 

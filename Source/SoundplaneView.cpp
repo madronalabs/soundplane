@@ -182,10 +182,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	setBounds(0, 0, 640, 480); // MLTEST
 	
 	mpFooter = new SoundplaneFooterView(pModel, pResp, pRep);
-
-	mpFooter->setGridBounds(MLRect(0, height - footerHeight, width, footerHeight));
-	addAndMakeVisible(mpFooter);
-	mWidgets["footer"] = mpFooter;
+	MLRect footerRect(0, height - footerHeight, width, footerHeight);	
+	addWidgetToView(mpFooter, footerRect, "footer");
 	
 	// set gradient size so that area around OpenGL views is flat color.
 	myLookAndFeel->setGradientSize(0.07f); 
@@ -633,12 +631,12 @@ void SoundplaneView::setOSCServicesString(const std::string& str)
 
 void SoundplaneView::paint (Graphics& g)
 {
-	MLLookAndFeel* myLookAndFeel = &(getRootViewResources(this).mLookAndFeel);
+//	MLLookAndFeel* myLookAndFeel = &(getRootViewResources(this).mLookAndFeel);
 	
 	// MLTEST paint grid
-	myLookAndFeel->drawUnitGrid(g, this);	
+//	myLookAndFeel->drawUnitGrid(g, this);	
 	
-	myLookAndFeel->drawBackground(g, this);	
+//	myLookAndFeel->drawBackground(g, this);	
 }
 
 void SoundplaneView::goToPage (int page)
