@@ -1355,6 +1355,7 @@ void SoundplaneModel::endSelectCarriers()
 	// set that carrier group
 	MLConsole() << "setting carriers set " << minIdx << "...\n";
 	makeStandardCarrierSet(mCarriers, minIdx);
+	setCarriers(mCarriers);
 
 	// set chosen carriers as model parameter so they will be saved
 	// this will trigger a recalibrate
