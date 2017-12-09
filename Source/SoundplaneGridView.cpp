@@ -611,7 +611,8 @@ void SoundplaneGridView::doResize()
 void SoundplaneGridView::renderOpenGL()
 {
     jassert (OpenGLHelpers::isContextActive());
-    if(!mpModel) return;    
+	if(!mpModel) return;    
+	if(!mpModel->getDeviceState()) return;    
 	if(!mResized) return;
 	
     glEnable(GL_BLEND);

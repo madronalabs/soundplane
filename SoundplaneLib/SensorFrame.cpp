@@ -259,7 +259,7 @@ void dumpFrameAsASCII(std::ostream& s, const SensorFrame& f)
 	int w = SensorGeometry::width;
 	int h = SensorGeometry::height;
 	
-	int scale = strlen(g);
+	int scale = static_cast<int>(strlen(g));
 	for (int j=0; j<h; ++j)
 	{
 		s << "|";
@@ -270,4 +270,44 @@ void dumpFrameAsASCII(std::ostream& s, const SensorFrame& f)
 		}
 		s << "|\n";
 	}
+}
+
+void dumpFrame(std::ostream& s, const SensorFrame& f)
+{
+	int w = SensorGeometry::width;
+	int h = SensorGeometry::height;
+	
+	for (int j=0; j<h; ++j)
+	{
+		for(int i=0; i<w; ++i)
+		{
+			float v = f[j*w + i];
+			
+			printf("%2.2f ", v);
+
+		}
+		std::cout << "\n";
+	}
+}
+
+void dumpFrameStats(std::ostream& s, const SensorFrame& f)
+{
+	int w = SensorGeometry::width;
+	int h = SensorGeometry::height;
+	
+	float min = MAXFLOAT;
+	float max = -min;
+	float sum = 0.f;
+	for (int j=0; j<h; ++j)
+	{
+		for(int i=0; i<w; ++i)
+		{
+			float v = f[j*w + i];
+			
+			sum += v;
+			min = std::min(min, v);
+			max = std::max(max, v);
+		}
+	}
+	s << "min: " << min << " max: " << max << " sum: " << sum << "\n";
 }

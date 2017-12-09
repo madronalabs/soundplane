@@ -104,7 +104,7 @@ SoundplaneModel::SoundplaneModel() :
 	mKymaMode(false),
 	mShuttingDown(0)
 {	
-	mpDriver = SoundplaneDriver::create();
+	mpDriver = SoundplaneDriver::create(*this);
 
 	for(int i=0; i<kSoundplaneMaxTouches; ++i)
 	{
@@ -148,11 +148,13 @@ SoundplaneModel::SoundplaneModel() :
 	debug() << "LOOKING for zones in " << zoneDir.getFileName() << "\n";
 	mZonePresets = std::unique_ptr<MLFileCollection>(new MLFileCollection("zone_preset", zoneDir, "json"));
 	mZonePresets->processFilesImmediate();
-	mZonePresets->dump();
+	//mZonePresets->dump();
 }
 
 SoundplaneModel::~SoundplaneModel()
 {
+	mpDriver->close();
+	
 	// signal threads to shut down
 	mShuttingDown = true;
 	
@@ -174,107 +176,61 @@ SoundplaneModel::~SoundplaneModel()
 	listenToOSC(0);	
 }
 
-void SoundplaneModel::startProcessThread()
+void SoundplaneModel::onStartup()
 {
-	mProcessThread = std::thread(&SoundplaneModel::processThread, this);
+	// get serial number and auto calibrate noise on sync detect
+	const unsigned long instrumentModel = 1; // Soundplane A
+	mOSCOutput.setSerialNumber((instrumentModel << 16) | mpDriver->getSerialNumber());
+	// output will be enabled at end of calibration.
+	mNeedsCalibrate = true;
+	// connected but not calibrated -- disable output.
+	enableOutput(false);
+}
+
+void SoundplaneModel::onFrame(const SensorFrame& frame)
+{
+	mSensorFrame = frame;
+	mSurface = sensorFrameToSignal(mSensorFrame);
 	
-	// TODO pass realtime percentage of time -- test
-	// setThreadPriority(mProcessThread.native_handle(), 96, true);
-	// MLTEST
-}
-
-void SoundplaneModel::processThread()
-{
-	while(!mShuttingDown)
-	{		
-		SoundplaneDriver::returnValue r = process();
-		
-		// sleep, longer if not synched
-		if(r.deviceState == kDeviceHasIsochSync)
-		{
-			std::this_thread::sleep_for(std::chrono::microseconds(500));
-		}
-		else
-		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		}	
+	// store surface for raw output
+	{ 
+		std::lock_guard<std::mutex> lock(mRawSignalMutex); 
+		mRawSignal.copy(mSurface);
 	}
-}
-
-SoundplaneDriver::returnValue SoundplaneModel::process()
-{
-	SoundplaneDriver::returnValue r = mpDriver->process(&mSensorFrame);
-	if(r.errorCode == kDevNoErr)
+	
+	if (mCalibrating)
 	{
-		// take action on state changes
-		if(r.stateChanged)
+		mStats.accumulate(mSensorFrame);
+		if (mStats.getCount() >= kSoundplaneCalibrateSize)
 		{
-			switch(r.deviceState)
-			{
-				case kNoDevice:
-					break;
-				case kDeviceConnected:
-					// connected but not calibrated -- disable output.
-					enableOutput(false);
-					break;
-				case kDeviceHasIsochSync:
-				{
-					// get serial number and auto calibrate noise on sync detect
-					const unsigned long instrumentModel = 1; // Soundplane A
-					mOSCOutput.setSerialNumber((instrumentModel << 16) | mpDriver->getSerialNumber());
-					// output will be enabled at end of calibration.
-					mNeedsCalibrate = true;
-					break;
-				}
-				default:
-					break;
-			}
-		}		
-		else
-		{
-			mSurface = sensorFrameToSignal(mSensorFrame);
-			
-			// store surface for raw output
-			{ 
-				std::lock_guard<std::mutex> lock(mRawSignalMutex); 
-				mRawSignal.copy(mSurface);
-			}
-			
-			if (mCalibrating)
-			{
-				mStats.accumulate(mSensorFrame);
-				if (mStats.getCount() >= kSoundplaneCalibrateSize)
-				{
-					endCalibrate();
-				}
-			}
-			else if (mSelectingCarriers)
-			{
-				mStats.accumulate(mSensorFrame);
-				if (mStats.getCount() >= kSoundplaneCalibrateSize)
-				{
-					nextSelectCarriersStep();
-				}
-			}
-			else if(mOutputEnabled)
-			{
-				if (mHasCalibration)
-				{
-					SensorFrame calibratedFrame = subtract(multiply(mSensorFrame, mCalibrateMeanInv), 1.0f);	
-					
-					// store calibrated output
-					// TODO less often! only needed for display
-					{
-						std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);
-						mCalibratedSignal = sensorFrameToSignal(calibratedFrame);
-					}
-					
-					trackTouches(calibratedFrame);		
-				}
-			}
+			endCalibrate();
 		}
 	}
-	return r;
+	else if (mSelectingCarriers)
+	{
+		mStats.accumulate(mSensorFrame);
+
+		if (mStats.getCount() >= kSoundplaneCalibrateSize)
+		{
+			nextSelectCarriersStep();
+		}
+	}
+	else if(mOutputEnabled)
+	{
+		if (mHasCalibration)
+		{
+			SensorFrame calibratedFrame = subtract(multiply(mSensorFrame, mCalibrateMeanInv), 1.0f);	
+			
+			// store calibrated output
+			// TODO less often! only needed for display
+			{
+				std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);
+				mCalibratedSignal = sensorFrameToSignal(calibratedFrame);
+			}
+			
+			trackTouches(calibratedFrame);		
+		}
+	}
 }
 
 void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
@@ -724,6 +680,11 @@ int SoundplaneModel::getClientState(void)
 
 int SoundplaneModel::getDeviceState(void)
 {
+	if(!mpDriver.get())
+	{
+		return kNoDevice;
+	}
+		
 	return mpDriver->getDeviceState();
 }
 
@@ -1288,32 +1249,34 @@ void SoundplaneModel::nextSelectCarriersStep()
 	// analyze calibration data just collected.
 	SensorFrame mean = clamp(mStats.mean(), 0.0001f, 1.f);
 	SensorFrame stdDev = mStats.standardDeviation();
-	SensorFrame stdDevScaled = divide(stdDev, mean);
+	SensorFrame variation = divide(stdDev, mean);
+	
 
 	// find maximum noise in any column for this set.  This is the "badness" value
 	// we use to compare carrier sets.
-	float maxNoise = 0;
-	float maxNoiseFreq = 0;
-	float noiseSum;
+	float maxVar = 0;
+	float maxVarFreq = 0;
+	float variationSum;
 	int startSkip = 2;
+	
 	for(int col = startSkip; col<kSoundplaneNumCarriers; ++col)
 	{
-		noiseSum = 0;
+		variationSum = 0;
 		int carrier = mCarriers[col];
 		float cFreq = SoundplaneDriver::carrierToFrequency(carrier);
 		
-		noiseSum = getColumnSum(stdDevScaled, col);
-		if(noiseSum > maxNoise)
+		variationSum = getColumnSum(variation, col);
+		if(variationSum > maxVar)
 		{
-			maxNoise = noiseSum;
-			maxNoiseFreq = cFreq;
+			maxVar = variationSum;
+			maxVarFreq = cFreq;
 		}
 	}
 
-	mMaxNoiseByCarrierSet[mSelectCarriersStep] = maxNoise;
-	mMaxNoiseFreqByCarrierSet[mSelectCarriersStep] = maxNoiseFreq;
+	mMaxNoiseByCarrierSet[mSelectCarriersStep] = maxVar;
+	mMaxNoiseFreqByCarrierSet[mSelectCarriersStep] = maxVarFreq;
 
-	MLConsole() << "max noise for set " << mSelectCarriersStep << ": " << maxNoise << "(" << maxNoiseFreq << " Hz) \n";
+	MLConsole() << "max noise for set " << mSelectCarriersStep << ": " << maxVar << "(" << maxVarFreq << " Hz) \n";
 
 	// set up next step.
 	mSelectCarriersStep++;
@@ -1328,9 +1291,9 @@ void SoundplaneModel::nextSelectCarriersStep()
 	{
 		endSelectCarriers();
 	}
+	
 	// clear data
 	mStats.clear();
-
 }
 
 void SoundplaneModel::endSelectCarriers()

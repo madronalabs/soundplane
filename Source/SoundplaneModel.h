@@ -38,6 +38,7 @@ typedef enum
 } TouchSignalColumns;
 
 class SoundplaneModel :
+	public SoundplaneDriverListener,
 	public MLOSCListener,
 	public MLNetServiceHub,
 	public MLModel
@@ -47,17 +48,15 @@ public:
 	SoundplaneModel();
 	~SoundplaneModel();
 	
+	// SoundplaneDriverListener
+	void onStartup() override;
+	void onFrame(const SensorFrame& frame) override;
+	
 	// MLModel
     void doPropertyChangeAction(ml::Symbol , const MLProperty & ) override;
 
 	void setAllPropertiesToDefaults();
 	
-	// start a thread to run process() in a loop. This is needed for platforms on which we can't just
-	// run our own main event loop.
-	void startProcessThread();
-	
-	SoundplaneDriver::returnValue process();
-
 	// MLOSCListener
 	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint) override;
 	void ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint) override;
@@ -117,7 +116,7 @@ public:
 	void getMinMaxHistory(int n);
 	const MLSignal& getCorrelation();
 	
-	const MLSignal& getTouchFrame() { std::lock_guard<std::mutex> lock(mTouchFrameMutex); return mTouchFrame; }
+	const MLSignal& getTouchFrame() { return mTouchFrame; }
 	const MLSignal& getTouchHistory() { return mTouchHistory; }
 	const MLSignal getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
 	const MLSignal getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex); return mCalibratedSignal; }
@@ -142,6 +141,8 @@ public:
 	Vec2 xyToKeyGrid(Vec2 xy);
 
 private:
+
+	std::unique_ptr<SoundplaneDriver> mpDriver;
 
 	// TODO order!
 	void trackTouches(const SensorFrame& frame);
@@ -170,7 +171,6 @@ private:
 	void doInfrequentTasks();
 	uint64_t mLastInfrequentTaskTime;
 
-	std::unique_ptr<SoundplaneDriver> mpDriver;
 	int mSerialNumber;
 
 	SoundplaneMIDIOutput mMIDIOutput;

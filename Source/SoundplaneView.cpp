@@ -168,6 +168,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	MLLookAndFeel* myLookAndFeel = &(getRootViewResources(this).mLookAndFeel);
 	if(!myLookAndFeel) return;
 	LookAndFeel::setDefaultLookAndFeel (myLookAndFeel);	
+	
 	myLookAndFeel->setGradientMode(1); // A->B->A
 	myLookAndFeel->setGlobalTextScale(1.0f);
 
@@ -254,6 +255,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pL = page0->addLabel("Zones", pageTitleRect, 1.5f, eMLTitle);
     pL->setResizeToText(false);
 	pL->setJustification(Justification::centredLeft);
+	pL->setWidgetName("zones");
 	
 	mGLView3.setModel(pModel);
 	MLRect zoneViewRect(0, 2.f, pageWidth, 3.75);
@@ -346,6 +348,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pL = page1->addLabel("Touches", pageTitleRect, 1.5f, eMLTitle);
     pL->setResizeToText(false);
 	pL->setJustification(Justification::centredLeft); 
+	pL->setWidgetName("touches");
 
 	// GL views
 	//

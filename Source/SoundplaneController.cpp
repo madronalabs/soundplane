@@ -117,7 +117,7 @@ void SoundplaneController::timerCallback()
 	
 // process a file from one of the Model's collections. Currenlty unused but will be used when file
 // collections update menus constantly in the background. 
-void SoundplaneController::processFileFromCollection (ml::Symbol action, const MLFile file, const MLFileCollection& collection, int idx, int size)
+void SoundplaneController::processFileFromCollection (ml::Symbol action, const MLFile& file, const MLFileCollection& collection, int idx, size_t size)
 {
 	ml::Symbol collName = collection.getName();
     if(collName == "touch_preset")

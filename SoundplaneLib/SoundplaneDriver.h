@@ -19,7 +19,7 @@ enum
 	kNoDevice = 0,  // No device is connected
 	kDeviceConnected = 1,  // A device has been found by the grab thread, but isochronous transfer isn't yet up
 	kDeviceHasIsochSync = 2,  // The main mode, isochronous transfers have been completed.
-	kDeviceClosing = 3  // destroying, allowing isoch transactions to finish
+	kDeviceClosing = 3  // destroying driver, allowing isoch transactions to finish
 };
 
 // device errors
@@ -32,25 +32,23 @@ enum
 	kDevGapInSequence = 3
 };
 
+class SoundplaneDriverListener
+{
+public:
+	virtual ~SoundplaneDriverListener() = default;
+	virtual void onFrame(const SensorFrame& frame) = 0;
+	virtual void onStartup(void) = 0;
+};
+
 class SoundplaneDriver
 {
 public:
 	virtual ~SoundplaneDriver() = default;
 
-	// device state is now returned from process() along with any error codes.
-	typedef struct 
-	{
-		uint8_t deviceState;
-		uint8_t errorCode;
-		uint8_t stateChanged;
-		uint8_t unused2;
-	}
-	returnValue;
-	
-	virtual returnValue process(SensorFrame* pOut) = 0;
-
 	virtual int getDeviceState() const = 0;
-
+	
+	virtual void close() = 0;
+	
 	/**
 	 * Returns the firmware version of the connected Soundplane device. The
 	 * return value is undefined if getDeviceState() == kNoDevice
@@ -95,9 +93,10 @@ public:
 	 * Create a SoundplaneDriver object that is appropriate for the current
 	 * platform.
 	 */
-	static std::unique_ptr<SoundplaneDriver> create();
+	static std::unique_ptr<SoundplaneDriver> create(SoundplaneDriverListener& listener);
 
 	static float carrierToFrequency(int carrier);
+
 };
 
 #endif // __SOUNDPLANE_DRIVER__

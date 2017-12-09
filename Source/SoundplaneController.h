@@ -39,7 +39,7 @@ public:
 	void handleWidgetAction(MLWidget* w, ml::Symbol action, ml::Symbol target, const MLProperty& val = MLProperty());
 	
 	// MLFileCollection::Listener
-	void processFileFromCollection (ml::Symbol action, const MLFile f, const MLFileCollection& collection, int idx, int size) override;
+	void processFileFromCollection (ml::Symbol action, const MLFile& f, const MLFileCollection& collection, int idx, size_t size) override;
 	
 	// juce::Timer
 	void timerCallback();

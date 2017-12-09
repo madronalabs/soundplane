@@ -69,15 +69,6 @@ typedef struct
   uint16_t padding;
 } SoundplaneADataPacket; // 388 bytes
 
-// Soundplane A OSX client software
-const int kSoundplaneABuffersExp = 3;
-const int kSoundplaneABuffers = 1 << kSoundplaneABuffersExp;
-const int kSoundplaneABuffersMask = kSoundplaneABuffers - 1;
-const int kSoundplaneABuffersInFlight = 4;
-const int kSoundplaneANumIsochFrames = 20;
-const int kSoundplaneOutputBufFrames = 128;
-const int kSoundplaneStartupFrames = 50;
-
 // isoc frame data update rate in ms. see LowLatencyReadIsochPipeAsync docs in IOUSBLib.h.
 const int kSoundplaneAUpdateFrequency = 1;
 

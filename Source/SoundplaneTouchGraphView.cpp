@@ -154,6 +154,7 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
 void SoundplaneTouchGraphView::renderOpenGL()
 {
 	if (!mpModel) return;
+	if (!mpModel->getDeviceState()) return;
     const Colour c = findColour(MLLookAndFeel::backgroundColor);
     OpenGLHelpers::clear (c);
     renderTouchBarGraphs();

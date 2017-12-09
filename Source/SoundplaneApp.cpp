@@ -26,6 +26,7 @@ SoundplaneApp::~SoundplaneApp()
 
 void SoundplaneApp::initialise (const String& commandLine)
 {
+	MLConsole() << "Starting Soundplane...\n";		
 	mpModel = new SoundplaneModel();
 
 	mpController = new SoundplaneController(mpModel);
@@ -48,9 +49,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 
 	mpWindow->setConstrainer (mpBorder->getConstrainer());
 	
-
-	
-	
 	// setBounds(mpView->getBounds());  // MLTEST NX
 	
 	mpBorder->addAndMakeVisible(mpView);
@@ -65,11 +63,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 
 	// generate a persistent state for the application's view. 
 	mpViewState = std::unique_ptr<MLAppState>(new MLAppState(mpView, "View", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
-
-	MLConsole() << "Starting Soundplane...\n";	
-	// separate thread needed for JUCE-based app
-	mpModel->startProcessThread();
-	
 
 	if (!mpModelState->loadStateFromAppStateFile()) 
 	{

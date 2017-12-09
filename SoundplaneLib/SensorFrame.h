@@ -40,6 +40,8 @@ SensorFrame getCurvatureY(const SensorFrame& in);
 SensorFrame getCurvatureXY(const SensorFrame& in);
 SensorFrame calibrate(const SensorFrame& in, const SensorFrame& calibrateMean);
 void dumpFrameAsASCII(std::ostream& s, const SensorFrame& f);
+void dumpFrame(std::ostream& s, const SensorFrame& f);
+void dumpFrameStats(std::ostream& s, const SensorFrame& f);
 
 class SensorFrameStats
 {
@@ -55,6 +57,7 @@ public:
 	{
 		mCount++;
 		
+		// compute a running mean.
 		// See Knuth TAOCP vol 2, 3rd edition, page 232
 		if (mCount == 1)
 		{

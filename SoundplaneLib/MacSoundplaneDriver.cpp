@@ -17,90 +17,94 @@
 #include "ThreadUtility.h"
 
 #if DEBUG
-	#define VERBOSE
+#define VERBOSE
 #endif
 
 //#define SHOW_BUS_FRAME_NUMBER
 //#define SHOW_ALL_SEQUENCE_NUMBERS
 
 namespace {
-
-// --------------------------------------------------------------------------------
+	
+	// --------------------------------------------------------------------------------
 #pragma mark error handling
-
-// REVIEW: IOKit has documentation on handling errors
-const char *io_err_string(IOReturn err)
-{
-	static char other[32];
-
-	switch (err)
+	
+	// REVIEW: IOKit has documentation on handling errors
+	const char *io_err_string(IOReturn err)
 	{
-		case kIOReturnSuccess:
-			break;
-		case KERN_INVALID_ADDRESS:
-			return "Specified address is not currently valid";
-		case KERN_PROTECTION_FAILURE:
-			return "Specified memory is valid, but does not permit the required forms of access";
-		case kIOReturnNoDevice:
-			return "no such device";
-		case kIOReturnAborted:
-			return "operation aborted";
-		case kIOReturnUnderrun:
-			return "data underrun";
-		case kIOReturnNoBandwidth:
-			return "No Bandwidth: bus bandwidth would be exceeded";
-		case kIOReturnIsoTooOld:
-			return "isochronous I/O request for distant past!";
-		case kIOUSBNotSent2Err:
-			return "USB: Transaction not sent";
-		case kIOUSBTransactionTimeout:
-			return "USB: Transaction timed out";
-		case kIOUSBPipeStalled:
-			return "Pipe has stalled, error needs to be cleared";
-		case kIOUSBLowLatencyFrameListNotPreviouslyAllocated:
-			return "Attempted to use user land low latency isoc calls w/out calling PrepareBuffer (on the frame list) first";
-		default:
-			sprintf(other, "result %#x", err);
-			return other;
+		static char other[32];
+		
+		switch (err)
+		{
+			case kIOReturnSuccess:
+				break;
+			case KERN_INVALID_ADDRESS:
+				return "Specified address is not currently valid";
+			case KERN_PROTECTION_FAILURE:
+				return "Specified memory is valid, but does not permit the required forms of access";
+			case kIOReturnNoDevice:
+				return "no such device";
+			case kIOReturnAborted:
+				return "operation aborted";
+			case kIOReturnUnderrun:
+				return "data underrun";
+			case kIOReturnNoBandwidth:
+				return "No Bandwidth: bus bandwidth would be exceeded";
+			case kIOReturnIsoTooOld:
+				return "isochronous I/O request for distant past!";
+			case kIOUSBNotSent2Err:
+				return "USB: Transaction not sent";
+			case kIOUSBTransactionTimeout:
+				return "USB: Transaction timed out";
+			case kIOUSBPipeStalled:
+				return "Pipe has stalled, error needs to be cleared";
+			case kIOUSBLowLatencyFrameListNotPreviouslyAllocated:
+				return "Attempted to use user land low latency isoc calls w/out calling PrepareBuffer (on the frame list) first";
+			default:
+				sprintf(other, "result %#x", err);
+				return other;
+		}
+		return NULL;
 	}
-	return NULL;
-}
-
-void show_io_err(const char *msg, IOReturn err)
-{
-	fprintf(stderr, "%s (%08x) %s\n", msg, err, io_err_string(err));
-}
-
-void show_kern_err(const char *msg, kern_return_t kr)
-{
-	fprintf(stderr, "%s (%08x)\n", msg, kr);
-}
-
+	
+	void show_io_err(const char *msg, IOReturn err)
+	{
+		fprintf(stderr, "%s (%08x) %s\n", msg, err, io_err_string(err));
+	}
+	
+	void show_kern_err(const char *msg, kern_return_t kr)
+	{
+		fprintf(stderr, "%s (%08x)\n", msg, kr);
+	}
+	
 }
 
 // -------------------------------------------------------------------------------
 #pragma mark MacSoundplaneDriver
 
-std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create()
+std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListener& m)
 {
-	return std::unique_ptr<MacSoundplaneDriver>(new MacSoundplaneDriver());
+	return std::unique_ptr<MacSoundplaneDriver>(new MacSoundplaneDriver(m));
 }
 
-MacSoundplaneDriver::MacSoundplaneDriver() : 
-	mTransactionsInFlight(0),
-	startupCtr(0),
-	dev(0),
-	intf(0),
-	mDeviceState(kNoDevice),
-	notifyPort(0),
-	matchedIter(0),
-	notification(0)
+MacSoundplaneDriver::MacSoundplaneDriver(SoundplaneDriverListener& m) : 
+mTransactionsInFlight(0),
+dev(0),
+intf(0),
+mDeviceState(kNoDevice),
+notifyPort(0),
+matchedIter(0),
+notification(0),
+mListener(m),
+mErrorCount(0),
+mFrameCounter(0),
+mNoFrameCounter(0)
 {
+	printf("creating SoundplaneDriver...\n");
 	for(int i=0; i<kSoundplaneANumEndpoints; ++i)
 	{
-		busFrameNumber[i] = 0;
+		mNextBusFrameNumber[i] = 0;
 	}
-
+	
 	for(int i=0; i < kSoundplaneNumCarriers; ++i)
 	{
 		mCurrentCarriers[i] = kDefaultCarriers[i];
@@ -110,23 +114,27 @@ MacSoundplaneDriver::MacSoundplaneDriver() :
 	mGrabThread = std::thread(&MacSoundplaneDriver::grabThread, this);
 	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
 	
-	// set priority of current thread
-	setThreadPriority(nullptr, 96, true);
+	// create isochronous read and process thread
+	mProcessThread = std::thread(&MacSoundplaneDriver::processThread, this);
+	
+	// set thread to real time priority
+	setThreadPriority(mProcessThread.native_handle(), 96, true);
 }
 
 MacSoundplaneDriver::~MacSoundplaneDriver()
 {
 	printf("deleting SoundplaneDriver...\n");
-
+	
 	kern_return_t	kr;
-
-	{
-		
-//		std::cout << "~MacSoundplaneDriver, state " << getDeviceState() << " \n";
-		
+	
+	{		
 		std::lock_guard<std::mutex> lock(mDeviceStateMutex);
 		setDeviceState(kDeviceClosing);
-
+		mTerminating = true;
+		
+		// wait for any process() calls in progress to finish
+		usleep(100*1000);
+		
 		// stop any device added / removed notifications and iterator
 		if(notifyPort)
 		{
@@ -143,11 +151,34 @@ MacSoundplaneDriver::~MacSoundplaneDriver()
 			kr = IOObjectRelease(notification);	
 			notification = 0;
 		}
-
+		
+		// wait for process thread to terminate
+		//
+		if (mProcessThread.joinable())
+		{
+			mProcessThread.join();
+			printf("process thread terminated.\n");
+		}
+		
 		destroyDevice();
 		
 		setDeviceState(kNoDevice);
 	}
+	
+	printf("error count: %d\n", mErrorCount);
+	printf("frames: %d\n", mFrameCounter);
+	printf("no frames: %d\n", mNoFrameCounter);
+	printf("gaps: %d\n", mGaps);
+}
+
+void MacSoundplaneDriver::close()
+{
+	std::lock_guard<std::mutex> lock(mDeviceStateMutex);
+	setDeviceState(kDeviceClosing);
+	mTerminating = true;
+	
+	// wait for any process() calls in progress to finish
+	usleep(100*1000);
 }
 
 int MacSoundplaneDriver::createLowLatencyBuffers()
@@ -157,14 +188,15 @@ int MacSoundplaneDriver::createLowLatencyBuffers()
 	// create and setup transaction data structures for each buffer in each isoch endpoint
 	for (int i = 0; i < kSoundplaneANumEndpoints; i++)
 	{
-		for (int j = 0; j < kSoundplaneABuffers; j++)
+		for (int j = 0; j < kNumIsochBuffers; j++)
 		{
 			K1IsocTransaction* t = getTransactionData(i, j);
 			t->endpointNum = kSoundplaneAEndpointStartIdx + i;
 			t->endpointIndex = i;
 			t->bufIndex = j;
-			size_t payloadSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
+			int payloadSize = sizeof(SoundplaneADataPacket)*kIsochFramesPerTransaction;
 			
+			// create buffer for the payload (our sensor data) itself
 			err = (*intf)->LowLatencyCreateBuffer(intf, (void **)&t->payloads, payloadSize, kUSBLowLatencyReadBuffer);
 			if (kIOReturnSuccess != err)
 			{
@@ -173,7 +205,8 @@ int MacSoundplaneDriver::createLowLatencyBuffers()
 			}
 			bzero(t->payloads, payloadSize);
 			
-			size_t isocFrameSize = kSoundplaneANumIsochFrames * sizeof(IOUSBLowLatencyIsocFrame);
+			// create buffer for the frame transaction data
+			int isocFrameSize = sizeof(IOUSBLowLatencyIsocFrame)*kIsochFramesPerTransaction;
 			err = (*intf)->LowLatencyCreateBuffer(intf, (void **)&t->isocFrames, isocFrameSize, kUSBLowLatencyFrameListBuffer);
 			if (kIOReturnSuccess != err)
 			{
@@ -193,7 +226,7 @@ int MacSoundplaneDriver::destroyLowLatencyBuffers()
 	
 	for (int i = 0; i < kSoundplaneANumEndpoints; i++)
 	{
-		for (int j = 0; j < kSoundplaneABuffers; j++)
+		for (int j = 0; j < kNumIsochBuffers; j++)
 		{
 			K1IsocTransaction* t = getTransactionData(i, j);
 			if (t->payloads)
@@ -221,6 +254,40 @@ int MacSoundplaneDriver::destroyLowLatencyBuffers()
 	
 	return true;
 }
+
+/*
+const K1IsocTransaction* MacSoundplaneDriver::getTransactionData(int endpoint, int buf) const
+{ 
+	return mTransactionData + kNumIsochBuffers*endpoint + buf; 
+}
+*/
+
+uint32_t MacSoundplaneDriver::getTransactionDataChecksum() // TODO const
+{
+	uint16_t checkSum = 0;
+	for (int i = 0; i < kSoundplaneANumEndpoints; i++)
+	{
+		for (int j = 0; j < kNumIsochBuffers; j++)
+		{
+			K1IsocTransaction* t = getTransactionData(i, j);
+			t->endpointNum = kSoundplaneAEndpointStartIdx + i;
+			t->endpointIndex = i;
+			t->bufIndex = j;
+
+			SoundplaneADataPacket* p = reinterpret_cast<SoundplaneADataPacket*>(t->payloads);
+			
+			
+			for(int k=0; k < kIsochFramesPerTransaction; ++k)
+			{
+				uint16_t s = p[k].seqNum;
+				checkSum += s;
+			}
+		}
+	}
+	return checkSum;
+}
+
+
 
 uint16_t MacSoundplaneDriver::getFirmwareVersion() const
 {
@@ -253,13 +320,13 @@ std::string MacSoundplaneDriver::getSerialNumberString() const
 		{
 			r = getStringDescriptor(dev, idx, buffer, sizeof(buffer), 0);
 		}
-
+		
 		// extract returned string from wchars.
 		for(int i=0; i < r - 2; ++i)
 		{
 			buffer[i] = buffer[i*2 + 2];
 		}
-
+		
 		return std::string(buffer, r / 2 - 1);
 	}
 	return "";
@@ -278,13 +345,13 @@ void MacSoundplaneDriver::setCarriers(const Carriers& cData)
 	if (getDeviceState() < kDeviceConnected) return;
 	IOUSBDevRequest request;
 	std::copy(cData.begin(), cData.end(), mCurrentCarriers);
-
+	
 	// wait for data to settle after setting carriers
 	// TODO understand this startup behavior better
-	startupCtr = 0;
-
+	mStartupCtr = 0;
+		
 	request.bmRequestType = USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
-    request.bRequest = kRequestCarriers;
+	request.bRequest = kRequestCarriers;
 	request.wValue = 0;
 	request.wIndex = kRequestCarriersIndex;
 	request.wLength = 32;
@@ -295,17 +362,17 @@ void MacSoundplaneDriver::setCarriers(const Carriers& cData)
 void MacSoundplaneDriver::enableCarriers(unsigned long mask)
 {
 	if (!dev) return;
-    IOUSBDevRequest	request;
-
-	startupCtr = 0;
-
-    request.bmRequestType = USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
-    request.bRequest = kRequestMask;
+	IOUSBDevRequest	request;
+	
+	mStartupCtr = 0;
+	
+	request.bmRequestType = USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
+	request.bRequest = kRequestMask;
 	request.wValue = mask >> 16;
 	request.wIndex = mask;
 	request.wLength = 0;
 	request.pData = NULL;
-
+	
 	(*dev)->DeviceRequest(dev, &request);
 }
 
@@ -320,6 +387,13 @@ uint16_t MacSoundplaneDriver::K1IsocTransaction::getTransactionSequenceNumber(in
 	return p[f].seqNum;
 }
 
+IOReturn MacSoundplaneDriver::K1IsocTransaction::getTransactionStatus(int n)
+{
+	if (!isocFrames) return 0;
+	IOUSBLowLatencyIsocFrame* frames = (IOUSBLowLatencyIsocFrame*)isocFrames;
+	return frames[n].frStatus;
+}
+
 void MacSoundplaneDriver::K1IsocTransaction::setSequenceNumber(int f, uint16_t s)
 {
 	SoundplaneADataPacket* p = (SoundplaneADataPacket*)payloads;
@@ -328,30 +402,39 @@ void MacSoundplaneDriver::K1IsocTransaction::setSequenceNumber(int f, uint16_t s
 
 
 /*
+ 
+ notes on isoch scheduling:
+ 
+ if you take a look at AppleUSBOHCI.cpp, you'll find that kIOUSBNotSent2Err
+ corresponds to OHCI status 15. You can look that up in the OHCI spec. A not
+ sent error occurs because your request is never put onto the bus. This
+ usually happens if the request is for a frame number in the past, or too far
+ in the future. I think that all your requests are for a time in the past, so
+ they never get put onto the bus by the controller.
+ 
+ We add about 50 to 100 frames to the value returned by GetBusFrameNumber, so
+ the first read happens about 100ms in the future. There is a considerable
+ and unpredictable latency between sending an isoch read request to the USB
+ controller and that request appearing on the bus. Subsequent reads have
+ their frame start time incremented by a fixed amount, governed by the size
+ of the reads. You should queue up several reads at once - don't wait until
+ your first read completes before you calculate the parameters for the second
+ read - when the first read completes, you should be calculating the
+ parameters for perhaps the eighth read.
+ 
+ The first few reads you requested may come back empty, because their frame
+ number has already passed. This is normal.
+ 
+ */
 
-notes on isoch scheduling:
-
-if you take a look at AppleUSBOHCI.cpp, you'll find that kIOUSBNotSent2Err
-corresponds to OHCI status 15. You can look that up in the OHCI spec. A not
-sent error occurs because your request is never put onto the bus. This
-usually happens if the request is for a frame number in the past, or too far
-in the future. I think that all your requests are for a time in the past, so
-they never get put onto the bus by the controller.
-
-We add about 50 to 100 frames to the value returned by GetBusFrameNumber, so
-the first read happens about 100ms in the future. There is a considerable
-and unpredictable latency between sending an isoch read request to the USB
-controller and that request appearing on the bus. Subsequent reads have
-their frame start time incremented by a fixed amount, governed by the size
-of the reads. You should queue up several reads at once - don't wait until
-your first read completes before you calculate the parameters for the second
-read - when the first read completes, you should be calculating the
-parameters for perhaps the eighth read.
-
-The first few reads you requested may come back empty, because their frame
-number has already passed. This is normal.
-
-*/
+void prepareForRequest(IOUSBLowLatencyIsocFrame& frame)
+{
+	frame.frStatus = 0;
+	frame.frReqCount = sizeof(SoundplaneADataPacket);
+	frame.frActCount = 0;
+	frame.frTimeStamp.hi = 0;
+	frame.frTimeStamp.lo = 0;
+}
 
 
 // --------------------------------------------------------------------------------
@@ -363,39 +446,38 @@ number has already passed. This is normal.
 //
 // The OS X low latency async code requires all transfer data to be in special blocks created by
 // LowLatencyCreateBuffer() to manage communication with the kernel.
+//
 IOReturn MacSoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
 {
-//	if ((!dev) || (!intf)) return kIOReturnNoDevice;
-
+	if ((!dev) || (!intf)) return kIOReturnNoDevice;
+	
 	IOReturn err = kIOReturnNoDevice;
-
+	
 	if(mDeviceState != kNoDevice) 
 	{
 		assert(t);
-
+		
 		t->parent = this;
-		t->busFrameNumber = busFrameNumber[t->endpointIndex];
-
-		for (int k = 0; k < kSoundplaneANumIsochFrames; k++)
+		t->busFrameNumber = mNextBusFrameNumber[t->endpointIndex];
+		
+		for (int k = 0; k < kIsochFramesPerTransaction; k++)
 		{
-			t->isocFrames[k].frStatus = 0;
-			t->isocFrames[k].frReqCount = sizeof(SoundplaneADataPacket);
-			t->isocFrames[k].frActCount = 0;
-			t->isocFrames[k].frTimeStamp.hi = 0;
-			t->isocFrames[k].frTimeStamp.lo = 0;
+			prepareForRequest(t->isocFrames[k]);
 			t->setSequenceNumber(k, 0);
 		}
-
-		size_t payloadSize = sizeof(SoundplaneADataPacket) * kSoundplaneANumIsochFrames;
+		
+		size_t payloadSize = sizeof(SoundplaneADataPacket) * kIsochFramesPerTransaction;
 		bzero(t->payloads, payloadSize);
-
-	#ifdef SHOW_BUS_FRAME_NUMBER
-		fprintf(stderr, "read(%d, %p, %llu, %p, %p)\n", t->endpointNum, t->payloads, t->busFrameNumber, t->isocFrames, t);
-	#endif
+		
+#ifdef SHOW_BUS_FRAME_NUMBER
+		fprintf(stderr, "read(%d, %p, %llu, %p, %p) [%d]\n", t->endpointNum, t->payloads, t->busFrameNumber, t->isocFrames, t, mTransactionsInFlight);
+#endif
+		
 		err = (*intf)->LowLatencyReadIsochPipeAsync(intf, t->endpointNum, t->payloads,
-			t->busFrameNumber, kSoundplaneANumIsochFrames, kSoundplaneAUpdateFrequency, t->isocFrames, isochComplete, t);
-
-		busFrameNumber[t->endpointIndex] += kSoundplaneANumIsochFrames;
+													t->busFrameNumber, kIsochFramesPerTransaction, kSoundplaneAUpdateFrequency, t->isocFrames, isochComplete, t);
+		
+		mNextBusFrameNumber[t->endpointIndex] += kIsochFramesPerTransaction;
+		
 		mTransactionsInFlight++;
 	}
 	return err;
@@ -408,56 +490,70 @@ IOReturn MacSoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
 void MacSoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg0)
 {
 	IOReturn err;
-
+	
 	K1IsocTransaction *t = (K1IsocTransaction *)refCon;
 	MacSoundplaneDriver *k1 = t->parent;
-	assert(k1);
-
-//	std::cout << "isochComplete, state " << k1->getDeviceState() << " \n";
-
-//	std::lock_guard<std::mutex> lock(k1->getDeviceStateMutex());
+	k1->mTransactionsInFlight--;
 	
-	int state = k1->getDeviceState();
-	if(state != kNoDevice) 
-	{
-		k1->mTransactionsInFlight--;
-		
-		switch (result)
-		{
-			case kIOReturnSuccess:
+	switch (result)
+	{			
+		default:
+			k1->mErrorCount++;				
+			// when mystery error 0xe000400e is returned, one or more packets have
+			// been lost from the given endpoint, after which normal
+			// operation seems possible, therefore do fall through.
+			// TODO interpolate any missing data.
+			
+		case kIOReturnUnderrun:
+			// This error is often received when all payloads are present
+			// and frActCounts are as expected. So fall through to success.
+			
+		case kIOReturnSuccess:
+			// if not shutting down, schedule another transaction and set the device
+			// state to isoch sync if needed.
+			{
+				int state = k1->getDeviceState();				
 				if((state == kDeviceConnected) || (state == kDeviceHasIsochSync))
-				{				
-					K1IsocTransaction *pNextTransactionBuffer = k1->getTransactionData(t->endpointIndex, (t->bufIndex + kSoundplaneABuffersInFlight) & kSoundplaneABuffersMask);
-					
-	#ifdef SHOW_ALL_SEQUENCE_NUMBERS
-					
-					int index = pNextTransactionBuffer->endpointIndex;
-					int start = pNextTransactionBuffer->getTransactionSequenceNumber(0);
-					int end = pNextTransactionBuffer->getTransactionSequenceNumber(kSoundplaneANumIsochFrames - 1);
-					std::cout << "endpoint " << index << ": " << start << " - " << end << "\n";
-					if (start > end)
-					{
-						for(int f=0; f<kSoundplaneANumIsochFrames; ++f)
-						{
-							if (f % 5 == 0) {std::cout << "\n";}
-							std::cout << pNextTransactionBuffer->getTransactionSequenceNumber(f) << " ";
-						}
-						std::cout << "\n\n";
-					}
-	#endif
+				{
+					int nextBuf = (t->bufIndex + kIsochBuffersInFlight) & kIsochBuffersMask;
+					K1IsocTransaction *pNextTransactionBuffer = k1->getTransactionData(t->endpointIndex, nextBuf);
 					err = k1->scheduleIsoch(pNextTransactionBuffer);
+					if(state != kDeviceHasIsochSync)
+					{
+						k1->setDeviceState(kDeviceHasIsochSync);
+					}
 				}
-				break;
-			case kIOReturnUnderrun:
-			case kIOReturnIsoTooOld:
-				
-				// try to recover?
-				// k1->setDeviceState(kDeviceConnected);
-				
-			case kIOReturnAborted: // returned when Soundplane is unplugged
-			default:
-				printf("isochComplete error: %s\n", io_err_string(result));
-				break;
+			}
+			break;
+			
+		case kIOReturnIsoTooOld:
+			break;
+			
+		case kIOReturnAborted: 
+			// returned when Soundplane is unplugged
+			break;				
+	}
+}
+
+void MacSoundplaneDriver::resetIsochTransactions()
+{
+	IOReturn err = setBusFrameNumber();
+	assert(!err);
+	
+	mTransactionsInFlight = 0;
+
+	// for each endpoint, schedule first transaction and
+	// a few buffers into the future
+	for (int j = 0; j < kIsochBuffersInFlight; j++)
+	{
+		for (int i = 0; i < kSoundplaneANumEndpoints; i++)
+		{
+			err = scheduleIsoch(getTransactionData(i, j));
+			if (kIOReturnSuccess != err)
+			{
+				show_io_err("scheduleIsoch", err);
+				return;
+			}
 		}
 	}
 }
@@ -472,18 +568,18 @@ void MacSoundplaneDriver::addOffset(int& buffer, int& frame, int offset)
 {
 	// add offset to (buffer, frame) position
 	if(!offset) return;
-	int totalFrames = buffer*kSoundplaneANumIsochFrames + frame + offset;
-	int remainder = totalFrames % kSoundplaneANumIsochFrames;
+	int totalFrames = buffer*kIsochFramesPerTransaction + frame + offset;
+	int remainder = totalFrames % kIsochFramesPerTransaction;
 	if (remainder < 0)
 	{
-		remainder += kSoundplaneANumIsochFrames;
-		totalFrames -= kSoundplaneANumIsochFrames;
+		remainder += kIsochFramesPerTransaction;
+		totalFrames -= kIsochFramesPerTransaction;
 	}
 	frame = remainder;
-	buffer = (totalFrames / kSoundplaneANumIsochFrames) % kSoundplaneABuffers;
+	buffer = (totalFrames / kIsochFramesPerTransaction) % kNumIsochBuffers;
 	if (buffer < 0)
 	{
-		buffer += kSoundplaneABuffers;
+		buffer += kNumIsochBuffers;
 	}
 }
 
@@ -493,7 +589,7 @@ uint16_t MacSoundplaneDriver::getTransferBytesReceived(int endpoint, int buffer,
 	uint16_t b = 0;
 	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-
+	
 	if (t)
 	{
 		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
@@ -508,7 +604,7 @@ AbsoluteTime MacSoundplaneDriver::getTransferTimeStamp(int endpoint, int buffer,
 	AbsoluteTime b;
 	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-
+	
 	if (t)
 	{
 		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
@@ -523,7 +619,7 @@ IOReturn MacSoundplaneDriver::getTransferStatus(int endpoint, int buffer, int fr
 	IOReturn b = kIOReturnSuccess;
 	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-
+	
 	if (t)
 	{
 		IOUSBLowLatencyIsocFrame* pf = &t->isocFrames[frame];
@@ -538,7 +634,7 @@ uint16_t MacSoundplaneDriver::getSequenceNumber(int endpoint, int buffer, int fr
 	uint16_t s = 0;
 	addOffset(buffer, frame, offset);
 	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
-
+	
 	if (t && t->payloads)
 	{
 		SoundplaneADataPacket* p = (SoundplaneADataPacket*)t->payloads;
@@ -560,108 +656,124 @@ unsigned char* MacSoundplaneDriver::getPayloadPtr(int endpoint, int buffer, int 
 	return p;
 }
 
+unsigned char MacSoundplaneDriver::getPayloadLastByte(int endpoint, int buffer, int frame)
+{
+	if(getDeviceState() < kDeviceConnected) return 0;
+	unsigned char* p = 0;
+	unsigned char r = 0;
+
+	K1IsocTransaction* t = getTransactionData(endpoint, buffer);
+	if (t && t->payloads)
+	{
+		p = t->payloads + frame*sizeof(SoundplaneADataPacket);
+		r = p[kSoundplaneAPackedDataSize - 1];
+	}
+	return r;
+}
+
+
 // --------------------------------------------------------------------------------
 #pragma mark device utilities
 
 namespace {
-
-IOReturn ConfigureDevice(IOUSBDeviceInterface187 **dev)
-{
-	uint8_t							numConf;
-	IOReturn						err;
-	IOUSBConfigurationDescriptorPtr	confDesc;
-
-	err = (*dev)->GetNumberOfConfigurations(dev, &numConf);
-	if (err || !numConf)
-        return err;
+	
+	IOReturn ConfigureDevice(IOUSBDeviceInterface187 **dev)
+	{
+		uint8_t							numConf;
+		IOReturn						err;
+		IOUSBConfigurationDescriptorPtr	confDesc;
+		
+		err = (*dev)->GetNumberOfConfigurations(dev, &numConf);
+		if (err || !numConf)
+			return err;
 #ifdef VERBOSE
-	printf("%d configuration(s)\n", numConf);
+		printf("%d configuration(s)\n", numConf);
 #endif
-
-	// get the configuration descriptor for index 0
-	err = (*dev)->GetConfigurationDescriptorPtr(dev, 0, &confDesc);
-	if (err)
-	{
-        show_io_err("unable to get config descriptor for index 0", err);
-        return err;
-	}
-
-	/*
-	REVIEW: Important: Because a composite class device is configured
-	by the AppleUSBComposite driver, setting the configuration again
-	from your application will result in the destruction of the IOUSBInterface
-	nub objects and the creation of new ones. In general, the only reason
-	to set the configuration of a composite class device that? matched by the
-	AppleUSBComposite driver is to choose a configuration other than the first one.
-	NOTE: This seems to be necessary
-	*/
-
-	err = (*dev)->SetConfiguration(dev, confDesc->bConfigurationValue);
-	if (err)
-	{
-        show_io_err("unable to set configuration to index 0", err);
-        return err;
-	}
+		
+		// get the configuration descriptor for index 0
+		err = (*dev)->GetConfigurationDescriptorPtr(dev, 0, &confDesc);
+		if (err)
+		{
+			show_io_err("unable to get config descriptor for index 0", err);
+			return err;
+		}
+		
+		/*
+		 REVIEW: Important: Because a composite class device is configured
+		 by the AppleUSBComposite driver, setting the configuration again
+		 from your application will result in the destruction of the IOUSBInterface
+		 nub objects and the creation of new ones. In general, the only reason
+		 to set the configuration of a composite class device that? matched by the
+		 AppleUSBComposite driver is to choose a configuration other than the first one.
+		 NOTE: This seems to be necessary
+		 */
+		
+		err = (*dev)->SetConfiguration(dev, confDesc->bConfigurationValue);
+		if (err)
+		{
+			show_io_err("unable to set configuration to index 0", err);
+			return err;
+		}
 #ifdef VERBOSE
-	printf("%d interface(s)\n", confDesc->bNumInterfaces);
+		printf("%d interface(s)\n", confDesc->bNumInterfaces);
 #endif
-	return kIOReturnSuccess;
-}
-
-IOReturn SelectIsochronousInterface(IOUSBInterfaceInterface192 **intf, int n)
-{
-	IOReturn	err;
-
-	// GetInterfaceNumber, GetAlternateSetting
-	err = (*intf)->SetAlternateInterface(intf, n);
-	if (err)
-	{
-		show_io_err("unable to set alternate interface", err);
-		return err;
+		return kIOReturnSuccess;
 	}
-
-	if (!n)
+	
+	IOReturn SelectIsochronousInterface(IOUSBInterfaceInterface192 **intf, int n)
 	{
-		err = (*intf)->GetPipeStatus(intf, 0);
+		IOReturn	err;
+		
+		// GetInterfaceNumber, GetAlternateSetting
+		err = (*intf)->SetAlternateInterface(intf, n);
 		if (err)
 		{
-			show_io_err("pipe #0 status failed", err);
+			show_io_err("unable to set alternate interface", err);
 			return err;
 		}
-	}
-	else
-	{
-		err = (*intf)->GetPipeStatus(intf, 1);
-		if (err)
+		
+		if (!n)
 		{
-			show_io_err("pipe #1 status failed", err);
-			return err;
+			err = (*intf)->GetPipeStatus(intf, 0);
+			if (err)
+			{
+				show_io_err("pipe #0 status failed", err);
+				return err;
+			}
 		}
-		err = (*intf)->GetPipeStatus(intf, 2);
-		if (err)
+		else
 		{
-			show_io_err("pipe #2 status failed", err);
-			return err;
+			err = (*intf)->GetPipeStatus(intf, 1);
+			if (err)
+			{
+				show_io_err("pipe #1 status failed", err);
+				return err;
+			}
+			err = (*intf)->GetPipeStatus(intf, 2);
+			if (err)
+			{
+				show_io_err("pipe #2 status failed", err);
+				return err;
+			}
 		}
+		return kIOReturnSuccess;
 	}
-	return kIOReturnSuccess;
-}
-
+	
 }
 
 IOReturn MacSoundplaneDriver::setBusFrameNumber()
 {
 	IOReturn err;
 	AbsoluteTime atTime;
-
-	err = (*dev)->GetBusFrameNumber(dev, &busFrameNumber[0], &atTime);
+	
+	err = (*dev)->GetBusFrameNumber(dev, &mNextBusFrameNumber[0], &atTime);
 	if (kIOReturnSuccess != err)
 		return err;
 #ifdef VERBOSE
-	printf("Bus Frame Number: %llu @ %X%08X\n", busFrameNumber[0], (int)atTime.hi, (int)atTime.lo);
+	printf("Bus Frame Number: %llu @ %X%08X\n", mNextBusFrameNumber[0], (int)atTime.hi, (int)atTime.lo);
 #endif
-	busFrameNumber[0] += 50;	// schedule 50 ms into the future
-	busFrameNumber[1] = busFrameNumber[0];
+	mNextBusFrameNumber[0] += 50;	// schedule 50 ms into the future
+	mNextBusFrameNumber[1] = mNextBusFrameNumber[0];
 	return kIOReturnSuccess;
 }
 
@@ -689,26 +801,28 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 	uint16_t					product;
 	uint16_t					release;
 #endif
-	int							i, j;
+	int							i;
 	uint8_t						n;
-
+	
+	bool addedDevice = false;
+	
 	while ((usbDeviceRef = IOIteratorNext(iterator)))
 	{
-        kr = IOCreatePlugInInterfaceForService(usbDeviceRef, kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID, &plugInInterface, &score);
-        if ((kIOReturnSuccess != kr) || !plugInInterface)
-        {
-            show_kern_err("unable to create a device plugin", kr);
-            continue;
-        }
-        // have device plugin, need device interface
-        err = (*plugInInterface)->QueryInterface(plugInInterface, CFUUIDGetUUIDBytes(kIOUSBDeviceInterfaceID), (void**)(LPVOID)&dev);
-        IODestroyPlugInInterface(plugInInterface);
+		kr = IOCreatePlugInInterfaceForService(usbDeviceRef, kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID, &plugInInterface, &score);
+		if ((kIOReturnSuccess != kr) || !plugInInterface)
+		{
+			show_kern_err("unable to create a device plugin", kr);
+			continue;
+		}
+		// have device plugin, need device interface
+		err = (*plugInInterface)->QueryInterface(plugInInterface, CFUUIDGetUUIDBytes(kIOUSBDeviceInterfaceID), (void**)(LPVOID)&dev);
+		IODestroyPlugInInterface(plugInInterface);
 		plugInInterface = NULL;
-        if (err || !dev)
-        {
-            show_io_err("could not create device interface", err);
-            continue;
-        }
+		if (err || !dev)
+		{
+			show_io_err("could not create device interface", err);
+			continue;
+		}
 		assert(!kr);
 		err = (*dev)->GetDeviceBusPowerAvailable(dev, &powerAvailable);
 		if (err)
@@ -723,34 +837,34 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 		printf("    Available Bus Power: %d mA\n", (int)(2*powerAvailable));
 		// REVIEW: GetDeviceSpeed()
 #ifdef VERBOSE
-
-        // REVIEW: technically should check these err values
-        err = (*dev)->GetDeviceVendor(dev, &vendor);
-        err = (*dev)->GetDeviceProduct(dev, &product);
-        err = (*dev)->GetDeviceReleaseNumber(dev, &release);
+		
+		// REVIEW: technically should check these err values
+		err = (*dev)->GetDeviceVendor(dev, &vendor);
+		err = (*dev)->GetDeviceProduct(dev, &product);
+		err = (*dev)->GetDeviceReleaseNumber(dev, &release);
 		printf("    Vendor:%04X Product:%04X Release Number:", vendor, product);
 		// printf("%hhx.%hhx.%hhx\n", release >> 8, 0x0f & release >> 4, 0x0f & release)
 		// NOTE: GetLocationID might be helpful
 #endif
-
-        // need to open the device in order to change its state
-        do {
-            err = (*dev)->USBDeviceOpenSeize(dev);
-            if (kIOReturnExclusiveAccess == err)
-            {
-                printf("Exclusive access err, sleeping on it\n");
-                sleep(10);
-            }
-        } while (kIOReturnExclusiveAccess == err);
-
-        if (kIOReturnSuccess != err)
-        {
-            show_io_err("unable to open device:", err);
+		
+		// need to open the device in order to change its state
+		do {
+			err = (*dev)->USBDeviceOpenSeize(dev);
+			if (kIOReturnExclusiveAccess == err)
+			{
+				printf("Exclusive access err, sleeping on it\n");
+				sleep(10);
+			}
+		} while (kIOReturnExclusiveAccess == err);
+		
+		if (kIOReturnSuccess != err)
+		{
+			show_io_err("unable to open device:", err);
 			goto release;
-        }
-
-        err = ConfigureDevice(dev);
-
+		}
+		
+		err = ConfigureDevice(dev);
+		
 		// get the list of interfaces for this device
 		req.bInterfaceClass = kIOUSBFindInterfaceDontCare;
 		req.bInterfaceSubClass = kIOUSBFindInterfaceDontCare;
@@ -794,15 +908,15 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 					show_io_err("unable to seize interface for exclusive access", err);
 					goto close;
 				}
-
+				
 				err = SelectIsochronousInterface(intf, kSoundplaneAlternateSetting);
-
+				
 				// add notification for device removal and other info
 				if (kIOReturnSuccess == err)
 				{
 					mach_port_t asyncPort;
 					CFRunLoopSourceRef source;
-
+					
 					k1->dev = dev;
 					k1->intf = intf;
 					k1->payloadIndex[0] = 0;
@@ -819,15 +933,15 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 						show_kern_err("could not add interest notification", kr);
 						goto close;
 					}
-
-
+					
+					
 					err = (*intf)->CreateInterfaceAsyncPort(intf, &asyncPort);
 					if (kIOReturnSuccess != err)
 					{
 						show_io_err("could not create asynchronous port", err);
 						goto close;
 					}
-
+					
 					// from SampleUSBMIDIDriver: confirm MIDIGetDriverIORunLoop() contains InterfaceAsyncEventSource
 					source = (*intf)->GetInterfaceAsyncEventSource(intf);
 					if (!source)
@@ -844,7 +958,7 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 					}
 					if (!CFRunLoopContainsSource(CFRunLoopGetCurrent(), source, kCFRunLoopDefaultMode))
 						CFRunLoopAddSource(CFRunLoopGetCurrent(), source, kCFRunLoopDefaultMode);
-
+					
 					err = (*intf)->GetNumEndpoints(intf, &n);
 					if (kIOReturnSuccess != err)
 					{
@@ -855,7 +969,7 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 					{
 						printf("isochronous interface opened, %d endpoints\n", n);
 					}
-
+					
 					// for each endpoint of the isochronous interface, get pipe properties
 					for (i = 1; i <= n; i++)
 					{
@@ -864,7 +978,7 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 						uint8_t		transferType;
 						uint16_t	maxPacketSize;
 						uint8_t		interval;
-
+						
 						err = (*intf)->GetPipeProperties(intf, i, &direction, &number, &transferType, &maxPacketSize, &interval);
 						if (kIOReturnSuccess != err)
 						{
@@ -874,39 +988,16 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 					}
 					
 					if(!k1->createLowLatencyBuffers()) goto close;
-
-					{
-//						std::cout << "deviceAdded, state " << k1->getDeviceState() << " \n";
-
-						std::lock_guard<std::mutex> lock(k1->getDeviceStateMutex());
-						k1->setDeviceState(kDeviceConnected);
-															
-						err = k1->setBusFrameNumber();
-						assert(!err);
-
-						// for each endpoint, schedule first transaction and
-						// a few buffers into the future
-						for (i = 0; i < kSoundplaneANumEndpoints; i++)
-						{
-							for (j = 0; j < kSoundplaneABuffersInFlight; j++)
-							{
-								err = k1->scheduleIsoch(k1->getTransactionData(i, j));
-								if (kIOReturnSuccess != err)
-								{
-									show_io_err("scheduleIsoch", err);
-									goto close;
-								}
-							}
-						}
-					}
+					k1->setDeviceState(kDeviceConnected);
+					k1->resetIsochTransactions();
+					addedDevice = true;				
 				}
 				else
 				{
-					//	err = (*intf)->USBInterfaceClose(intf);
 					res = (*intf)->Release(intf);
 					intf = NULL;
 				}
-
+				
 			}
 			usbInterfaceRef = IOIteratorNext(interfaceIterator);
 		}
@@ -914,24 +1005,29 @@ void MacSoundplaneDriver::deviceAdded(void *refCon, io_iterator_t iterator)
 		assert(!kr);
 		interfaceIterator = 0;
 		continue;
-
-close:
+		
+	close:
 		k1->dev = NULL;
 		err = (*dev)->USBDeviceClose(dev);
-        if (kIOReturnSuccess != err)
+		if (kIOReturnSuccess != err)
 			show_io_err("unable to close device", err);
 		else
 			printf("closed dev:%p\n", dev);
-release:
+	release:
 		k1->dev = NULL;
 		res = (*dev)->Release(dev);
-        if (kIOReturnSuccess != res)
+		if (kIOReturnSuccess != res)
 			show_io_err("unable to release device", err);
 		else
 			printf("released dev:%p\n", dev);
 		dev = NULL;
 		kr = IOObjectRelease(usbDeviceRef);
 		assert(!kr);
+	}
+	
+	if(addedDevice)
+	{
+		k1->mListener.onStartup();
 	}
 }
 
@@ -940,11 +1036,11 @@ release:
 void MacSoundplaneDriver::deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument)
 {
 	MacSoundplaneDriver *k1 = static_cast<MacSoundplaneDriver *>(refCon);
-
+	
 	if (kIOMessageServiceIsTerminated == messageType)
 	{
-//		std::cout << "deviceNotifyGeneral, state " << k1->getDeviceState() << " \n";
-
+		std::cout << "deviceNotifyGeneral, state " << k1->getDeviceState() << " \n";
+		
 		std::lock_guard<std::mutex> lock(k1->getDeviceStateMutex());
 		k1->setDeviceState(kDeviceClosing);
 		k1->destroyDevice();
@@ -964,7 +1060,7 @@ void MacSoundplaneDriver::grabThread()
 	CFNumberRef					numberRef;
 	SInt32						usbVendor = kSoundplaneUSBVendor;
 	SInt32						usbProduct = kSoundplaneUSBProduct;
-
+	
 	matchingDict = IOServiceMatching(kIOUSBDeviceClassName);
 	if (!matchingDict)
 	{
@@ -982,30 +1078,30 @@ void MacSoundplaneDriver::grabThread()
 		CFDictionarySetValue(matchingDict, CFSTR(kUSBProductID), numberRef);
 		CFRelease(numberRef);
 		numberRef = NULL;
-
+		
 		notifyPort = IONotificationPortCreate(kIOMasterPortDefault);
 		runLoopSource = IONotificationPortGetRunLoopSource(notifyPort);
 		CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopDefaultMode);
-
+		
 		// Set up asynchronous callback to call deviceAdded() when a Soundplane is found.
 		// TODO REVIEW: Check out IOServiceMatching() and IOServiceNameMatching()
 		kr = IOServiceAddMatchingNotification(  notifyPort,
-												kIOFirstMatchNotification,
-												matchingDict,
-												deviceAdded,
-												this, // refCon
-												&(matchedIter) );
-
+											  kIOFirstMatchNotification,
+											  matchingDict,
+											  deviceAdded,
+											  this, // refCon
+											  &(matchedIter) );
+		
 		// Iterate once to get already-present devices and arm the notification
 		deviceAdded(this, matchedIter);
-
+		
 		// Start the run loop. Now we'll receive notifications and remain looping here until the
 		// run loop is stopped with CFRunLoopStop or all the sources and timers are removed from
 		// the default run loop mode.
 		// For more information about how Core Foundation run loops behave, see Run Loops in
 		// Apple's Threading Programming Guide.
 		CFRunLoopRun();
-
+		
 		// clean up
 		CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopDefaultMode);
 	}
@@ -1022,9 +1118,9 @@ void MacSoundplaneDriver::destroyDevice()
 	//
 	int totalWaitTime = 0;
 	int waitTimeMicrosecs = 100*1000;
-	printf("%d pending transactions, waiting...\n", mTransactionsInFlight);
 	while (mTransactionsInFlight > 0)
 	{
+		printf("%d pending transactions, waiting...\n", mTransactionsInFlight);
 		usleep(waitTimeMicrosecs);
 		totalWaitTime += waitTimeMicrosecs;
 		
@@ -1058,289 +1154,274 @@ void MacSoundplaneDriver::destroyDevice()
 		kr = (*dev)->Release(dev);
 		dev = NULL;
 	}
-
 }
 
-SoundplaneDriver::returnValue MacSoundplaneDriver::process(SensorFrame* pOut)
+
+// watch the buffers being filled by the isochronous layer. If there is no new data for a while,
+// reset the isoch layer. 
+//
+void MacSoundplaneDriver::resetIsochIfStalled()
 {
-	returnValue r {0};
-	
-	static uint16_t curSeqNum0 = 0;
-	static uint16_t curSeqNum1 = 0;
-	static uint16_t maxSeqNum0 = 0;
-	static uint16_t maxSeqNum1 = 0;
-	static uint16_t currentCompleteSequence = 0;
-	static uint16_t newestCompleteSequence = 0;
-	static unsigned char* pPayload0 = 0;
-	static unsigned char* pPayload1 = 0;
-	static uint16_t curBytes0, curBytes1;
-	static uint16_t nextBytes0, nextBytes1;
-	
-	static SensorFrame pWorkingFrame;
-	static SensorFrame pPrevFrame;
-	
-	// transaction data buffer index, 0 to kSoundplaneABuffers-1
-	static int bufferIndex = 0;
-	
-	// current frame within transaction buffer, 0 to kSoundplaneANumIsochFrames-1
-	static int frameIndex = 0;
-	
-	int framesReceived = 0;
-	int gaps = 0;
-	int waiting = 0;
-	int gotNext = 0;
-	bool printThis = false;
+	// timing that will result from these options depends on lots of things, but since timing
+	// of stall recovery is not critical, we can just use these counters instead of something 
+	// more precise
+	const int checksumInterval = 100; // checksum every n calls of this method
+	const int maxStallsBeforeReset = 8; 
 
-	//std::cout << "process, state " << getDeviceState() << " \n";
-
-	std::lock_guard<std::mutex> lock(mDeviceStateMutex);
-	int previousState = mDeviceState;
-
-	switch(mDeviceState)
+	static int checksumCtr = 0;
+	static uint16_t prevTransactionChecksum = 0;
+	static int stalled = 0;
+	
+	if(mDeviceState == kDeviceHasIsochSync)
 	{
-		case kNoDevice:		
-			// nothing here-- grab thread must get us to the connected state
-			break;			
-		case kDeviceConnected:
+		// don't checksum every frame
+		checksumCtr++;
+		if(checksumCtr > checksumInterval)
 		{
-			// initialize: find latest scheduled transaction
-			UInt64 maxTransactionStartFrame = 0;
-			int maxIdx = -1;
-			for(int j=0; j < kSoundplaneABuffers; ++j)
+			checksumCtr = 0;
+			uint16_t transactionChecksum = getTransactionDataChecksum();
+			if(transactionChecksum != prevTransactionChecksum)
 			{
-				K1IsocTransaction* t = getTransactionData(0, j);
-				UInt64 frame = t->busFrameNumber;
-				if(frame > maxTransactionStartFrame)
+				stalled = 0;
+			}
+			else
+			{
+				stalled++;
+			}
+			prevTransactionChecksum = transactionChecksum;
+			
+			if(stalled > maxStallsBeforeReset)
+			{
+				stalled = 0;
+				resetIsochTransactions();
+			}
+		}
+	}
+}
+
+// search for the most recent sequence number in all the buffers in the queue.
+// point the readers at it. 
+//
+void MacSoundplaneDriver::resetEndpointReaders()
+{
+	int maxSequenceNum = -1;
+	for(int readerIdx = 0; readerIdx < kSoundplaneANumEndpoints; ++readerIdx)
+	{
+		MacSoundplaneDriver::EndpointReader& reader = mEndpointReaders[readerIdx];
+		int maxEndpointSequenceNum = -1;
+		
+		// find most recent sequence #
+		FramePosition pos, maxPos;
+		bool foundData = false;
+		const int totalFrames = kIsochFramesPerTransaction*kNumIsochBuffers;
+		for(int c = 0; c < totalFrames; ++c)
+		{
+			pos = advance(pos, 1);
+			
+			// look at the last byte of the payload to determine whether there is new data
+			int lastByte = getPayloadLastByte(readerIdx, pos.buffer, pos.frame);			
+			if(lastByte > 0)
+			{
+				int frameSeqNum = getSequenceNumber(readerIdx, pos.buffer, pos.frame);
+				if(frameSeqNum > maxEndpointSequenceNum)
 				{
-					maxIdx = j;
-					maxTransactionStartFrame = frame;
+					maxEndpointSequenceNum = frameSeqNum;
+					maxPos = pos;
+					foundData = true;
 				}
 			}
-			
-			// found at least one scheduled transaction: read backwards through all transactions
-			// to get most recent complete frame.
-			if (maxIdx >= 0)
+		}
+		
+		if(foundData)
+		{
+			if(maxEndpointSequenceNum > maxSequenceNum)
 			{
-				int seq0, seq1;
-				seq0 = seq1 = 0;
-				bool lost = true;
-				
-				for(bufferIndex=maxIdx; (bufferIndex >= 0) && lost; bufferIndex--)
-				{
-					for(frameIndex=kSoundplaneANumIsochFrames - 1; (frameIndex >= 0) && lost; frameIndex--)
-					{
-						int l0 = getSequenceNumber(0, bufferIndex, frameIndex);
-						int l1 = getSequenceNumber(1, bufferIndex, frameIndex);
-						
-						if (l0)
-							seq0 = l0;
-						if (l1)
-							seq1 = l1;
-						if (seq0 && seq1)
-						{
-							bufferIndex++;
-							frameIndex++;
-							curSeqNum0 = maxSeqNum0 = seq0;
-							curSeqNum1 = maxSeqNum1 = seq1;
-							currentCompleteSequence = std::min(curSeqNum0, curSeqNum1);
-							
-							// finally, we have sync.
-							//
-							Carriers carriers;
-							std::copy(kDefaultCarriers, kDefaultCarriers + sizeof(kDefaultCarriers), carriers.begin());
-							setCarriers(carriers);
-							
-							mDeviceState = kDeviceHasIsochSync;
-							lost = false;
-						}
-					}
-				}
-				
-				if (!lost)
-				{
-					printf("connecting at sequence numbers: %d / %d\n", curSeqNum0, curSeqNum1);
-				}
+				maxSequenceNum = maxEndpointSequenceNum;
 			}
-			break;
-		}		
-		case kDeviceHasIsochSync:
-		{			
-			r.errorCode = kDevNoNewFrame;
-
-			// look ahead by 1 frame to see if data was received for either surface of next frame
-			//
-			int lookahead = 1;
-			nextBytes0 = getTransferBytesReceived(0, bufferIndex, frameIndex, lookahead);
-			nextBytes1 = getTransferBytesReceived(1, bufferIndex, frameIndex, lookahead);
 			
-			// does next frame contain something ?
-			// if so, we know this frame is done.
-			// checking curBytes for this frame is not enough,
-			// because it seems current count may be filled in
-			// before payload.
-			if (nextBytes0 || nextBytes1)
-			{
-				waiting = 0;
-				gotNext++;
-				
-				// see what data was received for current frame.  The Soundplane A always returns
-				// either a full packet of 386 bytes, or 0.
-				//
-				curBytes0 = getTransferBytesReceived(0, bufferIndex, frameIndex);
-				curBytes1 = getTransferBytesReceived(1, bufferIndex, frameIndex);
-				
-				// get sequence numbers from current frame
-				if (curBytes0)
-				{
-					curSeqNum0 = getSequenceNumber(0, bufferIndex, frameIndex);
-					maxSeqNum0 = curSeqNum0;
-				}
-				if (curBytes1)
-				{
-					curSeqNum1 = getSequenceNumber(1, bufferIndex, frameIndex);
-					maxSeqNum1 = curSeqNum1;
-				}
-				// get newest sequence number for which we have all surfaces
-				if (maxSeqNum0 && maxSeqNum1) // look for next in sequence
-				{
-					newestCompleteSequence = std::min(maxSeqNum0, maxSeqNum1);
-				}
-				else // handle zero wrap
-				{
-					newestCompleteSequence = std::max(maxSeqNum0, maxSeqNum1);
-				}
-				
-				// if this is different from the most recent sequence sent,
-				// send new sequence to buffer.
-				if (newestCompleteSequence != currentCompleteSequence)
-				{
-					// look for gaps
-					int sequenceWanted = ((int)currentCompleteSequence + 1)&0x0000FFFF;
-					currentCompleteSequence = newestCompleteSequence;
+			reader.lost = false;
+			reader.seqNum = maxEndpointSequenceNum;
+			reader.position = maxPos;
+		}
+		else
+		{
+			reader.lost = true;
+		}
+	}
+	
+	// set max sequence number
+	if(maxSequenceNum >= 0)
+	{
+		mSequenceNum = maxSequenceNum;
+	}
+}
 
-					if (newestCompleteSequence != sequenceWanted)
-					{
-						r.errorCode = kDevGapInSequence;
-					}
-					else
-					{
-						// scan backwards in buffers from current position to get payloads matching currentCompleteSequence
-						// TODO save indices
-						//
-						pPayload0 = pPayload1 = 0;
-						int b = bufferIndex;
-						int f = frameIndex;
-						for(int k = 0; k > -kSoundplaneABuffers * kSoundplaneANumIsochFrames; k--)
-						{
-							int seq0 = getSequenceNumber(0, b, f, k);
-							if (seq0 == currentCompleteSequence)
-							{
-								pPayload0 = getPayloadPtr(0, b, f, k);
-							}
-							int seq1 = getSequenceNumber(1, b, f, k);
-							if (seq1 == currentCompleteSequence)
-							{
-								pPayload1 = getPayloadPtr(1, b, f, k);
-							}
-							if (pPayload0 && pPayload1)
-							{
-								// printf("[%d] \n", currentCompleteSequence);
-								framesReceived++;
-								break;
-							}
-						}
-						
-						if (pPayload0 && pPayload1)
-						{
-							K1_unpack_float2(pPayload0, pPayload1, pWorkingFrame);
-							K1_clear_edges(pWorkingFrame);
-							if(startupCtr > kSoundplaneStartupFrames)
-							{
-								float df = frameDiff(pPrevFrame, pWorkingFrame);
-								if (df < kMaxFrameDiff)
-								{
-									r.errorCode = kDevNoErr;
-									// we are OK, the data gets out normally
-									// TODO timestamp frames so clients can remove jitter
-									if(pOut)
-									{
-										*pOut = pWorkingFrame;
-									}
-								}
-								else
-								{
-									// possible sensor glitch, so this frame should be ignored.  also occurs when changing carriers.
-									r.errorCode = kDevDataDiffTooLarge;
-									startupCtr = 0;
-								}
-							}
-							else
-							{
-								// wait for initialization
-								startupCtr++;
-							}
-							
-							pPrevFrame = pWorkingFrame; 
-						}
-					}
-				}
+// try to advance the reader to the given sequence number. return the sequence number the reader
+// is at after the call. side effect: the reader's state changes, including its lost flag which we look at later.
+// if already at the destination, the reader will not be moved.
+//
+int MacSoundplaneDriver::advanceEndpointReader(int readerIdx, uint16_t destSeqNum)
+{
+	MacSoundplaneDriver::EndpointReader& reader = mEndpointReaders[readerIdx];
+	
+	int frameSeqNum;
+	int frameActualBytesRead;
+	
+	if(reader.seqNum != destSeqNum)
+	{
+		int advanced = 0;
+		const int maxAdvance = 2;
+		FramePosition nextPos = reader.position;
+		while((reader.seqNum != destSeqNum)&&(advanced < maxAdvance))
+		{		
+			nextPos = advance(nextPos, 1);
+			
+			// each frame either gets 0 or a full packet
+			frameActualBytesRead = getTransferBytesReceived(readerIdx, nextPos.buffer, nextPos.frame);
+
+			unsigned char lastByte = getPayloadLastByte(readerIdx, nextPos.buffer, nextPos.frame);
+			
+			// if the last byte of the payload is nonzero, we know the whole payload is present. 
+			// payload data is written before the bytes received, which lets us shave off a few ms of latency.
+			// TODO CONFIRM: All possible soundplane A payloads have a nonzero last byte.
+			if(lastByte > 0)
+			{
+				reader.position = nextPos;
+				uint16_t expectedSeqNum = reader.seqNum + 1; // note: wraps
+				frameSeqNum = getSequenceNumber(readerIdx, nextPos.buffer, nextPos.frame);
 				
-				// increment current frame / buffer position
-				if (++frameIndex >= kSoundplaneANumIsochFrames)
+				if(frameSeqNum == expectedSeqNum)
 				{
-					frameIndex = 0;
-					bufferIndex++;
-					bufferIndex &= kSoundplaneABuffersMask;
+					// got next expected sequence but not the destination, keep going
+					reader.seqNum = frameSeqNum;
+					advanced++;
+				}
+				else
+				{
+					// if the next sequence number was not the one expected, we are lost.
+					reader.lost = true;
+					break;
 				}
 			}
 			else
 			{
-				waiting++;
-				// NOT WORKING
-				if (waiting > 1000) // delay amount? -- try to resync
-				{
-					printf("RESYNCHING\n");
-					waiting = 0;
-					
-					mDeviceState = kDeviceConnected;
-				}
-			}
-			
-			if (printThis)
-			{
-				if (dev)
-				{
-					//			AbsoluteTime atTime;
-					//			UInt64 bf;
-					//			OSErr err = (*dev)->GetBusFrameNumber(dev, &bf, &atTime);
-					//			k1->dumpTransactions(bufferIndex, frameIndex);
-					
-					printf("current seq num: %d / %d\n", curSeqNum0, curSeqNum1);
-					//			printf("now: %u:%u\n", (int)atTime.hi, (int)atTime.lo);
-					printf("process: gaps %d, gotNext %d \n", gaps, gotNext);
-					printf("process: good frames %d \n", framesReceived);
-					printf("process: current sequence: [%d, %d] \n", maxSeqNum0, maxSeqNum1);
-					printf("process: transactions in flight: %d\n", mTransactionsInFlight);
-					
-					framesReceived = 0;
-
-					gaps = 0;
-					gotNext = 0;
-				}
-				printThis = false;
+				advanced++;
 			}
 		}
-	
-		break;
-			
-		default:
-			break;
 	}
+	
+	return reader.seqNum;
+}
 
-	// return current state and changed flag
-	r.deviceState = mDeviceState;
-	r.stateChanged = (mDeviceState != previousState);
-	return r;
+void MacSoundplaneDriver::process(SensorFrame* pOut)
+{	
+	uint16_t nextSequenceNum = mSequenceNum + 1; // wraps
+
+	if(mDeviceState == kDeviceHasIsochSync) 
+	{
+		bool gotFrame = false;
+		
+#ifdef SHOW_ALL_SEQUENCE_NUMBERS		
+		for(int endpointIdx = 0; endpointIdx < kSoundplaneANumEndpoints; ++endpointIdx)
+		{		
+			std::cout << "endpoint " << endpointIdx << ": \n" ;
+			for(int bufIdx = 0; bufIdx < kNumIsochBuffers; ++bufIdx)
+			{
+				std::cout << "    buffer " << bufIdx << ": " ;
+				for(int frameIdx=0; frameIdx<kIsochFramesPerTransaction; ++frameIdx)
+				{
+					int frameSeqNum = getSequenceNumber(endpointIdx, bufIdx, frameIdx);
+					int actCount = getTransferBytesReceived(endpointIdx, bufIdx, frameIdx);
+					unsigned char* pPayload = getPayloadPtr(endpointIdx, bufIdx, frameIdx);					
+					unsigned char b = getPayloadLastByte(endpointIdx, bufIdx, frameIdx);
+					printf("%05d[%03d][%02x] ", frameSeqNum, actCount, b);
+				}
+				std::cout << "\n";
+			}
+		}
+#endif
+		
+		int numReadersAtNext = 0;
+		int numReadersLost = 0;
+		
+		for(int i = 0; i < kSoundplaneANumEndpoints; ++i)
+		{
+			EndpointReader& r = mEndpointReaders[i];
+			if (advanceEndpointReader(i, nextSequenceNum) == nextSequenceNum)
+			{
+				numReadersAtNext++;	
+			}
+			
+			if(r.lost)
+				numReadersLost++;
+		}
+		
+//		std::cout << " at next: " << numReadersAtNext << ", lost: " << numReadersLost << "\n";
+		
+		// if all readers are at next sequence, generate frame
+		if(numReadersAtNext == kSoundplaneANumEndpoints)
+		{			
+			mSequenceNum = nextSequenceNum;
+			
+			// make frame
+			std::array<unsigned char *, kSoundplaneANumEndpoints> payloads;
+			bool payloadsOK = true; 
+			for(int i=0 ; i<kSoundplaneANumEndpoints; ++i)
+			{
+				EndpointReader& r = mEndpointReaders[i];
+				payloads[i] = getPayloadPtr(i, r.position.buffer, r.position.frame);
+				if(!payloads[i])
+				{
+					payloadsOK = false;
+					break;
+				}
+			}
+			
+			if (payloadsOK)
+			{
+				if(mStartupCtr > kIsochStartupFrames)
+				{
+					// assemble endpoints into frame
+					// for two endpoints only
+					K1_unpack_float2(payloads[0], payloads[1], mWorkingFrame);
+					K1_clear_edges(mWorkingFrame);
+					
+					// call client callback	
+					mListener.onFrame(mWorkingFrame);
+					gotFrame = true;
+				}
+				else
+				{
+					// wait for startup
+					mStartupCtr++;
+				}
+			}
+		}
+		else if (numReadersLost > 0) 
+		{
+			resetEndpointReaders();
+			mGaps++;
+		}
+				
+		if(gotFrame)
+		{
+			mFrameCounter++;
+		}
+		else
+		{
+			mNoFrameCounter++;
+		}
+	}
+}
+
+void MacSoundplaneDriver::processThread()
+{
+	while(!mTerminating)
+	{
+		resetIsochIfStalled();
+		process(&mWorkingFrame);
+		usleep(500); // 0.5_ms
+	}
 }
 
 // -------------------------------------------------------------------------------
@@ -1348,88 +1429,49 @@ SoundplaneDriver::returnValue MacSoundplaneDriver::process(SensorFrame* pOut)
 
 int MacSoundplaneDriver::getStringDescriptor(IOUSBDeviceInterface187 **dev, uint8_t descIndex, char *destBuf, uint16_t maxLen, UInt16 lang)
 {
-    IOUSBDevRequest req;
-    uint8_t 		desc[256]; // Max possible descriptor length
-    uint8_t 		desc2[256]; // Max possible descriptor length
-    int stringLen;
-    IOReturn err;
-    if (lang == 0) // set default langID
-        lang=0x0409;
-
+	IOUSBDevRequest req;
+	uint8_t 		desc[256]; // Max possible descriptor length
+	uint8_t 		desc2[256]; // Max possible descriptor length
+	int stringLen;
+	IOReturn err;
+	if (lang == 0) // set default langID
+		lang=0x0409;
+	
 	bzero(&req, sizeof(req));
-    req.bmRequestType = USBmakebmRequestType(kUSBIn, kUSBStandard, kUSBDevice);
-    req.bRequest = kUSBRqGetDescriptor;
-    req.wValue = (kUSBStringDesc << 8) | descIndex;
-    req.wIndex = lang;	// English
-    req.wLength = 2;
-    req.pData = &desc;
-    (err = (*dev)->DeviceRequest(dev, &req));
-    if ( (err != kIOReturnSuccess) && (err != kIOReturnOverrun) )
-        return -1;
-
-    // If the string is 0 (it happens), then just return 0 as the length
-    //
-    stringLen = desc[0];
-    if(stringLen == 0)
-    {
-        return 0;
-    }
-
-    // OK, now that we have the string length, make a request for the full length
-    //
+	req.bmRequestType = USBmakebmRequestType(kUSBIn, kUSBStandard, kUSBDevice);
+	req.bRequest = kUSBRqGetDescriptor;
+	req.wValue = (kUSBStringDesc << 8) | descIndex;
+	req.wIndex = lang;	// English
+	req.wLength = 2;
+	req.pData = &desc;
+	(err = (*dev)->DeviceRequest(dev, &req));
+	if ( (err != kIOReturnSuccess) && (err != kIOReturnOverrun) )
+		return -1;
+	
+	// If the string is 0 (it happens), then just return 0 as the length
+	//
+	stringLen = desc[0];
+	if(stringLen == 0)
+	{
+		return 0;
+	}
+	
+	// OK, now that we have the string length, make a request for the full length
+	//
 	bzero(&req, sizeof(req));
-    req.bmRequestType = USBmakebmRequestType(kUSBIn, kUSBStandard, kUSBDevice);
-    req.bRequest = kUSBRqGetDescriptor;
-    req.wValue = (kUSBStringDesc << 8) | descIndex;
-    req.wIndex = lang;	// English
-    req.wLength = stringLen;
-    req.pData = desc2;
-
-    (err = (*dev)->DeviceRequest(dev, &req));
+	req.bmRequestType = USBmakebmRequestType(kUSBIn, kUSBStandard, kUSBDevice);
+	req.bRequest = kUSBRqGetDescriptor;
+	req.wValue = (kUSBStringDesc << 8) | descIndex;
+	req.wIndex = lang;	// English
+	req.wLength = stringLen;
+	req.pData = desc2;
+	
+	(err = (*dev)->DeviceRequest(dev, &req));
 	if ( err ) return -1;
-
+	
 	// copy to output buffer
 	size_t destLen = std::min((int)req.wLenDone, (int)maxLen);
 	std::copy((const char *)desc2, (const char *)desc2 + destLen, destBuf);
-
-    return destLen;
-}
-
-void MacSoundplaneDriver::dumpTransactions(int bufferIndex, int frameIndex)
-{
-	for (int j=0; j<kSoundplaneABuffers; ++j)
-	{
-		K1IsocTransaction* t0 = getTransactionData(0, j);
-		K1IsocTransaction* t1 = getTransactionData(1, j);
-		UInt64 b0 = t0->busFrameNumber;
-		UInt64 b1 = t1->busFrameNumber;
-		printf("\n%d: frame %09llu/%09llu", j, b0, b1);
-		if (bufferIndex == j)
-		{
-			printf(" *current*");
-		}
-		for(int f=0; f<kSoundplaneANumIsochFrames; ++f)
-		{
-			IOUSBLowLatencyIsocFrame* frame0, *frame1;
-			uint16_t seq0, seq1;
-			frame0 = &(t0->isocFrames[f]);
-			frame1 = &(t1->isocFrames[f]);
-
-			seq0 = t0->getTransactionSequenceNumber(f);
-			seq1 = t1->getTransactionSequenceNumber(f);
-
-			if (f % 4 == 0) printf("\n");
-			printf("%05d:%d:%d/", (int)seq0, (frame0->frReqCount), (frame0->frActCount));
-			printf("%05d:%d:%d", (int)seq1, (frame1->frReqCount), (frame1->frActCount));
-			if ((frameIndex == f) && (bufferIndex == j))
-			{
-				printf("*  ");
-			}
-			else
-			{
-				printf("   ");
-			}
-		}
-		printf("\n");
-	}
+	
+	return static_cast<int>(destLen);
 }
