@@ -41,7 +41,7 @@ set(ML_BUILD_TESTS OFF CACHE BOOL "Build the examples" FORCE)
 add_subdirectory(${SP_MADRONALIB_DIR})
 add_subdirectory(SoundplaneLib)
 
-add_subdirectory(${SP_MADRONALIB_DIR}/external/juce)
+# add_subdirectory(${SP_MADRONALIB_DIR}/external/juce)
 
 set(SP_SOURCES
   Data/SoundplaneBinaryData/SoundplaneBinaryData.cpp
