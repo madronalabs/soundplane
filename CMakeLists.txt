@@ -1,6 +1,8 @@
 # soundplane/CMakeLists.txt
 # root CMake file for soundplane project.
 
+#
+
 cmake_minimum_required(VERSION 2.8.12)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum OS X deployment version")
 
