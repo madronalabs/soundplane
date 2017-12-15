@@ -16,12 +16,12 @@ tab in Xcode's settings. An easy way of installing CMake is to do it via
 Homebrew: With Homebrew installed, type `brew install cmake` in a terminal.
 
 In order to fetch dependencies and prepare the build, the following commands
-can be used (in a terminal)
+can be used. The BUILD_NEW_ONLY option is set OFF to include the JUCE libraries needed.
 
     $ git submodule update --init --recursive
     $ mkdir build
     $ cd build
-    $ cmake .. -GXcode
+    $ cmake .. -DBUILD_NEW_ONLY=OFF -GXcode
 
 At this point, there is an Xcode project `soundplane.xcodeproj` ready for coding
 and compiling in `build/`. If you just want to build the application and run it

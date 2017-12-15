@@ -28,6 +28,8 @@
 #include "Zone.h"
 #include "SoundplaneBinaryData.h"
 
+using namespace ml;
+
 typedef enum
 {
 	xColumn = 0,
@@ -69,7 +71,7 @@ public:
 	const std::vector<std::string>& getServicesList();
 	void formatServiceName(const std::string& inName, std::string& outName);
 
-	MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
+    MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
 
 	void testCallback();
 	void processCallback();

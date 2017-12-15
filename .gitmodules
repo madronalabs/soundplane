@@ -1,4 +1,3 @@
 [submodule "external/madronalib"]
 	path = external/madronalib
-	url = https://github.com/madronalabs/madronalib.git
-	ignore = dirty
+	url = git@github.com:madronalabs/madronalib.git
