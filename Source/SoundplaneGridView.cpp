@@ -537,36 +537,6 @@ void SoundplaneGridView::renderZGrid()
 			glEnd();
 		}
 	}
-	
-	float dotSize = fabs(mKeyRangeY(0.08f) - mKeyRangeY(0.f));
-	const int nt = mpModel->getFloatProperty("max_touches");
-	const MLSignal& touches = mpModel->getTouchFrame();
-	char strBuf[64] = {0};
-	for(int t=0; t<nt; ++t)
-	{
-		int age = touches(ageColumn, t);
-		if (age > 0)
-		{
-			float x = touches(xColumn, t);
-			float y = touches(yColumn, t);
-			
-			Vec2 xyPos(x, y);
-			Vec2 gridPos = mpModel->xyToKeyGrid(xyPos);
-			float tx = mKeyRangeX.convert(gridPos.x());
-			float ty = mKeyRangeY.convert(gridPos.y());
-			float tz = touches(zColumn, t);
-			
-			Vec4 dataColor(MLGL::getIndicatorColor(t));
-			dataColor[3] = 0.75;
-			glColor4fv(&dataColor[0]);
-			
-			// draw dot on surface
-			MLGL::drawDot(Vec2(tx, ty), dotSize*10.0*tz);
-			sprintf(strBuf, "%5.3f", tz);			
-			drawInfoBox(Vec3(tx, ty, 0.), strBuf, t);                
-			
-		}
-	}
 }
 
 void SoundplaneGridView::resizeWidget(const MLRect& b, const int u)
