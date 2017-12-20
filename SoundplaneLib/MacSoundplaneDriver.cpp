@@ -109,16 +109,6 @@ mNoFrameCounter(0)
 	{
 		mCurrentCarriers[i] = kDefaultCarriers[i];
 	}
-	
-	// create device grab thread
-	mGrabThread = std::thread(&MacSoundplaneDriver::grabThread, this);
-	mGrabThread.detach();  // REVIEW: mGrabThread is leaked
-	
-	// create isochronous read and process thread
-	mProcessThread = std::thread(&MacSoundplaneDriver::processThread, this);
-	
-	// set thread to real time priority
-	setThreadPriority(mProcessThread.native_handle(), 96, true);
 }
 
 MacSoundplaneDriver::~MacSoundplaneDriver()
@@ -171,14 +161,27 @@ MacSoundplaneDriver::~MacSoundplaneDriver()
 	printf("gaps: %d\n", mGaps);
 }
 
+void MacSoundplaneDriver::open()
+{
+    // create device grab thread
+    mGrabThread = std::thread(&MacSoundplaneDriver::grabThread, this);
+    mGrabThread.detach();  // REVIEW: mGrabThread is leaked
+    
+    // create isochronous read and process thread
+    mProcessThread = std::thread(&MacSoundplaneDriver::processThread, this);
+    
+    // set thread to real time priority
+    setThreadPriority(mProcessThread.native_handle(), 96, true);
+}
+
 void MacSoundplaneDriver::close()
 {
-	std::lock_guard<std::mutex> lock(mDeviceStateMutex);
-	setDeviceState(kDeviceClosing);
-	mTerminating = true;
-	
-	// wait for any process() calls in progress to finish
-	usleep(100*1000);
+    std::lock_guard<std::mutex> lock(mDeviceStateMutex);
+    setDeviceState(kDeviceClosing);
+    mTerminating = true;
+    
+    // wait for any process() calls in progress to finish
+    usleep(100*1000);
 }
 
 int MacSoundplaneDriver::createLowLatencyBuffers()

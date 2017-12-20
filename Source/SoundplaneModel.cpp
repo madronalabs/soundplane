@@ -105,6 +105,7 @@ SoundplaneModel::SoundplaneModel() :
 	mShuttingDown(0)
 {	
 	mpDriver = SoundplaneDriver::create(*this);
+    mpDriver->open();
 
 	for(int i=0; i<kSoundplaneMaxTouches; ++i)
 	{
@@ -350,7 +351,6 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			}
 			else if (p == "quantize")
 			{
-				bool b = v;
 				sendParametersToZones();
 			}
 			else if (p == "rotate")

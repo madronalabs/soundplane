@@ -16,7 +16,6 @@ SoundplaneApp::SoundplaneApp() :
 
 SoundplaneApp::~SoundplaneApp()
 {
-	
 	delete mpController;
 	delete mpModel;
 	delete mpView;
@@ -46,17 +45,13 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpWindow->setUsingOpenGL(true);
 	mpWindow->setVisible(true);
 	
-
 	mpWindow->setConstrainer (mpBorder->getConstrainer());
-	
-	// setBounds(mpView->getBounds());  // MLTEST NX
 	
 	mpBorder->addAndMakeVisible(mpView);
 	mpController->setView(mpView);
 
 	mpController->initialize();	
-	mpView->initialize();		// MLTEST NX to remove
-
+	mpView->initialize();
 
 	// generate a persistent state for the Model
 	mpModelState = std::unique_ptr<MLAppState>(new MLAppState(mpModel, "", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
@@ -91,8 +86,8 @@ void SoundplaneApp::shutdown()
 	mpViewState->updateAllProperties();
 	mpViewState->saveStateToStateFile();
 
+    mpWindow->setVisible(false);
 	if(mpController) mpController->setView(0);
-	
 }
 
 void SoundplaneApp::setDefaultWindowSize()

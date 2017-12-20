@@ -43,8 +43,9 @@ public:
 		return mDeviceState;
 	}	
 	
-	void close() override;
-	
+    void open() override;
+    void close() override;
+
 	uint16_t getFirmwareVersion() const override;
 	std::string getSerialNumberString() const override;
 	

@@ -49,8 +49,9 @@ public:
 
 	virtual int getDeviceState() const = 0;
 	
-	virtual void close() = 0;
-	
+    virtual void open() = 0;
+    virtual void close() = 0;
+
 	/**
 	 * Returns the firmware version of the connected Soundplane device. The
 	 * return value is undefined if getDeviceState() == kNoDevice
