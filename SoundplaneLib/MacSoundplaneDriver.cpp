@@ -1,4 +1,4 @@
-// SoundplaneDriver.cpp
+// MacSoundplaneDriver.cpp
 //
 // Returns raw data frames from the Soundplane.  The frames are reclocked if needed (TODO)
 // to reconstruct a steady sample rate.
@@ -276,7 +276,6 @@ uint32_t MacSoundplaneDriver::getTransactionDataChecksum() // TODO const
 
 			SoundplaneADataPacket* p = reinterpret_cast<SoundplaneADataPacket*>(t->payloads);
 			
-			
 			for(int k=0; k < kIsochFramesPerTransaction; ++k)
 			{
 				uint16_t s = p[k].seqNum;
@@ -286,8 +285,6 @@ uint32_t MacSoundplaneDriver::getTransactionDataChecksum() // TODO const
 	}
 	return checkSum;
 }
-
-
 
 uint16_t MacSoundplaneDriver::getFirmwareVersion() const
 {
@@ -1112,8 +1109,8 @@ void MacSoundplaneDriver::destroyDevice()
 	//IOReturn err;
 	kern_return_t	kr;
 	
-	printf("destroyDevice()\n");
-	
+    mListener.onClose();
+    
 	// wait for any pending transactions to finish
 	//
 	int totalWaitTime = 0;
@@ -1136,6 +1133,7 @@ void MacSoundplaneDriver::destroyDevice()
 	// wait some more
 	//
 	usleep(100*1000);
+    
 	// clean up transaction data and release interface.
 	//
 	// Doing this with any transactions pending WILL cause a kernel panic!
@@ -1155,7 +1153,6 @@ void MacSoundplaneDriver::destroyDevice()
 		dev = NULL;
 	}
 }
-
 
 // watch the buffers being filled by the isochronous layer. If there is no new data for a while,
 // reset the isoch layer. 
@@ -1179,6 +1176,8 @@ void MacSoundplaneDriver::resetIsochIfStalled()
 		if(checksumCtr > checksumInterval)
 		{
 			checksumCtr = 0;
+            
+            // TDOO why a checksum? we can just bail if equality check fails, which is usual
 			uint16_t transactionChecksum = getTransactionDataChecksum();
 			if(transactionChecksum != prevTransactionChecksum)
 			{
@@ -1317,6 +1316,7 @@ void MacSoundplaneDriver::process(SensorFrame* pOut)
 {	
 	uint16_t nextSequenceNum = mSequenceNum + 1; // wraps
 
+    std::lock_guard<std::mutex> lock(mDeviceStateMutex);
 	if(mDeviceState == kDeviceHasIsochSync) 
 	{
 		bool gotFrame = false;

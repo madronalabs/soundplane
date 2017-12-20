@@ -233,6 +233,17 @@ void SoundplaneModel::onFrame(const SensorFrame& frame)
 	}
 }
 
+void SoundplaneModel::onError(int error, const char* errStr)
+{
+    // unimplemented, not currently called
+}
+
+void SoundplaneModel::onClose()
+{
+    std::cout << "CLOSED\n"; // MLTEST
+    enableOutput(false);
+}
+
 void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
 {
 	// debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";

@@ -36,8 +36,10 @@ class SoundplaneDriverListener
 {
 public:
 	virtual ~SoundplaneDriverListener() = default;
+    virtual void onStartup(void) = 0;
 	virtual void onFrame(const SensorFrame& frame) = 0;
-	virtual void onStartup(void) = 0;
+    virtual void onError(int err, const char* errStr) = 0;
+    virtual void onClose(void) = 0;
 };
 
 class SoundplaneDriver

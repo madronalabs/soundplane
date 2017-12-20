@@ -53,7 +53,9 @@ public:
 	// SoundplaneDriverListener
 	void onStartup() override;
 	void onFrame(const SensorFrame& frame) override;
-	
+    void onError(int error, const char* errStr) override;
+    void onClose() override;
+
 	// MLModel
     void doPropertyChangeAction(ml::Symbol , const MLProperty & ) override;
 
