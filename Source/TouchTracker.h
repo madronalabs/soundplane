@@ -58,8 +58,8 @@ private:
 	float mOnThreshold;
 	float mOffThreshold;
 	
-	SensorFrame mInput;
-	SensorFrame mInputZ1;
+    SensorFrame mInput{};
+    SensorFrame mInputZ1{};
 	
 	TouchArray mTouches;
 	TouchArray mTouchesMatch1;

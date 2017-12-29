@@ -467,8 +467,10 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pD->setDefault(0.5);
 
 	
-	pB = page2->addToggleButton("kyma", toggleRect.withCenter(12, dialY), "kyma", c2);
-	
+    pB = page2->addToggleButton("kyma", toggleRect.withCenter(12, dialY), "kyma", c2);
+    
+    pB = page2->addToggleButton("verbose", toggleRect.withCenter(13, dialY), "verbose", c2);
+    
 	setWantsKeyboardFocus(true);
 	pDebug->setWantsKeyboardFocus(true);
 }

@@ -236,7 +236,21 @@ void SoundplaneModel::onFrame(const SensorFrame& frame)
 
 void SoundplaneModel::onError(int error, const char* errStr)
 {
-    // unimplemented, not currently called
+    switch(error)
+    {
+        case kDevDataDiffTooLarge:
+            MLConsole() << "error: frame difference too large: " << errStr << "\n";
+            beginCalibrate();
+            break;
+        case kDevGapInSequence:
+            // a gap is not really so bad, could be just one frame lost
+            if(mVerbose)
+            {
+                MLConsole() << "note: gap in sequence " << errStr << "\n";
+            }
+            break;
+        
+    }
 }
 
 void SoundplaneModel::onClose()
@@ -372,12 +386,18 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			{
 				sendParametersToZones();
 			}
-			else if (p == "bend_range")
-			{
-				mMIDIOutput.setBendRange(v);
-				sendParametersToZones();
-			}
-			
+            else if (p == "bend_range")
+            {
+                mMIDIOutput.setBendRange(v);
+                sendParametersToZones();
+            }
+            
+            else if (p == "verbose")
+            {
+                bool b = v;
+                mVerbose = b;
+            }
+            
 			/*
 			 // MLTEST no manual connect
 			else if (p == "kyma")
@@ -1184,15 +1204,18 @@ void SoundplaneModel::clear()
 #pragma mark surface calibration
 
 // using the current carriers, calibrate the surface by collecting data and
-// calculating the mean and std. deviation for each taxel.
+// calculating the mean rest value for each taxel.
 //
 void SoundplaneModel::beginCalibrate()
 {
 	if(getDeviceState() == kDeviceHasIsochSync)
 	{
-		clear();
-		clearTouchData();
-		sendTouchDataToZones();
+        
+        // MLTEST - calibrate to recover from frame diff too large should not cut off touches
+//        clear();
+//		clearTouchData();
+//		sendTouchDataToZones();
+        
 		mStats.clear();
 		mCalibrating = true;
 	}

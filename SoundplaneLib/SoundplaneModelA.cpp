@@ -86,10 +86,11 @@ void K1_clear_edges(SensorFrame& dest)
 	}
 }
 
+// return difference between the sums of first rows of each frame.
 float frameDiff(const SensorFrame& p0, const SensorFrame& p1)
 {
 	float sum = 0.f;
-	for(int i = 0; i < p0.size(); i++)
+	for(int i = 0; i < SensorGeometry::width; i++)
 	{
 		sum += fabs(p1[i] - p0[i]);
 	}

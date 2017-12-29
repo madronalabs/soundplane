@@ -53,7 +53,7 @@ const int kSoundplaneAPickupsPerBoard = 8;
 
 const int kSoundplaneNumCarriers = 32;
 const int kSoundplanePossibleCarriers = 64;
-const float kMaxFrameDiff = 8.0f;
+const float kMaxFrameDiff = 2.0f;
 
 // Soundplane A USB firmware
 const int kSoundplaneANumEndpoints = 2;

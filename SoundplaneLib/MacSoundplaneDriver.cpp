@@ -94,10 +94,7 @@ mDeviceState(kNoDevice),
 notifyPort(0),
 matchedIter(0),
 notification(0),
-mListener(m),
-mErrorCount(0),
-mFrameCounter(0),
-mNoFrameCounter(0)
+mListener(m)
 {
 	printf("creating SoundplaneDriver...\n");
 	for(int i=0; i<kSoundplaneANumEndpoints; ++i)
@@ -113,8 +110,6 @@ mNoFrameCounter(0)
 
 MacSoundplaneDriver::~MacSoundplaneDriver()
 {
-	printf("deleting SoundplaneDriver...\n");
-	
 	kern_return_t	kr;
 	
 	{		
@@ -155,7 +150,6 @@ MacSoundplaneDriver::~MacSoundplaneDriver()
 		setDeviceState(kNoDevice);
 	}
 	
-	printf("error count: %d\n", mErrorCount);
 	printf("frames: %d\n", mFrameCounter);
 	printf("no frames: %d\n", mNoFrameCounter);
 	printf("gaps: %d\n", mGaps);
@@ -498,11 +492,9 @@ void MacSoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg
 	switch (result)
 	{			
 		default:
-			k1->mErrorCount++;				
 			// when mystery error 0xe000400e is returned, one or more packets have
 			// been lost from the given endpoint, after which normal
 			// operation seems possible, therefore do fall through.
-			// TODO interpolate any missing data.
 			
 		case kIOReturnUnderrun:
 			// This error is often received when all payloads are present
@@ -557,7 +549,6 @@ void MacSoundplaneDriver::resetIsochTransactions()
 		}
 	}
 }
-
 
 // --------------------------------------------------------------------------------
 #pragma mark transfer utilities
@@ -669,6 +660,26 @@ unsigned char MacSoundplaneDriver::getPayloadLastByte(int endpoint, int buffer, 
 		r = p[kSoundplaneAPackedDataSize - 1];
 	}
 	return r;
+}
+
+MacSoundplaneDriver::FramePosition MacSoundplaneDriver::getPositionOfSequence(int endpoint, uint16_t seq)
+{
+    const int totalFrames = kIsochFramesPerTransaction*kNumIsochBuffers;
+    FramePosition pos{};
+    for(int frame = 0; frame < totalFrames; ++frame)
+    {
+        unsigned char lastByte = getPayloadLastByte(endpoint, pos.buffer, pos.frame);
+        if(lastByte > 0)
+        {
+            int seqNum = getSequenceNumber(endpoint, pos.buffer, pos.frame);
+            if(seqNum == seq)
+            {
+                break;
+            }
+        }
+        pos = advance(pos);
+    }
+    return pos;
 }
 
 
@@ -1039,9 +1050,9 @@ void MacSoundplaneDriver::deviceNotifyGeneral(void *refCon, io_service_t service
 	
 	if (kIOMessageServiceIsTerminated == messageType)
 	{
-		std::cout << "deviceNotifyGeneral, state " << k1->getDeviceState() << " \n";
-		
+        // TODO pretty ugly, remove need for this by not setting state directly here
 		std::lock_guard<std::mutex> lock(k1->getDeviceStateMutex());
+        
 		k1->setDeviceState(kDeviceClosing);
 		k1->destroyDevice();
 		k1->setDeviceState(kNoDevice);
@@ -1201,219 +1212,246 @@ void MacSoundplaneDriver::resetIsochIfStalled()
 	}
 }
 
-// search for the most recent sequence number in all the buffers in the queue.
-// point the readers at it. 
-//
-void MacSoundplaneDriver::resetEndpointReaders()
+uint16_t wrapDistance(uint16_t a, uint16_t b)
 {
-	int maxSequenceNum = -1;
-	for(int readerIdx = 0; readerIdx < kSoundplaneANumEndpoints; ++readerIdx)
-	{
-		MacSoundplaneDriver::EndpointReader& reader = mEndpointReaders[readerIdx];
-		int maxEndpointSequenceNum = -1;
-		
-		// find most recent sequence #
-		FramePosition pos, maxPos;
-		bool foundData = false;
-		const int totalFrames = kIsochFramesPerTransaction*kNumIsochBuffers;
-		for(int c = 0; c < totalFrames; ++c)
-		{
-			pos = advance(pos, 1);
-			
-			// look at the last byte of the payload to determine whether there is new data
-			int lastByte = getPayloadLastByte(readerIdx, pos.buffer, pos.frame);			
-			if(lastByte > 0)
-			{
-				int frameSeqNum = getSequenceNumber(readerIdx, pos.buffer, pos.frame);
-				if(frameSeqNum > maxEndpointSequenceNum)
-				{
-					maxEndpointSequenceNum = frameSeqNum;
-					maxPos = pos;
-					foundData = true;
-				}
-			}
-		}
-		
-		if(foundData)
-		{
-			if(maxEndpointSequenceNum > maxSequenceNum)
-			{
-				maxSequenceNum = maxEndpointSequenceNum;
-			}
-			
-			reader.lost = false;
-			reader.seqNum = maxEndpointSequenceNum;
-			reader.position = maxPos;
-		}
-		else
-		{
-			reader.lost = true;
-		}
-	}
-	
-	// set max sequence number
-	if(maxSequenceNum >= 0)
-	{
-		mSequenceNum = maxSequenceNum;
-	}
+    uint16_t c = a - b;
+    uint16_t d = b - a;
+    return std::min(c, d);
 }
 
-// try to advance the reader to the given sequence number. return the sequence number the reader
-// is at after the call. side effect: the reader's state changes, including its lost flag which we look at later.
-// if already at the destination, the reader will not be moved.
-//
-int MacSoundplaneDriver::advanceEndpointReader(int readerIdx, uint16_t destSeqNum)
-{
-	MacSoundplaneDriver::EndpointReader& reader = mEndpointReaders[readerIdx];
-	
-	int frameSeqNum;
-	int frameActualBytesRead;
-	
-	if(reader.seqNum != destSeqNum)
-	{
-		int advanced = 0;
-		const int maxAdvance = 2;
-		FramePosition nextPos = reader.position;
-		while((reader.seqNum != destSeqNum)&&(advanced < maxAdvance))
-		{		
-			nextPos = advance(nextPos, 1);
-			
-			// each frame either gets 0 or a full packet
-			frameActualBytesRead = getTransferBytesReceived(readerIdx, nextPos.buffer, nextPos.frame);
 
-			unsigned char lastByte = getPayloadLastByte(readerIdx, nextPos.buffer, nextPos.frame);
-			
-			// if the last byte of the payload is nonzero, we know the whole payload is present. 
-			// payload data is written before the bytes received, which lets us shave off a few ms of latency.
-			// TODO CONFIRM: All possible soundplane A payloads have a nonzero last byte.
-			if(lastByte > 0)
-			{
-				reader.position = nextPos;
-				uint16_t expectedSeqNum = reader.seqNum + 1; // note: wraps
-				frameSeqNum = getSequenceNumber(readerIdx, nextPos.buffer, nextPos.frame);
-				
-				if(frameSeqNum == expectedSeqNum)
-				{
-					// got next expected sequence but not the destination, keep going
-					reader.seqNum = frameSeqNum;
-					advanced++;
-				}
-				else
-				{
-					// if the next sequence number was not the one expected, we are lost.
-					reader.lost = true;
-					break;
-				}
-			}
-			else
-			{
-				advanced++;
-			}
-		}
-	}
-	
-	return reader.seqNum;
+
+uint16_t MacSoundplaneDriver::mostRecentSequenceNum(int endpointIdx)
+{
+    const int maxUInt16 = 0xFFFF;
+    const int totalFrames = kIsochFramesPerTransaction*kNumIsochBuffers;
+    static_assert(totalFrames < maxUInt16 / 2, "totalFrames too large!");
+
+    // scan for wrap
+    bool wrapHi = false;
+    bool wrapLo = false;
+    FramePosition pos{};
+    for(int frame = 0; frame < totalFrames; ++frame)
+    {
+        // look at the last byte of the payload to determine whether there is sequence data
+        int lastByte = getPayloadLastByte(endpointIdx, pos.buffer, pos.frame);
+        if(lastByte > 0)
+        {
+            int seqNum = getSequenceNumber(endpointIdx, pos.buffer, pos.frame);
+            if(seqNum > maxUInt16 - totalFrames)
+            {
+                wrapHi = true;
+            }
+            else if(seqNum < totalFrames)
+            {
+                wrapLo = true;
+            }
+            else if((seqNum > totalFrames) && (seqNum < maxUInt16 - totalFrames))
+            {
+                // no wrap is possible if we have sequence numbers in this range
+                break;
+            }
+        }
+        pos = advance(pos);
+    }
+    
+    bool wrap = wrapHi && wrapLo;
+    uint16_t maxSequenceNum = 0;
+    
+    if(!wrap)
+    {
+        FramePosition pos{};
+        for(int frame = 0; frame < totalFrames; ++frame)
+        {
+            // look at the last byte of the payload to determine whether there is sequence data
+            int lastByte = getPayloadLastByte(endpointIdx, pos.buffer, pos.frame);
+            if(lastByte > 0)
+            {
+                int seqNum = getSequenceNumber(endpointIdx, pos.buffer, pos.frame);
+                if(seqNum > maxSequenceNum)
+                {
+                    maxSequenceNum = seqNum;
+                }
+            }
+            pos = advance(pos);
+        }
+        
+    }
+    else
+    {
+        FramePosition pos{};
+        for(int frame = 0; frame < totalFrames; ++frame)
+        {
+            // look at the last byte of the payload to determine whether there is sequence data
+            int lastByte = getPayloadLastByte(endpointIdx, pos.buffer, pos.frame);
+            if(lastByte > 0)
+            {
+                uint16_t seqNum = getSequenceNumber(endpointIdx, pos.buffer, pos.frame);
+                if(seqNum < totalFrames)
+                {
+                    maxSequenceNum = seqNum;
+                }
+            }
+            pos = advance(pos);
+        }
+    }
+    
+    return maxSequenceNum;
 }
 
+bool MacSoundplaneDriver::endpointDataHasSequence(int endpointIdx, uint16_t seq)
+{
+    const int totalFrames = kIsochFramesPerTransaction*kNumIsochBuffers;
+    FramePosition pos{};
+    for(int frame = 0; frame < totalFrames; ++frame)
+    {
+        // look at the last byte of the payload to determine whether there is sequence data
+        int lastByte = getPayloadLastByte(endpointIdx, pos.buffer, pos.frame);
+        if(lastByte > 0)
+        {
+            uint16_t seqNum = getSequenceNumber(endpointIdx, pos.buffer, pos.frame);
+            if(seqNum == seq)
+            {
+                return true;
+            }
+        }
+        pos = advance(pos);
+    }
+    return false;
+}
+
+int MacSoundplaneDriver::mostRecentCompleteSequence()
+{
+    int r = -1;
+    uint16_t mostRecent = mostRecentSequenceNum(0);
+    const int kSearchSize = kIsochFramesPerTransaction;
+    uint16_t seq = mostRecent;
+    int d = 0;
+    for(; d < kSearchSize; ++d)
+    {
+        int endpointsMatching = 0;
+        for(int endpoint = 0; endpoint < kSoundplaneANumEndpoints; ++endpoint)
+        {
+            if(endpointDataHasSequence(endpoint, seq))
+            {
+                endpointsMatching++;
+            }
+        }
+        
+        if(endpointsMatching == kSoundplaneANumEndpoints)
+        {
+            return seq;
+        }
+        
+        seq--;
+    }
+ 
+    return -1;
+}
+
+void MacSoundplaneDriver::printTransactions()
+{
+    for(int endpointIdx = 0; endpointIdx < kSoundplaneANumEndpoints; ++endpointIdx)
+    {
+        std::cout << "endpoint " << endpointIdx << ": \n" ;
+        for(int bufIdx = 0; bufIdx < kNumIsochBuffers; ++bufIdx)
+        {
+            std::cout << "    buffer " << bufIdx << ": " ;
+            for(int frameIdx=0; frameIdx<kIsochFramesPerTransaction; ++frameIdx)
+            {
+                int frameSeqNum = getSequenceNumber(endpointIdx, bufIdx, frameIdx);
+                int actCount = getTransferBytesReceived(endpointIdx, bufIdx, frameIdx);
+                unsigned char b = getPayloadLastByte(endpointIdx, bufIdx, frameIdx);
+                printf("%05d[%03d][%02x] ", frameSeqNum, actCount, b);
+            }
+            std::cout << "\n";
+        }
+    }
+}
+
+// This thread is responsible for collecting all data from the Soundplane. The routines isochComplete()
+// and scheduleIsoch() combine to keep data running into the transfer buffers in round-robin fashion.
+// This thread looks at those buffers and attempts to stay in sync with incoming data, watching as
+// transfers are filled in with successive sequence numbers.
+//
 void MacSoundplaneDriver::process(SensorFrame* pOut)
-{	
-	uint16_t nextSequenceNum = mSequenceNum + 1; // wraps
-
+{
     std::lock_guard<std::mutex> lock(mDeviceStateMutex);
-	if(mDeviceState == kDeviceHasIsochSync) 
-	{
-		bool gotFrame = false;
-		
-#ifdef SHOW_ALL_SEQUENCE_NUMBERS		
-		for(int endpointIdx = 0; endpointIdx < kSoundplaneANumEndpoints; ++endpointIdx)
-		{		
-			std::cout << "endpoint " << endpointIdx << ": \n" ;
-			for(int bufIdx = 0; bufIdx < kNumIsochBuffers; ++bufIdx)
-			{
-				std::cout << "    buffer " << bufIdx << ": " ;
-				for(int frameIdx=0; frameIdx<kIsochFramesPerTransaction; ++frameIdx)
-				{
-					int frameSeqNum = getSequenceNumber(endpointIdx, bufIdx, frameIdx);
-					int actCount = getTransferBytesReceived(endpointIdx, bufIdx, frameIdx);
-					unsigned char* pPayload = getPayloadPtr(endpointIdx, bufIdx, frameIdx);					
-					unsigned char b = getPayloadLastByte(endpointIdx, bufIdx, frameIdx);
-					printf("%05d[%03d][%02x] ", frameSeqNum, actCount, b);
-				}
-				std::cout << "\n";
-			}
-		}
-#endif
-		
-		int numReadersAtNext = 0;
-		int numReadersLost = 0;
-		
-		for(int i = 0; i < kSoundplaneANumEndpoints; ++i)
-		{
-			EndpointReader& r = mEndpointReaders[i];
-			if (advanceEndpointReader(i, nextSequenceNum) == nextSequenceNum)
-			{
-				numReadersAtNext++;	
-			}
-			
-			if(r.lost)
-				numReadersLost++;
-		}
-		
-//		std::cout << " at next: " << numReadersAtNext << ", lost: " << numReadersLost << "\n";
-		
-		// if all readers are at next sequence, generate frame
-		if(numReadersAtNext == kSoundplaneANumEndpoints)
-		{			
-			mSequenceNum = nextSequenceNum;
-			
-			// make frame
-			std::array<unsigned char *, kSoundplaneANumEndpoints> payloads;
-			bool payloadsOK = true; 
-			for(int i=0 ; i<kSoundplaneANumEndpoints; ++i)
-			{
-				EndpointReader& r = mEndpointReaders[i];
-				payloads[i] = getPayloadPtr(i, r.position.buffer, r.position.frame);
-				if(!payloads[i])
-				{
-					payloadsOK = false;
-					break;
-				}
-			}
-			
-			if (payloadsOK)
-			{
-				if(mStartupCtr > kIsochStartupFrames)
-				{
-					// assemble endpoints into frame
-					// for two endpoints only
-					K1_unpack_float2(payloads[0], payloads[1], mWorkingFrame);
-					K1_clear_edges(mWorkingFrame);
-					
-					// call client callback	
-					mListener.onFrame(mWorkingFrame);
-					gotFrame = true;
-				}
-				else
-				{
-					// wait for startup
-					mStartupCtr++;
-				}
-			}
-		}
-		else if (numReadersLost > 0) 
-		{
-			resetEndpointReaders();
-			mGaps++;
-		}
-				
-		if(gotFrame)
-		{
-			mFrameCounter++;
-		}
-		else
-		{
-			mNoFrameCounter++;
-		}
+    if(mDeviceState == kDeviceHasIsochSync)
+    {
+        int maxSeq = mostRecentCompleteSequence();
+        if(maxSeq < 0)
+        {
+            mNoFrameCounter++;
+        }
+        else if(maxSeq != mPreviousSeq)
+        {
+            // make frame
+            std::array<unsigned char *, kSoundplaneANumEndpoints> payloads;
+            bool payloadsOK = true;
+            for(int i=0 ; i<kSoundplaneANumEndpoints; ++i)
+            {
+                FramePosition pos = getPositionOfSequence(i, maxSeq);
+                
+                payloads[i] = getPayloadPtr(i, pos.buffer, pos.frame);
+                if(!payloads[i])
+                {
+                    payloadsOK = false;
+                    break;
+                }
+            }
+            
+            if (payloadsOK)
+            {
+                if(mStartupCtr >= kIsochStartupFrames)
+                {
+                    // assemble endpoints into frame
+                    // for two endpoints only
+                    K1_unpack_float2(payloads[0], payloads[1], mWorkingFrame);
+                    K1_clear_edges(mWorkingFrame);
+                    
+                    bool firstFrame = (mStartupCtr == kIsochStartupFrames);
+                    
+                    float diff = frameDiff(mWorkingFrame, mPrevFrame);
+                    if((diff < kMaxFrameDiff) || firstFrame)
+                    {
+                        // new frame is OK, call client callback
+                        mListener.onFrame(mWorkingFrame);
+                    }
+                    else
+                    {
+                        // diff too large, alert client
+                        snprintf(mErrorBuf, kMaxErrorStringSize, "(%f)", diff);
+                        mListener.onError(kDevDataDiffTooLarge, mErrorBuf);
+                    }
+                    mPrevFrame = mWorkingFrame;
+                }
+                else
+                {
+                    // wait for startup
+                    mStartupCtr++;
+                }
+            }
+
+            uint16_t predicted = mPreviousSeq + 1;
+            if(maxSeq != predicted)
+            {
+                uint16_t gapSize = wrapDistance(mPreviousSeq, maxSeq);
+                if(gapSize > 1)
+                {
+                    snprintf(mErrorBuf, kMaxErrorStringSize, "%d -> %d (%d)", mPreviousSeq, maxSeq, gapSize);
+                    mListener.onError(kDevGapInSequence, mErrorBuf);
+                }
+                mGaps++;
+            }
+            mFrameCounter++;
+            mPreviousSeq = maxSeq;
+        }
+        else
+        {
+            // waiting
+            mNoFrameCounter++;
+        }
 	}
 }
 
@@ -1423,7 +1461,7 @@ void MacSoundplaneDriver::processThread()
 	{
 		resetIsochIfStalled();
 		process(&mWorkingFrame);
-		usleep(500); // 0.5_ms
+		usleep(250); // ns
 	}
 }
 

@@ -122,7 +122,7 @@ SensorFrame smoothPressureX(const SensorFrame& in)
 	const float * pr2;
 	float * prOut; 		
 
-	SensorFrame out;
+    SensorFrame out{};
 	
 	for(j = 0; j < SensorGeometry::height; j++)
 	{
@@ -154,7 +154,7 @@ SensorFrame smoothPressureY(const SensorFrame& in)
 	const float * pr1, * pr2, * pr3; // input row ptrs
 	float * prOut; 	
 	
-	SensorFrame out;
+    SensorFrame out{};
 	
 	j = 0;	// top row
 	{

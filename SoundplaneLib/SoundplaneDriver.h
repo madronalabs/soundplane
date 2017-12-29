@@ -27,7 +27,7 @@ enum
 enum
 {
 	kDevNoErr = 0,
-	kDevNoNewFrame = 1,
+	kDevNoNewFrame = 1, // unused
 	kDevDataDiffTooLarge = 2,
 	kDevGapInSequence = 3
 };

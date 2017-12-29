@@ -425,8 +425,8 @@ void SoundplaneGridView::renderZGrid()
 	
 	float preOffset = 0.f;
 	bool separateSurfaces = false;
-	int leftEdge = 0;
-	int rightEdge = mSensorWidth;
+	int leftEdge = 1;
+	int rightEdge = mSensorWidth - 1;
 	
 	if(viewMode == "raw data")
 	{
@@ -452,14 +452,11 @@ void SoundplaneGridView::renderZGrid()
 	if (separateSurfaces)
 	{
 		// draw lines
-		for(int i=0; i<mSensorWidth; ++i)
+		for(int i=1; i<mSensorWidth - 1; ++i)
 		{
 			// alternate colors every flex circuit
 			lineColor = (i/16)&1 ? darkBlue : blue;
-			if(state != kDeviceHasIsochSync)
-			{
-// MLTEST				lineColor[3] = 0.1f;
-			}
+
 			glColor4fv(&lineColor[0]);
 			
 			// vert
@@ -476,7 +473,7 @@ void SoundplaneGridView::renderZGrid()
 			glEnd();
 			
 			// horiz
-			if (i%16 != 15)
+			if ((i%16 != 15) && (i < mSensorWidth - 2))
 			{
 				glBegin(GL_LINES);
 				for(int j=0; j<mSensorHeight; ++j)

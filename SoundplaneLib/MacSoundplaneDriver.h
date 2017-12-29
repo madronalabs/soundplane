@@ -27,11 +27,13 @@ const int kNumIsochBuffers = 1 << kIsochBuffersExp;
 const int kIsochBuffersMask = kNumIsochBuffers - 1;
 const int kIsochBuffersInFlight = 4; // AppleUSBAudioStream.h: 6
 const int kIsochFramesPerTransaction = 8; // MLTEST 20
-const int kIsochStartupFrames = 250;
+const int kIsochStartupFrames = 500;
+
+const int kMaxErrorStringSize = 256;
 
 class MacSoundplaneDriver : public SoundplaneDriver
 {
-	// isoch completion routine is allowed to set our device state.
+	// isoch completion routine is allowed to set our device state. (TODO YUK)
 	friend void isochComplete(void *refCon, IOReturn result, void *arg0);
 
 public:
@@ -43,12 +45,11 @@ public:
 		return mDeviceState;
 	}	
 	
+    // SoundplaneDriver
     void open() override;
     void close() override;
-
 	uint16_t getFirmwareVersion() const override;
 	std::string getSerialNumberString() const override;
-	
 	const unsigned char *getCarriers() const override;
 	void setCarriers(const Carriers& carriers) override;
 	void enableCarriers(unsigned long mask) override;
@@ -67,46 +68,21 @@ public:
 		uint16_t frame = 0;
 	};
 	
-	struct EndpointReader
-	{
-		FramePosition position;
-		uint16_t seqNum = 0;
-		uint16_t lost = 1;
-	};
-	
-	FramePosition advance (FramePosition a, int d)
+    // advance the FramePosition, wrapping to frame and then buffer.
+	FramePosition advance(FramePosition a)
 	{		
 		uint16_t newFrame = a.frame;
 		uint16_t newBuffer = a.buffer;
-		if(d > 0)
-		{
-			for(int n=0; n<d; ++n)
-			{
-				if(++newFrame >= kIsochFramesPerTransaction)
-				{
-					newFrame = 0;
-					if(++newBuffer >= kNumIsochBuffers)
-					{
-						newBuffer = 0;
-					}
-				}
-			}
-		}
-		else if(d < 0)
-		{
-			for(int n=0; n<d; ++n)
-			{
-				if(--newFrame < 0)
-				{
-					newFrame = kIsochFramesPerTransaction - 1;
-					if(--newBuffer < 0)
-					{
-						newBuffer = kNumIsochBuffers - 1;
-					}
-				}
-			}
-		}
-		
+
+        if(++newFrame >= kIsochFramesPerTransaction)
+        {
+            newFrame = 0;
+            if(++newBuffer >= kNumIsochBuffers)
+            {
+                newBuffer = 0;
+            }
+        }
+
 		return FramePosition (newBuffer, newFrame);
 	}
 
@@ -131,8 +107,6 @@ private:
 		void setSequenceNumber(int f, uint16_t s);
 	};
 	
-	std::array< EndpointReader, kSoundplaneANumEndpoints > mEndpointReaders;
-	
 	int createLowLatencyBuffers();
 	int destroyLowLatencyBuffers();
 	
@@ -146,16 +120,20 @@ private:
 	AbsoluteTime getTransferTimeStamp(int endpoint, int buffer, int frame, int offset = 0);
 	IOReturn getTransferStatus(int endpoint, int buffer, int frame, int offset = 0);
 	uint16_t getSequenceNumber(int endpoint, int buf, int frame, int offset = 0);
-	unsigned char* getPayloadPtr(int endpoint, int buf, int frame, int offset = 0);
-	unsigned char getPayloadLastByte(int endpoint, int buffer, int frame);
+    unsigned char* getPayloadPtr(int endpoint, int buf, int frame, int offset = 0);
+    
+    FramePosition getPositionOfSequence(int endpoint, uint16_t seq);
+ 	unsigned char getPayloadLastByte(int endpoint, int buffer, int frame);
 	
 	IOReturn setBusFrameNumber();
 	static void deviceAdded(void *refCon, io_iterator_t iterator);
 	static void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
 
-	void resetEndpointReaders();
-	int advanceEndpointReader(int endpointIdx, uint16_t destSeqNum);
+    uint16_t mostRecentSequenceNum(int endpointIdx);
+    bool endpointDataHasSequence(int endpoint, uint16_t seq);
+    int mostRecentCompleteSequence();
 	
+    void printTransactions();
 	void grabThread();
 	void process(SensorFrame* pOut);	
 	void processThread();
@@ -182,7 +160,9 @@ private:
 	
 	K1IsocTransaction			mTransactionData[kSoundplaneANumEndpoints * kNumIsochBuffers];
 	
-	uint16_t mSequenceNum;
+    uint16_t mSequenceNum{0};
+    uint16_t mNextSequenceNum{1};
+    uint16_t mPreviousSeq{0};
 
 	int mDeviceState;
 	std::mutex mDeviceStateMutex;
@@ -191,19 +171,42 @@ private:
 
 	SoundplaneDriverListener& mListener;
 	
-	// MLTEST
-	SensorFrame                 mWorkingFrame;
-	SensorFrame                 mPrevFrame;
+    SensorFrame                 mWorkingFrame{};
+    SensorFrame                 mPrevFrame{};
 	
 	// stats
-	int mFrameCounter;
-	int mNoFrameCounter;
+    int mFrameCounter{0};
+    int mNoFrameCounter{0};
 	int mGaps{0};
 	
 	bool mTerminating{false};
 		
-	int mStartupCtr;
-	int mErrorCount;
+    int mStartupCtr{0};
+    char mErrorBuf[kMaxErrorStringSize];
 };
 
 #endif // __MAC_SOUNDPLANE_DRIVER__
+
+
+#ifdef SHOW_ALL_SEQUENCE_NUMBERS
+
+
+for(int endpointIdx = 0; endpointIdx < kSoundplaneANumEndpoints; ++endpointIdx)
+{
+    std::cout << "endpoint " << endpointIdx << ": \n" ;
+    for(int bufIdx = 0; bufIdx < kNumIsochBuffers; ++bufIdx)
+    {
+        std::cout << "    buffer " << bufIdx << ": " ;
+        for(int frameIdx=0; frameIdx<kIsochFramesPerTransaction; ++frameIdx)
+        {
+            int frameSeqNum = getSequenceNumber(endpointIdx, bufIdx, frameIdx);
+            int actCount = getTransferBytesReceived(endpointIdx, bufIdx, frameIdx);
+            unsigned char b = getPayloadLastByte(endpointIdx, bufIdx, frameIdx);
+            printf("%05d[%03d][%02x] ", frameSeqNum, actCount, b);
+        }
+        std::cout << "\n";
+    }
+    }
+#endif
+    
+    

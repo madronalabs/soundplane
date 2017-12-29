@@ -181,7 +181,7 @@ private:
 	SoundplaneOSCOutput mOSCOutput;
     SoundplaneDataMessage mMessage;
 
-	SensorFrame mSensorFrame;
+    SensorFrame mSensorFrame{};
 	MLSignal mSurface; 
 
 	int	mMaxTouches;
@@ -203,7 +203,7 @@ private:
 	bool mHasCalibration;
 
 	SensorFrameStats mStats;
-	SensorFrame mCalibrateMeanInv;
+    SensorFrame mCalibrateMeanInv{};
 	
 	MLSignal mRawSignal;
 	std::mutex mRawSignalMutex;
@@ -211,7 +211,7 @@ private:
 	MLSignal mCalibratedSignal;
 	std::mutex mCalibratedSignalMutex;
 
-	SensorFrame mSmoothedFrame;
+    SensorFrame mSmoothedFrame{};
 	MLSignal mSmoothedSignal;
 	std::mutex mSmoothedSignalMutex;
 
@@ -264,6 +264,8 @@ private:
 	std::thread					mProcessThread;
 	
 	int mShuttingDown;
+    
+    bool mVerbose;
 };
 
 // JSON utilities (to go where?)

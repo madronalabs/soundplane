@@ -170,7 +170,7 @@ SensorFrame sqrt(const SensorFrame& b)
 
 SensorFrame getCurvatureX(const SensorFrame& in)
 {
-	SensorFrame out;
+    SensorFrame out{};
 	
 	// rows
 	for(int j=0; j<SensorGeometry::height; ++j)
@@ -208,7 +208,7 @@ SensorFrame getCurvatureX(const SensorFrame& in)
 
 SensorFrame getCurvatureY(const SensorFrame& in)
 {
-	SensorFrame out;
+    SensorFrame out{};
 	
 	// cols
 	for(int i=0; i<SensorGeometry::width; ++i)
