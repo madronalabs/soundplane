@@ -196,6 +196,7 @@ void SoundplaneModel::onStartup()
     
 	// connected but not calibrated -- disable output.
 	enableOutput(false);
+    mNeedsCalibrate = true;
  }
 
 void SoundplaneModel::onFrame(const SensorFrame& frame)
@@ -1151,7 +1152,8 @@ void SoundplaneModel::doInfrequentTasks()
 		}
 		mNeedsCalibrate = true;
 	}
-	else if (mNeedsCalibrate && (!mSelectingCarriers))
+    
+    if (mNeedsCalibrate && (!mSelectingCarriers))
 	{
 		mNeedsCalibrate = false;
 		beginCalibrate();
