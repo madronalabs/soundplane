@@ -53,7 +53,7 @@ const int kSoundplaneAPickupsPerBoard = 8;
 
 const int kSoundplaneNumCarriers = 32;
 const int kSoundplanePossibleCarriers = 64;
-const float kMaxFrameDiff = 2.0f;
+const float kMaxFrameDiff = 1.0f;
 
 // Soundplane A USB firmware
 const int kSoundplaneANumEndpoints = 2;
@@ -68,9 +68,6 @@ typedef struct
   uint16_t seqNum;
   uint16_t padding;
 } SoundplaneADataPacket; // 388 bytes
-
-// isoc frame data update rate in ms. see LowLatencyReadIsochPipeAsync docs in IOUSBLib.h.
-const int kSoundplaneAUpdateFrequency = 1;
 
 // device name. someday, an array of these
 //

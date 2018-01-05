@@ -67,14 +67,24 @@ void touchArrayToFrame(TouchTracker::TouchArray* pArray, MLSignal* pFrame)
 MLSignal sensorFrameToSignal(const SensorFrame &f)
 {
 	MLSignal out(SensorGeometry::width, SensorGeometry::height);
-	std::copy(f.data(), f.data() + SensorGeometry::elements, out.getBuffer());
+    for(int j = 0; j < SensorGeometry::height; ++j)
+    {
+        const float* srcStart = f.data() + SensorGeometry::width*j;
+        const float* srcEnd = srcStart + SensorGeometry::width;
+        std::copy(srcStart, srcEnd, out.getBuffer() + out.row(j));
+    }
 	return out;
 }
 
 SensorFrame signalToSensorFrame(const MLSignal& in)
 {
 	SensorFrame out;
-	std::copy(in.getConstBuffer(), in.getConstBuffer() + SensorGeometry::elements, out.data());
+    for(int j = 0; j < SensorGeometry::height; ++j)
+    {
+        const float* srcStart = in.getConstBuffer() + (j << in.getWidthBits());
+        const float* srcEnd = srcStart + in.getWidth();
+        std::copy(srcStart, srcEnd, out.data() + SensorGeometry::width*j);
+    }
 	return out;
 }
 
@@ -139,8 +149,6 @@ SoundplaneModel::SoundplaneModel() :
 	addListener(&mMIDIOutput);
 	addListener(&mOSCOutput);
 	
-	mInfrequentTaskThread = std::thread(&SoundplaneModel::infrequentTaskThread, this);
-	
 	mTouchFrame.setDims(kSoundplaneTouchWidth, TouchTracker::kMaxTouches);
 	mTouchHistory.setDims(kSoundplaneTouchWidth, TouchTracker::kMaxTouches, kSoundplaneHistorySize);
 	
@@ -150,31 +158,31 @@ SoundplaneModel::SoundplaneModel() :
 	mZonePresets = std::unique_ptr<MLFileCollection>(new MLFileCollection("zone_preset", zoneDir, "json"));
 	mZonePresets->processFilesImmediate();
 	//mZonePresets->dump();
+    
+    // now that the driver is active, start polling for changes in properties
+    mInfrequentTaskThread = std::thread(&SoundplaneModel::infrequentTaskThread, this);
+
 }
 
 SoundplaneModel::~SoundplaneModel()
 {
 	mpDriver->close();
-	
+
+    listenToOSC(0);
+
 	// signal threads to shut down
 	mShuttingDown = true;
 	
 	// wait
 	usleep(500*1000);
 	
-	if (mInfrequentTaskThread.joinable())
-	{
-		mInfrequentTaskThread.join();
-		printf("SoundplaneModel: infrequent task thread terminated.\n");
-	}
-	
-	if (mProcessThread.joinable())
-	{
-		mProcessThread.join();
-		printf("SoundplaneModel: process thread terminated.\n");
-	}
-	
-	listenToOSC(0);	
+    
+    if (mInfrequentTaskThread.joinable())
+    {
+        mInfrequentTaskThread.join();
+        printf("SoundplaneModel: infrequent task thread terminated.\n");
+    }
+    
 }
 
 void SoundplaneModel::onStartup()
@@ -182,11 +190,13 @@ void SoundplaneModel::onStartup()
 	// get serial number and auto calibrate noise on sync detect
 	const unsigned long instrumentModel = 1; // Soundplane A
 	mOSCOutput.setSerialNumber((instrumentModel << 16) | mpDriver->getSerialNumber());
+    
 	// output will be enabled at end of calibration.
-	mNeedsCalibrate = true;
+	// mNeedsCalibrate = true;
+    
 	// connected but not calibrated -- disable output.
 	enableOutput(false);
-}
+ }
 
 void SoundplaneModel::onFrame(const SensorFrame& frame)
 {
@@ -255,7 +265,6 @@ void SoundplaneModel::onError(int error, const char* errStr)
 
 void SoundplaneModel::onClose()
 {
-    std::cout << "CLOSED\n"; // MLTEST
     enableOutput(false);
 }
 
@@ -426,7 +435,7 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			{
 				makeStandardCarrierSet(mOverrideCarriers, v);
 				mNeedsCarriersSet = true;
-			}			
+			}
 		}
 		break;
 		case MLProperty::kTextProperty:
@@ -500,17 +509,9 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 					if(mCarriers[i] != sig[i])
 					{
 						mCarriers[i] = sig[i];
-						mNeedsCarriersSet = true;
+                        mNeedsCarriersSet = true;
 					}
 				}
-			}
-			if(p == ml::Symbol("tracker_calibration"))
-			{
-//				mTracker.setCalibration(sig);
-			}
-			if(p == ml::Symbol("tracker_normalize"))
-			{
-//				mTracker.setNormalizeMap(sig);
 			}
 		}
 			break;
@@ -685,6 +686,8 @@ const std::vector<std::string>& SoundplaneModel::getServicesList()
 
 void SoundplaneModel::infrequentTaskThread()
 {
+    printf("SoundplaneModel: infrequent task thread starting.\n");
+
 	std::chrono::time_point<std::chrono::system_clock> previous, now;
 	previous = now = std::chrono::system_clock::now();
 	while(!mShuttingDown)
@@ -996,6 +999,9 @@ void SoundplaneModel::sendTouchDataToZones()
 	float x, y, z, dz;
 	int age;
 
+    
+    //someting is wrong
+    
 	const int maxTouches = getFloatProperty("max_touches");
 	const float hysteresis = getFloatProperty("hysteresis");
 

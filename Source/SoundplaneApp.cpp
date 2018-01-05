@@ -12,6 +12,8 @@ SoundplaneApp::SoundplaneApp() :
 	mpBorder(0),
 	mpWindow(0)
 {
+    
+    mpWindow = new MLAppWindow();    
 }
 
 SoundplaneApp::~SoundplaneApp()
@@ -34,12 +36,12 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpBorder = new MLAppBorder(mpView);
 	mpBorder->makeResizer(mpView);
 	mpBorder->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
-	mpBorder->setBounds(mpView->getBounds());
+    mpBorder->setBounds(mpView->getBounds());
 	
 	// add view to window but retain ownership here
 	bool resizeToFit = true;
-	
-	mpWindow = new MLAppWindow();	
+
+    
 	mpWindow->setContentNonOwned(mpBorder, resizeToFit);
 	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
 	mpWindow->setUsingOpenGL(true);

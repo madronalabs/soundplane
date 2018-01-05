@@ -21,7 +21,7 @@
 #endif
 
 //#define SHOW_BUS_FRAME_NUMBER
-//#define SHOW_ALL_SEQUENCE_NUMBERS
+//#define SHOW_SEQUENCE_NUMBERS
 
 namespace {
 	
@@ -97,10 +97,6 @@ notification(0),
 mListener(m)
 {
 	printf("creating SoundplaneDriver...\n");
-	for(int i=0; i<kSoundplaneANumEndpoints; ++i)
-	{
-		mNextBusFrameNumber[i] = 0;
-	}
 	
 	for(int i=0; i < kSoundplaneNumCarriers; ++i)
 	{
@@ -151,7 +147,8 @@ MacSoundplaneDriver::~MacSoundplaneDriver()
 	}
 	
 	printf("frames: %d\n", mFrameCounter);
-	printf("no frames: %d\n", mNoFrameCounter);
+    printf("wait: %d\n", mTotalWaitCounter);
+    printf("error: %d\n", mTotalErrorCounter);
 	printf("gaps: %d\n", mGaps);
 }
 
@@ -250,37 +247,6 @@ int MacSoundplaneDriver::destroyLowLatencyBuffers()
 	}
 	
 	return true;
-}
-
-/*
-const K1IsocTransaction* MacSoundplaneDriver::getTransactionData(int endpoint, int buf) const
-{ 
-	return mTransactionData + kNumIsochBuffers*endpoint + buf; 
-}
-*/
-
-uint32_t MacSoundplaneDriver::getTransactionDataChecksum() // TODO const
-{
-	uint16_t checkSum = 0;
-	for (int i = 0; i < kSoundplaneANumEndpoints; i++)
-	{
-		for (int j = 0; j < kNumIsochBuffers; j++)
-		{
-			K1IsocTransaction* t = getTransactionData(i, j);
-			t->endpointNum = kSoundplaneAEndpointStartIdx + i;
-			t->endpointIndex = i;
-			t->bufIndex = j;
-
-			SoundplaneADataPacket* p = reinterpret_cast<SoundplaneADataPacket*>(t->payloads);
-			
-			for(int k=0; k < kIsochFramesPerTransaction; ++k)
-			{
-				uint16_t s = p[k].seqNum;
-				checkSum += s;
-			}
-		}
-	}
-	return checkSum;
 }
 
 uint16_t MacSoundplaneDriver::getFirmwareVersion() const
@@ -441,7 +407,7 @@ void prepareForRequest(IOUSBLowLatencyIsocFrame& frame)
 // The OS X low latency async code requires all transfer data to be in special blocks created by
 // LowLatencyCreateBuffer() to manage communication with the kernel.
 //
-IOReturn MacSoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
+IOReturn MacSoundplaneDriver::scheduleIsoch(int endpointIndex)
 {
 	if ((!dev) || (!intf)) return kIOReturnNoDevice;
 	
@@ -449,10 +415,11 @@ IOReturn MacSoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
 	
 	if(mDeviceState != kNoDevice) 
 	{
-		assert(t);
+        int bufferIndex = getNextTransactionNum(endpointIndex);
+        K1IsocTransaction *t = getTransactionData(endpointIndex, bufferIndex);
 		
 		t->parent = this;
-		t->busFrameNumber = mNextBusFrameNumber[t->endpointIndex];
+		t->busFrameNumber = mNextBusFrameNumber[endpointIndex];
 		
 		for (int k = 0; k < kIsochFramesPerTransaction; k++)
 		{
@@ -468,7 +435,7 @@ IOReturn MacSoundplaneDriver::scheduleIsoch(K1IsocTransaction *t)
 #endif
 		
 		err = (*intf)->LowLatencyReadIsochPipeAsync(intf, t->endpointNum, t->payloads,
-													t->busFrameNumber, kIsochFramesPerTransaction, kSoundplaneAUpdateFrequency, t->isocFrames, isochComplete, t);
+													t->busFrameNumber, kIsochFramesPerTransaction, kIsochUpdateFrequency, t->isocFrames, isochComplete, t);
 		
 		mNextBusFrameNumber[t->endpointIndex] += kIsochFramesPerTransaction;
 		
@@ -504,12 +471,13 @@ void MacSoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg
 			// if not shutting down, schedule another transaction and set the device
 			// state to isoch sync if needed.
 			{
-				int state = k1->getDeviceState();				
+// MLTEST                std::lock_guard<std::mutex> lock(k1->getDeviceStateMutex());
+                int state = k1->getDeviceState();
+                
 				if((state == kDeviceConnected) || (state == kDeviceHasIsochSync))
 				{
-					int nextBuf = (t->bufIndex + kIsochBuffersInFlight) & kIsochBuffersMask;
-					K1IsocTransaction *pNextTransactionBuffer = k1->getTransactionData(t->endpointIndex, nextBuf);
-					err = k1->scheduleIsoch(pNextTransactionBuffer);
+                    err = k1->scheduleIsoch(t->endpointIndex);
+                    
 					if(state != kDeviceHasIsochSync)
 					{
 						k1->setDeviceState(kDeviceHasIsochSync);
@@ -527,11 +495,37 @@ void MacSoundplaneDriver::isochComplete(void *refCon, IOReturn result, void *arg
 	}
 }
 
+int MacSoundplaneDriver::getNextTransactionNum(int endpoint)
+{
+    // a mutex per endpoint seems like the right design because both endpoints will
+    // hopefully complete transactions at nearly the same time, in general.
+    std::lock_guard<std::mutex> lock(mNextTransactionNumMutex[endpoint]);
+    
+    int i = mNextTransactionNum[endpoint];
+    i++;
+    i &= kIsochBuffersMask;
+    mNextTransactionNum[endpoint] = i;
+    return i;
+}
+
 void MacSoundplaneDriver::resetIsochTransactions()
 {
+    // reset transaction numbers
+    for (int i = 0; i < kSoundplaneANumEndpoints; i++)
+    {
+        std::lock_guard<std::mutex> lock(mNextTransactionNumMutex[i]);
+        mNextTransactionNum[i] = 0;
+    }
+    
+    // get current bus frame number from USB device
 	IOReturn err = setBusFrameNumber();
 	assert(!err);
-	
+    
+    // MLTEST
+    std::cout << " \n\n\n\n ***** \n";
+    std::cout << "  RESET - wait:" << mWaitCounter << ", error:" << mErrorCounter << "\n";
+    std::cout << " ***** \n\n\n\n";
+
 	mTransactionsInFlight = 0;
 
 	// for each endpoint, schedule first transaction and
@@ -540,7 +534,9 @@ void MacSoundplaneDriver::resetIsochTransactions()
 	{
 		for (int i = 0; i < kSoundplaneANumEndpoints; i++)
 		{
-			err = scheduleIsoch(getTransactionData(i, j));
+            
+			err = scheduleIsoch(i);
+            
 			if (kIOReturnSuccess != err)
 			{
 				show_io_err("scheduleIsoch", err);
@@ -548,6 +544,7 @@ void MacSoundplaneDriver::resetIsochTransactions()
 			}
 		}
 	}
+
 }
 
 // --------------------------------------------------------------------------------
@@ -772,19 +769,42 @@ namespace {
 	
 }
 
+// TEMP
+/*
+ /*!
+ @function GetBusFrameNumber
+ @abstract   Gets the current frame number of the bus to which the device is attached.
+ @discussion The device does not have to be open to use this function.
+ @param      self Pointer to the IOUSBDeviceInterface.
+ @param      frame Pointer to UInt64 to hold the frame number.
+ @param      atTime Pointer to a returned AbsoluteTime, which is the system time ("wall time") when the frame number register was read. This
+ system time could be the time at the beginning, middle, or end of the given frame.
+ @result     Returns kIOReturnSuccess if successful, kIOReturnNoDevice if there is no connection to an IOService.
+ */
+
+// IOReturn (*GetBusFrameNumber)(void *self, UInt64 *frame, AbsoluteTime *atTime);
+
+
 IOReturn MacSoundplaneDriver::setBusFrameNumber()
 {
 	IOReturn err;
+    UInt64 frameNum;
 	AbsoluteTime atTime;
 	
-	err = (*dev)->GetBusFrameNumber(dev, &mNextBusFrameNumber[0], &atTime);
+	err = (*dev)->GetBusFrameNumber(dev, &frameNum, &atTime);
 	if (kIOReturnSuccess != err)
 		return err;
 #ifdef VERBOSE
-	printf("Bus Frame Number: %llu @ %X%08X\n", mNextBusFrameNumber[0], (int)atTime.hi, (int)atTime.lo);
+	printf("Bus Frame Number: %llu @ %X%08X\n", frameNum, (int)atTime.hi, (int)atTime.lo);
 #endif
-	mNextBusFrameNumber[0] += 50;	// schedule 50 ms into the future
-	mNextBusFrameNumber[1] = mNextBusFrameNumber[0];
+    
+    frameNum += kIsochFramesPerTransaction; // schedule one transaction into the future
+    
+    for(int i=0; i < kSoundplaneANumEndpoints; ++i)
+    {
+        mNextBusFrameNumber[i] = frameNum;
+    }
+    
 	return kIOReturnSuccess;
 }
 
@@ -1131,14 +1151,15 @@ void MacSoundplaneDriver::destroyDevice()
 	int waitTimeMicrosecs = 100*1000;
 	while (mTransactionsInFlight > 0)
 	{
-		printf("%d pending transactions, waiting...\n", mTransactionsInFlight);
+        int t = mTransactionsInFlight;
+		printf("%d pending transactions, waiting...\n", t);
 		usleep(waitTimeMicrosecs);
 		totalWaitTime += waitTimeMicrosecs;
 		
 		// waiting too long-- bail without cleaning up buffers
 		if (totalWaitTime > 1000*1000)
 		{
-			printf("WARNING: Soundplane driver could not finish pending transactions: %d remaining\n", mTransactionsInFlight);
+			printf("WARNING: Soundplane driver could not finish pending transactions: %d remaining\n", t);
 			intf = NULL;
 			break;
 		}
@@ -1168,50 +1189,6 @@ void MacSoundplaneDriver::destroyDevice()
 	}
 }
 
-// watch the buffers being filled by the isochronous layer. If there is no new data for a while,
-// reset the isoch layer. 
-//
-void MacSoundplaneDriver::resetIsochIfStalled()
-{
-	// timing that will result from these options depends on lots of things, but since timing
-	// of stall recovery is not critical, we can just use these counters instead of something 
-	// more precise
-	const int checksumInterval = 100; // checksum every n calls of this method
-	const int maxStallsBeforeReset = 8; 
-
-	static int checksumCtr = 0;
-	static uint16_t prevTransactionChecksum = 0;
-	static int stalled = 0;
-	
-	if(mDeviceState == kDeviceHasIsochSync)
-	{
-		// don't checksum every frame
-		checksumCtr++;
-		if(checksumCtr > checksumInterval)
-		{
-			checksumCtr = 0;
-            
-            // TDOO why a checksum? we can just bail if equality check fails, which is usual
-			uint16_t transactionChecksum = getTransactionDataChecksum();
-			if(transactionChecksum != prevTransactionChecksum)
-			{
-				stalled = 0;
-			}
-			else
-			{
-				stalled++;
-			}
-			prevTransactionChecksum = transactionChecksum;
-			
-			if(stalled > maxStallsBeforeReset)
-			{
-				stalled = 0;
-				resetIsochTransactions();
-			}
-		}
-	}
-}
-
 uint16_t wrapDistance(uint16_t a, uint16_t b)
 {
     uint16_t c = a - b;
@@ -1219,14 +1196,12 @@ uint16_t wrapDistance(uint16_t a, uint16_t b)
     return std::min(c, d);
 }
 
-
-
 uint16_t MacSoundplaneDriver::mostRecentSequenceNum(int endpointIdx)
 {
     const int maxUInt16 = 0xFFFF;
     const int totalFrames = kIsochFramesPerTransaction*kNumIsochBuffers;
-    static_assert(totalFrames < maxUInt16 / 2, "totalFrames too large!");
-
+    const int slack = 2; // allows for gaps in sequence
+    
     // scan for wrap
     bool wrapHi = false;
     bool wrapLo = false;
@@ -1238,15 +1213,15 @@ uint16_t MacSoundplaneDriver::mostRecentSequenceNum(int endpointIdx)
         if(lastByte > 0)
         {
             int seqNum = getSequenceNumber(endpointIdx, pos.buffer, pos.frame);
-            if(seqNum > maxUInt16 - totalFrames)
+            if(seqNum > maxUInt16 - totalFrames*slack)
             {
                 wrapHi = true;
             }
-            else if(seqNum < totalFrames)
+            else if(seqNum < totalFrames*slack)
             {
                 wrapLo = true;
             }
-            else if((seqNum > totalFrames) && (seqNum < maxUInt16 - totalFrames))
+            else if((seqNum > totalFrames*slack) && (seqNum < maxUInt16 - totalFrames*slack))
             {
                 // no wrap is possible if we have sequence numbers in this range
                 break;
@@ -1287,7 +1262,7 @@ uint16_t MacSoundplaneDriver::mostRecentSequenceNum(int endpointIdx)
             if(lastByte > 0)
             {
                 uint16_t seqNum = getSequenceNumber(endpointIdx, pos.buffer, pos.frame);
-                if(seqNum < totalFrames)
+                if(seqNum < totalFrames*slack)
                 {
                     maxSequenceNum = seqNum;
                 }
@@ -1320,30 +1295,33 @@ bool MacSoundplaneDriver::endpointDataHasSequence(int endpointIdx, uint16_t seq)
     return false;
 }
 
+bool MacSoundplaneDriver::sequenceIsComplete(uint16_t seq)
+{
+    int endpointsMatching = 0;
+    for(int endpoint = 0; endpoint < kSoundplaneANumEndpoints; ++endpoint)
+    {
+        if(endpointDataHasSequence(endpoint, seq))
+        {
+            endpointsMatching++;
+        }
+    }
+    return endpointsMatching == kSoundplaneANumEndpoints;
+}
+
 int MacSoundplaneDriver::mostRecentCompleteSequence()
 {
-    int r = -1;
     uint16_t mostRecent = mostRecentSequenceNum(0);
     const int kSearchSize = kIsochFramesPerTransaction;
     uint16_t seq = mostRecent;
     int d = 0;
     for(; d < kSearchSize; ++d)
     {
-        int endpointsMatching = 0;
-        for(int endpoint = 0; endpoint < kSoundplaneANumEndpoints; ++endpoint)
-        {
-            if(endpointDataHasSequence(endpoint, seq))
-            {
-                endpointsMatching++;
-            }
-        }
-        
-        if(endpointsMatching == kSoundplaneANumEndpoints)
+        if(sequenceIsComplete(seq))
         {
             return seq;
         }
         
-        seq--;
+        seq--; // wraps
     }
  
     return -1;
@@ -1353,7 +1331,7 @@ void MacSoundplaneDriver::printTransactions()
 {
     for(int endpointIdx = 0; endpointIdx < kSoundplaneANumEndpoints; ++endpointIdx)
     {
-        std::cout << "endpoint " << endpointIdx << ": \n" ;
+        std::cout << "\nendpoint " << endpointIdx << ": \n" ;
         for(int bufIdx = 0; bufIdx < kNumIsochBuffers; ++bufIdx)
         {
             std::cout << "    buffer " << bufIdx << ": " ;
@@ -1369,6 +1347,10 @@ void MacSoundplaneDriver::printTransactions()
     }
 }
 
+
+// there are problems unplugging and replugging currently
+// and of course the frame / t3d sync issue. can start when aalto or sp is restarted.
+
 // This thread is responsible for collecting all data from the Soundplane. The routines isochComplete()
 // and scheduleIsoch() combine to keep data running into the transfer buffers in round-robin fashion.
 // This thread looks at those buffers and attempts to stay in sync with incoming data, watching as
@@ -1379,19 +1361,37 @@ void MacSoundplaneDriver::process(SensorFrame* pOut)
     std::lock_guard<std::mutex> lock(mDeviceStateMutex);
     if(mDeviceState == kDeviceHasIsochSync)
     {
-        int maxSeq = mostRecentCompleteSequence();
-        if(maxSeq < 0)
+        int mostRecentSeq = mostRecentCompleteSequence();
+        if(mostRecentSeq < 0)
         {
-            mNoFrameCounter++;
+            mErrorCounter++;
+            mTotalErrorCounter++;
         }
-        else if(maxSeq != mPreviousSeq)
+        else if(mostRecentSeq != mPreviousSeq)
         {
+            mWaitCounter = 0;
+            mErrorCounter = 0;
+
+            uint16_t nextSeq = mPreviousSeq + 1;
+            while(nextSeq != mostRecentSeq)
+            {
+                // look for the next complete sequence in between previous and most recent.
+                if(sequenceIsComplete(nextSeq))
+                {
+                    break;
+                }
+                else
+                {
+                    nextSeq++; // wraps
+                }
+            }
+            
             // make frame
             std::array<unsigned char *, kSoundplaneANumEndpoints> payloads;
             bool payloadsOK = true;
             for(int i=0 ; i<kSoundplaneANumEndpoints; ++i)
             {
-                FramePosition pos = getPositionOfSequence(i, maxSeq);
+                FramePosition pos = getPositionOfSequence(i, nextSeq);
                 
                 payloads[i] = getPayloadPtr(i, pos.buffer, pos.frame);
                 if(!payloads[i])
@@ -1433,26 +1433,44 @@ void MacSoundplaneDriver::process(SensorFrame* pOut)
                 }
             }
 
-            uint16_t predicted = mPreviousSeq + 1;
-            if(maxSeq != predicted)
+            if(nextSeq != mPreviousSeq + 1)
             {
-                uint16_t gapSize = wrapDistance(mPreviousSeq, maxSeq);
+                uint16_t gapSize = wrapDistance(mPreviousSeq, nextSeq);
                 if(gapSize > 1)
                 {
-                    snprintf(mErrorBuf, kMaxErrorStringSize, "%d -> %d (%d)", mPreviousSeq, maxSeq, gapSize);
+                    snprintf(mErrorBuf, kMaxErrorStringSize, "%d -> %d (%d)", mPreviousSeq, nextSeq, gapSize);
                     mListener.onError(kDevGapInSequence, mErrorBuf);
                 }
                 mGaps++;
             }
             mFrameCounter++;
-            mPreviousSeq = maxSeq;
+            mPreviousSeq = nextSeq;
         }
         else
         {
             // waiting
-            mNoFrameCounter++;
+            mWaitCounter++;
+            mTotalWaitCounter++;
         }
 	}
+}
+
+// If we are waiting too long or seeing too many errors, reset the isoch layer.
+//
+void MacSoundplaneDriver::resetIsochIfStalled()
+{
+    const int kMaxWait = 100;
+    const int kMaxError = 100;
+    
+    if(mDeviceState == kDeviceHasIsochSync)
+    {
+       if((mWaitCounter > kMaxWait) || (mErrorCounter > kMaxError))
+       {
+           resetIsochTransactions();
+           mWaitCounter = 0;
+           mErrorCounter = 0;
+       }
+    }
 }
 
 void MacSoundplaneDriver::processThread()
@@ -1461,7 +1479,15 @@ void MacSoundplaneDriver::processThread()
 	{
 		resetIsochIfStalled();
 		process(&mWorkingFrame);
-		usleep(250); // ns
+#ifdef SHOW_SEQUENCE_NUMBERS
+        mTestCtr++;
+        if(mTestCtr > 4000)
+        {
+            printTransactions();
+            mTestCtr = 0;
+        }
+#endif
+        usleep(250); // ns
 	}
 }
 

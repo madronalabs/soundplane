@@ -260,9 +260,6 @@ private:
 	void infrequentTaskThread();
 	std::thread					mInfrequentTaskThread;
 	
-	void processThread();
-	std::thread					mProcessThread;
-	
 	int mShuttingDown;
     
     bool mVerbose;

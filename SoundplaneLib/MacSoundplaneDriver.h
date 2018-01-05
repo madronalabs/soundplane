@@ -26,8 +26,12 @@ const int kIsochBuffersExp = 3; // MLTEST 3
 const int kNumIsochBuffers = 1 << kIsochBuffersExp;
 const int kIsochBuffersMask = kNumIsochBuffers - 1;
 const int kIsochBuffersInFlight = 4; // AppleUSBAudioStream.h: 6
-const int kIsochFramesPerTransaction = 8; // MLTEST 20
-const int kIsochStartupFrames = 500;
+const int kIsochFramesPerTransaction = 16; // MLTEST 20
+const int kIsochStartupFrames = 250; // MLTEST 500
+
+// isoc frame data update rate in ms. see LowLatencyReadIsochPipeAsync docs in IOUSBLib.h.
+// This number is part of the lower limit on our possible latency.
+const int kIsochUpdateFrequency = 1;
 
 const int kMaxErrorStringSize = 256;
 
@@ -110,7 +114,7 @@ private:
 	int createLowLatencyBuffers();
 	int destroyLowLatencyBuffers();
 	
-	IOReturn scheduleIsoch(K1IsocTransaction *t);
+	IOReturn scheduleIsoch(int endpointIndex);
 	static void isochComplete(void *refCon, IOReturn result, void *arg0);
 	void resetIsochTransactions();
 	void resetIsochIfStalled();
@@ -131,6 +135,8 @@ private:
 
     uint16_t mostRecentSequenceNum(int endpointIdx);
     bool endpointDataHasSequence(int endpoint, uint16_t seq);
+    
+    bool sequenceIsComplete(uint16_t seq);
     int mostRecentCompleteSequence();
 	
     void printTransactions();
@@ -142,7 +148,12 @@ private:
 	K1IsocTransaction* getTransactionData(int endpoint, int buf) { return mTransactionData + kNumIsochBuffers*endpoint + buf; }
 	uint32_t getTransactionDataChecksum();
 	
-	int mTransactionsInFlight;
+    // we are only counting, so any races are benign
+    std::atomic<int> mTransactionsInFlight;
+    
+    int getNextTransactionNum(int endpoint);
+    std::array<int, kSoundplaneANumEndpoints> mNextTransactionNum {};
+    std::array<std::mutex, kSoundplaneANumEndpoints>  mNextTransactionNumMutex;
 
 	std::thread					mGrabThread;
 	std::thread					mProcessThread;
@@ -154,7 +165,6 @@ private:
 	IOUSBDeviceInterface187		**dev;
 	IOUSBInterfaceInterface192	**intf;
 	
-	// TODO move to reader
 	UInt64						mNextBusFrameNumber[kSoundplaneANumEndpoints];
 	uint8_t						payloadIndex[kSoundplaneANumEndpoints];
 	
@@ -176,13 +186,20 @@ private:
 	
 	// stats
     int mFrameCounter{0};
-    int mNoFrameCounter{0};
+    int mWaitCounter{0};
+    int mErrorCounter{0};
+    int mTotalWaitCounter{0};
+    int mTotalErrorCounter{0};
 	int mGaps{0};
 	
 	bool mTerminating{false};
 		
     int mStartupCtr{0};
+    int mTestCtr{0};
     char mErrorBuf[kMaxErrorStringSize];
+    
+    // MLTEST
+    int mPrevEndpointIdx;
 };
 
 #endif // __MAC_SOUNDPLANE_DRIVER__

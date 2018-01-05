@@ -226,6 +226,10 @@ void Zone::processTouchesNoteRow(const std::vector<bool>& freedTouches)
 				// clamp note-on dz for use as velocity later. 
 				t1dz = ml::clamp(t1dz, 0.0001f, 1.f);
 			}
+            
+            // MLTEST
+    //        std::cout << "zone ID " << mZoneID << " ON " << i << " : " << t1x << "\n";
+            
 			sendMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
         else if(isActive)
@@ -237,7 +241,12 @@ void Zone::processTouchesNoteRow(const std::vector<bool>& freedTouches)
             // get vibrato amount
             float vibratoHP = (currentXPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;
 			
-			// send continue touch message
+
+            // MLTEST
+  //          std::cout << "zone ID " << mZoneID << " CN " << i << " : " << t1x << "\n";
+
+            
+            // send continue touch message
 			// is dz useful here or should it be 0?
             sendMessage("touch", "continue", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote, vibratoHP);
         }
