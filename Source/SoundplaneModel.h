@@ -258,7 +258,7 @@ private:
 	std::vector<std::string> mServiceNames;
 	
 	void infrequentTaskThread();
-	std::thread					mInfrequentTaskThread;
+	std::thread	mInfrequentTaskThread;
 	
 	int mShuttingDown;
     

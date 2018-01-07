@@ -25,7 +25,7 @@
 const int kIsochBuffersExp = 3; // MLTEST 3
 const int kNumIsochBuffers = 1 << kIsochBuffersExp;
 const int kIsochBuffersMask = kNumIsochBuffers - 1;
-const int kIsochBuffersInFlight = 4; // AppleUSBAudioStream.h: 6
+const int kIsochBuffersInFlight = 2; // AppleUSBAudioStream.h: 6
 const int kIsochFramesPerTransaction = 16; // MLTEST 20
 const int kIsochStartupFrames = 250; // MLTEST 500
 
@@ -43,21 +43,17 @@ class MacSoundplaneDriver : public SoundplaneDriver
 public:
 	MacSoundplaneDriver(SoundplaneDriverListener& m);
 	~MacSoundplaneDriver();
-	
-	int getDeviceState() const override
-	{
-		return mDeviceState;
-	}	
-	
+    
+		
     // SoundplaneDriver
-    void open() override;
-    void close() override;
+    void start() override;
 	uint16_t getFirmwareVersion() const override;
 	std::string getSerialNumberString() const override;
 	const unsigned char *getCarriers() const override;
 	void setCarriers(const Carriers& carriers) override;
 	void enableCarriers(unsigned long mask) override;
-	
+    int getSerialNumber() const override;
+
 	std::mutex& getDeviceStateMutex() { return mDeviceStateMutex; }
 	
 	void destroyDevice();
@@ -92,7 +88,8 @@ public:
 
 protected:
 	
-	void setDeviceState(int state) { mDeviceState = state; }	
+    inline int getDeviceState() const { return mDeviceState; }
+	inline void setDeviceState(int state) { mDeviceState = state; }
 	
 private:
 	
@@ -102,7 +99,7 @@ private:
 		MacSoundplaneDriver			*parent = 0;
 		IOUSBLowLatencyIsocFrame	*isocFrames = nullptr;
 		unsigned char				*payloads = nullptr;
-		uint8_t						endpointNum = 0;
+
 		uint8_t						endpointIndex = 0;
 		uint8_t						bufIndex = 0;
 		
@@ -116,20 +113,21 @@ private:
 	
 	IOReturn scheduleIsoch(int endpointIndex);
 	static void isochComplete(void *refCon, IOReturn result, void *arg0);
+    void resetBusFrameNumbers();
 	void resetIsochTransactions();
 	void resetIsochIfStalled();
 	
 	void addOffset(int& buffer, int& frame, int offset);
-	uint16_t getTransferBytesReceived(int endpoint, int buffer, int frame, int offset = 0);
-	AbsoluteTime getTransferTimeStamp(int endpoint, int buffer, int frame, int offset = 0);
-	IOReturn getTransferStatus(int endpoint, int buffer, int frame, int offset = 0);
-	uint16_t getSequenceNumber(int endpoint, int buf, int frame, int offset = 0);
-    unsigned char* getPayloadPtr(int endpoint, int buf, int frame, int offset = 0);
+    uint16_t getTransferBytesReceived(int endpoint, int buffer, int frame);
+    unsigned char getPayloadLastByte(int endpoint, int buffer, int frame);
+    bool frameWasReceived(int endpoint, int buffer, int frame);
+    AbsoluteTime getTransferTimeStamp(int endpoint, int buffer, int frame);
+	IOReturn getTransferStatus(int endpoint, int buffer, int frame);
+	uint16_t getSequenceNumber(int endpoint, int buf, int frame);
+    unsigned char* getPayloadPtr(int endpoint, int buf, int frame);
     
     FramePosition getPositionOfSequence(int endpoint, uint16_t seq);
- 	unsigned char getPayloadLastByte(int endpoint, int buffer, int frame);
-	
-	IOReturn setBusFrameNumber();
+ 	
 	static void deviceAdded(void *refCon, io_iterator_t iterator);
 	static void deviceNotifyGeneral(void *refCon, io_service_t service, natural_t messageType, void *messageArgument);
 
@@ -144,8 +142,10 @@ private:
 	void process(SensorFrame* pOut);	
 	void processThread();
 	
-	static int getStringDescriptor(IOUSBDeviceInterface187 **dev, uint8_t descIndex, char *destBuf, uint16_t maxLen, uint16_t lang);	
+	static int getStringDescriptor(IOUSBDeviceInterface187 **dev, uint8_t descIndex, char *destBuf, uint16_t maxLen, uint16_t lang);
+    
 	K1IsocTransaction* getTransactionData(int endpoint, int buf) { return mTransactionData + kNumIsochBuffers*endpoint + buf; }
+    
 	uint32_t getTransactionDataChecksum();
 	
     // we are only counting, so any races are benign
@@ -191,15 +191,14 @@ private:
     int mTotalWaitCounter{0};
     int mTotalErrorCounter{0};
 	int mGaps{0};
-	
-	bool mTerminating{false};
 		
     int mStartupCtr{0};
     int mTestCtr{0};
     char mErrorBuf[kMaxErrorStringSize];
     
-    // MLTEST
-    int mPrevEndpointIdx;
+    bool mTerminating{false};
+    bool mUnplugged{true};
+    std::atomic_flag mUnpluggedLock {ATOMIC_FLAG_INIT};
 };
 
 #endif // __MAC_SOUNDPLANE_DRIVER__

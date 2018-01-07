@@ -112,10 +112,9 @@ SoundplaneModel::SoundplaneModel() :
 	mDoOverrideCarriers(false),
 	mKymaIsConnected(0),
 	mKymaMode(false),
-	mShuttingDown(0)
+	mShuttingDown(false)
 {	
 	mpDriver = SoundplaneDriver::create(*this);
-    mpDriver->open();
 
 	for(int i=0; i<kSoundplaneMaxTouches; ++i)
 	{
@@ -143,8 +142,6 @@ SoundplaneModel::SoundplaneModel() :
 	MLConsole() << "SoundplaneModel: listening for OSC on port " << kDefaultUDPReceivePort << "...\n";
 	listenToOSC(kDefaultUDPReceivePort);
 	
-	startModelTimer();
-	
 	mMIDIOutput.initialize();
 	addListener(&mMIDIOutput);
 	addListener(&mOSCOutput);
@@ -160,42 +157,44 @@ SoundplaneModel::SoundplaneModel() :
 	//mZonePresets->dump();
     
     // now that the driver is active, start polling for changes in properties
+    mShuttingDown = false;
     mInfrequentTaskThread = std::thread(&SoundplaneModel::infrequentTaskThread, this);
-
+    startModelTimer();
+    
+    mpDriver->start();
 }
 
 SoundplaneModel::~SoundplaneModel()
 {
-	mpDriver->close();
-
-    listenToOSC(0);
-
-	// signal threads to shut down
-	mShuttingDown = true;
-	
-	// wait
-	usleep(500*1000);
-	
+    std::cout << "~SoundplaneModel()\n";
+    
+    // signal threads to shut down
+    mShuttingDown = true;
     
     if (mInfrequentTaskThread.joinable())
     {
         mInfrequentTaskThread.join();
         printf("SoundplaneModel: infrequent task thread terminated.\n");
+        
+        // mInfrequentTaskThread = nullptr;
     }
     
+    listenToOSC(0);
+    
+    mpDriver = nullptr;
 }
 
 void SoundplaneModel::onStartup()
 {
 	// get serial number and auto calibrate noise on sync detect
 	const unsigned long instrumentModel = 1; // Soundplane A
-	mOSCOutput.setSerialNumber((instrumentModel << 16) | mpDriver->getSerialNumber());
+    mOSCOutput.setSerialNumber((instrumentModel << 16) | mpDriver->getSerialNumber());
     
 	// output will be enabled at end of calibration.
 	// mNeedsCalibrate = true;
     
-	// connected but not calibrated -- disable output.
-	enableOutput(false);
+ 	// connected but not calibrated -- disable output.
+    enableOutput(false);
     mNeedsCalibrate = true;
  }
 
@@ -266,12 +265,15 @@ void SoundplaneModel::onError(int error, const char* errStr)
 
 void SoundplaneModel::onClose()
 {
+    std::cout << "SoundplaneModel()::onClose() \n";
+    
     enableOutput(false);
+
 }
 
 void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
 {
-	// debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
+	debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
 
 	int propertyType = newVal.getType();
 	switch(propertyType)
@@ -430,12 +432,12 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			{
 				bool b = v;				
 				mDoOverrideCarriers = b;
-				mNeedsCarriersSet = true;
+		//		mNeedsCarriersSet = true;
 			}
 			else if (p == "override_carrier_set")
 			{
 				makeStandardCarrierSet(mOverrideCarriers, v);
-				mNeedsCarriersSet = true;
+		//		mNeedsCarriersSet = true;
 			}
 		}
 		break;
@@ -1152,8 +1154,7 @@ void SoundplaneModel::doInfrequentTasks()
 		}
 		mNeedsCalibrate = true;
 	}
-    
-    if (mNeedsCalibrate && (!mSelectingCarriers))
+    else if (mNeedsCalibrate && (!mSelectingCarriers))
 	{
 		mNeedsCalibrate = false;
 		beginCalibrate();
@@ -1194,7 +1195,7 @@ void SoundplaneModel::dumpCarriers(const SoundplaneDriver::Carriers& carriers)
 	for(int i=0; i<kSoundplaneNumCarriers; ++i)
 	{
 		int c = carriers[i];
-		debug() << i << ": " << c << " ["<< SoundplaneDriver::carrierToFrequency(c) << "Hz] \n";
+		debug() << i << ": " << c << " ["<< carrierToFrequency(c) << "Hz] \n";
 	}
 }
 
@@ -1305,7 +1306,7 @@ void SoundplaneModel::nextSelectCarriersStep()
 	{
 		variationSum = 0;
 		int carrier = mCarriers[col];
-		float cFreq = SoundplaneDriver::carrierToFrequency(carrier);
+		float cFreq = carrierToFrequency(carrier);
 		
 		variationSum = getColumnSum(variation, col);
 		if(variationSum > maxVar)

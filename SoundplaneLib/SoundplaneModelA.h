@@ -95,4 +95,13 @@ void K1_clear_edges(SensorFrame& dest);
 float frameDiff(const SensorFrame& p0, const SensorFrame& p1);
 void dumpFrame(float* frame);
 
+
+inline float carrierToFrequency(int carrier)
+{
+    int cIdx = carrier; // offset?
+    float freq = kSoundplaneASampleRate/kSoundplaneAFFTSize*cIdx;
+    return freq;
+}
+
+
 #endif // __SOUNDPLANE_MODEL_A__

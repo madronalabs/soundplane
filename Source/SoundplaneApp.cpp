@@ -63,6 +63,7 @@ void SoundplaneApp::initialise (const String& commandLine)
 
 	if (!mpModelState->loadStateFromAppStateFile()) 
 	{
+        // there is no app state saved, run "welcome to Soundplane" with carrier select
 		setDefaultWindowSize();
 		mpController->doWelcomeTasks(); 
 	}
