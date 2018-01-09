@@ -86,6 +86,9 @@ public:
 		return FramePosition (newBuffer, newFrame);
 	}
 
+    bool mUnplugged{true};
+    std::atomic_flag mUnpluggedLock {ATOMIC_FLAG_INIT};
+    
 protected:
 	
     inline int getDeviceState() const { return mDeviceState; }
@@ -151,9 +154,9 @@ private:
     // we are only counting, so any races are benign
     std::atomic<int> mTransactionsInFlight;
     
-    int getNextTransactionNum(int endpoint);
-    std::array<int, kSoundplaneANumEndpoints> mNextTransactionNum {};
-    std::array<std::mutex, kSoundplaneANumEndpoints>  mNextTransactionNumMutex;
+    int getNextBufferIndex(int endpoint);
+    std::array<int, kSoundplaneANumEndpoints> mNextBufferIndex {};
+    std::array<std::mutex, kSoundplaneANumEndpoints>  mNextBufferIndexMutex;
 
 	std::thread					mGrabThread;
 	std::thread					mProcessThread;
@@ -197,8 +200,7 @@ private:
     char mErrorBuf[kMaxErrorStringSize];
     
     bool mTerminating{false};
-    bool mUnplugged{true};
-    std::atomic_flag mUnpluggedLock {ATOMIC_FLAG_INIT};
+
 };
 
 #endif // __MAC_SOUNDPLANE_DRIVER__

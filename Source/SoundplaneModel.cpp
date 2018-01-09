@@ -5,7 +5,6 @@
 
 #include "SoundplaneModel.h"
 #include "ThreadUtility.h"
-//#include "InertSoundplaneDriver.h"
 #include "MLProjectInfo.h"
 
 static const ml::Text kOSCDefaultStr("default");
@@ -166,8 +165,6 @@ SoundplaneModel::SoundplaneModel() :
 
 SoundplaneModel::~SoundplaneModel()
 {
-    std::cout << "~SoundplaneModel()\n";
-    
     // signal threads to shut down
     mShuttingDown = true;
     
@@ -175,8 +172,6 @@ SoundplaneModel::~SoundplaneModel()
     {
         mInfrequentTaskThread.join();
         printf("SoundplaneModel: infrequent task thread terminated.\n");
-        
-        // mInfrequentTaskThread = nullptr;
     }
     
     listenToOSC(0);
@@ -190,11 +185,9 @@ void SoundplaneModel::onStartup()
 	const unsigned long instrumentModel = 1; // Soundplane A
     mOSCOutput.setSerialNumber((instrumentModel << 16) | mpDriver->getSerialNumber());
     
-	// output will be enabled at end of calibration.
-	// mNeedsCalibrate = true;
-    
  	// connected but not calibrated -- disable output.
     enableOutput(false);
+    // output will be enabled at end of calibration.
     mNeedsCalibrate = true;
  }
 
@@ -253,27 +246,29 @@ void SoundplaneModel::onError(int error, const char* errStr)
             beginCalibrate();
             break;
         case kDevGapInSequence:
-            // a gap is not really so bad, could be just one frame lost
             if(mVerbose)
             {
                 MLConsole() << "note: gap in sequence " << errStr << "\n";
             }
             break;
-        
+        case kDevReset:
+            // a reset is a bad thing but should only happen when we are switching apps
+            if(mVerbose)
+            {
+                MLConsole() << "isoch stalled, resetting " << errStr << "\n";
+            }
+            break;
     }
 }
 
 void SoundplaneModel::onClose()
 {
-    std::cout << "SoundplaneModel()::onClose() \n";
-    
     enableOutput(false);
-
 }
 
 void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
 {
-	debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
+	// debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
 
 	int propertyType = newVal.getType();
 	switch(propertyType)
@@ -309,7 +304,6 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			}
 			else if (p == "max_touches")
 			{
-				debug() << "TOUCHES: " << v << "\n";
 				mMaxTouches = v;
 				mMIDIOutput.setMaxTouches(v);
 				mOSCOutput.setMaxTouches(v);
@@ -318,7 +312,6 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			{
 				mTracker.setLopassZ(v);
 			}
-
 			else if (p == "z_thresh")
 			{
 				mTracker.setThresh(v);
@@ -690,8 +683,11 @@ const std::vector<std::string>& SoundplaneModel::getServicesList()
 void SoundplaneModel::infrequentTaskThread()
 {
     printf("SoundplaneModel: infrequent task thread starting.\n");
+    
+    // wait to (probably) prevent calibrating a second time on startup when the Model properties are loaded
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-	std::chrono::time_point<std::chrono::system_clock> previous, now;
+    std::chrono::time_point<std::chrono::system_clock> previous, now;
 	previous = now = std::chrono::system_clock::now();
 	while(!mShuttingDown)
 	{
@@ -1003,7 +999,7 @@ void SoundplaneModel::sendTouchDataToZones()
 	int age;
 
     
-    //someting is wrong
+    // someting is wrong
     
 	const int maxTouches = getFloatProperty("max_touches");
 	const float hysteresis = getFloatProperty("hysteresis");
@@ -1152,6 +1148,7 @@ void SoundplaneModel::doInfrequentTasks()
 		{
 			setCarriers(mCarriers);
 		}
+        
 		mNeedsCalibrate = true;
 	}
     else if (mNeedsCalibrate && (!mSelectingCarriers))

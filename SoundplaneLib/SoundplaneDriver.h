@@ -29,7 +29,8 @@ enum
 	kDevNoErr = 0,
 	kDevNoNewFrame = 1, // unused
 	kDevDataDiffTooLarge = 2,
-	kDevGapInSequence = 3
+    kDevGapInSequence = 3,
+    kDevReset = 4
 };
 
 class SoundplaneDriverListener

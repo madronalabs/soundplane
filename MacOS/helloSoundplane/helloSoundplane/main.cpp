@@ -90,7 +90,7 @@ int main(int argc, const char * argv[])
 	HelloSoundplaneDriverListener listener;
     
 	auto driver = SoundplaneDriver::create(listener);
-    driver->open();
+    driver->start();
 	
 	time_point<system_clock> start, now;
 	start = now = system_clock::now();
