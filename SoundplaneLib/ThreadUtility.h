@@ -10,5 +10,6 @@
 #include <stdint.h>
 
 void setThreadPriority(pthread_t inThread, uint32_t inPriority, bool inIsFixed);
+void SetPriorityRealtimeAudio(pthread_t inThread);
 
 #endif // __THREAD_UTILITY__

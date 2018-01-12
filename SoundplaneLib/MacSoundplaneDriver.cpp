@@ -121,9 +121,11 @@ void MacSoundplaneDriver::start()
     mProcessThread = std::thread(&MacSoundplaneDriver::processThread, this);
     
     // set thread to real time priority
-    setThreadPriority(mProcessThread.native_handle(), 96, true);
-}
+    //setThreadPriority(mProcessThread.native_handle(), 96, true);
+  
+    SetPriorityRealtimeAudio(mProcessThread.native_handle());
 
+}
 
 MacSoundplaneDriver::~MacSoundplaneDriver()
 {
