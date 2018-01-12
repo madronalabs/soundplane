@@ -134,7 +134,7 @@ void SoundplaneZoneView::renderZones()
         
         int t = zone.getType();
         MLRect zr = zone.getBounds();
-        const char * name = zone.getName().c_str();
+        const char * name = zone.getName().getText();
 		int offset = zone.getOffset();
         
         // affine transforms TODO for better syntax: MLRect zrd = zr.xform(gridToView);
