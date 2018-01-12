@@ -253,11 +253,7 @@ private:
 
 	// OSC services
 	std::vector<std::string> mServiceNames;
-	
-    // TODO clean up objects and make API based on these use patterns later
-	void infrequentTaskThread();
-	std::thread	mInfrequentTaskThread;
-	
+
     bool mVerbose;
     
     bool mTerminating{false};

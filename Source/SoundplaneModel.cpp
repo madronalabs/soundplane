@@ -156,32 +156,21 @@ SoundplaneModel::SoundplaneModel() :
     
     // now that the driver is active, start polling for changes in properties
     mTerminating = false;
-    mInfrequentTaskThread = std::thread(&SoundplaneModel::infrequentTaskThread, this);
+    
     startModelTimer();
     
     mSensorFrameQueue = std::unique_ptr< Queue<SensorFrame> >(new Queue<SensorFrame>(kSensorFrameQueueSize));
     
     mProcessThread = std::thread(&SoundplaneModel::processThread, this);
-    
-    // set thread to real time priority
- //   setThreadPriority(mProcessThread.native_handle(), 96, true);
-
     SetPriorityRealtimeAudio(mProcessThread.native_handle());
     
     mpDriver->start();
-    
 }
 
 SoundplaneModel::~SoundplaneModel()
 {
     // signal threads to shut down
     mTerminating = true;
-    
-    if (mInfrequentTaskThread.joinable())
-    {
-        mInfrequentTaskThread.join();
-        printf("SoundplaneModel: infrequent task thread terminated.\n");
-    }
     
     if (mProcessThread.joinable())
     {
@@ -285,6 +274,7 @@ void SoundplaneModel::process()
                 }
                 
                 trackTouches(calibratedFrame);
+                sendTouchDataToZones();
             }
         }
     }
@@ -703,28 +693,6 @@ const std::vector<std::string>& SoundplaneModel::getServicesList()
 	return mServiceNames;
 }
 
-void SoundplaneModel::infrequentTaskThread()
-{
-    printf("SoundplaneModel: infrequent task thread starting.\n");
-    
-    // wait to (probably) prevent calibrating a second time on startup when the Model properties are loaded
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-    std::chrono::time_point<std::chrono::system_clock> previous, now;
-	previous = now = std::chrono::system_clock::now();
-	while(!mTerminating)
-	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		now = std::chrono::system_clock::now();
-		int secondsInterval = std::chrono::duration_cast<std::chrono::seconds>(now - previous).count();		
-		if (secondsInterval >= 1)
-		{
-			previous = now;
-			doInfrequentTasks();
-		}
-	}
-}
-
 void SoundplaneModel::initialize()
 {
 }
@@ -1133,8 +1101,6 @@ void SoundplaneModel::trackTouches(const SensorFrame& frame)
 	mHistoryCtr++;
 	if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
 	mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
-
-	sendTouchDataToZones();
 }
 
 void SoundplaneModel::doInfrequentTasks()
@@ -1380,6 +1346,8 @@ void SoundplaneModel::endSelectCarriers()
 
 void SoundplaneModel::processThread()
 {
+    std::chrono::time_point<std::chrono::system_clock> previous, now;
+    previous = now = std::chrono::system_clock::now();
     while(!mTerminating)
     {
         process();
@@ -1404,7 +1372,18 @@ void SoundplaneModel::processThread()
             mProcessCounter = 0;
             kMaxQueueSize = 0;
         }
-
-        usleep(500); // 0.5 ms
+        
+        // sleep, less than one frame interval
+        std::this_thread::sleep_for(std::chrono::microseconds(500));
+        
+        // do infrequent tasks every second
+        now = std::chrono::system_clock::now();
+        int secondsInterval = std::chrono::duration_cast<std::chrono::seconds>(now - previous).count();
+        if (secondsInterval >= 1)
+        {
+            previous = now;
+            doInfrequentTasks();
+        }
     }
 }
+
