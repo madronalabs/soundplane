@@ -10,23 +10,20 @@
 #include <map>
 #include <stdint.h>
 
-//#include "MLDebug.h"
-//#include "MLTime.h"
 #include "MLModel.h"
 #include "SoundplaneModelA.h"
 #include "SoundplaneDriver.h"
-//#include "SoundplaneDataListener.h"
 #include "MLOSCListener.h"
 #include "MLNetServiceHub.h"
 #include "TouchTracker.h"
 #include "SoundplaneMIDIOutput.h"
 #include "SoundplaneOSCOutput.h"
 #include "MLSymbol.h"
-//#include "MLParameter.h"
 #include "MLFileCollection.h"
 #include "cJSON/cJSON.h"
 #include "Zone.h"
 #include "SoundplaneBinaryData.h"
+#include "MLQueue.h"
 
 using namespace ml;
 
@@ -38,6 +35,8 @@ typedef enum
 	dzColumn = 3,
 	ageColumn = 4
 } TouchSignalColumns;
+
+const int kSensorFrameQueueSize = 16;
 
 class SoundplaneModel :
 	public SoundplaneDriverListener,
@@ -74,9 +73,6 @@ public:
 	void formatServiceName(const std::string& inName, std::string& outName);
 
     MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
-
-	void testCallback();
-	void processCallback();
 
 	float getSampleHistory(int x, int y);
 
@@ -142,14 +138,15 @@ public:
 
 	SoundplaneMIDIOutput& getMIDIOutput() { return mMIDIOutput; }
 
-	Vec2 xyToKeyGrid(Vec2 xy);
 
 private:
 
-	std::unique_ptr<SoundplaneDriver> mpDriver;
+	std::unique_ptr< SoundplaneDriver > mpDriver;
+    std::unique_ptr< Queue< SensorFrame > > mSensorFrameQueue;
 
 	// TODO order!
-	void trackTouches(const SensorFrame& frame);
+    void process();
+    void trackTouches(const SensorFrame& frame);
 	void initialize();
 	void clearTouchData();
 	void scaleTouchPressureData();
@@ -257,17 +254,19 @@ private:
 	// OSC services
 	std::vector<std::string> mServiceNames;
 	
+    // TODO clean up objects and make API based on these use patterns later
 	void infrequentTaskThread();
 	std::thread	mInfrequentTaskThread;
 	
-	int mShuttingDown;
-    
     bool mVerbose;
-};
+    
+    bool mTerminating{false};
+    int mProcessCounter{0};
+    void processThread();
+    std::thread mProcessThread;
+    
+    size_t kMaxQueueSize{0};
 
-// JSON utilities (to go where?)
-std::string getJSONString(cJSON* pNode, const char* name);
-double getJSONDouble(cJSON* pNode, const char* name);
-int getJSONInt(cJSON* pNode, const char* name);
+};
 
 #endif // __SOUNDPLANE_MODEL__

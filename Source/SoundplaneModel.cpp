@@ -110,8 +110,7 @@ SoundplaneModel::SoundplaneModel() :
 	mCarriersMask(0xFFFFFFFF),
 	mDoOverrideCarriers(false),
 	mKymaIsConnected(0),
-	mKymaMode(false),
-	mShuttingDown(false)
+	mKymaMode(false)
 {	
 	mpDriver = SoundplaneDriver::create(*this);
 
@@ -156,22 +155,38 @@ SoundplaneModel::SoundplaneModel() :
 	//mZonePresets->dump();
     
     // now that the driver is active, start polling for changes in properties
-    mShuttingDown = false;
+    mTerminating = false;
     mInfrequentTaskThread = std::thread(&SoundplaneModel::infrequentTaskThread, this);
     startModelTimer();
     
+    mSensorFrameQueue = std::unique_ptr< Queue<SensorFrame> >(new Queue<SensorFrame>(kSensorFrameQueueSize));
+    
+    mProcessThread = std::thread(&SoundplaneModel::processThread, this);
+    
+    // set thread to real time priority
+ //   setThreadPriority(mProcessThread.native_handle(), 96, true);
+
+    SetPriorityRealtimeAudio(mProcessThread.native_handle());
+    
     mpDriver->start();
+    
 }
 
 SoundplaneModel::~SoundplaneModel()
 {
     // signal threads to shut down
-    mShuttingDown = true;
+    mTerminating = true;
     
     if (mInfrequentTaskThread.joinable())
     {
         mInfrequentTaskThread.join();
         printf("SoundplaneModel: infrequent task thread terminated.\n");
+    }
+    
+    if (mProcessThread.joinable())
+    {
+        mProcessThread.join();
+        printf("SoundplaneModel: mProcessThread terminated.\n");
     }
     
     listenToOSC(0);
@@ -191,50 +206,11 @@ void SoundplaneModel::onStartup()
     mNeedsCalibrate = true;
  }
 
+// we need to return as quickly as possible from driver callback.
+// just put the new frame in the queue.
 void SoundplaneModel::onFrame(const SensorFrame& frame)
 {
-	mSensorFrame = frame;
-	mSurface = sensorFrameToSignal(mSensorFrame);
-	
-	// store surface for raw output
-	{ 
-		std::lock_guard<std::mutex> lock(mRawSignalMutex); 
-		mRawSignal.copy(mSurface);
-	}
-	
-	if (mCalibrating)
-	{
-		mStats.accumulate(mSensorFrame);
-		if (mStats.getCount() >= kSoundplaneCalibrateSize)
-		{
-			endCalibrate();
-		}
-	}
-	else if (mSelectingCarriers)
-	{
-		mStats.accumulate(mSensorFrame);
-
-		if (mStats.getCount() >= kSoundplaneCalibrateSize)
-		{
-			nextSelectCarriersStep();
-		}
-	}
-	else if(mOutputEnabled)
-	{
-		if (mHasCalibration)
-		{
-			SensorFrame calibratedFrame = subtract(multiply(mSensorFrame, mCalibrateMeanInv), 1.0f);	
-			
-			// store calibrated output
-			// TODO less often! only needed for display
-			{
-				std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);
-				mCalibratedSignal = sensorFrameToSignal(calibratedFrame);
-			}
-			
-			trackTouches(calibratedFrame);		
-		}
-	}
+    mSensorFrameQueue->push(frame);
 }
 
 void SoundplaneModel::onError(int error, const char* errStr)
@@ -264,6 +240,54 @@ void SoundplaneModel::onError(int error, const char* errStr)
 void SoundplaneModel::onClose()
 {
     enableOutput(false);
+}
+
+void SoundplaneModel::process()
+{
+    if (mSensorFrameQueue->pop(mSensorFrame))
+    {
+        mSurface = sensorFrameToSignal(mSensorFrame);
+        
+        // store surface for raw output
+        {
+            std::lock_guard<std::mutex> lock(mRawSignalMutex);
+            mRawSignal.copy(mSurface);
+        }
+        
+        if (mCalibrating)
+        {
+            mStats.accumulate(mSensorFrame);
+            if (mStats.getCount() >= kSoundplaneCalibrateSize)
+            {
+                endCalibrate();
+            }
+        }
+        else if (mSelectingCarriers)
+        {
+            mStats.accumulate(mSensorFrame);
+            
+            if (mStats.getCount() >= kSoundplaneCalibrateSize)
+            {
+                nextSelectCarriersStep();
+            }
+        }
+        else if(mOutputEnabled)
+        {
+            if (mHasCalibration)
+            {
+                SensorFrame calibratedFrame = subtract(multiply(mSensorFrame, mCalibrateMeanInv), 1.0f);
+                
+                // store calibrated output
+                // TODO less often! only needed for display
+                {
+                    std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);
+                    mCalibratedSignal = sensorFrameToSignal(calibratedFrame);
+                }
+                
+                trackTouches(calibratedFrame);
+            }
+        }
+    }
 }
 
 void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
@@ -606,7 +630,6 @@ void SoundplaneModel::ProcessMessage(const osc::ReceivedMessage& m, const IpEndp
 			{
 				setProperty("max_touches", newTouches);
 			}
-
 		}
 	}
 	catch( osc::Exception& e )
@@ -689,7 +712,7 @@ void SoundplaneModel::infrequentTaskThread()
 
     std::chrono::time_point<std::chrono::system_clock> previous, now;
 	previous = now = std::chrono::system_clock::now();
-	while(!mShuttingDown)
+	while(!mTerminating)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		now = std::chrono::system_clock::now();
@@ -891,7 +914,7 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
                 MLConsole() << "No rect for zone\n";
             }
 
-            pz->mName = getJSONString(pNode, "name");
+            pz->mName = TextFragment(getJSONString(pNode, "name"));
             pz->mStartNote = getJSONInt(pNode, "note");
             pz->mOffset = getJSONInt(pNode, "offset");
             pz->mControllerNum1 = getJSONInt(pNode, "ctrl1");
@@ -899,27 +922,12 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
             pz->mControllerNum3 = getJSONInt(pNode, "ctrl3");
 
             addZone(ZonePtr(pz));
+            
            //  mZoneMap.dump(mZoneMap.getBoundsRect());
         }
 		pNode = pNode->next;
     }
     sendParametersToZones();
-}
-
-// turn (x, y) position into a continuous 2D key position.
-// Soundplane A only.
-Vec2 SoundplaneModel::xyToKeyGrid(Vec2 xy)
-{
-	MLRange xRange(4.5f, 60.5f);
-	xRange.convertTo(MLRange(1.5f, 29.5f));
-	float kx = ml::clamp(xRange(xy.x()), 0.f, (float)kSoundplaneAKeyWidth);
-
-	MLRange yRange(1., 6.);  // Soundplane A as measured with kNormalizeThresh = .125
-	yRange.convertTo(MLRange(1.f, 4.f));
-    float scaledY = yRange(xy.y());
-	float ky = ml::clamp(scaledY, 0.f, (float)kSoundplaneAKeyHeight);
-
-	return Vec2(kx, ky);
 }
 
 void SoundplaneModel::clearTouchData()
@@ -1062,11 +1070,13 @@ void SoundplaneModel::sendTouchDataToZones()
     int zones = mZones.size();
 	std::vector<bool> freedTouches;
 	freedTouches.resize(kSoundplaneMaxTouches);
-
 	// generates freedTouches array, syntax should be different
     for(int i=0; i<zones; ++i)
 	{
-        mZones[i]->processTouchesNoteOffs(freedTouches);
+        if(mZones[i]->getType() == kNoteRow) // MLTEST, this looks like a fix
+        {
+            mZones[i]->processTouchesNoteOffs(freedTouches);
+        }
     }
 
     // process touches for each zone
@@ -1216,13 +1226,7 @@ void SoundplaneModel::beginCalibrate()
 {
 	if(getDeviceState() == kDeviceHasIsochSync)
 	{
-        
-        // MLTEST - calibrate to recover from frame diff too large should not cut off touches
-//        clear();
-//		clearTouchData();
-//		sendTouchDataToZones();
-        
-		mStats.clear();
+ 		mStats.clear();
 		mCalibrating = true;
 	}
 }
@@ -1374,45 +1378,33 @@ void SoundplaneModel::endSelectCarriers()
 	mNeedsCalibrate = true;
 }
 
-// JSON utilities
-
-std::string getJSONString(cJSON* pNode, const char* name)
+void SoundplaneModel::processThread()
 {
-    cJSON* pItem = cJSON_GetObjectItem(pNode, name);
-    if(pItem)
+    while(!mTerminating)
     {
-        if(pItem->type == cJSON_String)
+        process();
+        mProcessCounter++;
+        
+        size_t queueSize = mSensorFrameQueue->elementsAvailable();
+        if(queueSize > kMaxQueueSize)
         {
-            return std::string(pItem->valuestring);
+            kMaxQueueSize = queueSize;
         }
-    }
-    return std::string("");
-}
-
-double getJSONDouble(cJSON* pNode, const char* name)
-{
-    cJSON* pItem = cJSON_GetObjectItem(pNode, name);
-    if(pItem)
-    {
-        if(pItem->type == cJSON_Number)
+        
+        if(mProcessCounter >= 1000)
         {
-            return pItem->valuedouble;
+            if(mVerbose)
+            {
+                if(kMaxQueueSize >= kSensorFrameQueueSize)
+                {
+                    MLConsole() << "warning: input queue full \n";
+                }
+            }
+            
+            mProcessCounter = 0;
+            kMaxQueueSize = 0;
         }
+
+        usleep(500); // 0.5 ms
     }
-    return 0.;
 }
-
-int getJSONInt(cJSON* pNode, const char* name)
-{
-    cJSON* pItem = cJSON_GetObjectItem(pNode, name);
-    if(pItem)
-    {
-        if(pItem->type == cJSON_Number)
-        {
-            return pItem->valueint;
-        }
-    }
-    return 0;
-}
-
-
