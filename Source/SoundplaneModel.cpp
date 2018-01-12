@@ -1030,8 +1030,7 @@ void SoundplaneModel::sendTouchDataToZones()
 	}
 
     // tell listeners we are starting this frame.
-    mMessage.mType = ml::Symbol("start_frame");
-	sendMessageToListeners();
+    sendMessageToListeners(SoundplaneDataMessage{"start_frame"});
 
     // process note offs for each zone
 	// this happens before processTouches() to allow voices to be freed
@@ -1043,17 +1042,18 @@ void SoundplaneModel::sendTouchDataToZones()
 	{
         if(mZones[i]->getType() == kNoteRow) // MLTEST, this looks like a fix
         {
-            mZones[i]->processTouchesNoteOffs(freedTouches);
+            sendMessageToListeners(mZones[i]->processTouchesNoteOffs(freedTouches));
         }
     }
 
     // process touches for each zone
 	for(int i=0; i<zones; ++i)
 	{
-        mZones[i]->processTouches(freedTouches);
+        sendMessageToListeners(mZones[i]->processTouches(freedTouches));
     }
 
     // send optional calibrated matrix
+    /*
     if(mSendMatrixData)
     {		
 		MLSignal calibratedPressure = getCalibratedSignal();
@@ -1065,24 +1065,26 @@ void SoundplaneModel::sendTouchDataToZones()
 			{
 				for(int i = 0; i < SensorGeometry::width; ++i)
 				{
-					mMessage.mMatrix[j*SensorGeometry::width + i] = calibratedPressure(i, j);
+					mMessage.mMatrix[j*SensorGeometry::width + i] = calibratedPressure(i, j); // MLTEST
 				}
 			}
 			sendMessageToListeners();
 		}
-    }
-
+    }*/
+    
     // tell listeners we are done with this frame.
-    mMessage.mType = ml::Symbol("end_frame");
-	sendMessageToListeners();
+	sendMessageToListeners(SoundplaneDataMessage{"end_frame"});
 }
 
-void SoundplaneModel::sendMessageToListeners()
+void SoundplaneModel::sendMessageToListeners(const SoundplaneDataMessage m)
 {
- 	for(SoundplaneListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
-    if((*it)->isActive())
+    if(m.mType)
     {
-        (*it)->processSoundplaneMessage(&mMessage);
+        for(SoundplaneListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
+        if((*it)->isActive())
+        {
+            (*it)->processSoundplaneMessage(m);
+        }
     }
 }
 

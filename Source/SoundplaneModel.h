@@ -151,7 +151,8 @@ private:
 	void clearTouchData();
 	void scaleTouchPressureData();
 	void sendTouchDataToZones();
-	void sendMessageToListeners();
+	
+    void sendMessageToListeners(const SoundplaneDataMessage m);
 
 	void addListener(SoundplaneDataListener* pL) { mListeners.push_back(pL); }
 	SoundplaneListenerList mListeners;
@@ -176,8 +177,7 @@ private:
 
 	SoundplaneMIDIOutput mMIDIOutput;
 	SoundplaneOSCOutput mOSCOutput;
-    SoundplaneDataMessage mMessage;
-
+    
     SensorFrame mSensorFrame{};
 	MLSignal mSurface; 
 

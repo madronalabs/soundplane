@@ -68,9 +68,9 @@ public:
 
     static int symbolToZoneType(ml::Symbol s);
 
-    void clearTouches();
     void addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz);
-    void processTouches(const std::vector<bool>& freedTouches);
+    
+    SoundplaneDataMessage processTouches(const std::vector<bool>& freedTouches);
     
     const ZoneTouch touchToKeyPos(const ZoneTouch& t) const
     {
@@ -131,23 +131,24 @@ protected:
     int mOffset;
     ml::TextFragment mName;
     const SoundplaneListenerList& mListeners;
-    SoundplaneDataMessage mMessage;
     
 private:
-    void processTouchesNoteRow(const std::vector<bool>& freedTouches);
-	void processTouchesNoteOffs(std::vector<bool>& freedTouches);
+    
     int getNumberOfActiveTouches() const;
     int getNumberOfNewTouches() const;
     Vec3 getAveragePositionOfActiveTouches() const;
     float getMaxZOfActiveTouches() const;
-    void processTouchesControllerX();
-    void processTouchesControllerY();
-    void processTouchesControllerXY();
-    void processTouchesControllerToggle();
-    void processTouchesControllerPressure();
-    void sendMessage(ml::Symbol type, ml::Symbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);
-    void sendMessageToListeners();
     
+    SoundplaneDataMessage processTouchesNoteRow(const std::vector<bool>& freedTouches);
+    SoundplaneDataMessage processTouchesNoteOffs(std::vector<bool>& freedTouches);
+    SoundplaneDataMessage processTouchesControllerX();
+    SoundplaneDataMessage processTouchesControllerY();
+    SoundplaneDataMessage processTouchesControllerXY();
+    SoundplaneDataMessage processTouchesControllerToggle();
+    SoundplaneDataMessage processTouchesControllerPressure();
+
+    SoundplaneDataMessage buildMessage(ml::Symbol type, ml::Symbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);
+   
     bool mNeedsRedraw;
     float mValue[kZoneValArraySize];
 
