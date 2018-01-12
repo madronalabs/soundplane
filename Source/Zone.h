@@ -81,7 +81,7 @@ public:
     int setZoneID() const { return mZoneID; }
     const ZoneTouch getTouch(int i) const { return mTouches1[i]; }
     bool needsRedraw() const { return mNeedsRedraw; }
-    const std::string& getName() const { return mName; }
+    const ml::TextFragment getName() const { return mName; }
     MLRect getBounds() const { return mBounds; }
 	int getType() const { return mType; }
 	int getOffset() const { return mOffset; }
@@ -129,7 +129,7 @@ protected:
     int mControllerNum2;
     int mControllerNum3;
     int mOffset;
-    std::string mName;
+    ml::TextFragment mName;
     const SoundplaneListenerList& mListeners;
     SoundplaneDataMessage mMessage;
     
