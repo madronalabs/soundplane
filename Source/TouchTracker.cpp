@@ -193,35 +193,42 @@ SensorFrame smoothPressureY(const SensorFrame& in)
 	return out;
 }
 
-void TouchTracker::process(const SensorFrame& in, int maxTouches, TouchArray* pOut, SensorFrame* pCurvatureOut)
-{	
-	if (!pCurvatureOut || !pOut) return;
-	
+
+SensorFrame TouchTracker::preprocess(const SensorFrame& in)
+{
+    SensorFrame y;
+    
+    // fixed IIR filter input
+    float k = 0.25f;
+    y = multiply(in, k);
+    mInputZ1 = multiply(mInputZ1, 1.0 - k);
+    y = add(y, mInputZ1);
+    mInputZ1 = y;
+    
+    // filter out any negative values. negative values can show up from capacitive coupling near edges,
+    // from motion or bending of the whole instrument,
+    // from the elastic layer deforming and pushing up on the sensors near a touch.
+    y = max(y, 0.f);
+    
+    // a lot of filtering is needed here for Soundplane A to make sure peaks are in centers of touches.
+    // it also reduces noise.
+    // the down side is, contiguous touches are harder to tell apart. a smart blob-shape algorithm
+    // can make up for this later, with this filtering still intact.
+    y = smoothPressureX(smoothPressureX(smoothPressureX(smoothPressureX(y))));
+    y = smoothPressureY(smoothPressureY(smoothPressureY(y)));
+    y = getCurvatureXY(multiply(y, 1.f/64.f));
+    
+    return y;
+}
+
+TouchArray TouchTracker::process(const SensorFrame& in, int maxTouches)
+{
+// MLTEST    if (!pCurvatureOut || !pOut) return;
 	setMaxTouches(maxTouches);
-	
-	// fixed IIR filter input
-	float k = 0.25f;
-	mInput = multiply(in, k);	
-	mInputZ1 = multiply(mInputZ1, 1.0 - k);
-	mInput = add(mInput, mInputZ1);
-	mInputZ1 = mInput;
-
-	// filter out any negative values. negative values can show up from capacitive coupling near edges,
-	// from motion or bending of the whole instrument, 
-	// from the elastic layer deforming and pushing up on the sensors near a touch. 
-	mInput = max(mInput, 0.f);
-
-	// a lot of filtering is needed here for Soundplane A to make sure peaks are in centers of touches.
-	// it also reduces noise. 
-	// the down side is, contiguous touches are harder to tell apart. a smart blob-shape algorithm
-	// can make up for this later, with this filtering still intact.				
-	mInput = smoothPressureX(smoothPressureX(smoothPressureX(smoothPressureX(mInput))));	
-	mInput = smoothPressureY(smoothPressureY(smoothPressureY(mInput)));
-	mInput = getCurvatureXY(multiply(mInput, 1.f/64.f));
 
 	if(mMaxTouchesPerFrame > 0)
 	{
-		mTouches = findTouches(mInput);
+		mTouches = findTouches(in);
 					
 		// match -> position filter -> feedback
 		mTouches = matchTouches(mTouches, mTouchesMatch1);	
@@ -245,9 +252,8 @@ void TouchTracker::process(const SensorFrame& in, int maxTouches, TouchArray* pO
 		
 		mTouches = clampAndScaleTouches(mTouches);
 	}
-	
-	*pOut = mTouches;
-	*pCurvatureOut = mInput;
+    
+    return mTouches;
 }
 
 Touch correctPeakX(Touch pos, const SensorFrame& in) 

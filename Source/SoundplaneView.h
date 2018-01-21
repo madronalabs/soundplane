@@ -89,7 +89,7 @@ public:
 	void doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal);
 
     void initialize();
-    void paint (Graphics& g);
+//    void paint (Graphics& g);
 	void timerCallback();
 
 	void makeCarrierTogglesVisible(int v);

@@ -26,6 +26,10 @@
 #include "MLQueue.h"
 
 using namespace ml;
+using TouchArray = TouchTracker::TouchArray;
+using namespace std::chrono;
+
+MLSignal sensorFrameToSignal(const SensorFrame &f);
 
 typedef enum
 {
@@ -114,21 +118,21 @@ public:
 	void setFilter(bool b);
 
 	void getMinMaxHistory(int n);
-	const MLSignal& getCorrelation();
 	
 	const MLSignal& getTouchFrame() { return mTouchFrame; }
 	const MLSignal& getTouchHistory() { return mTouchHistory; }
 	const MLSignal getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
-	const MLSignal getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex); return mCalibratedSignal; }
+	const MLSignal getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex); return sensorFrameToSignal(mCalibratedFrame); }
+    
 	const MLSignal getSmoothedSignal() { std::lock_guard<std::mutex> lock(mSmoothedSignalMutex); return mSmoothedSignal; }
 	
-	const TouchTracker::TouchArray& getTouchArray() { return mTouchArray; }
+	const TouchArray& getTouchArray() { return mTouchArray1; }
 	
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 	
-	const std::vector<ZonePtr>& getZones(){ return mZones; }
-    const CriticalSection* getZoneLock() {return &mZoneLock;}
+    const std::vector< Zone >::const_iterator getZonesBegin(){ return mZones.begin(); }
+    const std::vector< Zone >::const_iterator getZonesEnd(){ return mZones.end(); }
 
     void setStateFromJSON(cJSON* pNode, int depth);
     bool loadZonePresetByName(const std::string& name);
@@ -138,32 +142,28 @@ public:
 
 	SoundplaneMIDIOutput& getMIDIOutput() { return mMIDIOutput; }
 
-
 private:
+    TouchArray mTouchArray1;
 
 	std::unique_ptr< SoundplaneDriver > mpDriver;
     std::unique_ptr< Queue< SensorFrame > > mSensorFrameQueue;
 
 	// TODO order!
-    void process();
-    void trackTouches(const SensorFrame& frame);
+    void process(time_point<system_clock> now);
+    
+    TouchArray trackTouches(const SensorFrame& frame);
 	void initialize();
-	void clearTouchData();
-	void scaleTouchPressureData();
-	void sendTouchDataToZones();
+    bool findNoteChanges(TouchArray t0, TouchArray t1);
+	TouchArray scaleTouchPressureData(TouchArray in);
+	void processAndSendTouches(TouchArray touches, time_point<system_clock> now);
 	
-    void sendMessageToListeners(const SoundplaneDataMessage m);
-
-	void addListener(SoundplaneDataListener* pL) { mListeners.push_back(pL); }
-	SoundplaneListenerList mListeners;
+    void sendMessageToOutputs(const SoundplaneZoneMessage m);
 
     void clearZones();
     void sendParametersToZones();
-    void addZone(ZonePtr pz);
 
-    CriticalSection mZoneLock;
-    std::vector<ZonePtr> mZones;
-    MLSignal mZoneMap;
+    std::vector< Zone > mZones;
+    MLSignal mZoneIndexMap;
 
 	bool mOutputEnabled;
 
@@ -179,10 +179,12 @@ private:
 	SoundplaneOSCOutput mOSCOutput;
     
     SensorFrame mSensorFrame{};
-	MLSignal mSurface; 
+    SensorFrame mCalibratedFrame{};
+    
+	MLSignal mSurface;
 
 	int	mMaxTouches;
-	TouchTracker::TouchArray mTouchArray; 
+    
 	MLSignal mTouchFrame;
 	std::mutex mTouchFrameMutex;
 	MLSignal mTouchHistory;	
@@ -263,6 +265,8 @@ private:
     
     size_t kMaxQueueSize{0};
 
+    int mDataRate = 250;
+    time_point<system_clock> mPrevProcessTouchesTime{};
 };
 
 #endif // __SOUNDPLANE_MODEL__

@@ -8,8 +8,9 @@
 
 #include "Zone.h"
 
-static const ml::Symbol zoneTypes[kZoneTypes] = {"note_row", "x", "y", "xy", "z", "toggle"};
-static const float kVibratoFilterFreq = 12.0f;
+const ml::Symbol zoneTypes[kZoneTypes] = {"note_row", "x", "y", "xy", "z", "toggle"};
+const float kVibratoFilterFreq = 12.0f;
+const float kSoundplaneVibratoAmount = 5.;
 
 // turn zone type name into enum type. names above must match ZoneType enum.
 int Zone::symbolToZoneType(ml::Symbol s)
@@ -26,7 +27,7 @@ int Zone::symbolToZoneType(ml::Symbol s)
     return zoneTypeNum;
 }
 
-Zone::Zone(const SoundplaneListenerList& l) :
+Zone::Zone() :
 	mZoneID(0),
 	mType(-1),
 	mBounds(0, 0, 1, 1),
@@ -41,8 +42,7 @@ Zone::Zone(const SoundplaneListenerList& l) :
 	mControllerNum2(2),
 	mControllerNum3(3),
 	mOffset(0),
-	mName("unnamed zone"),
-	mListeners(l)
+	mName("unnamed zone")
 {
     mNoteFilters.resize(kSoundplaneMaxTouches);
 	mVibratoFilters.resize(kSoundplaneMaxTouches);
@@ -56,9 +56,10 @@ Zone::Zone(const SoundplaneListenerList& l) :
     
 	for(int i=0; i<kSoundplaneMaxTouches; ++i)
 	{
-		mNoteFilters[i].setSampleRate(kSoundplaneSampleRate);
+        float kDefaultSampleRate = 100.f;
+		mNoteFilters[i].setSampleRate(kDefaultSampleRate);
 		mNoteFilters[i].setOnePole(250.0f);
-		mVibratoFilters[i].setSampleRate(kSoundplaneSampleRate);
+		mVibratoFilters[i].setSampleRate(kDefaultSampleRate);
 		mVibratoFilters[i].setOnePole(kVibratoFilterFreq);
 	}
     
@@ -68,9 +69,17 @@ Zone::Zone(const SoundplaneListenerList& l) :
     }
 }
 
-Zone::~Zone()
+void Zone::setSampleRate(float r)
 {
-    
+    for(int i=0; i<kSoundplaneMaxTouches; ++i)
+    {
+        mNoteFilters[i].setSampleRate(r);
+        mVibratoFilters[i].setSampleRate(r);
+        
+        // scalar biquads need freq reset after sample rate change
+        mNoteFilters[i].setOnePole(250.0f);
+        mVibratoFilters[i].setOnePole(kVibratoFilterFreq);
+    }
 }
 
 void Zone::setBounds(MLRect b)
@@ -81,14 +90,12 @@ void Zone::setBounds(MLRect b)
     mXRangeInv = MLRange(b.left(), b.right(), 0., 1.);
     mYRangeInv = MLRange(b.top(), b.bottom(), 0., 1.);
     
-    
     mScaleMap.setDims(b.width() + 1);
     // setup chromatic scale
     for(int i=0; i<mScaleMap.getWidth(); ++i)
     {
         mScaleMap[i] = i;
     }
-
 }
 
 // input: approx. snap time in ms
@@ -102,13 +109,34 @@ void Zone::setSnapFreq(float f)
     }
 }
 
-void Zone::addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz)
+void Zone::newFrame()
 {
-    // debug() << "zone " << mName << " adding touch at " << x << ", " << y << "\n";
-    // convert to unity range over x and y bounds
-    mTouches0[i] = ZoneTouch(mXRangeInv(x), mYRangeInv(y), kx, ky, z, dz);
+    for(int i=0; i<kSoundplaneMaxTouches; ++i)
+    {
+        mTouches1[i] = mTouches0[i];
+        mTouches0[i].clear();
+    }
 }
 
+void Zone::addTouchToFrame(int t, float x, float y, int kx, int ky, float z, float dz)
+{
+    // MLTEST
+    // debug() << "zone " << mName << " adding touch at " << x << ", " << y << "\n";
+    // convert to unity range over x and y bounds
+    mTouches0[t] = ZoneTouch(mXRangeInv(x), mYRangeInv(y), kx, ky, z, dz);
+}
+
+void Zone::storeAnyNewTouches()
+{
+    for(int i=0; i<kSoundplaneMaxTouches; ++i)
+    {
+        // store start of touch
+        if (mTouches0[i].isActive() && !(mTouches1[i].isActive()))
+        {
+            mStartTouches[i] = mTouches0[i];
+        }
+    }
+}
 
 int Zone::getNumberOfActiveTouches() const
 {
@@ -177,25 +205,17 @@ float Zone::getMaxZOfActiveTouches() const
     }
     return maxZ;
 }
-// after all touches or a frame have been sent using addTouchToFrame, generate
+
+// after all touches for a frame have been received using addTouchToFrame, generate
 // any needed messages about the frame and prepare for the next frame. 
-SoundplaneDataMessage Zone::processTouches(const std::vector<bool>& freedTouches)
+SoundplaneZoneMessage Zone::processTouches()
 {
-    SoundplaneDataMessage r;
-	// store previous touches and clear incoming for next frame
-	for(int i=0; i<kSoundplaneMaxTouches; ++i)
-	{		
-		// store start of touch
-		if (mTouches0[i].isActive() && !(mTouches1[i].isActive()))
-		{
-			mStartTouches[i] = mTouches0[i];
-		}
-	}
-	
+    SoundplaneZoneMessage r;
+
     switch(mType)
     {
         case kNoteRow:
-            r = processTouchesNoteRow(freedTouches);
+            assert(false);
             break;
         case kControllerX:
             r = processTouchesControllerX();
@@ -213,165 +233,162 @@ SoundplaneDataMessage Zone::processTouches(const std::vector<bool>& freedTouches
             r = processTouchesControllerPressure();
             break;
     }
-	
-	// store previous touches and clear incoming for next frame
-	for(int i=0; i<kSoundplaneMaxTouches; ++i)
-	{
-		mTouches1[i] = mTouches0[i];
-		mTouches0[i].clear();
-	}
+
     return r;
 }
 
-SoundplaneDataMessage Zone::processTouchesNoteRow(const std::vector<bool>& freedTouches)
+SoundplaneZoneMessage Zone::processTouchNoteRow(int i, const std::vector<bool>& freedTouches)
 {
-    SoundplaneDataMessage r;
-    // for each possible touch, send any active touch or touch off messages to listeners
-    for(int i=0; i<kSoundplaneMaxTouches; ++i)
+    SoundplaneZoneMessage r;
+ 
+    ZoneTouch t1 = mTouches0[i];
+    ZoneTouch t2 = mTouches1[i];
+    ZoneTouch tStart = mStartTouches[i];
+    bool isActive = t1.isActive();
+    bool wasActive = t2.isActive();
+    bool releasing = (!isActive && wasActive);
+    
+    float t1x, t1y;
+    if(releasing)
     {
-		ZoneTouch t1 = mTouches0[i];
-        ZoneTouch t2 = mTouches1[i];
-        ZoneTouch tStart = mStartTouches[i];
-        bool isActive = t1.isActive();
-        bool wasActive = t2.isActive();
-        bool releasing = (!isActive && wasActive);
-        
-        float t1x, t1y;
-        if(releasing)
-        {
-            // use previous position on release
-            t1x = t2.pos.x();
-            t1y = t2.pos.y();
-        }
-        else
-        {
-            t1x = t1.pos.x();
-            t1y = t1.pos.y();
-        }
-        float t1z = t1.pos.z();
-        float t1dz = t1.pos.w();
-        float tStartX = tStart.pos.x();
-        float currentXPos = mXRange(t1x) - mBounds.left();
-        float startXPos = mXRange(tStartX) - mBounds.left();
-        float vibratoX = currentXPos;
-        float touchPos, scaleNote;
-        
-        if(mNoteLock)
-        {
-            touchPos = startXPos;
-        }
-        else
-        {
-            touchPos = currentXPos;
-        }
-        
-        if(mQuantize)
-        {
-            scaleNote = mScaleMap[(int)touchPos];
-        }
-        else 
-        {
-            scaleNote = mScaleMap.getInterpolatedLinear(touchPos - 0.5f);
-        }
-
-		if(isActive && !wasActive)
-        {			
-			// if touch i was freed on the frame preceding this one, it moved
-			// from zone to zone. 
-			bool retrig = (freedTouches[i]);
-
-			// setup filter states for new note and output
-            mNoteFilters[i].setState(scaleNote);
-            mVibratoFilters[i].setState(vibratoX);
-			
-			if(retrig)
-			{
-				// sliding from key to key- get retrigger velocity from current z
-				t1dz = ml::clamp(t1z * 0.01f, 0.0001f, 1.f);
-			}
-			else
-			{
-				// clamp note-on dz for use as velocity later. 
-				t1dz = ml::clamp(t1dz, 0.0001f, 1.f);
-			}
-            
-            // MLTEST
-           // std::cout << "zone ID " << mZoneID << " ON " << i << " : " << t1x << "\n";
-            
-			r = buildMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
-        }
-        else if(isActive)
-        {
-            // filter ongoing note
-            scaleNote = mNoteFilters[i].processSample(scaleNote);
-            vibratoX = mVibratoFilters[i].processSample(vibratoX);
-            
-            // get vibrato amount
-            float vibratoHP = (currentXPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;
-			
-
-            // MLTEST
-            //std::cout << "zone ID " << mZoneID << " CN " << i << " : " << t1x << "\n";
-
-            
-            // send continue touch message
-			// is dz useful here or should it be 0?
-            r = buildMessage("touch", "continue", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote, vibratoHP);
-        }
+        // use previous position on release
+        t1x = t2.pos.x();
+        t1y = t2.pos.y();
     }
+    else
+    {
+        t1x = t1.pos.x();
+        t1y = t1.pos.y();
+    }
+    float t1z = t1.pos.z();
+    float t1dz = t1.pos.w();
+    float tStartX = tStart.pos.x();
+    float currentXPos = mXRange(t1x) - mBounds.left();
+    float startXPos = mXRange(tStartX) - mBounds.left();
+    float vibratoX = currentXPos;
+    float touchPos, scaleNote;
+    
+    if(mNoteLock)
+    {
+        touchPos = startXPos;
+    }
+    else
+    {
+        touchPos = currentXPos;
+    }
+    
+    if(mQuantize)
+    {
+        scaleNote = mScaleMap[(int)touchPos];
+    }
+    else
+    {
+        scaleNote = mScaleMap.getInterpolatedLinear(touchPos - 0.5f);
+    }
+
+    if(isActive && !wasActive)
+    {
+        // if touch i was freed on the frame preceding this one, it moved
+        // from zone to zone.
+        bool retrig = (freedTouches[i]);
+
+        // setup filter states for new note and output
+        mNoteFilters[i].setState(scaleNote);
+        mVibratoFilters[i].setState(vibratoX);
+        
+        if(retrig)
+        {
+            // sliding from key to key- get retrigger velocity from current z
+            t1dz = ml::clamp(t1z * 0.01f, 0.0001f, 1.f);
+        }
+        else
+        {
+            // clamp note-on dz for use as velocity later.
+            t1dz = ml::clamp(t1dz, 0.0001f, 1.f);
+        }
+        
+        // MLTEST
+        std::cout << "zone ID " << mZoneID << " ON " << i << " : " << t1dz << "\n";
+        
+        r = buildMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
+    }
+    else if(isActive)
+    {
+        // filter ongoing note
+        scaleNote = mNoteFilters[i].processSample(scaleNote);
+        vibratoX = mVibratoFilters[i].processSample(vibratoX);
+        
+        // subtract low pass filter to get vibrato amount
+        float vibratoHP = (currentXPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;
+        
+
+        // MLTEST
+        //std::cout << "zone ID " << mZoneID << " CN " << i << " : " << t1x << "\n";
+
+        //  std::cout << "t" << i << ": " <<mCurrentKeyX[i] << ", " << mCurrentKeyY[i] << "\n";
+        
+        
+        // hysteresis
+        
+        
+        
+        // send continue touch message
+        // is dz useful here or should it be 0?
+        r = buildMessage("touch", "continue", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote, vibratoHP);
+    }
+
     return r;
 }
 
 // process any note offs. called by the model for all zones before processTouches() so that any new
 // notes with the same index as an expiring one will have a chance to get started.
-SoundplaneDataMessage Zone::processTouchesNoteOffs(std::vector<bool>& freedTouches)
+SoundplaneZoneMessage Zone::processTouchesNoteOffs(int i, std::vector<bool>& freedTouches)
 {
-    SoundplaneDataMessage r;
+    SoundplaneZoneMessage r;
 
-    // for each possible touch, send any active touch or touch off messages to listeners
-    for(int i=0; i<kSoundplaneMaxTouches; ++i)
+    ZoneTouch t1 = mTouches0[i];
+    ZoneTouch t2 = mTouches1[i];
+    bool isActive = t1.isActive();
+    bool wasActive = t2.isActive();
+    
+    float t2x = t2.pos.x();
+    float xPos = mXRange(t2x) - mBounds.left();
+    xPos = ml::clamp(xPos, 0.f, mBounds.width());
+    float scaleNote;
+    if(mQuantize)
     {
-        ZoneTouch t1 = mTouches0[i];
-        ZoneTouch t2 = mTouches1[i];
-        bool isActive = t1.isActive();
-        bool wasActive = t2.isActive();
-        
-        float t2x = t2.pos.x();
-        float xPos = mXRange(t2x) - mBounds.left();
-		xPos = ml::clamp(xPos, 0.f, mBounds.width());
-		float scaleNote;
-        if(mQuantize)
+        scaleNote = mScaleMap[(int)xPos];
+    }
+    else
+    {
+        scaleNote = mScaleMap.getInterpolatedLinear(xPos - 0.5f);
+    }
+    if(wasActive)
+    {
+        if(!isActive)
         {
-            scaleNote = mScaleMap[(int)xPos];
-        }    
-		else
-		{
-			scaleNote = mScaleMap.getInterpolatedLinear(xPos - 0.5f);  
-		}
-        if(!isActive && wasActive)
-        {
-			// on note off, retain last note for release
-			float lastScaleNote;
-			if(mQuantize)
-			{
-				lastScaleNote = scaleNote;
-			}
-			else
-			{
-				float lastX = mXRange(t2.pos.x()) - mBounds.left();
-				lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
-			}
-			freedTouches[i] = true;
-			r = buildMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + lastScaleNote);
+            // on note off, retain last note for release
+            float lastScaleNote;
+            if(mQuantize)
+            {
+                lastScaleNote = scaleNote;
+            }
+            else
+            {
+                float lastX = mXRange(t2.pos.x()) - mBounds.left();
+                lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
+            }
+            freedTouches[i] = true;
+            r = buildMessage("touch", "off", i, t2.pos.x(), t2.pos.y(), t2.pos.z(), t2.pos.w(), mStartNote + mTranspose + lastScaleNote);
         }
     }
+
     return r;
 }
 
-
-SoundplaneDataMessage Zone::processTouchesControllerX()
+SoundplaneZoneMessage Zone::processTouchesControllerX()
 {
-    SoundplaneDataMessage r;
+    SoundplaneZoneMessage r;
     if(getNumberOfActiveTouches() > 0)
     {
         Vec3 avgPos = getAveragePositionOfActiveTouches();
@@ -382,9 +399,9 @@ SoundplaneDataMessage Zone::processTouchesControllerX()
     return r;
 }
 
-SoundplaneDataMessage Zone::processTouchesControllerY()
+SoundplaneZoneMessage Zone::processTouchesControllerY()
 {
-    SoundplaneDataMessage r;
+    SoundplaneZoneMessage r;
     if(getNumberOfActiveTouches() > 0)
     {
         Vec3 avgPos = getAveragePositionOfActiveTouches();
@@ -394,9 +411,9 @@ SoundplaneDataMessage Zone::processTouchesControllerY()
     return r;
 }
 
-SoundplaneDataMessage Zone::processTouchesControllerXY()
+SoundplaneZoneMessage Zone::processTouchesControllerXY()
 {
-    SoundplaneDataMessage r;
+    SoundplaneZoneMessage r;
     if(getNumberOfActiveTouches() > 0)
     {
         Vec3 avgPos = getAveragePositionOfActiveTouches();
@@ -407,9 +424,9 @@ SoundplaneDataMessage Zone::processTouchesControllerXY()
     return r;
 }
 
-SoundplaneDataMessage Zone::processTouchesControllerToggle()
+SoundplaneZoneMessage Zone::processTouchesControllerToggle()
 {
-    SoundplaneDataMessage r;
+    SoundplaneZoneMessage r;
     bool touchOn = getNumberOfNewTouches() > 0;
     if(touchOn)
     {
@@ -419,9 +436,9 @@ SoundplaneDataMessage Zone::processTouchesControllerToggle()
     return r;
 }
 
-SoundplaneDataMessage Zone::processTouchesControllerPressure()
+SoundplaneZoneMessage Zone::processTouchesControllerPressure()
 {
-    SoundplaneDataMessage r;
+    SoundplaneZoneMessage r;
     float z = 0;
     if(getNumberOfActiveTouches() > 0)
     {
@@ -432,9 +449,9 @@ SoundplaneDataMessage Zone::processTouchesControllerPressure()
     return r;
 }
 
-SoundplaneDataMessage Zone::buildMessage(ml::Symbol type, ml::Symbol subtype, float a, float b, float c, float d, float e, float f, float g, float h)
+SoundplaneZoneMessage Zone::buildMessage(ml::Symbol type, ml::Symbol subtype, float a, float b, float c, float d, float e, float f, float g, float h)
 {
-    SoundplaneDataMessage m;
+    SoundplaneZoneMessage m;
     m.mType = type;
     m.mSubtype = subtype;
 	m.mOffset = mOffset;			// send port offset of this zone

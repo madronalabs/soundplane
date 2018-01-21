@@ -101,8 +101,9 @@ void SoundplaneFooterView::setStatus (const char* stat, const char* client)
 			temp += " / ";
 			temp += client;
 		}
-		temp += ".";
+
 		mpStatus->setProperty("text", temp.c_str());
+        mpStatus->repaint();
 	}
 }
 
@@ -303,9 +304,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	pB = page0->addToggleButton("active", toggleRect.withCenter(3.25, bottomDialsY), "midi_active", c2);
 	
 	pB = page0->addToggleButton("pressure", toggleRect.withCenter(3.25, bottomDialsY2), "midi_pressure_active", c2);
-	pD = page0->addDial("rate", dialRect.withCenter(4.25, bottomDialsY), "data_freq_midi", c2);
-	pD->setRange(1., 500., 1.);
-	pD->setDefault(250.);
+
 	pD = page0->addDial("bend range", dialRect.withCenter(5.25, bottomDialsY), "bend_range", c2);
 	pD->setRange(0., 96., 1.);
 	pD->setDefault(48);
@@ -329,9 +328,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	// OSC
 	
 	pB = page0->addToggleButton("active", toggleRect.withCenter(8.75, bottomDialsY), "osc_active", c2);
-	pD = page0->addDial("rate", dialRect.withCenter(9.75, bottomDialsY), "data_freq_osc", c2);
-	pD->setRange(1., 500., 1.);
-	pD->setDefault(250.);
+
 	pB = page0->addToggleButton("matrix", toggleRect.withCenter(10.75, bottomDialsY), "osc_send_matrix", c2);
 	
 	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(9.75, 9.), "osc_service_name");
@@ -383,90 +380,85 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 //	page1->addToggleButton("all", toggleRectTiny.withCenter(0*0.3 + 1., 6.), "all_toggle", c2);
 
 	// controls
-	//
+    //
+    
+    page1->addTextButton("recalibrate", textButtonRect.withCenter(2.75, 9.), "calibrate");
+    
+    // page1->addTextButton("test", textButtonRect2.withCenter(7., 8.), "test");
+    
+    pD = page1->addDial("view scale", dialRectSmall.withCenter(13, dialY - 0.125), "display_scale", c2);
+    pD->setRange(0.5, 20., 0.1);
+    pD->setDefault(1.);
+    
+    // ----
+    
+    pD = page1->addDial("touches", dialRect.withCenter(0.5, dialY), "max_touches", c2);
+    pD->setRange(0., 16., 1.);
+    pD->setDefault(4);
+    
+    pB = page1->addToggleButton("rotate", toggleRect.withCenter(1.5, dialY), "rotate", c2);
+    
+    // ----
+    
+    pD = page1->addDial("thresh", dialRect.withCenter(2.5, dialY), "z_thresh", c2);
+    pD->setRange(0., 0.1, 0.01);
+    pD->setDefault(0.05);
+    
+    pD = page1->addDial("z scale", dialRect.withCenter(3.75, dialY), "z_scale", c2);
+    pD->setRange(0.25, 5.0, 0.01);
+    pD->setDefault(1.0);
+    
+    pD = page1->addDial("z curve", dialRect.withCenter(5.0, dialY), "z_curve", c2);
+    pD->setRange(0., 1., 0.01);
+    pD->setDefault(0.5);
+    
+    // ----
+    
+    pD = page1->addDial("lopass z", dialRect.withCenter(6.25, dialY), "lopass_z", c2);
+    pD->setRange(1., 250., 1.);
+    pD->setDefault(100.);
+    
+    pD = page1->addDial("data rate", dialRect.withCenter(7.5, dialY), "data_rate", c2);
+    pD->setRange(1, 500, 5);
+    pD->setDefault(100);
 
-	page1->addTextButton("recalibrate", textButtonRect.withCenter(2.75, 9.), "calibrate");
-
-	// page1->addTextButton("test", textButtonRect2.withCenter(7., 8.), "test");
-
-	pD = page1->addDial("view scale", dialRectSmall.withCenter(13, dialY - 0.125), "display_scale", c2);
-	pD->setRange(0.5, 20., 0.1);
-	pD->setDefault(1.);	
-	
-	// ----
-	
-	pD = page1->addDial("touches", dialRect.withCenter(0.5, dialY), "max_touches", c2);
-	pD->setRange(0., 16., 1.);	
-	pD->setDefault(4);	
-	
-	pB = page1->addToggleButton("rotate", toggleRect.withCenter(1.5, dialY), "rotate", c2);
-	
-	// ----
-	
-	pD = page1->addDial("thresh", dialRect.withCenter(2.5, dialY), "z_thresh", c2);
-	pD->setRange(0., 0.1, 0.01);	
-	pD->setDefault(0.05);	
-	
-	pD = page1->addDial("z scale", dialRect.withCenter(3.75, dialY), "z_scale", c2);
-	pD->setRange(0.25, 5.0, 0.01);	
-	pD->setDefault(1.0);
-	
-	pD = page1->addDial("z curve", dialRect.withCenter(5.0, dialY), "z_curve", c2);
-	pD->setRange(0., 1., 0.01);	
-	pD->setDefault(0.5);	
-
-	// ----
-
-	/*
-	pD = page1->addDial("lopass xy", dialRect.withCenter(9.5, dialY), "lopass_xy", c2);
-	pD->setRange(1., 100., 1.);	
-	pD->setDefault(50.);	
-	*/
-	
-	pD = page1->addDial("lopass z", dialRect.withCenter(6.25, dialY), "lopass_z", c2);
-	pD->setRange(1., 250., 1.);	
-	pD->setDefault(100.);	
-	
-	mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
-
-//	mpCurveGraph = page1->addGraph("zgraph", Colours::black);
-
-	// add parameter views handled directly by this Widget
-	page1->addPropertyView("viewmode", this, ml::Symbol("viewmode"));	
-	
-	// grid view gets viewmode changes
-	page1->addPropertyView("viewmode", &mGridView, ml::Symbol("viewmode"));
-
+    mpViewModeButton = page1->addMenuButton("view mode", textButtonRect2.withCenter(13, 9.), "viewmode");
+    
+    //    mpCurveGraph = page1->addGraph("zgraph", Colours::black);
+    
+    // add parameter views handled directly by this Widget
+    page1->addPropertyView("viewmode", this, ml::Symbol("viewmode"));
+    
+    // grid view gets viewmode changes
+    page1->addPropertyView("viewmode", &mGridView, ml::Symbol("viewmode"));
+    
     // --------------------------------------------------------------------------------
     // page 2 - expert stuff
-	//
-	MLAppView* page2 = mpPages->addPage();
-
-	// title
-	pL = page2->addLabel("Expert", pageTitleRect, 1.5f, eMLTitle);
+    //
+    MLAppView* page2 = mpPages->addPage();
+    
+    // title
+    pL = page2->addLabel("Expert", pageTitleRect, 1.5f, eMLTitle);
     pL->setResizeToText(false);
-	pL->setJustification(Justification::centredLeft);
-	
-	// utility buttons
-	page2->addTextButton("select carriers", MLRect(0, 2, 3, 0.4), "select_carriers");
-	page2->addTextButton("restore defaults", MLRect(0, 3., 3, 0.4), "restore_defaults");
-	
-	
-
-	// console
-	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));
-	
-	MLConsole().sendOutputToListener(pDebug);
-	
-	// MLTEST temp
-	//debug().sendOutputToListener(pDebug);
-
-		
-	pD = page2->addDial("hysteresis", dialRect.withCenter(0.5, dialY), "hysteresis", c2);
-	pD->setRange(0.01, 1.0, 0.01);	
+    pL->setJustification(Justification::centredLeft);
+    
+    // utility buttons
+    page2->addTextButton("select carriers", MLRect(0, 2, 3, 0.4), "select_carriers");
+    page2->addTextButton("restore defaults", MLRect(0, 3., 3, 0.4), "restore_defaults");
+    
+    // console
+    MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));
+    
+    MLConsole().sendOutputToListener(pDebug);
+    
+    // MLTEST temp
+    //debug().sendOutputToListener(pDebug);
+    
+    
+    pD = page2->addDial("hysteresis", dialRect.withCenter(0.5, dialY), "hysteresis", c2);
+    pD->setRange(0.01, 1.0, 0.01);
 	pD->setDefault(0.5);
 
-	
     pB = page2->addToggleButton("kyma", toggleRect.withCenter(12, dialY), "kyma", c2);
     
     pB = page2->addToggleButton("verbose", toggleRect.withCenter(13, dialY), "verbose", c2);
@@ -486,7 +478,9 @@ SoundplaneView::~SoundplaneView()
 //
 void SoundplaneView::doPropertyChangeAction(ml::Symbol p, const MLProperty & val)
 {
-	bool handled = false;
+    debug() << "SoundplaneView::doPropertyChangeAction: " << p << " -> " << val << "\n";
+
+    bool handled = false;
 	if(p == "viewmode")
 	{
 		handled = true;
@@ -634,6 +628,7 @@ void SoundplaneView::setOSCServicesString(const std::string& str)
 		mpOSCServicesButton->setProperty("text", str.c_str());
 }
 
+/*
 void SoundplaneView::paint (Graphics& g)
 {
 //	MLLookAndFeel* myLookAndFeel = &(getRootViewResources(this).mLookAndFeel);
@@ -643,6 +638,7 @@ void SoundplaneView::paint (Graphics& g)
 	
 //	myLookAndFeel->drawBackground(g, this);	
 }
+*/
 
 void SoundplaneView::goToPage (int page)
 {

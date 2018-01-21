@@ -220,6 +220,9 @@ void SoundplaneController::showMenu (ml::Symbol menuName, ml::Symbol instigatorN
 		{
 			// refresh device list
 			menu->clear();
+            
+            // TODO this should not be the interface.
+            // instead return a list.
 			SoundplaneMIDIOutput& outs = mpSoundplaneModel->getMIDIOutput();
 			outs.findMIDIDevices ();
 			const std::vector<std::string>& devices = outs.getDeviceList();

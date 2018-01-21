@@ -12,6 +12,7 @@
 #include <chrono>
 #include <stdint.h>
 
+#include "MLT3D.h"
 #include "MLDebug.h"
 #include "SoundplaneDataListener.h"
 #include "SoundplaneModelA.h"
@@ -22,16 +23,9 @@
 
 extern const char* kDefaultHostnameString;
 
-// default port for t3d plugin communication. Plugins may be receiving on different ports.
-const int kDefaultUDPPort = 3123;
-
-// maximum number of ports from kDefaultUDPPort to (kDefaultUDPPort + kNumUDPPorts - 1)
-const int kNumUDPPorts = 16;
-
-// Soundplane app input port for Kyma and other config messages
-const int kDefaultUDPReceivePort = 3122; 
-
 const int kUDPOutputBufferSize = 4096;
+
+using namespace std::chrono;
 
 class OSCVoice
 {
@@ -62,76 +56,45 @@ public:
 	void connect();
 
     // SoundplaneDataListener
-    void processSoundplaneMessage(const SoundplaneDataMessage* msg);
+    void processSoundplaneMessage(const SoundplaneZoneMessage msg) override;
     
-	void setDataFreq(float f) { mDataFreq = f; }
+    void startFrame(time_point<system_clock> now);
+
+	void setDataRate(int r) { mDataRate = r; }
 	
 	void setActive(bool v);
 	void setMaxTouches(int t) { mMaxTouches = ml::clamp(t, 0, kSoundplaneMaxTouches); }
 	
 	void setSerialNumber(int s) { mSerialNumber = s; }
 	void notify(int connected);
-	
-	void doInfrequentTasks() { mDoInfrequentTasks.set(); }
-
-private:	
-	
-	// MLTEST
-	std::mutex mProcessMutex;
-	
+    void doInfrequentTasks();
+    
+    void processMatrix(const MLSignal& m);
+    
+private:
 	void initializeSocket(int port);
 	osc::OutboundPacketStream* getPacketStreamForOffset(int offset);
 	UdpTransmitSocket* getTransmitSocketForOffset(int portOffset);
 	
-	void sendFrame();
-	void sendFrameToKyma();
+    void sendFrame();
+    void sendFrameToKyma();
+
 	void sendInfrequentData();
 	void sendInfrequentDataToKyma();
-	void sendMatrix(const SoundplaneDataMessage* msg);
+
 
 	int mMaxTouches;	
 	
 	std::vector< std::vector<OSCVoice> > mOSCVoices;
-	int mPortOffsetsByTouch[kSoundplaneMaxTouches];
-	int mPrevPortOffsetsByTouch[kSoundplaneMaxTouches];
 	
-    SoundplaneDataMessage mMessagesByZone[kSoundplaneAMaxZones];
+    SoundplaneZoneMessage mMessagesByZone[kSoundplaneAMaxZones];
     
-	float mDataFreq;
-    bool mTimeToSendNewFrame;
-	
-	std::chrono::time_point<std::chrono::system_clock> mCurrFrameStartTime;
-	std::chrono::time_point<std::chrono::system_clock> mLastFrameStartTime;
-	std::chrono::time_point<std::chrono::system_clock> lastInfrequentTaskTime;
+    int mDataRate = 100;
+    time_point<system_clock> mFrameTime;
 
 	std::vector< std::vector < char > > mUDPBuffers;
 	std::vector< std::unique_ptr< osc::OutboundPacketStream > > mUDPPacketStreams;
 	std::vector< std::unique_ptr< UdpTransmitSocket > > mUDPSockets;
-	
-	// TODO: this would be a great place to use a compare and swap 
-	class ThreadSafeFlag
-	{
-	public:
-		ThreadSafeFlag(){}
-		~ThreadSafeFlag(){}
-		void set()
-		{
-			std::lock_guard<std::mutex> lock(mMutex);
-			mFlag = true;
-		}
-		inline bool wasSet()
-		{
-			std::lock_guard<std::mutex> lock(mMutex);
-			bool r = mFlag;
-			mFlag = false;
-			return r;
-		}
-	private:
-		bool mFlag;
-		std::mutex mMutex;
-	};
-	
-	ThreadSafeFlag mDoInfrequentTasks;
 	
 	int mCurrentBaseUDPPort;
 	osc::int32 mFrameId;
@@ -139,9 +102,6 @@ private:
 	
 	bool mKymaMode;
 	int mKymaPort;
-    bool mGotNoteChangesThisFrame;
-    bool mGotMatrixThisFrame;
-    SoundplaneDataMessage mMatrixMessage;
 };
 
 

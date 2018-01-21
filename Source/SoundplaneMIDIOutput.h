@@ -88,9 +88,7 @@ public:
 	void initialize();
 	
     // SoundplaneDataListener
-    void processSoundplaneMessage(const SoundplaneDataMessage* msg);
-
-	void setDataFreq(float f) { mDataFreq = f; }
+    void processSoundplaneMessage(const SoundplaneZoneMessage msg) override;
 	
 	void findMIDIDevices ();
 	void setDevice(int d);
@@ -144,21 +142,13 @@ private:
 	int mVoices;
 	
 	MIDIVoice mMIDIVoices[kMaxMIDIVoices];
-    SoundplaneDataMessage mMessagesByZone[kSoundplaneAMaxZones];
+    SoundplaneZoneMessage mMessagesByZone[kSoundplaneAMaxZones];
 
 	std::vector<MIDIDevicePtr> mDevices;
 	std::vector<std::string> mDeviceList;
 	juce::MidiOutput* mpCurrentDevice;
-	
-	float mDataFreq;
 
-	std::chrono::time_point<std::chrono::system_clock> mCurrFrameStartTime;
-	std::chrono::time_point<std::chrono::system_clock> mLastFrameStartTime;
-	std::chrono::time_point<std::chrono::system_clock> mLastTimeVerbosePrint;
-	std::chrono::time_point<std::chrono::system_clock> mLastTimeNRPNWasSent;
-	
-	bool mTimeToSendNewFrame;
-	bool mGotControllerChanges;
+    bool mGotControllerChanges;
     
 	bool mPressureActive;
 
@@ -177,7 +167,6 @@ private:
 	
 	bool mKymaMode;
 	bool mVerbose;
-
 };
 
 

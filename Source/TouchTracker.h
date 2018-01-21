@@ -44,8 +44,11 @@ public:
 	void setThresh(float f);
 	void setLopassZ(float k); 	
 	
-	// process input and get touches. creates one frame of touch data in buffer.
-	void process(const SensorFrame& in, int maxTouches, TouchArray* pOut, SensorFrame* pTest);
+    // preprocess input to get curvature
+    SensorFrame preprocess(const SensorFrame& in);
+    
+	// process input and get touches. returns one frame of touch data. changes history of many filters.
+	TouchArray process(const SensorFrame& in, int maxTouches);
 	
 private:
 

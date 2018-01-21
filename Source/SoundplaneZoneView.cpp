@@ -95,11 +95,10 @@ void SoundplaneZoneView::renderGrid()
 	}
 }
 
+
 void SoundplaneZoneView::renderZones()
 {
 	if (!mpModel) return;
-    const ScopedLock lock(*(mpModel->getZoneLock()));
-    const std::vector<ZonePtr>& zoneList = mpModel->getZones();
 
     int viewW = getBackingLayerWidth();
     int viewH = getBackingLayerHeight();
@@ -126,16 +125,22 @@ void SoundplaneZoneView::renderZones()
     
    // float strokeWidth = viewW / 100;    
     
-    std::vector<ZonePtr>::const_iterator it;
-
-    for(it = zoneList.begin(); it != zoneList.end(); ++it)
+    for(auto it = mpModel->getZonesBegin(); it != mpModel->getZonesEnd(); ++it)
     {
-        const Zone& zone = **it;
+        const Zone& zone = *it;
         
         int t = zone.getType();
         MLRect zr = zone.getBounds();
-        const char * name = zone.getName().getText();
-		int offset = zone.getOffset();
+        
+        // MLTEST
+        TextFragment nameFrag = zone.getName();
+        
+        // TODO again, how to prevent writing this kind of bug?
+//        const char * name = zone.getName().getText();
+
+        const char * name = nameFrag.getText();
+
+        int offset = zone.getOffset();
         
         // affine transforms TODO for better syntax: MLRect zrd = zr.xform(gridToView);
         
@@ -158,6 +163,7 @@ void SoundplaneZoneView::renderZones()
         glLineWidth(lineWidth);
         MLGL::strokeRect(zoneRectInView, 2.0f*viewScale);
         glLineWidth(1);
+        
         // draw name
         // all these rect calculations read upside-down here because view origin is at bottom
         MLGL::drawTextAt(zoneRectInView.left() + lineWidth, zoneRectInView.top() + lineWidth, 0.f, 0.1f, viewScale, name);
@@ -239,6 +245,7 @@ void SoundplaneZoneView::renderZones()
          }
     }
 }
+
 
 void SoundplaneZoneView::renderOpenGL()
 {

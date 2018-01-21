@@ -6,15 +6,11 @@
 //
 //
 
-#ifndef __Soundplane__SoundplaneZone__
-#define __Soundplane__SoundplaneZone__
+#pragma once
 
-//#include "MLDSPUtils.h"
-//#include "MLTime.h"
 #include "MLModel.h"
 #include "SoundplaneModelA.h"
 #include "SoundplaneDriver.h"
-//#include "SoundplaneDataListener.h"
 #include "MLOSCListener.h"
 #include "OSC/zeroconf/NetService.h"
 #include "OSC/zeroconf/NetServiceBrowser.h"
@@ -63,21 +59,25 @@ class Zone
 {
     friend class SoundplaneModel;
 public:
-    Zone(const SoundplaneListenerList& l);
-    ~Zone();
+    Zone();
+    ~Zone() {}
 
     static int symbolToZoneType(ml::Symbol s);
 
+    void newFrame();
     void addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz);
+    void storeAnyNewTouches();
     
-    SoundplaneDataMessage processTouches(const std::vector<bool>& freedTouches);
-    
+    SoundplaneZoneMessage processTouches();
+    SoundplaneZoneMessage processTouchNoteRow(int t, const std::vector<bool>& freedTouches);
+    SoundplaneZoneMessage processTouchesNoteOffs(int i, std::vector<bool>& freedTouches);
+
     const ZoneTouch touchToKeyPos(const ZoneTouch& t) const
     {
         return ZoneTouch(mXRange(t.pos.x()), mYRange(t.pos.y()), t.kx, t.ky, t.pos.z(), t.pos.w());
     }
     
-    // getters
+    void setSampleRate(float r);
     int setZoneID() const { return mZoneID; }
     const ZoneTouch getTouch(int i) const { return mTouches1[i]; }
     bool needsRedraw() const { return mNeedsRedraw; }
@@ -129,25 +129,21 @@ protected:
     int mControllerNum2;
     int mControllerNum3;
     int mOffset;
-    ml::TextFragment mName;
-    const SoundplaneListenerList& mListeners;
+    ml::TextFragment mName{};
     
 private:
-    
     int getNumberOfActiveTouches() const;
     int getNumberOfNewTouches() const;
     Vec3 getAveragePositionOfActiveTouches() const;
     float getMaxZOfActiveTouches() const;
     
-    SoundplaneDataMessage processTouchesNoteRow(const std::vector<bool>& freedTouches);
-    SoundplaneDataMessage processTouchesNoteOffs(std::vector<bool>& freedTouches);
-    SoundplaneDataMessage processTouchesControllerX();
-    SoundplaneDataMessage processTouchesControllerY();
-    SoundplaneDataMessage processTouchesControllerXY();
-    SoundplaneDataMessage processTouchesControllerToggle();
-    SoundplaneDataMessage processTouchesControllerPressure();
+    SoundplaneZoneMessage processTouchesControllerX();
+    SoundplaneZoneMessage processTouchesControllerY();
+    SoundplaneZoneMessage processTouchesControllerXY();
+    SoundplaneZoneMessage processTouchesControllerToggle();
+    SoundplaneZoneMessage processTouchesControllerPressure();
 
-    SoundplaneDataMessage buildMessage(ml::Symbol type, ml::Symbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);
+    SoundplaneZoneMessage buildMessage(ml::Symbol type, ml::Symbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);
    
     bool mNeedsRedraw;
     float mValue[kZoneValArraySize];
@@ -160,11 +156,8 @@ private:
     // touch positions saved at touch onsets
     ZoneTouch mStartTouches[kSoundplaneMaxTouches];
     
-	float mSnapFreq;
 	std::vector<MLBiquad> mNoteFilters;
 	std::vector<MLBiquad> mVibratoFilters;
-
 };
-typedef std::shared_ptr<Zone> ZonePtr;
 
-#endif /* defined(__Soundplane__SoundplaneZone__) */
+

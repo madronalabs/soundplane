@@ -3,8 +3,7 @@
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
-#ifndef __SOUNDPLANE_DATA_LISTENER__
-#define __SOUNDPLANE_DATA_LISTENER__
+#pragma once
 
 #include "MLSignal.h"
 #include "MLModel.h"
@@ -21,14 +20,13 @@ enum VoiceState
     kVoiceStateOff
 };
 
-struct SoundplaneDataMessage
+struct SoundplaneZoneMessage
 {
 	ml::Symbol mType;
     ml::Symbol mSubtype;
 	int mOffset;				// offset for OSC port or MIDI channel
     ml::Symbol mZoneName;
     float mData[8];
-    float mMatrix[SensorGeometry::width*SensorGeometry::height];
 };
 
 class SoundplaneDataListener
@@ -36,7 +34,7 @@ class SoundplaneDataListener
 public:
 	SoundplaneDataListener() : mActive(false) {}
 	virtual ~SoundplaneDataListener() {}
-    virtual void processSoundplaneMessage(const SoundplaneDataMessage* message) = 0;
+    virtual void processSoundplaneMessage(const SoundplaneZoneMessage message) = 0;
     bool isActive() { return mActive; }
 
 protected:
@@ -45,5 +43,17 @@ protected:
 
 typedef std::list<SoundplaneDataListener*> SoundplaneListenerList;
 
-#endif // __SOUNDPLANE_DATA_LISTENER__
+inline std::ostream& operator<< (std::ostream& out, const SoundplaneZoneMessage & r)
+{
+    using namespace std;
+    cout << "{" << r.mType << ", " << r.mSubtype << ", " << r.mOffset << ", " << r.mZoneName << ", ";
+    for(float f : r.mData)
+    {
+        cout << f << " ";
+    }
+    cout << "}";
+    return out;
+}
+
+
 

@@ -25,9 +25,11 @@
 const int kIsochBuffersExp = 3; // MLTEST 3
 const int kNumIsochBuffers = 1 << kIsochBuffersExp;
 const int kIsochBuffersMask = kNumIsochBuffers - 1;
-const int kIsochBuffersInFlight = 2; // AppleUSBAudioStream.h: 6
-const int kIsochFramesPerTransaction = 16; // MLTEST 20
+const int kIsochBuffersInFlight = 6; // AppleUSBAudioStream.h: 6
+const int kIsochFramesPerTransaction = 8; // MLTEST 20
 const int kIsochStartupFrames = 250; // MLTEST 500
+
+const int kPayloadBufferSize = sizeof(SoundplaneADataPacket)*kIsochFramesPerTransaction;
 
 // isoc frame data update rate in ms. see LowLatencyReadIsochPipeAsync docs in IOUSBLib.h.
 // This number is part of the lower limit on our possible latency.
@@ -87,11 +89,18 @@ public:
 	}
 
     bool mUnplugged{true};
-    std::atomic_flag mUnpluggedLock {ATOMIC_FLAG_INIT};
     
 protected:
 	
-    inline int getDeviceState() const { return mDeviceState; }
+    inline int getDeviceState() const override
+    {
+        if(mDeviceState == kDeviceHasIsochSync)
+        {
+            if(mUnplugged) return kDeviceUnplugged;
+        }
+        return mDeviceState;
+    }
+    
 	inline void setDeviceState(int state) { mDeviceState = state; }
 	
 private:
@@ -123,6 +132,10 @@ private:
 	void addOffset(int& buffer, int& frame, int offset);
     uint16_t getTransferBytesReceived(int endpoint, int buffer, int frame);
     unsigned char getPayloadLastByte(int endpoint, int buffer, int frame);
+    void clearPayloads(K1IsocTransaction* t);
+    void clearAllPayloads();
+
+ 
     bool frameWasReceived(int endpoint, int buffer, int frame);
     AbsoluteTime getTransferTimeStamp(int endpoint, int buffer, int frame);
 	IOReturn getTransferStatus(int endpoint, int buffer, int frame);
@@ -142,7 +155,7 @@ private:
 	
     void printTransactions();
 	void grabThread();
-	void process(SensorFrame* pOut);	
+	void process();	
 	void processThread();
 	
 	static int getStringDescriptor(IOUSBDeviceInterface187 **dev, uint8_t descIndex, char *destBuf, uint16_t maxLen, uint16_t lang);
@@ -200,7 +213,6 @@ private:
     char mErrorBuf[kMaxErrorStringSize];
     
     bool mTerminating{false};
-
 };
 
 #endif // __MAC_SOUNDPLANE_DRIVER__

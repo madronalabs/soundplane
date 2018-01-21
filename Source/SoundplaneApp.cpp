@@ -40,7 +40,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 	
 	// add view to window but retain ownership here
 	bool resizeToFit = true;
-
     
 	mpWindow->setContentNonOwned(mpBorder, resizeToFit);
 	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
@@ -57,19 +56,16 @@ void SoundplaneApp::initialise (const String& commandLine)
 
 	// generate a persistent state for the Model
 	mpModelState = std::unique_ptr<MLAppState>(new MLAppState(mpModel, "", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
-
-	// generate a persistent state for the application's view. 
-	mpViewState = std::unique_ptr<MLAppState>(new MLAppState(mpView, "View", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
-
-	if (!mpModelState->loadStateFromAppStateFile()) 
+	if (!mpModelState->loadStateFromAppStateFile())
 	{
         // there is no app state saved, run "welcome to Soundplane" with carrier select
 		setDefaultWindowSize();
 		mpController->doWelcomeTasks(); 
 	}
-	mpController->fetchAllProperties();
-	mpView->goToPage(0);
-
+    mpModel->updateAllProperties();
+ 
+    // generate a persistent state for the application's view.
+    mpViewState = std::unique_ptr<MLAppState>(new MLAppState(mpView, "View", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
 	ModifierKeys k = ModifierKeys::getCurrentModifiersRealtime();
 	if((k.isCommandDown()) || (!mpViewState->loadStateFromAppStateFile()))
 	{
@@ -79,6 +75,9 @@ void SoundplaneApp::initialise (const String& commandLine)
 	{
 		mpView->updateAllProperties();	
 	}
+    
+    mpController->fetchAllProperties();
+    mpView->goToPage(0);
 }
 	
 void SoundplaneApp::shutdown()

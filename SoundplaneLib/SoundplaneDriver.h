@@ -19,7 +19,8 @@ enum
 	kNoDevice = 0,  // No device is connected
     kDeviceClosing = 1,  // destroying driver, allowing isoch transactions to finish
 	kDeviceConnected = 2,  // A device has been found by the grab thread, but isochronous transfer isn't yet up
-	kDeviceHasIsochSync = 3,  // The main mode, isochronous transfers have been completed.
+    kDeviceHasIsochSync = 3,  // The main mode, isochronous transfers have been completed.
+    kDeviceUnplugged = 4,  //
 };
 
 // device errors
@@ -30,7 +31,8 @@ enum
 	kDevNoNewFrame = 1, // unused
 	kDevDataDiffTooLarge = 2,
     kDevGapInSequence = 3,
-    kDevReset = 4
+    kDevReset = 4,
+    kDevPayloadFailed = 5
 };
 
 class SoundplaneDriverListener

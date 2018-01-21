@@ -34,9 +34,9 @@ const int kSoundplaneTouchWidth = 8;
 const int kSoundplaneMaxTouches = 16;
 const int kSoundplaneCalibrateSize = 1024;
 const int kSoundplaneHistorySize = 2048;
-const float kSoundplaneSampleRate = 1000.f;
+const float kSoundplaneFrameRate = 976.5625f;
+const int kSoundplaneFrameIntervalMicros = 1000.f*1000.f/kSoundplaneFrameRate;
 const float kZeroFilterFrequency = 10.f;
-const float kSoundplaneVibratoAmount = 5.;
 
 const int kSoundplaneAKeyWidth = 30;
 const int kSoundplaneAKeyHeight = 5;

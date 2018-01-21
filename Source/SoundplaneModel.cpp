@@ -94,14 +94,16 @@ SensorFrame signalToSensorFrame(const MLSignal& in)
 SoundplaneModel::SoundplaneModel() :
 	mOutputEnabled(false),
 	mSurface(SensorGeometry::width, SensorGeometry::height),
+
 	mRawSignal(SensorGeometry::width, SensorGeometry::height),
 	mCalibratedSignal(SensorGeometry::width, SensorGeometry::height),
 	mSmoothedSignal(SensorGeometry::width, SensorGeometry::height),
+
 	mCalibrating(false),
 	mSelectingCarriers(false),
 	mDynamicCarriers(true),
 	mHasCalibration(false),
-	mZoneMap(kSoundplaneAKeyWidth, kSoundplaneAKeyHeight),
+	mZoneIndexMap(kSoundplaneAKeyWidth, kSoundplaneAKeyHeight),
 	mHistoryCtr(0),
 	mCarrierMaskDirty(false),
 	mNeedsCarriersSet(false),
@@ -141,8 +143,6 @@ SoundplaneModel::SoundplaneModel() :
 	listenToOSC(kDefaultUDPReceivePort);
 	
 	mMIDIOutput.initialize();
-	addListener(&mMIDIOutput);
-	addListener(&mOSCOutput);
 	
 	mTouchFrame.setDims(kSoundplaneTouchWidth, TouchTracker::kMaxTouches);
 	mTouchHistory.setDims(kSoundplaneTouchWidth, TouchTracker::kMaxTouches, kSoundplaneHistorySize);
@@ -217,10 +217,15 @@ void SoundplaneModel::onError(int error, const char* errStr)
             }
             break;
         case kDevReset:
-            // a reset is a bad thing but should only happen when we are switching apps
             if(mVerbose)
             {
                 MLConsole() << "isoch stalled, resetting " << errStr << "\n";
+            }
+            break;
+        case kDevPayloadFailed:
+            if(mVerbose)
+            {
+                MLConsole() << "payload failed at sequence " << errStr << "\n";
             }
             break;
     }
@@ -231,7 +236,7 @@ void SoundplaneModel::onClose()
     enableOutput(false);
 }
 
-void SoundplaneModel::process()
+void SoundplaneModel::process(time_point<system_clock> now)
 {
     if (mSensorFrameQueue->pop(mSensorFrame))
     {
@@ -264,17 +269,21 @@ void SoundplaneModel::process()
         {
             if (mHasCalibration)
             {
-                SensorFrame calibratedFrame = subtract(multiply(mSensorFrame, mCalibrateMeanInv), 1.0f);
+                mCalibratedFrame = subtract(multiply(mSensorFrame, mCalibrateMeanInv), 1.0f);
+                TouchArray t = trackTouches(mCalibratedFrame);
+                processAndSendTouches(t, now);
                 
-                // store calibrated output
-                // TODO less often! only needed for display
+                /*
+                 
+                 
+                 processTouches
+                 
+                 
+                if (time or change)
                 {
-                    std::lock_guard<std::mutex> lock(mCalibratedSignalMutex);
-                    mCalibratedSignal = sensorFrameToSignal(calibratedFrame);
-                }
+                    sendZoneMessages
+                }*/
                 
-                trackTouches(calibratedFrame);
-                sendTouchDataToZones();
             }
         }
     }
@@ -282,7 +291,7 @@ void SoundplaneModel::process()
 
 void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
 {
-	// debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
+	debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
 
 	int propertyType = newVal.getType();
 	switch(propertyType)
@@ -342,15 +351,14 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			{
 				sendParametersToZones();
 			}
-			else if (p == "data_freq_midi")
+			else if (p == "data_rate")
 			{
-				// TODO attribute
-				mMIDIOutput.setDataFreq(v);
-			}
-			else if (p == "data_freq_osc")
-			{
-				// TODO attribute
-				mOSCOutput.setDataFreq(v);
+                mDataRate = v;
+                mOSCOutput.setDataRate(v);
+                for(Zone& z : mZones)
+                {
+                    z.setSampleRate(v);
+                }
 			}
 			else if (p == "midi_active")
 			{
@@ -439,12 +447,12 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			{
 				bool b = v;				
 				mDoOverrideCarriers = b;
-		//		mNeedsCarriersSet = true;
+				mNeedsCarriersSet = true;
 			}
 			else if (p == "override_carrier_set")
 			{
 				makeStandardCarrierSet(mOverrideCarriers, v);
-		//		mNeedsCarriersSet = true;
+				mNeedsCarriersSet = true;
 			}
 		}
 		break;
@@ -552,13 +560,13 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	setProperty("midi_mpe", 1);
 	setProperty("midi_mpe_extended", 0);
 	setProperty("midi_channel", 1);
-	setProperty("data_freq_midi", 250.);
+    
+	setProperty("data_rate", 250.);
 
 	setProperty("kyma_poll", 0);
 
 	setProperty("osc_active", 1);
 	setProperty("osc_raw", 0);
-	setProperty("data_freq_osc", 250.);
 
 	setProperty("bend_range", 48);
 	setProperty("transpose", 0);
@@ -720,7 +728,8 @@ const char* SoundplaneModel::getHardwareStr()
 	std::string serial_number;
 	switch(getDeviceState())
 	{
-		case kNoDevice:
+        case kNoDevice:
+        case kDeviceUnplugged:
 			snprintf(mHardwareStr, miscStrSize, "no device");
 			break;
 		case kDeviceConnected:
@@ -752,12 +761,16 @@ const char* SoundplaneModel::getStatusStr()
 			snprintf(mStatusStr, miscStrSize, "waiting for isochronous data...");
 			break;
 
-		case kDeviceHasIsochSync:
-			snprintf(mStatusStr, miscStrSize, "synchronized");
-			break;
-
+        case kDeviceHasIsochSync:
+            snprintf(mStatusStr, miscStrSize, "synchronized");
+            break;
+            
+        case kDeviceUnplugged:
+            snprintf(mStatusStr, miscStrSize, "unplugged");
+            break;
+            
 		default:
-			snprintf(mStatusStr, miscStrSize, "unknown status.");
+			snprintf(mStatusStr, miscStrSize, "unknown status");
 			break;
 	}
 	return mStatusStr;
@@ -787,39 +800,8 @@ const char* SoundplaneModel::getClientStr()
 // remove all zones from the zone list.
 void SoundplaneModel::clearZones()
 {
-    const ScopedLock lock (mZoneLock);
     mZones.clear();
-    mZoneMap.fill(-1);
-}
-
-// add a zone to the zone list and color in its boundary on the map.
-void SoundplaneModel::addZone(ZonePtr pz)
-{
-    const ScopedLock lock (mZoneLock);
-    // TODO prevent overlapping zones
-    int zoneIdx = mZones.size();
-    if(zoneIdx < kSoundplaneAMaxZones)
-    {
-        pz->setZoneID(zoneIdx);
-        mZones.push_back(pz);
-        MLRect b(pz->getBounds());
-        int x = b.x();
-        int y = b.y();
-        int w = b.width();
-        int h = b.height();
-
-        for(int j=y; j < y + h; ++j)
-        {
-            for(int i=x; i < x + w; ++i)
-            {
-                mZoneMap(i, j) = zoneIdx;
-            }
-        }
-    }
-    else
-    {
-        MLConsole() << "SoundplaneModel::addZone: out of zones!\n";
-    }
+    mZoneIndexMap.fill(-1);
 }
 
 void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
@@ -838,7 +820,9 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
     {
         if(!strcmp(pNode->string, "zone"))
         {
-            Zone* pz = new Zone(mListeners);
+            mZones.emplace_back(Zone());
+            Zone* pz = &mZones.back();
+            
             cJSON* pZoneType = cJSON_GetObjectItem(pNode, "type");
             if(pZoneType)
             {
@@ -888,23 +872,37 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
             pz->mControllerNum1 = getJSONInt(pNode, "ctrl1");
             pz->mControllerNum2 = getJSONInt(pNode, "ctrl2");
             pz->mControllerNum3 = getJSONInt(pNode, "ctrl3");
-
-            addZone(ZonePtr(pz));
             
-           //  mZoneMap.dump(mZoneMap.getBoundsRect());
+            int zoneIdx = mZones.size() - 1;
+            if(zoneIdx < kSoundplaneAMaxZones)
+            {
+                pz->setZoneID(zoneIdx);
+
+                MLRect b(pz->getBounds());
+                int x = b.x();
+                int y = b.y();
+                int w = b.width();
+                int h = b.height();
+                
+                for(int j=y; j < y + h; ++j)
+                {
+                    for(int i=x; i < x + w; ++i)
+                    {
+                        mZoneIndexMap(i, j) = zoneIdx;
+                    }
+                }
+            }
+            else
+            {
+                MLConsole() << "SoundplaneModel::loadZonesFromString: out of zones!\n";
+            }
+            
         }
 		pNode = pNode->next;
     }
     sendParametersToZones();
 }
 
-void SoundplaneModel::clearTouchData()
-{
-	for(int i=0; i<TouchTracker::kMaxTouches; ++i)
-	{
-		mTouchArray[i] = TouchTracker::Touch();
-	}
-}
 
 // copy relevant parameters from Model to zones
 void SoundplaneModel::sendParametersToZones()
@@ -920,12 +918,12 @@ void SoundplaneModel::sendParametersToZones()
 
     for(int i=0; i<zones; ++i)
 	{
-        mZones[i]->mVibrato = v;
-        mZones[i]->mHysteresis = h;
-        mZones[i]->mQuantize = q;
-        mZones[i]->mNoteLock = nl;
-        mZones[i]->mTranspose = t;
-        mZones[i]->setSnapFreq(sf);
+        mZones[i].mVibrato = v;
+        mZones[i].mHysteresis = h;
+        mZones[i].mQuantize = q;
+        mZones[i].mNoteLock = nl;
+        mZones[i].mTranspose = t;
+        mZones[i].setSnapFreq(sf);
     }
 }
 
@@ -945,195 +943,276 @@ float responseCurve(float x, float c)
 	return y;
 }
 
-void SoundplaneModel::scaleTouchPressureData()
+bool SoundplaneModel::findNoteChanges(TouchArray t0, TouchArray t1)
 {
+    bool anyChanges = false;
+    
+    for(int i=0; i<TouchTracker::kMaxTouches; ++i)
+    {
+        if((t0[i].age == 0) != (t1[i].age == 0))
+        {
+            anyChanges = true;
+            break;
+        }
+    }
+
+    return anyChanges;
+}
+
+TouchArray SoundplaneModel::scaleTouchPressureData(TouchArray in)
+{
+    TouchArray out = in;
+    
 	const float zscale = getFloatProperty("z_scale");
 	const float zcurve = getFloatProperty("z_curve");
 	const float dzScale = 0.125f;
 
 	for(int i=0; i<TouchTracker::kMaxTouches; ++i)
 	{
-		float z = mTouchArray[i].z;
+		float z = in[i].z;
 		z *= zscale;
 		z = ml::clamp(z, 0.f, 4.f);
 		z = responseCurve(z, zcurve);
-		mTouchArray[i].z = z;
+		out[i].z = z;
 		
 		// for note-ons, use same z scale controls as pressure
-		float dz = mTouchArray[i].dz*dzScale;
+		float dz = in[i].dz*dzScale;
 		dz *= zscale;		
 		dz = ml::clamp(dz, 0.f, 1.f);
 		dz = responseCurve(dz, zcurve);
-		mTouchArray[i].dz = dz;
+		out[i].dz = dz;
 	}
+    return out;
 }
 
 // send raw touches to zones in order to generate note and controller events.
-void SoundplaneModel::sendTouchDataToZones()
+// send events to listeners.
+void SoundplaneModel::processAndSendTouches(TouchArray touches, time_point<system_clock> now)
 {
 	float x, y, z, dz;
 	int age;
 
-    
-    // someting is wrong
-    
-	const int maxTouches = getFloatProperty("max_touches");
+ 	const int maxTouches = getFloatProperty("max_touches");
 	const float hysteresis = getFloatProperty("hysteresis");
 
-	MLRange yRange(0.05, 0.8);
-	yRange.convertTo(MLRange(0., 1.));
+    // determine if incoming frame could start or end a touch, update history
+    bool notesChangedThisFrame = findNoteChanges(touches, mTouchArray1);
+    
+    // MLTEST
+    if(notesChangedThisFrame) std::cout << "◊";
+    mTouchArray1 = touches;
+    
+    const int dataPeriodMicrosecs = 1000*1000 / mDataRate;    
+    int micros = duration_cast<microseconds>(now - mPrevProcessTouchesTime).count();
+    bool timeForNewFrame = (micros >= dataPeriodMicrosecs);
+    
+    if(notesChangedThisFrame || timeForNewFrame)
+    {
+        mPrevProcessTouchesTime = now;
+        
+        //std::cout << "micros: " << micros << "\n";
+        
+        // clear incoming touches and push touch history in each zone
+        for(auto& zone : mZones)
+        {
+            zone.newFrame();
+        }
 
-    for(int i=0; i<maxTouches; ++i)
-	{		
-		x = mTouchArray[i].x;
-		y = mTouchArray[i].y;
-		z = mTouchArray[i].z;
-		dz = mTouchArray[i].dz;
-		age = mTouchArray[i].age;
-		
-		if(age > 0)
-		{
-			// get fractional key grid position (Soundplane A)
-			Vec2 keyXY (x, y);
-
-            // get integer key
-			int ix = (int)x;
-			int iy = (int)y;
-			
-            // apply hysteresis to raw position to get current key
-            // hysteresis: make it harder to move out of current key
+        // add any active touches to the Zones they are over
+        for(int i=0; i<maxTouches; ++i)
+        {
+            x = touches[i].x;
+            y = touches[i].y;
+            z = touches[i].z;
+            dz = touches[i].dz;
+            age = touches[i].age;
+            
+            // MLTEST
             if(age == 1)
             {
-                mCurrentKeyX[i] = ix;
-                mCurrentKeyY[i] = iy;
+                std::cout << i << ":" << z << "\n";
             }
-            else
+            
+            if(age > 0)
             {
-                float hystWidth = hysteresis*0.25f;
-                MLRect currentKeyRect(mCurrentKeyX[i], mCurrentKeyY[i], 1, 1);
-                currentKeyRect.expand(hystWidth);
-                if(!currentKeyRect.contains(keyXY))
+                //std::cout << i << ":" << age << "\n";
+                // get fractional key grid position (Soundplane A)
+                Vec2 keyXY (x, y);
+
+                // get integer key
+                int ix = (int)x;
+                int iy = (int)y;
+                
+                // apply hysteresis to raw position to get current key
+                // hysteresis: make it harder to move out of current key
+                if(age == 1)
                 {
                     mCurrentKeyX[i] = ix;
                     mCurrentKeyY[i] = iy;
                 }
-            }
+                else
+                {
+                    float hystWidth = hysteresis*0.25f;
+                    MLRect currentKeyRect(mCurrentKeyX[i], mCurrentKeyY[i], 1, 1);
+                    currentKeyRect.expand(hystWidth);
+                    if(!currentKeyRect.contains(keyXY))
+                    {
+                        mCurrentKeyX[i] = ix;
+                        mCurrentKeyY[i] = iy;
+                    }
+                }
 
-            // send index, xyz, dz to zone
-            int zoneIdx = mZoneMap(mCurrentKeyX[i], mCurrentKeyY[i]);
-            if(zoneIdx >= 0)
-            {
-                ZonePtr zone = mZones[zoneIdx];
-                zone->addTouchToFrame(i, x, y, mCurrentKeyX[i], mCurrentKeyY[i], z, dz);
+                // send index, xyz, dz to zone
+                int zoneIdx = mZoneIndexMap(mCurrentKeyX[i], mCurrentKeyY[i]);
+                
+                //std::cout << "zone idx: " << zoneIdx << "\n";
+                if(zoneIdx >= 0)
+                {
+                    mZones[zoneIdx].addTouchToFrame(i, x, y, mCurrentKeyX[i], mCurrentKeyY[i], z, dz);
+                }
             }
         }
-	}
 
-    // tell listeners we are starting this frame.
-    sendMessageToListeners(SoundplaneDataMessage{"start_frame"});
-
-    // process note offs for each zone
-	// this happens before processTouches() to allow voices to be freed
-    int zones = mZones.size();
-	std::vector<bool> freedTouches;
-	freedTouches.resize(kSoundplaneMaxTouches);
-	// generates freedTouches array, syntax should be different
-    for(int i=0; i<zones; ++i)
-	{
-        if(mZones[i]->getType() == kNoteRow) // MLTEST, this looks like a fix
+        for(auto& zone : mZones)
         {
-            sendMessageToListeners(mZones[i]->processTouchesNoteOffs(freedTouches));
+            zone.storeAnyNewTouches();
         }
-    }
 
-    // process touches for each zone
-	for(int i=0; i<zones; ++i)
-	{
-        sendMessageToListeners(mZones[i]->processTouches(freedTouches));
-    }
+        std::vector<bool> freedTouches;
+        freedTouches.resize(kSoundplaneMaxTouches);
+        
+        mOSCOutput.startFrame(now);
+        
+        sendMessageToOutputs(SoundplaneZoneMessage{"start_frame"});
+        
+        // process note offs for each zone
+        // this happens before processTouches() to allow voices to be freed
+        for(auto& zone : mZones)
+        {
+            if(zone.getType() == kNoteRow)
+            {
+                for(int i=0; i<kSoundplaneMaxTouches; ++i)
+                {
+                   sendMessageToOutputs(zone.processTouchesNoteOffs(i, freedTouches));
+                }
+            }
+        }
 
-    // send optional calibrated matrix
-    /*
-    if(mSendMatrixData)
-    {		
-		MLSignal calibratedPressure = getCalibratedSignal();
-		if(calibratedPressure.getHeight() == SensorGeometry::height)
-		{
-			
-			mMessage.mType = ml::Symbol("matrix");
-			for(int j = 0; j < SensorGeometry::height; ++j)
-			{
-				for(int i = 0; i < SensorGeometry::width; ++i)
-				{
-					mMessage.mMatrix[j*SensorGeometry::width + i] = calibratedPressure(i, j); // MLTEST
-				}
-			}
-			sendMessageToListeners();
-		}
-    }*/
-    
-    // tell listeners we are done with this frame.
-	sendMessageToListeners(SoundplaneDataMessage{"end_frame"});
+        // process touches for each zone
+        for(auto& zone : mZones)
+        {
+            if(zone.mType == kNoteRow)  // TODO should not know about Zone type here
+            {
+                // note row zones may generate multiple messages, one for each touch
+                for(int i=0; i<kSoundplaneMaxTouches; ++i)
+                {
+                    sendMessageToOutputs(zone.processTouchNoteRow(i, freedTouches));
+                }
+            }
+            else
+            {
+                sendMessageToOutputs(zone.processTouches());
+            }
+        }
+        
+        // send optional calibrated matrix to OSC output
+        if(mSendMatrixData)
+        {
+            MLSignal calibratedPressure = getCalibratedSignal();
+            if(calibratedPressure.getHeight() == SensorGeometry::height)
+            {
+                // send to OSC output only
+                mOSCOutput.processMatrix(calibratedPressure);
+            }
+        }
+        
+        sendMessageToOutputs(SoundplaneZoneMessage{"end_frame"});
+    }
 }
 
-void SoundplaneModel::sendMessageToListeners(const SoundplaneDataMessage m)
+// send touches to zones
+
+
+// send zones to outputs
+
+
+
+void SoundplaneModel::sendMessageToOutputs(const SoundplaneZoneMessage m)
 {
     if(m.mType)
     {
-        for(SoundplaneListenerList::iterator it = mListeners.begin(); it != mListeners.end(); it++)
-        if((*it)->isActive())
+        // MLTEST
+        if(m.mType == "start_frame")
         {
-            (*it)->processSoundplaneMessage(m);
+   //         std::cout << "\n";
+        }
+     //   std::cout << m << "\n";
+
+        if(mMIDIOutput.isActive())
+        {
+            mMIDIOutput.processSoundplaneMessage(m);
+        }
+        if(mOSCOutput.isActive())
+        {
+            mOSCOutput.processSoundplaneMessage(m);
         }
     }
 }
 
-void SoundplaneModel::trackTouches(const SensorFrame& frame)
+TouchTracker::TouchArray SoundplaneModel::trackTouches(const SensorFrame& frame)
 {
-	mTracker.process(frame, mMaxTouches, &mTouchArray, &mSmoothedFrame);
-	mSmoothedSignal = sensorFrameToSignal(mSmoothedFrame);
-	scaleTouchPressureData();
+    SensorFrame curvature = mTracker.preprocess(frame);
+	TouchTracker::TouchArray t = mTracker.process(curvature, mMaxTouches);
+    
+	mSmoothedSignal = sensorFrameToSignal(curvature);
+	
+    t = scaleTouchPressureData(t);
 
 	// convert array of touches to Signal for display, history
 	{
 		std::lock_guard<std::mutex> lock(mTouchFrameMutex); 
-		touchArrayToFrame(&mTouchArray, &mTouchFrame);
+		touchArrayToFrame(&t, &mTouchFrame);
 	}
 	
 	mHistoryCtr++;
 	if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
 	mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
+    
+    return t;
 }
 
 void SoundplaneModel::doInfrequentTasks()
 {
-	PollNetServices();
-	mOSCOutput.doInfrequentTasks();
-	mMIDIOutput.doInfrequentTasks();
+    if(getDeviceState() == kDeviceHasIsochSync)
+    {
+        PollNetServices();
+        mOSCOutput.doInfrequentTasks();
+        mMIDIOutput.doInfrequentTasks();
 
-	if (mCarrierMaskDirty)
-	{
-		enableCarriers(mCarriersMask);
-	}
-	else if (mNeedsCarriersSet)
-	{
-		mNeedsCarriersSet = false;
-		if(mDoOverrideCarriers)
-		{
-			setCarriers(mOverrideCarriers);
-		}
-		else
-		{
-			setCarriers(mCarriers);
-		}
-        
-		mNeedsCalibrate = true;
-	}
-    else if (mNeedsCalibrate && (!mSelectingCarriers))
-	{
-		mNeedsCalibrate = false;
-		beginCalibrate();
-	}
+        if (mCarrierMaskDirty)
+        {
+            enableCarriers(mCarriersMask);
+        }
+        else if (mNeedsCarriersSet)
+        {
+            mNeedsCarriersSet = false;
+            if(mDoOverrideCarriers)
+            {
+                setCarriers(mOverrideCarriers);
+            }
+            else
+            {
+                setCarriers(mCarriers);
+            }
+            
+            mNeedsCalibrate = true;
+        }
+        else if (mNeedsCalibrate && (!mSelectingCarriers))
+        {
+            mNeedsCalibrate = false;
+            beginCalibrate();
+        }
+    }
 }
 
 void SoundplaneModel::setDefaultCarriers()
@@ -1262,7 +1341,6 @@ void SoundplaneModel::nextSelectCarriersStep()
 	SensorFrame mean = clamp(mStats.mean(), 0.0001f, 1.f);
 	SensorFrame stdDev = mStats.standardDeviation();
 	SensorFrame variation = divide(stdDev, mean);
-	
 
 	// find maximum noise in any column for this set.  This is the "badness" value
 	// we use to compare carrier sets.
@@ -1348,11 +1426,14 @@ void SoundplaneModel::endSelectCarriers()
 
 void SoundplaneModel::processThread()
 {
-    std::chrono::time_point<std::chrono::system_clock> previous, now;
-    previous = now = std::chrono::system_clock::now();
+    time_point<system_clock> previous, now;
+    previous = now = system_clock::now();
+    mPrevProcessTouchesTime = now; // TODO interval timer object
+    
     while(!mTerminating)
     {
-        process();
+        now = system_clock::now();
+        process(now);
         mProcessCounter++;
         
         size_t queueSize = mSensorFrameQueue->elementsAvailable();
@@ -1379,8 +1460,7 @@ void SoundplaneModel::processThread()
         std::this_thread::sleep_for(std::chrono::microseconds(500));
         
         // do infrequent tasks every second
-        now = std::chrono::system_clock::now();
-        int secondsInterval = std::chrono::duration_cast<std::chrono::seconds>(now - previous).count();
+        int secondsInterval = duration_cast<seconds>(now - previous).count();
         if (secondsInterval >= 1)
         {
             previous = now;
