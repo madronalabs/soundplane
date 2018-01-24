@@ -381,7 +381,6 @@ void SoundplaneMIDIOutput::beginOutputFrame(time_point<system_clock> now)
 
 void SoundplaneMIDIOutput::processTouch(int i, int offset, const Touch& t)
 {
-
     MIDIVoice* pVoice = &mMIDIVoices[i];
     pVoice->x = t.x;
     pVoice->y = t.y;
@@ -519,36 +518,6 @@ void SoundplaneMIDIOutput::endOutputFrame()
     updateVoiceStates();
 }
 
-/*
-void SoundplaneMIDIOutput::processSoundplaneMessage(const SoundplaneOutputMessage msg)
-{
- 	if (!mActive) return;
-	if (!mpCurrentDevice) return;
-    ml::Symbol type = msg.mType;
-    ml::Symbol subtype = msg.mSubtype;
-    
-    int i;
-	float x, y, z, dz, note, vibrato;
-    
-
-    else if(type == touchSym)
-    {
-      
-    }
-    else if(type == controllerSym)
-    {
-
-    }
-    else if(type == matrixSym)
-    {
-        // nothing to do
-    }
-    else if(type == endFrameSym)
-    {
-
-    }
-}*/
-
 void SoundplaneMIDIOutput::setupVoiceChannels()
 {
 	for(int i=0; i < mVoices; ++i)
@@ -608,13 +577,11 @@ void SoundplaneMIDIOutput::sendMIDIVoiceMessages()
 		
 		if(pVoice->mSendXCtrl)
 		{
-// MLTEST			debug() << "x: " << pVoice->mMIDIXCtrl << "\n";
 			mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 73, pVoice->mMIDIXCtrl));
 		}
 		
 		if(pVoice->mSendYCtrl)
 		{
-//			debug() << "y: " << pVoice->mMIDIYCtrl << "\n";
 			mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(chan, 74, pVoice->mMIDIYCtrl));
 		}
 	}

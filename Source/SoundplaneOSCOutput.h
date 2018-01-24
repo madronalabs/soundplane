@@ -76,7 +76,7 @@ private:
 	std::array< TouchArray, kNumUDPPorts > mTouchesByPort;
     std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
     
-    int mDataRate = 100;
+    int mDataRate{100};
     time_point<system_clock> mFrameTime;
 
 	std::vector< std::vector < char > > mUDPBuffers;

@@ -250,10 +250,7 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
             {
                 mDataRate = v;
                 mOSCOutput.setDataRate(v);
-                for(Zone& z : mZones)
-                {
-                    z.setSampleRate(v);
-                }
+                mMIDIOutput.setDataRate(v);
             }
             else if (p == "midi_active")
             {
@@ -575,10 +572,6 @@ void SoundplaneModel::process(time_point<system_clock> now)
                 bool notesChangedThisFrame = findNoteChanges(touches, mTouchArray1);
                 mTouchArray1 = touches;
                 
-                
-                // MLTEST
-                if(notesChangedThisFrame) std::cout << "◊";
-                
                 const int dataPeriodMicrosecs = 1000*1000 / mDataRate;
                 int microsSinceSend = duration_cast<microseconds>(now - mPrevProcessTouchesTime).count();
                 bool timeForNewFrame = (microsSinceSend >= dataPeriodMicrosecs);
@@ -643,8 +636,6 @@ void SoundplaneModel::sendTouchesToZones(TouchArray touches)
             
             // send index, xyz, dz to zone
             int zoneIdx = mZoneIndexMap(mCurrentKeyX[i], mCurrentKeyY[i]);
-            
-            std::cout << "zone idx: " << zoneIdx << "\n";
             if(zoneIdx >= 0)
             {
                 Touch t = touches[i];
@@ -683,46 +674,16 @@ void SoundplaneModel::sendFrameToOutputs(time_point<system_clock> now)
     // send messages to outputs about each zone
     for(auto& zone : mZones)
     {
-        // MLTEST
-        int id = zone.mZoneID;
-        if(id == 0)
-        {
- //           std::cout << "\n--z0-- ";
-        }
-        
         // touches
         for(int i=0; i<kMaxTouches; ++i)
         {
             Touch t = zone.mOutputTouches[i];
-            
-            if(id == 0)
-            {
-  //              std::cout << t.state << " ";
-            }
-            
-            
             if(touchIsActive(t))
             {
-                if(t.state == kTouchStateOff)
-                {
-                    std::cout << "sfto: OFF\n"; // MLTEST
-                }
-                
-                
-
                 sendTouchToOutputs(i, zone.mOffset, t);
             }
         }
-        
-        
-        if(id == 0)
-        {
-//            std::cout << " \n";
-        }
-        
-        
-        
-        
+         
         // controller
         if(zone.mOutputController.active)
         {

@@ -181,7 +181,8 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	float height = kSoundplaneViewGridUnitsY;
 	float footerHeight = 0.5f;
 	
-	setBounds(0, 0, 640, 480); // MLTEST
+    // need nonzero starting bounds for JUCE
+	setBounds(0, 0, 640, 480);
 	
 	mpFooter = new SoundplaneFooterView(pModel, pResp, pRep);
 	MLRect footerRect(0, height - footerHeight, width, footerHeight);	

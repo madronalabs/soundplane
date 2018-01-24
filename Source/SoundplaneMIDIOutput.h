@@ -112,6 +112,8 @@ public:
 	void setMPE(bool v);
 	void setStartChannel(int v);
 	void setKymaMode(bool v);
+    
+    void setDataRate(float r) { mDataRate = r; }
 	
 	void doInfrequentTasks();
 	
@@ -153,8 +155,9 @@ private:
 
     bool mGotControllerChanges;
     
+    int mDataRate{100};
+    
 	bool mPressureActive;
-
 	int mBendRange;
 	int mTranspose;
 	int mGlissando;

@@ -32,27 +32,13 @@ struct Touch
     int kx;
     int ky;
     
-    int note;
+    float note;
     float vibrato;
 
     int voiceIdx;
 };
 
 typedef std::array<Touch, kMaxTouches> TouchArray;
-
-// C++11 does not permit aggregates to have default member initializers, assigning to this is
-// a succinct way to make a non-zero initializer
-constexpr Touch kDefaultTouch
-{
-    .x = 0.f, .y = 0.f,
-    .kx = -1, .ky = -1,
-    .z = 0.f, .dz = 0.f,
-    .age = 0,
-    .state = 0,
-    .note = 0,
-    .vibrato = 0.,
-
-};
 
 inline bool touchIsActive(Touch t) { return t.state != kTouchStateInactive; }
 

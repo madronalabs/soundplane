@@ -179,8 +179,6 @@ void SoundplaneOSCOutput::beginOutputFrame(time_point<system_clock> now)
             Touch& t = (mTouchesByPort[offset])[voiceIdx];
             if (t.state == kTouchStateOff)
             {
-                
-                std::cout << "**OFF**\n";
                 t.state = kTouchStateInactive;
             }
         }
@@ -189,13 +187,8 @@ void SoundplaneOSCOutput::beginOutputFrame(time_point<system_clock> now)
 
 void SoundplaneOSCOutput::processTouch(int i, int offset, const Touch& t)
 {
-    // store incoming touch by offset and index
+    // store incoming touch by port offset and index
     mTouchesByPort[offset][i] = t;
-    
-    if(t.state == kTouchStateOff)
-    {
-        std::cout << "OFF\n";
-    }
 }
 
 void SoundplaneOSCOutput::processController(int zoneID, int h, const Controller& m)
@@ -299,9 +292,8 @@ void SoundplaneOSCOutput::sendFrame()
                 *p << t.x << t.y << t.z << t.note;
                 *p << osc::EndMessage;
                 
-                
                 // MLTEST
-        std::cout << "tch " << voiceIdx << ":" << t.state << " / " << t.x << ", " << t.y << ", " << t.z << ", " << t.note << "\n";
+                // std::cout << "tch " << voiceIdx << ":" << t.state << " / " << t.x << ", " << t.y << ", " << t.z << ", " << t.note << "\n";
             }
 		}
 		

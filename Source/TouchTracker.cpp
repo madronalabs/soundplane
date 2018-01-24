@@ -715,15 +715,6 @@ TouchArray TouchTracker::filterTouchesZ(const TouchArray& in, const TouchArray& 
 		
         out[i] = Touch{.x=x, .y=y, .z=newZ, .dz=dz, .age=newAge, .state=newState};
 	}
-    
-    
-    // MLTEST
-    Touch t = out[0];
-    if(touchIsActive(t))
-    {
-        std::cout << "tracker0: " << t.state << " " << t.z << "\n";
-    }
-    
 	
 	return out;
 }

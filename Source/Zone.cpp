@@ -41,10 +41,9 @@ Zone::Zone()
     
 	for(int i=0; i<kMaxTouches; ++i)
 	{
-        float kDefaultSampleRate = 100.f;
-		mNoteFilters[i].setSampleRate(kDefaultSampleRate);
+		mNoteFilters[i].setSampleRate(kSoundplaneFrameRate);
 		mNoteFilters[i].setOnePole(250.0f);
-		mVibratoFilters[i].setSampleRate(kDefaultSampleRate);
+		mVibratoFilters[i].setSampleRate(kSoundplaneFrameRate);
 		mVibratoFilters[i].setOnePole(kVibratoFilterFreq);
 	}
     
@@ -53,19 +52,6 @@ Zone::Zone()
     {
         mValue[i] = 0.;
     }*/
-}
-
-void Zone::setSampleRate(float r)
-{
-    for(int i=0; i<kMaxTouches; ++i)
-    {
-        mNoteFilters[i].setSampleRate(r);
-        mVibratoFilters[i].setSampleRate(r);
-        
-        // scalar biquads need freq reset after sample rate change
-        mNoteFilters[i].setOnePole(250.0f);
-        mVibratoFilters[i].setOnePole(kVibratoFilterFreq);
-    }
 }
 
 void Zone::setBounds(MLRect b)
@@ -126,7 +112,6 @@ void Zone::storeAnyNewTouches()
         // store start of touch
         if (touchIsActive(mTouches0[i]) && !(touchIsActive(mTouches1[i])))
         {
-            std::cout << "start: " << i << "\n";
             mStartTouches[i] = mTouches0[i];
         }
     }
@@ -225,16 +210,6 @@ void Zone::processTouches(const std::bitset<kMaxTouches>& freedTouches)
 
 void Zone::processTouchesNoteRow(const std::bitset<kMaxTouches>& freedTouches)
 {
-    
-    /*
-    std::cout << "\n mName t0: ";
-    for(int i=0; i<kMaxTouches; ++i)
-    {
-        std::cout << touchIsActive(mTouches0[i]);
-    }
-    std::cout << "\n";
-    */
-    
     for(int i=0; i<kMaxTouches; ++i)
     {
         Touch t1 = mTouches0[i];
@@ -302,14 +277,8 @@ void Zone::processTouchesNoteRow(const std::bitset<kMaxTouches>& freedTouches)
                 // clamp note-on dz for use as velocity later.
                 t1dz = ml::clamp(t1dz, 0.0001f, 1.f);
             }
-            
-            // MLTEST
-            std::cout << "zone ID " << mZoneID << " ON " << i << " : " << t1dz << "\n";
-            
-            int note = mStartNote + mTranspose + scaleNote;
+            float note = mStartNote + mTranspose + scaleNote;
             mOutputTouches[i] = Touch{.x = t1x, .y = t1y, .z = t1z, .dz = t1dz, .note = note, .state = kTouchStateOn};
-            
-           // buildMessage("touch", "on", i, t1x, t1y, t1z, t1dz, mStartNote + mTranspose + scaleNote);
         }
         else if(isActive)
         {
@@ -320,12 +289,7 @@ void Zone::processTouchesNoteRow(const std::bitset<kMaxTouches>& freedTouches)
             // subtract low pass filter to get vibrato amount
             float vibratoHP = (currentXPos - vibratoX)*mVibrato*kSoundplaneVibratoAmount;
             
-
-            // MLTEST
-           // std::cout << "zone ID " << mZoneID << " CN " << i << " : " << t1x << "\n";
-
-            
-            int note = mStartNote + mTranspose + scaleNote;
+            float note = mStartNote + mTranspose + scaleNote + vibratoHP;
             mOutputTouches[i] = Touch{.x = t1x, .y = t1y, .z = t1z, .dz = t1dz, .note = note, .state = kTouchStateContinue, .vibrato = vibratoHP};
         }
     }
@@ -370,34 +334,14 @@ void Zone::processTouchesNoteOffs(std::bitset<kMaxTouches>& freedTouches)
                     lastScaleNote = mScaleMap.getInterpolatedLinear(lastX - 0.5f);
                 }
                 freedTouches[i] = true;
-                
-
-                // MLTEST
-                std::cout << "zone ID " << mZoneID << " OFF " << i <<  "\n";
 
                 // set state
-                int note = mStartNote + mTranspose + lastScaleNote;
+                float note = mStartNote + mTranspose + lastScaleNote;
                 mOutputTouches[i] = Touch{.x = t2.x, .y = t2.y, .z = t2.z, .dz = t2.dz, .note = note, .state = kTouchStateOff};
-
             }
         }
     }
 }
-
-/*struct Controller
- {
- TextFragment name;
- bool active;
- int number1;
- int number2;
- int offset;
- int type;
- float x;
- float y;
- float z;
- };
-
- */
 
 void Zone::processTouchesControllerX()
 {
@@ -448,23 +392,3 @@ void Zone::processTouchesControllerPressure()
 }
 
 
-
-/*
-SoundplaneOutputMessage Zone::buildMessage(ml::Symbol type, ml::Symbol subtype, float a, float b, float c, float d, float e, float f, float g, float h)
-{
-    SoundplaneOutputMessage m;
-    m.mType = type;
-    m.mSubtype = subtype;
-	m.mOffset = mOffset;			// send port offset of this zone
-	m.mZoneName = mName;
-    m.mData[0] = a;
-    m.mData[1] = b;
-    m.mData[2] = c;
-    m.mData[3] = d;
-    m.mData[4] = e;
-    m.mData[5] = f;
-    m.mData[6] = g;
-    m.mData[7] = h;
-    return m;
-}
-*/

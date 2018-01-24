@@ -109,9 +109,6 @@ void SoundplaneController::shutdown()
 void SoundplaneController::timerCallback()
 {
 	fetchChangedProperties();
-	
-	// MLTEST
-	//debug().display();
 	MLConsole().display();
 }
 	

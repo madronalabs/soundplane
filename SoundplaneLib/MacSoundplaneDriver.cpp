@@ -1319,13 +1319,6 @@ void MacSoundplaneDriver::printTransactions()
     }
 }
 
-
-// MLTEST
-bool nearEnd(uint16_t i)
-{
-    return(i > 65533) || (i < 2);
-}
-
 // This thread is responsible for collecting all data from the Soundplane. The routines isochComplete()
 // and scheduleIsoch() combine to keep data running into the transfer buffers in round-robin fashion.
 // This thread looks at those buffers and attempts to stay in sync with incoming data, watching as
@@ -1335,15 +1328,6 @@ void MacSoundplaneDriver::process()
 {
     if(mUnplugged) return;
     int mostRecentSeq = mostRecentCompleteSequence();
-    
-    // MLTEST
-    if(0)
-    if(nearEnd(mostRecentSeq))
-    {
-        std::cout << "\n\n---------------\n";
-        std::cout << "@" << mostRecentSeq << "\n";
-        printTransactions();
-    }
     
     if(mostRecentSeq < 0)
     {
@@ -1427,29 +1411,12 @@ void MacSoundplaneDriver::process()
             uint16_t gapSize = wrapDistance(mPreviousSeq, nextSeq);
             if(gapSize > 1)
             {
-                
-                
-                // MLTEST
-                if(nextSeq == 65535)
-                {
-                    std::cout << "\n\n---------------\n";
-                    std::cout << "\n GAP TO 65535:\n";
-                    printTransactions();
-                }
-                
-                
                 snprintf(mErrorBuf, kMaxErrorStringSize, "%d -> %d (%d)", mPreviousSeq, nextSeq, gapSize);
                 mListener.onError(kDevGapInSequence, mErrorBuf);
             }
             mGaps++;
         }
         mFrameCounter++;
-        
-        // MLTEST
-        if(mPreviousSeq/1000 != nextSeq/1000)
-        {
-            std::cout << "\nseq secs:" << nextSeq/1000 << "\n";
-        }
         
         mPreviousSeq = nextSeq;
     }

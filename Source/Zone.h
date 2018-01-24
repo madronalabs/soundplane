@@ -63,8 +63,6 @@ public:
         return Touch{.x = mXRange(t.x), .y = mYRange(t.y), .kx = t.kx, .ky = t.ky, .z = t.z};
     }
     
-    void setSampleRate(float r);
-    
     const Touch getTouch(int i) const { return mTouches1[i]; }
     
     bool needsRedraw() const { return mNeedsRedraw; }
