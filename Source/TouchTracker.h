@@ -5,36 +5,12 @@
 
 #pragma once
 
-#include <iostream>
-#include <cmath>
-#include <list>
-#include <thread>
-#include <mutex>
-#include <array>
-#include <bitset>
-#include <algorithm>
-
 #include "SensorFrame.h"
+#include "Touch.h"
 
 class TouchTracker
 {
 public:
-	
-	static constexpr int kMaxTouches = 16; 
-	
-	class Touch
-	{
-	public:
-		Touch() : x(0.f), y(0.f), z(0.f), dz(0.f), age(0){};
-		Touch(float px, float py, float pz, float pdz, int page) : x(px), y(py), z(pz), dz(pdz), age(page){};
-		float x;
-		float y;
-		float z;
-		float dz;
-		int age;
-	};
-
-	typedef std::array<Touch, kMaxTouches> TouchArray;
 	
 	TouchTracker();
 	~TouchTracker();
@@ -64,9 +40,9 @@ private:
     SensorFrame mInput{};
     SensorFrame mInputZ1{};
 	
-	TouchArray mTouches;
-	TouchArray mTouchesMatch1;
-	TouchArray mTouches2; 
+    TouchArray mTouches{};
+    TouchArray mTouchesMatch1{};
+    TouchArray mTouches2{}; 
 	
 	std::array<int, kMaxTouches> mRotateShuffleOrder;
 	

@@ -135,6 +135,7 @@ void SoundplaneZoneView::renderZones()
         // MLTEST
         TextFragment nameFrag = zone.getName();
         
+        // MLTEST
         // TODO again, how to prevent writing this kind of bug?
 //        const char * name = zone.getName().getText();
 
@@ -171,10 +172,16 @@ void SoundplaneZoneView::renderZones()
         // draw any zone-specific things
         float x, y;
         int toggle;
+        
+        
+        /*
         switch(t)
         {
-            case kNoteRow:
-                for(int i = 0; i < kSoundplaneMaxTouches; ++i)
+            case kZoneNoteRow:
+
+                 
+                 
+                for(int i = 0; i < kMaxTouches; ++i)
                 {
                     const ZoneTouch& uTouch = zone.getTouch(i);
                     const ZoneTouch& touch = zone.touchToKeyPos(uTouch);
@@ -187,9 +194,11 @@ void SoundplaneZoneView::renderZones()
                         MLGL::drawDot(Vec2(dx, dy), dz*smallDotSize);
                     }
                 }
+    
+                
                 break;
                 
-            case kControllerX:
+            case kZoneControllerX:
                 x = xRange(zone.getXKeyPos());
                 glColor4fv(&zoneStroke[0]);
                 glLineWidth(thinLineWidth);
@@ -198,7 +207,7 @@ void SoundplaneZoneView::renderZones()
                 MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), x - zoneRectInView.left(), zoneRectInView.height()));
                 break;
                 
-            case kControllerY:
+            case kZoneControllerY:
                 y = yRange(zone.getYKeyPos());
                 glColor4fv(&zoneStroke[0]);
                 glLineWidth(thinLineWidth);                
@@ -207,7 +216,7 @@ void SoundplaneZoneView::renderZones()
                 MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), zoneRectInView.width(), y - zoneRectInView.top()));
                 break;
                 
-            case kControllerXY:
+            case kZoneControllerXY:
                 x = xRange(zone.getXKeyPos());
                 y = yRange(zone.getYKeyPos());
                 glColor4fv(&zoneStroke[0]);
@@ -219,7 +228,7 @@ void SoundplaneZoneView::renderZones()
                 MLGL::drawDot(Vec2(x, y), smallDotSize*0.25f);
                 break;
                                 
-            case kControllerZ:
+            case kZoneControllerZ:
                 y = yRange(zone.mYRange(zone.getValue(0))); // look at z value over y range
                 glColor4fv(&zoneStroke[0]);
                 glLineWidth(thinLineWidth);
@@ -228,7 +237,7 @@ void SoundplaneZoneView::renderZones()
                 MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), zoneRectInView.width(), y - zoneRectInView.top()));
                 break;
 
-            case kToggle:
+            case kZoneToggle:
                 toggle = zone.getToggleValue();
                 glColor4fv(&zoneStroke[0]);
                 glLineWidth(thinLineWidth);
@@ -243,6 +252,7 @@ void SoundplaneZoneView::renderZones()
                 }
                 break;
          }
+         */
     }
 }
 

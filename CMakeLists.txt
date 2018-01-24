@@ -55,7 +55,7 @@ set(SP_SOURCES
   Source/SoundplaneApp.h
   Source/SoundplaneController.cpp
   Source/SoundplaneController.h
-  Source/SoundplaneDataListener.h
+  Source/SoundplaneOutput.h
   Source/SoundplaneGridView.cpp
   Source/SoundplaneGridView.h
   Source/SoundplaneMIDIOutput.cpp

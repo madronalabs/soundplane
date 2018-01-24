@@ -15,6 +15,7 @@
 #include "OSC/zeroconf/NetService.h"
 #include "OSC/zeroconf/NetServiceBrowser.h"
 #include "TouchTracker.h"
+#include "Controller.h"
 #include "SoundplaneMIDIOutput.h"
 #include "SoundplaneOSCOutput.h"
 #include "MLSymbol.h"
@@ -28,32 +29,16 @@
 
 enum ZoneType
 {
-    kNoteRow,
-    kControllerX,
-    kControllerY,
-    kControllerXY,
-    kControllerZ,
-    kToggle,
+    kZoneNoteRow,
+    kZoneControllerX,
+    kZoneControllerY,
+    kZoneControllerXY,
+    kZoneControllerZ,
+    kZoneToggle,
     kZoneTypes
 };
 
 const int kZoneValArraySize = 8;
-
-class ZoneTouch
-{
-public:
-	ZoneTouch() { clear(); }
-	ZoneTouch(float px, float py, int ix, int iy, float pz, float pdz) : pos(px, py, pz, pdz), kx(ix), ky(iy) {}
-    void clear(){ pos.set(0.); }
-    bool isActive() const { return pos.z() > 0.f; }
-    
-    Vec4 pos;
-    
-    // store the current key the touch is in, which due to hysteresis may not be
-    // the one directly under the position.
-    int kx;
-    int ky;
-};
 
 class Zone
 {
@@ -65,21 +50,23 @@ public:
     static int symbolToZoneType(ml::Symbol s);
 
     void newFrame();
-    void addTouchToFrame(int i, float x, float y, int kx, int ky, float z, float dz);
+    void addTouchToFrame(int i, Touch t);
     void storeAnyNewTouches();
     
-    SoundplaneZoneMessage processTouches();
-    SoundplaneZoneMessage processTouchNoteRow(int t, const std::vector<bool>& freedTouches);
-    SoundplaneZoneMessage processTouchesNoteOffs(int i, std::vector<bool>& freedTouches);
+    void processTouches(const std::bitset<kMaxTouches>& freedTouches);
+    
+    void processTouchesNoteRow(const std::bitset<kMaxTouches>& freedTouches);
+    void processTouchesNoteOffs(std::bitset<kMaxTouches>& freedTouches);
 
-    const ZoneTouch touchToKeyPos(const ZoneTouch& t) const
+    const Touch touchToKeyPos(const Touch& t) const
     {
-        return ZoneTouch(mXRange(t.pos.x()), mYRange(t.pos.y()), t.kx, t.ky, t.pos.z(), t.pos.w());
+        return Touch{.x = mXRange(t.x), .y = mYRange(t.y), .kx = t.kx, .ky = t.ky, .z = t.z};
     }
     
     void setSampleRate(float r);
-    int setZoneID() const { return mZoneID; }
-    const ZoneTouch getTouch(int i) const { return mTouches1[i]; }
+    
+    const Touch getTouch(int i) const { return mTouches1[i]; }
+    
     bool needsRedraw() const { return mNeedsRedraw; }
     const ml::TextFragment getName() const { return mName; }
     MLRect getBounds() const { return mBounds; }
@@ -87,15 +74,13 @@ public:
 	int getOffset() const { return mOffset; }
 
     // return values on [0..1]
-	float getValue(int i) const { return mValue[ml::clamp(i, 0, kZoneValArraySize - 1)]; }
-    float getXValue() const { return getValue(0); }
-    float getYValue() const { return getValue(1); }
+	//float getValue(int i) const { return mValue[ml::clamp(i, 0, kZoneValArraySize - 1)]; }
+   // float getXValue() const { return getValue(0); }
+   // float getYValue() const { return getValue(1); }
 
     // return values scaled to key grid
-    float getXKeyPos() const { return mXRange(getValue(0)); }
-    float getYKeyPos() const { return mYRange(getValue(1)); }
-
-    bool getToggleValue() const { return (getValue(0) > 0.5f); }
+  //  float getXKeyPos() const { return mXRange(getValue(0)); }
+  //  float getYKeyPos() const { return mYRange(getValue(1)); }
 
     // setters
     void setZoneID(int z) { mZoneID = z; }
@@ -111,25 +96,32 @@ public:
     MLRange mYRangeInv;
     
 protected:
-    int mZoneID;
-    int mType;
-    int mStartNote;
     
-    float mVibrato;
-    float mHysteresis;
-    bool mQuantize;
-    bool mNoteLock;
-    int mTranspose;
+    int mZoneID{0};
+    int mType{-1};
+    int mStartNote{60};
+    
+    float mVibrato{0};
+    float mHysteresis{0};
+    bool mQuantize{false};
+    bool mNoteLock{false};
+    int mTranspose{0};
     
     // start note falls on this degree of scale-- for diatonic and other non-chromatic scales
-    int mScaleNoteOffset;
+    int mScaleNoteOffset = 0;
     
-    MLSignal mScaleMap;
-    int mControllerNum1;
-    int mControllerNum2;
-    int mControllerNum3;
-    int mOffset;
-    ml::TextFragment mName{};
+    MLSignal mScaleMap{};
+    int mControllerNum1{0};
+    int mControllerNum2{0};
+    int mControllerNum3{0};
+
+    bool mToggleValue{};
+    int mOffset{0};
+    ml::TextFragment mName{"unnamed zone"};
+    
+    // states read by the Model to generate output
+    TouchArray mOutputTouches{};
+    Controller mOutputController;
     
 private:
     int getNumberOfActiveTouches() const;
@@ -137,24 +129,22 @@ private:
     Vec3 getAveragePositionOfActiveTouches() const;
     float getMaxZOfActiveTouches() const;
     
-    SoundplaneZoneMessage processTouchesControllerX();
-    SoundplaneZoneMessage processTouchesControllerY();
-    SoundplaneZoneMessage processTouchesControllerXY();
-    SoundplaneZoneMessage processTouchesControllerToggle();
-    SoundplaneZoneMessage processTouchesControllerPressure();
+    void processTouchesControllerX();
+    void processTouchesControllerY();
+    void processTouchesControllerXY();
+    void processTouchesControllerToggle();
+    void processTouchesControllerPressure();
 
-    SoundplaneZoneMessage buildMessage(ml::Symbol type, ml::Symbol subType, float a, float b=0, float c=0, float d=0, float e=0, float f=0, float g=0, float h=0);
-   
     bool mNeedsRedraw;
-    float mValue[kZoneValArraySize];
+//    float mValue[kZoneValArraySize];
 
     // touch locations are stored scaled to [0..1] over the Zone boundary.
     // incoming touches 
-    ZoneTouch mTouches0[kSoundplaneMaxTouches];
+    TouchArray mTouches0{};
     // touch positions this frame
-    ZoneTouch mTouches1[kSoundplaneMaxTouches];
+    TouchArray mTouches1{};
     // touch positions saved at touch onsets
-    ZoneTouch mStartTouches[kSoundplaneMaxTouches];
+    TouchArray mStartTouches{};
     
 	std::vector<MLBiquad> mNoteFilters;
 	std::vector<MLBiquad> mVibratoFilters;

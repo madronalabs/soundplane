@@ -20,40 +20,23 @@ enum VoiceState
     kVoiceStateOff
 };
 
-struct SoundplaneZoneMessage
+struct SoundplaneOutputMessage
 {
-	ml::Symbol mType;
-    ml::Symbol mSubtype;
-	int mOffset;				// offset for OSC port or MIDI channel
-    ml::Symbol mZoneName;
-    float mData[8];
+	ml::Symbol type;
+    ml::Symbol subtype;
+    ml::Symbol zoneName;
+    int offset;				// offset for OSC port or MIDI channel
+    float data[8];
 };
 
-class SoundplaneDataListener
+class SoundplaneOutput
 {
 public:
-	SoundplaneDataListener() : mActive(false) {}
-	virtual ~SoundplaneDataListener() {}
-    virtual void processSoundplaneMessage(const SoundplaneZoneMessage message) = 0;
+	SoundplaneOutput() : mActive(false) {}
+	virtual ~SoundplaneOutput() {}
+    virtual void processSoundplaneMessage(const SoundplaneOutputMessage message) = 0;
     bool isActive() { return mActive; }
 
 protected:
 	bool mActive;
 };
-
-typedef std::list<SoundplaneDataListener*> SoundplaneListenerList;
-
-inline std::ostream& operator<< (std::ostream& out, const SoundplaneZoneMessage & r)
-{
-    using namespace std;
-    cout << "{" << r.mType << ", " << r.mSubtype << ", " << r.mOffset << ", " << r.mZoneName << ", ";
-    for(float f : r.mData)
-    {
-        cout << f << " ";
-    }
-    cout << "}";
-    return out;
-}
-
-
-

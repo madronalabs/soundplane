@@ -165,7 +165,7 @@ private:
 	uint32_t getTransactionDataChecksum();
 	
     // we are only counting, so any races are benign
-    std::atomic<int> mTransactionsInFlight;
+    std::atomic<int> mTransactionsInFlight{0};
     
     int getNextBufferIndex(int endpoint);
     std::array<int, kSoundplaneANumEndpoints> mNextBufferIndex {};
@@ -174,12 +174,12 @@ private:
 	std::thread					mGrabThread;
 	std::thread					mProcessThread;
 	
-	IONotificationPortRef		notifyPort;
-	io_iterator_t				matchedIter;
-	io_object_t					notification;
+	IONotificationPortRef		notifyPort{0};
+	io_iterator_t				matchedIter{0};
+	io_object_t					notification{0};
 	
-	IOUSBDeviceInterface187		**dev;
-	IOUSBInterfaceInterface192	**intf;
+    IOUSBDeviceInterface187		**dev{nullptr};
+	IOUSBInterfaceInterface192	**intf{nullptr};
 	
 	UInt64						mNextBusFrameNumber[kSoundplaneANumEndpoints];
 	uint8_t						payloadIndex[kSoundplaneANumEndpoints];
@@ -190,7 +190,7 @@ private:
     uint16_t mNextSequenceNum{1};
     uint16_t mPreviousSeq{0};
 
-	int mDeviceState;
+	int mDeviceState = kNoDevice;
 	std::mutex mDeviceStateMutex;
 	
 	unsigned char mCurrentCarriers[kSoundplaneNumCarriers];
@@ -214,6 +214,8 @@ private:
     
     bool mTerminating{false};
 };
+
+
 
 #endif // __MAC_SOUNDPLANE_DRIVER__
 

@@ -332,7 +332,7 @@ void SoundplaneGridView::renderXYGrid()
 	}
 }
 	
-void SoundplaneGridView::renderTouches(TouchTracker::TouchArray newTouches)
+void SoundplaneGridView::renderTouches(const TouchArray& newTouches)
 {
 	if (!mpModel) return;
 	

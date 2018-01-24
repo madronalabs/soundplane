@@ -42,7 +42,7 @@ private:
 	void drawSurfaceOverlay();
 	void renderXYGrid();
 
-	void renderTouches(TouchTracker::TouchArray t);
+	void renderTouches(const TouchArray& t);
 	
 	void renderZGrid();
  	

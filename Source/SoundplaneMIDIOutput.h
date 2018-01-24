@@ -17,8 +17,8 @@
 
 //#include "TouchTracker.h"
 #include "SoundplaneModelA.h"
-#include "SoundplaneDataListener.h"
-//#include "MLTime.h"
+#include "SoundplaneOutput.h"
+#include "Touch.h"
 
 const int kMaxMIDIVoices = 16;
 
@@ -28,7 +28,6 @@ public:
 	MIDIVoice();
 	~MIDIVoice();
 	
-
 	int age;
 	float x;
 	float y;
@@ -57,8 +56,7 @@ public:
 	bool mSendXCtrl;
 	bool mSendYCtrl;
 	
-    VoiceState mState;
-
+    TouchState mState;
 };
 
 class MIDIDevice
@@ -80,15 +78,18 @@ private:
 typedef std::shared_ptr<MIDIDevice> MIDIDevicePtr;
 
 class SoundplaneMIDIOutput :
-	public SoundplaneDataListener
+	public SoundplaneOutput
 {
 public:
 	SoundplaneMIDIOutput();
 	~SoundplaneMIDIOutput();
 	void initialize();
-	
-    // SoundplaneDataListener
-    void processSoundplaneMessage(const SoundplaneZoneMessage msg) override;
+    
+    // SoundplaneOutput
+    void beginOutputFrame(time_point<system_clock> now) override;
+    void processTouch(int i, int offset, const Touch& m) override;
+    void processController(int z, int offset, const Controller& m) override;
+    void endOutputFrame() override; 
 	
 	void findMIDIDevices ();
 	void setDevice(int d);
@@ -142,7 +143,9 @@ private:
 	int mVoices;
 	
 	MIDIVoice mMIDIVoices[kMaxMIDIVoices];
-    SoundplaneZoneMessage mMessagesByZone[kSoundplaneAMaxZones];
+    
+    std::array< TouchArray, kSoundplaneAMaxZones > mTouchesByZone;
+    std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
 
 	std::vector<MIDIDevicePtr> mDevices;
 	std::vector<std::string> mDeviceList;

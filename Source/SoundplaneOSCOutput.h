@@ -14,9 +14,12 @@
 
 #include "MLT3D.h"
 #include "MLDebug.h"
-#include "SoundplaneDataListener.h"
+#include "SoundplaneOutput.h"
 #include "SoundplaneModelA.h"
 #include "JuceHeader.h"
+
+#include "Controller.h"
+#include "Touch.h"
 
 #include "OSC/osc/OscOutboundPacketStream.h"
 #include "OSC/ip/UdpSocket.h"
@@ -27,23 +30,8 @@ const int kUDPOutputBufferSize = 4096;
 
 using namespace std::chrono;
 
-class OSCVoice
-{
-public:
-	OSCVoice();
-	~OSCVoice();
-
-	float startX;
-	float startY;
-    float x;
-    float y;
-    float z;
-    float note;
-	VoiceState mState;
-};
-
 class SoundplaneOSCOutput :
-	public SoundplaneDataListener
+	public SoundplaneOutput
 {
 public:
 	SoundplaneOSCOutput();
@@ -55,15 +43,16 @@ public:
 
 	void connect();
 
-    // SoundplaneDataListener
-    void processSoundplaneMessage(const SoundplaneZoneMessage msg) override;
-    
-    void startFrame(time_point<system_clock> now);
+    // SoundplaneOutput
+    void beginOutputFrame(time_point<system_clock> now) override;
+    void processTouch(int i, int offset, const Touch& m) override;
+    void processController(int z, int offset, const Controller& m) override;
+    void endOutputFrame() override;
 
 	void setDataRate(int r) { mDataRate = r; }
 	
 	void setActive(bool v);
-	void setMaxTouches(int t) { mMaxTouches = ml::clamp(t, 0, kSoundplaneMaxTouches); }
+	void setMaxTouches(int t) { mMaxTouches = ml::clamp(t, 0, kMaxTouches); }
 	
 	void setSerialNumber(int s) { mSerialNumber = s; }
 	void notify(int connected);
@@ -82,12 +71,10 @@ private:
 	void sendInfrequentData();
 	void sendInfrequentDataToKyma();
 
-
 	int mMaxTouches;	
 	
-	std::vector< std::vector<OSCVoice> > mOSCVoices;
-	
-    SoundplaneZoneMessage mMessagesByZone[kSoundplaneAMaxZones];
+	std::array< TouchArray, kNumUDPPorts > mTouchesByPort;
+    std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
     
     int mDataRate = 100;
     time_point<system_clock> mFrameTime;

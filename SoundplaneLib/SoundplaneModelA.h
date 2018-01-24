@@ -31,7 +31,6 @@
 // padding (388 bytes) while 386 bytes are typically received in any transaction.
 
 const int kSoundplaneTouchWidth = 8;
-const int kSoundplaneMaxTouches = 16;
 const int kSoundplaneCalibrateSize = 1024;
 const int kSoundplaneHistorySize = 2048;
 const float kSoundplaneFrameRate = 976.5625f;

@@ -8,6 +8,7 @@
 
 #include <list>
 #include <map>
+#include <thread>
 #include <stdint.h>
 
 #include "MLModel.h"
@@ -26,7 +27,6 @@
 #include "MLQueue.h"
 
 using namespace ml;
-using TouchArray = TouchTracker::TouchArray;
 using namespace std::chrono;
 
 MLSignal sensorFrameToSignal(const SensorFrame &f);
@@ -143,7 +143,8 @@ public:
 	SoundplaneMIDIOutput& getMIDIOutput() { return mMIDIOutput; }
 
 private:
-    TouchArray mTouchArray1;
+    TouchArray mTouchArray1{};
+    TouchArray mZoneOutputTouches{};
 
 	std::unique_ptr< SoundplaneDriver > mpDriver;
     std::unique_ptr< Queue< SensorFrame > > mSensorFrameQueue;
@@ -155,9 +156,14 @@ private:
 	void initialize();
     bool findNoteChanges(TouchArray t0, TouchArray t1);
 	TouchArray scaleTouchPressureData(TouchArray in);
-	void processAndSendTouches(TouchArray touches, time_point<system_clock> now);
-	
-    void sendMessageToOutputs(const SoundplaneZoneMessage m);
+    
+	void sendTouchesToZones(TouchArray touches);
+    
+    void sendFrameToOutputs(time_point<system_clock> now);
+    void beginOutputFrame(time_point<system_clock> now);
+    void sendTouchToOutputs(int i, int offset, const Touch& t);
+    void sendControllerToOutputs(int zoneID, int offset, const Controller& m);
+    void endOutputFrame();
 
     void clearZones();
     void sendParametersToZones();
@@ -167,7 +173,7 @@ private:
 
 	bool mOutputEnabled;
 
-	static const int miscStrSize = 256;
+    static const int kMiscStringSize = 256;
     void loadZonesFromString(const std::string& zoneStr);
 
 	void doInfrequentTasks();
@@ -194,9 +200,6 @@ private:
 	bool mRaw;
     bool mSendMatrixData;
 
-	// when on, calibration tries to collect the lowest noise carriers to use.  otherwise a default set is used.
-	//
-	bool mDynamicCarriers;
 	SoundplaneDriver::Carriers mCarriers;
 
 	bool mHasCalibration;
@@ -222,14 +225,12 @@ private:
 	float mSurfaceHeightInv;
 
     // store current key for each touch to implement hysteresis.
-	int mCurrentKeyX[kSoundplaneMaxTouches];
-	int mCurrentKeyY[kSoundplaneMaxTouches];
+	int mCurrentKeyX[kMaxTouches];
+	int mCurrentKeyY[kMaxTouches];
 
-	float mZ1[kSoundplaneMaxTouches];
-
-	char mHardwareStr[miscStrSize];
-	char mStatusStr[miscStrSize];
-	char mClientStr[miscStrSize];
+	char mHardwareStr[kMiscStringSize];
+	char mStatusStr[kMiscStringSize];
+	char mClientStr[kMiscStringSize];
 
 	TouchTracker mTracker;
 

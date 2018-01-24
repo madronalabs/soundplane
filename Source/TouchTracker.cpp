@@ -2,12 +2,18 @@
 // Copyright (c) 2017 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
+#include <iostream>
+#include <cmath>
+#include <list>
+#include <thread>
+#include <mutex>
+#include <array>
+#include <bitset>
+#include <algorithm>
+
 #include "TouchTracker.h"
 
 constexpr float kTwoPi = 3.1415926535f*2.f;
-
-using Touch = TouchTracker::Touch;
-using TouchArray = TouchTracker::TouchArray;
 
 template <class c>
 inline c (clamp)(const c& x, const c& min, const c& max)
@@ -223,9 +229,10 @@ SensorFrame TouchTracker::preprocess(const SensorFrame& in)
 
 TouchArray TouchTracker::process(const SensorFrame& in, int maxTouches)
 {
-// MLTEST    if (!pCurvatureOut || !pOut) return;
 	setMaxTouches(maxTouches);
 
+    mTouches = TouchArray{};
+    
 	if(mMaxTouchesPerFrame > 0)
 	{
 		mTouches = findTouches(in);
@@ -271,7 +278,7 @@ Touch correctPeakX(Touch pos, const SensorFrame& in)
 		float c = in[y*w + x + 1];
 		float p = ((a - c)/(a - 2.f*b + c))*0.5f;
 		float fx = x + clamp(p, -maxCorrect, maxCorrect);										
-		newPos = Touch(fx, pos.y, pos.z, 0.f, 0);
+        newPos = Touch{.x = fx, .y = pos.y, .z = pos.z};
 	}
 	
 	return newPos;
@@ -306,7 +313,7 @@ Touch correctPeakY(Touch pos, const SensorFrame& in)
 	}
 	float p = ((a - c)/(a - 2.f*b + c))*0.5f;		
 	float fy = y + clamp(p, -maxCorrect, maxCorrect);							
-	return Touch(pos.x, fy, pos.z, 0.f, 0);
+    return Touch{.x = pos.x, .y = fy, .z = pos.z};
 }
 
 float sensorToKeyY(float sy)
@@ -348,7 +355,7 @@ float sensorToKeyY(float sy)
 
 Touch peakToTouch(Touch p)
 {
-	return Touch(mapRange(3.5f, 59.5f, 1.f, 29.f, p.x), sensorToKeyY(p.y), p.z, 0.f, 0);
+    return Touch{.x = mapRange(3.5f, 59.5f, 1.f, 29.f, p.x), .y = sensorToKeyY(p.y), .z = p.z};
 }
 
 // quick touch finder based on peaks of curvature. 
@@ -363,7 +370,7 @@ TouchArray TouchTracker::findTouches(const SensorFrame& in)
 	int i, j;
 	
 	std::array<Touch, kMaxPeaks> peaks;
-	TouchArray touches;
+    TouchArray touches{};
 	std::array<std::bitset<w>, h> map;
 	
 	// get peaks
@@ -427,7 +434,7 @@ TouchArray TouchTracker::findTouches(const SensorFrame& in)
 			if (mapRow[i])
 			{
 				float z = in[j*w + i];
-				peaks[nPeaks++] = Touch(i, j, z, 0.f, 0);
+                peaks[nPeaks++] = Touch{.x = static_cast<float>(i), .y = static_cast<float>(j), .z = z};
 				if (nPeaks >= kMaxPeaks) break;
 			}
 		}
@@ -464,8 +471,7 @@ TouchArray TouchTracker::matchTouches(const TouchArray& x, const TouchArray& x1)
 {
 	const float kMaxConnectDist = 2.f; 
 	
-	TouchArray newTouches;
-	newTouches.fill(Touch());
+    TouchArray newTouches{};
 	
 	std::array<int, kMaxTouches> forwardMatchIdx; 
 	forwardMatchIdx.fill(-1);	
@@ -615,7 +621,7 @@ TouchArray TouchTracker::filterTouchesXYAdaptive(const TouchArray& in, const Tou
 	const float kFixedXYFreqMax = 20.f;
 	const float kFixedXYFreqMin = 1.f;
 	
-	TouchArray out;
+    TouchArray out{};
 	
 	for(int i=0; i<mMaxTouchesPerFrame; ++i)
 	{
@@ -648,7 +654,7 @@ TouchArray TouchTracker::filterTouchesXYAdaptive(const TouchArray& in, const Tou
 			newY = y;
 		}
 		
-		out[i] = Touch(newX, newY, z, 0.f, age);
+        out[i] = Touch{.x = newX, .y = newY, .z = z, .age = age};
 	}
 	
 	return out;
@@ -665,7 +671,7 @@ TouchArray TouchTracker::filterTouchesZ(const TouchArray& in, const TouchArray& 
 	const float a0Down = 1.f - kDown;
 	const float b1Down = kDown;
 	
-	TouchArray out;
+    TouchArray out{};
 	
 	for(int i=0; i<mMaxTouchesPerFrame; ++i)
 	{
@@ -676,7 +682,7 @@ TouchArray TouchTracker::filterTouchesZ(const TouchArray& in, const TouchArray& 
 		float z1 = inz1[i].z;
 		int age1 = inz1[i].age;		
 
-		float newZ, newAge;
+        float newZ;
 		
 		// filter z variable
 		float dz = z - z1;
@@ -690,28 +696,34 @@ TouchArray TouchTracker::filterTouchesZ(const TouchArray& in, const TouchArray& 
 		}	
 		
 		// gate with hysteresis
-		bool gate = (age1 > 0);
+        bool gate1 = (age1 > 0);
+        bool newGate = gate1;
 		if(newZ > mOnThreshold)
 		{
-			gate = true;
+			newGate = true;
 		}
 		else if (newZ < mOffThreshold)
 		{
-			gate = false;
+			newGate = false;
 		}
 		
 		// increment age
-		if(!gate)
-		{
-			newAge = 0;
-		}
-		else
-		{
-			newAge = age1 + 1;
-		}
+        int newAge = newGate ? (age1 + 1) : 0;
+
+        // set state
+        int newState = newGate ? (gate1 ? kTouchStateContinue : kTouchStateOn) : (gate1 ? kTouchStateOff : kTouchStateInactive);
 		
-		out[i] = Touch(x, y, newZ, dz, newAge);
+        out[i] = Touch{.x=x, .y=y, .z=newZ, .dz=dz, .age=newAge, .state=newState};
 	}
+    
+    
+    // MLTEST
+    Touch t = out[0];
+    if(touchIsActive(t))
+    {
+        std::cout << "tracker0: " << t.state << " " << t.z << "\n";
+    }
+    
 	
 	return out;
 }
@@ -795,7 +807,7 @@ TouchArray TouchTracker::rotateTouches(const TouchArray& in)
 TouchArray TouchTracker::clampAndScaleTouches(const TouchArray& in)
 {
 	const float kTouchOutputScale = 4.f;
-	TouchArray out;
+    TouchArray out{};
 	for(int i = 0; i < mMaxTouchesPerFrame; ++i)
 	{
 		Touch t = in[i];

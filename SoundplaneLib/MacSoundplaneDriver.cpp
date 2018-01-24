@@ -89,15 +89,8 @@ std::unique_ptr<SoundplaneDriver> SoundplaneDriver::create(SoundplaneDriverListe
 	return std::unique_ptr<MacSoundplaneDriver>(new MacSoundplaneDriver(m));
 }
 
-MacSoundplaneDriver::MacSoundplaneDriver(SoundplaneDriverListener& m) : 
-mTransactionsInFlight(0),
-dev(0),
-intf(0),
-mDeviceState(kNoDevice),
-notifyPort(0),
-matchedIter(0),
-notification(0),
-mListener(m)
+MacSoundplaneDriver::MacSoundplaneDriver(SoundplaneDriverListener& m) :
+    mListener(m)
 {
 	printf("creating SoundplaneDriver...\n");
 	
@@ -105,8 +98,6 @@ mListener(m)
 	{
 		mCurrentCarriers[i] = kDefaultCarriers[i];
 	}
-    
-
 }
 
 void MacSoundplaneDriver::start()
