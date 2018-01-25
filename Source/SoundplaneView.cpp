@@ -299,7 +299,6 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 	// if note: note #, single / multi
 	// if note grid: start note, y skip, single / multi
 	// if control: ctrl x, ctrl y, ctrl dx, ctrl dy
-	
     
 	// MIDI
 	pB = page0->addToggleButton("active", toggleRect.withCenter(3.25, bottomDialsY), "midi_active", c2);
@@ -449,12 +448,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
     
     // console
     MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));
-    
     MLConsole().sendOutputToListener(pDebug);
-    
-    // MLTEST temp
-    //debug().sendOutputToListener(pDebug);
-    
     
     pD = page2->addDial("hysteresis", dialRect.withCenter(0.5, dialY), "hysteresis", c2);
     pD->setRange(0.01, 1.0, 0.01);
@@ -628,18 +622,6 @@ void SoundplaneView::setOSCServicesString(const std::string& str)
 	if(mpOSCServicesButton)
 		mpOSCServicesButton->setProperty("text", str.c_str());
 }
-
-/*
-void SoundplaneView::paint (Graphics& g)
-{
-//	MLLookAndFeel* myLookAndFeel = &(getRootViewResources(this).mLookAndFeel);
-	
-	// MLTEST paint grid
-//	myLookAndFeel->drawUnitGrid(g, this);	
-	
-//	myLookAndFeel->drawBackground(g, this);	
-}
-*/
 
 void SoundplaneView::goToPage (int page)
 {

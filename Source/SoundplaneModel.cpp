@@ -1058,7 +1058,7 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
                 MLConsole() << "No type for zone!\n";
             }
 
-            // get zone rect
+            // get zone rect in keys
             cJSON* pZoneRect = cJSON_GetObjectItem(pNode, "rect");
             if(pZoneRect)
             {

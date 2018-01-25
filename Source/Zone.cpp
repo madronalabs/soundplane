@@ -46,12 +46,6 @@ Zone::Zone()
 		mVibratoFilters[i].setSampleRate(kSoundplaneFrameRate);
 		mVibratoFilters[i].setOnePole(kVibratoFilterFreq);
 	}
-    
-    /*
-    for(int i=0; i<kZoneValArraySize; ++i)        
-    {
-        mValue[i] = 0.;
-    }*/
 }
 
 void Zone::setBounds(MLRect b)
@@ -89,8 +83,6 @@ void Zone::newFrame()
         mTouches0[i] = Touch{};
         mOutputTouches[i] = Touch{};
     }
-    
-    mOutputController = Controller{};
 }
 
 void Zone::addTouchToFrame(int i, Touch t)

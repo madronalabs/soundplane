@@ -54,37 +54,31 @@ public:
     void storeAnyNewTouches();
     
     void processTouches(const std::bitset<kMaxTouches>& freedTouches);
-    
     void processTouchesNoteRow(const std::bitset<kMaxTouches>& freedTouches);
     void processTouchesNoteOffs(std::bitset<kMaxTouches>& freedTouches);
 
     const Touch touchToKeyPos(const Touch& t) const
     {
-        return Touch{.x = mXRange(t.x), .y = mYRange(t.y), .kx = t.kx, .ky = t.ky, .z = t.z};
+        Touch u = t;
+        u.x = mXRange(t.x);
+        u.y = mYRange(t.y);
+        return u;
     }
     
     const Touch getTouch(int i) const { return mTouches1[i]; }
     
-    bool needsRedraw() const { return mNeedsRedraw; }
     const ml::TextFragment getName() const { return mName; }
     MLRect getBounds() const { return mBounds; }
 	int getType() const { return mType; }
 	int getOffset() const { return mOffset; }
 
-    // return values on [0..1]
-	//float getValue(int i) const { return mValue[ml::clamp(i, 0, kZoneValArraySize - 1)]; }
-   // float getXValue() const { return getValue(0); }
-   // float getYValue() const { return getValue(1); }
+    const Controller& getController() const { return mOutputController; }
 
-    // return values scaled to key grid
-  //  float getXKeyPos() const { return mXRange(getValue(0)); }
-  //  float getYKeyPos() const { return mYRange(getValue(1)); }
-
-    // setters
     void setZoneID(int z) { mZoneID = z; }
     void setSnapFreq(float f);
+    
+    // set bounds in key grid
     void setBounds(MLRect b);
-    void setNeedsRedraw(bool b) { mNeedsRedraw = b; }
     
     // TODO look at usage wrt. x/y/z display and make these un-public again
     MLRect mBounds;
@@ -108,7 +102,9 @@ protected:
     // start note falls on this degree of scale-- for diatonic and other non-chromatic scales
     int mScaleNoteOffset = 0;
     
+    // TODO make a scale object instead
     MLSignal mScaleMap{};
+    
     int mControllerNum1{0};
     int mControllerNum2{0};
     int mControllerNum3{0};
@@ -132,9 +128,6 @@ private:
     void processTouchesControllerXY();
     void processTouchesControllerToggle();
     void processTouchesControllerPressure();
-
-    bool mNeedsRedraw;
-//    float mValue[kZoneValArraySize];
 
     // touch locations are stored scaled to [0..1] over the Zone boundary.
     // incoming touches 

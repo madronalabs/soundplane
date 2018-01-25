@@ -37,12 +37,3 @@ struct Controller
 
 typedef std::array<Controller, kMaxControllers> ControllerArray;
 
-
-/*
-constexpr Controller kDefaultController // can't do this with non-literal types.
-{
-    .number = 0,
-  //  .name = "",
-    .value = {0.f}
-};
-*/

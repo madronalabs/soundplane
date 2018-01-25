@@ -258,7 +258,6 @@ void SoundplaneOSCOutput::sendFrame()
             
             // clear
             c.active = false;
-        
         }
 	}
 	

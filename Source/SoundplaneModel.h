@@ -173,7 +173,7 @@ private:
 
 	bool mOutputEnabled;
 
-    static const int kMiscStringSize = 256;
+    static const int kMiscStringSize{256};
     void loadZonesFromString(const std::string& zoneStr);
 
 	void doInfrequentTasks();
@@ -242,8 +242,6 @@ private:
 	
 	bool mDoOverrideCarriers;
 	SoundplaneDriver::Carriers mOverrideCarriers;
-	
-	int mTest;
 
 	std::vector<float> mMaxNoiseByCarrierSet;
 	std::vector<float> mMaxNoiseFreqByCarrierSet;
@@ -266,7 +264,7 @@ private:
     
     size_t kMaxQueueSize{0};
 
-    int mDataRate = 250;
+    int mDataRate{100};
     time_point<system_clock> mPrevProcessTouchesTime{};
 };
 
