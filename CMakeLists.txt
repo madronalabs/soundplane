@@ -10,7 +10,7 @@ project(soundplane)
 
 set(PROJECT_NAME Soundplane)
 set(SP_VERSION_MAJOR 1)
-set(SP_VERSION_MINOR 6)
+set(SP_VERSION_MINOR 7)
 set(SP_VERSION_UPDATE 0)
 set(SP_VERSION "${SP_VERSION_MAJOR}.${SP_VERSION_MINOR}.${SP_VERSION_UPDATE}")
 
@@ -48,7 +48,8 @@ add_subdirectory(SoundplaneLib)
 set(SP_SOURCES
   Data/SoundplaneBinaryData/SoundplaneBinaryData.cpp
   Data/SoundplaneBinaryData/SoundplaneBinaryData.h
-  Source/AppConfig.h
+  Source/AppConfig.h  
+  Source/Controller.h
   Source/JuceHeader.h
   Source/MLProjectInfo.h
   Source/SoundplaneApp.cpp
@@ -64,12 +65,14 @@ set(SP_SOURCES
   Source/SoundplaneModel.h
   Source/SoundplaneOSCOutput.cpp
   Source/SoundplaneOSCOutput.h
+  Source/SoundplaneOutput.h
   Source/SoundplaneTouchGraphView.cpp
   Source/SoundplaneTouchGraphView.h
   Source/SoundplaneView.cpp
   Source/SoundplaneView.h
   Source/SoundplaneZoneView.cpp
   Source/SoundplaneZoneView.h
+  Source/Touch.h
   Source/TouchTracker.cpp
   Source/TouchTracker.h
   Source/Zone.cpp

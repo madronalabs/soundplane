@@ -36,7 +36,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpBorder->makeResizer(mpView);
 	mpBorder->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
     mpBorder->setBounds(mpView->getBounds());
-	
     
     mpWindow = new MLAppWindow(mpView);
     

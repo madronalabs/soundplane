@@ -5,6 +5,7 @@
 
 #include "SoundplaneModel.h"
 #include "ThreadUtility.h"
+#include "SensorFrame.h"
 #include "MLProjectInfo.h"
 
 static const ml::Text kOSCDefaultStr("default");
@@ -186,7 +187,7 @@ SoundplaneModel::~SoundplaneModel()
 
 void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
 {
-    debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
+   //  debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
     
     int propertyType = newVal.getType();
     switch(propertyType)
