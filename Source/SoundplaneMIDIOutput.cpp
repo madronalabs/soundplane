@@ -633,7 +633,7 @@ void SoundplaneMIDIOutput::sendMIDIControllerMessages()
 
 void SoundplaneMIDIOutput::doInfrequentTasks()
 {
-	if(mKymaMode)
+	if(mpCurrentDevice && mKymaMode)
 	{
 		pollKymaViaMIDI();
 	}
