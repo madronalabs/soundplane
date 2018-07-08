@@ -43,87 +43,84 @@ typedef enum
 const int kSensorFrameQueueSize = 16;
 
 class SoundplaneModel :
-	public SoundplaneDriverListener,
-	public MLOSCListener,
-	public MLNetServiceHub,
-	public MLModel
+public SoundplaneDriverListener,
+public MLOSCListener,
+public MLNetServiceHub,
+public MLModel
 {
 public:
-
+	
 	SoundplaneModel();
 	~SoundplaneModel();
 	
 	// SoundplaneDriverListener
 	void onStartup() override;
 	void onFrame(const SensorFrame& frame) override;
-    void onError(int error, const char* errStr) override;
-    void onClose() override;
-
+	void onError(int error, const char* errStr) override;
+	void onClose() override;
+	
 	// MLModel
-    void doPropertyChangeAction(ml::Symbol , const MLProperty & ) override;
-
+	void doPropertyChangeAction(ml::Symbol , const MLProperty & ) override;
+	
 	void setAllPropertiesToDefaults();
 	
 	// MLOSCListener
 	void ProcessMessage(const osc::ReceivedMessage &m, const IpEndpointName& remoteEndpoint) override;
 	void ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint) override;
-
-	// MLNetServiceHub
-	void didResolveAddress(NetService *pNetService) override;
-
+	
 	// OSC services
 	void refreshServices();
 	const std::vector<std::string>& getServicesList();
 	void formatServiceName(const std::string& inName, std::string& outName);
-
-    MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
-
+	
+	MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
+	
 	float getSampleHistory(int x, int y);
-
+	
 	void getHistoryStats(float& mean, float& stdDev);
 	int getWidth() { return mSurface.getWidth(); }
 	int getHeight() { return mSurface.getHeight(); }
-
+	
 	void setDefaultCarriers();
 	void setCarriers(const SoundplaneDriver::Carriers& c);
 	int enableCarriers(unsigned long mask);
 	int getNumCarriers() { return kSoundplaneNumCarriers; }
 	void dumpCarriers(const SoundplaneDriver::Carriers& carriers);
-
+	
 	void enableOutput(bool b);
-
+	
 	int getStateIndex();
 	const char* getHardwareStr();
 	const char* getStatusStr();
 	const char* getClientStr();
-
+	
 	int getSerialNumber() const {return mSerialNumber;}
-
+	
 	void clear();
-
+	
 	void setRaw(bool b);
 	bool getRaw(){ return mRaw; }
-
+	
 	void beginCalibrate();
 	bool isCalibrating() { return mCalibrating; }
 	float getCalibrateProgress();
 	void endCalibrate();
-
+	
 	void beginSelectCarriers();
 	bool isSelectingCarriers() { return mSelectingCarriers; }
 	float getSelectCarriersProgress();
 	void nextSelectCarriersStep();
 	void endSelectCarriers();
-
+	
 	void setFilter(bool b);
-
+	
 	void getMinMaxHistory(int n);
 	
 	const MLSignal& getTouchFrame() { return mTouchFrame; }
 	const MLSignal& getTouchHistory() { return mTouchHistory; }
 	const MLSignal getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
 	const MLSignal getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex); return sensorFrameToSignal(mCalibratedFrame); }
-    
+	
 	const MLSignal getSmoothedSignal() { std::lock_guard<std::mutex> lock(mSmoothedSignalMutex); return mSmoothedSignal; }
 	
 	const TouchArray& getTouchArray() { return mTouchArray1; }
@@ -131,109 +128,109 @@ public:
 	bool isWithinTrackerCalibrateArea(int i, int j);
 	const int getHistoryCtr() { return mHistoryCtr; }
 	
-    const std::vector< Zone >::const_iterator getZonesBegin(){ return mZones.begin(); }
-    const std::vector< Zone >::const_iterator getZonesEnd(){ return mZones.end(); }
-
-    void setStateFromJSON(cJSON* pNode, int depth);
-    bool loadZonePresetByName(const std::string& name);
-
+	const std::vector< Zone >::const_iterator getZonesBegin(){ return mZones.begin(); }
+	const std::vector< Zone >::const_iterator getZonesEnd(){ return mZones.end(); }
+	
+	void setStateFromJSON(cJSON* pNode, int depth);
+	bool loadZonePresetByName(const std::string& name);
+	
 	int getDeviceState(void);
 	int getClientState(void);
-
+	
 	SoundplaneMIDIOutput& getMIDIOutput() { return mMIDIOutput; }
-
+	
 private:
-    TouchArray mTouchArray1{};
-    TouchArray mZoneOutputTouches{};
-
+	TouchArray mTouchArray1{};
+	TouchArray mZoneOutputTouches{};
+	
 	std::unique_ptr< SoundplaneDriver > mpDriver;
-    std::unique_ptr< Queue< SensorFrame > > mSensorFrameQueue;
-
+	std::unique_ptr< Queue< SensorFrame > > mSensorFrameQueue;
+	
 	// TODO order!
-    void process(time_point<system_clock> now);
-    
-    TouchArray trackTouches(const SensorFrame& frame);
+	void process(time_point<system_clock> now);
+	
+	TouchArray trackTouches(const SensorFrame& frame);
 	void initialize();
-    bool findNoteChanges(TouchArray t0, TouchArray t1);
+	bool findNoteChanges(TouchArray t0, TouchArray t1);
 	TouchArray scaleTouchPressureData(TouchArray in);
-    
+	
 	void sendTouchesToZones(TouchArray touches);
-    
-    void sendFrameToOutputs(time_point<system_clock> now);
-    void beginOutputFrame(time_point<system_clock> now);
-    void sendTouchToOutputs(int i, int offset, const Touch& t);
-    void sendControllerToOutputs(int zoneID, int offset, const Controller& m);
-    void endOutputFrame();
-
-    void clearZones();
-    void sendParametersToZones();
-
-    std::vector< Zone > mZones;
-    MLSignal mZoneIndexMap;
-
+	
+	void sendFrameToOutputs(time_point<system_clock> now);
+	void beginOutputFrame(time_point<system_clock> now);
+	void sendTouchToOutputs(int i, int offset, const Touch& t);
+	void sendControllerToOutputs(int zoneID, int offset, const Controller& m);
+	void endOutputFrame();
+	
+	void clearZones();
+	void sendParametersToZones();
+	
+	std::vector< Zone > mZones;
+	MLSignal mZoneIndexMap;
+	
 	bool mOutputEnabled;
-
-    static const int kMiscStringSize{256};
-    void loadZonesFromString(const std::string& zoneStr);
-
+	
+	static const int kMiscStringSize{256};
+	void loadZonesFromString(const std::string& zoneStr);
+	
 	void doInfrequentTasks();
 	uint64_t mLastInfrequentTaskTime;
-
+	
 	int mSerialNumber;
-
+	
 	SoundplaneMIDIOutput mMIDIOutput;
 	SoundplaneOSCOutput mOSCOutput;
-    
-    SensorFrame mSensorFrame{};
-    SensorFrame mCalibratedFrame{};
-    
+	
+	SensorFrame mSensorFrame{};
+	SensorFrame mCalibratedFrame{};
+	
 	MLSignal mSurface;
-
+	
 	int	mMaxTouches;
-    
+	
 	MLSignal mTouchFrame;
 	std::mutex mTouchFrameMutex;
-	MLSignal mTouchHistory;	
-
+	MLSignal mTouchHistory;
+	
 	bool mCalibrating;
 	bool mSelectingCarriers;
 	bool mRaw;
-    bool mSendMatrixData;
-
+	bool mSendMatrixData;
+	
 	SoundplaneDriver::Carriers mCarriers;
-
+	
 	bool mHasCalibration;
-
+	
 	SensorFrameStats mStats;
-    SensorFrame mCalibrateMeanInv{};
+	SensorFrame mCalibrateMeanInv{};
 	
 	MLSignal mRawSignal;
 	std::mutex mRawSignalMutex;
 	
 	MLSignal mCalibratedSignal;
 	std::mutex mCalibratedSignalMutex;
-
-    SensorFrame mSmoothedFrame{};
+	
+	SensorFrame mSmoothedFrame{};
 	MLSignal mSmoothedSignal;
 	std::mutex mSmoothedSignalMutex;
-
+	
 	int mCalibrateStep; // calibrate step from 0 - end
 	int mTotalCalibrateSteps;
 	int mSelectCarriersStep;
-
+	
 	float mSurfaceWidthInv;
 	float mSurfaceHeightInv;
-
-    // store current key for each touch to implement hysteresis.
+	
+	// store current key for each touch to implement hysteresis.
 	int mCurrentKeyX[kMaxTouches];
 	int mCurrentKeyY[kMaxTouches];
-
+	
 	char mHardwareStr[kMiscStringSize];
 	char mStatusStr[kMiscStringSize];
 	char mClientStr[kMiscStringSize];
-
+	
 	TouchTracker mTracker;
-
+	
 	int mHistoryCtr;
 	bool mCarrierMaskDirty;
 	bool mNeedsCarriersSet;
@@ -242,30 +239,31 @@ private:
 	
 	bool mDoOverrideCarriers;
 	SoundplaneDriver::Carriers mOverrideCarriers;
-
+	
 	std::vector<float> mMaxNoiseByCarrierSet;
 	std::vector<float> mMaxNoiseFreqByCarrierSet;
-
+	
 	bool mKymaMode;
 	int mKymaIsConnected; // TODO more custom clients
-
+	
 	std::unique_ptr<MLFileCollection> mTouchPresets;
-    std::unique_ptr<MLFileCollection> mZonePresets;
-
+	std::unique_ptr<MLFileCollection> mZonePresets;
+	
 	// OSC services
 	std::vector<std::string> mServiceNames;
-
-    bool mVerbose;
-    
-    bool mTerminating{false};
-    int mProcessCounter{0};
-    void processThread();
-    std::thread mProcessThread;
-    
-    size_t kMaxQueueSize{0};
-
-    int mDataRate{100};
-    time_point<system_clock> mPrevProcessTouchesTime{};
+	
+	bool mVerbose;
+	
+	bool mTerminating{false};
+	int mProcessCounter{0};
+	void processThread();
+	std::thread mProcessThread;
+	
+	size_t kMaxQueueSize{0};
+	
+	int mDataRate{100};
+	time_point<system_clock> mPrevProcessTouchesTime{};
 };
 
 #endif // __SOUNDPLANE_MODEL__
+

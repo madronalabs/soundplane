@@ -228,7 +228,8 @@ void SoundplaneController::showMenu (ml::Symbol menuName, ml::Symbol instigatorN
 		else if (menuName == "osc_service_name")
 		{
 			menu->clear();
-			mpSoundplaneModel->refreshServices();
+			// mpSoundplaneModel->refreshServices();
+			
 			const std::vector<std::string>& services = mpSoundplaneModel->getServicesList();
 			menu->addItems(services);
 		}
@@ -316,17 +317,12 @@ void SoundplaneController::doOSCServicesMenu(int result)
 	if(!mpSoundplaneModel) return;
 	std::string fullName ("OSC service not found.");
 
-    if(result == 1) // set default
-    {
-        fullName = "default";
-    }
-    else // resolve a service from list
-    {
-		MLMenuPtr menu = mMenuMap["osc_service_name"];
-		fullName = menu->getMenuItemPath(result);	
-    }
+	if(result > 0)
+	{
+		fullName = mMenuMap["osc_service_name"]->getMenuItemPath(result);	
+	}
 
-	mpSoundplaneModel->setProperty("osc_service_name", fullName.c_str());
+	mpSoundplaneModel->setPropertyImmediate("osc_service_name", fullName.c_str());
 }
 
 class SoundplaneSetupThread : public ThreadWithProgressWindow

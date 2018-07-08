@@ -31,7 +31,7 @@ const int kUDPOutputBufferSize = 4096;
 using namespace std::chrono;
 
 class SoundplaneOSCOutput :
-	public SoundplaneOutput
+public SoundplaneOutput
 {
 public:
 	SoundplaneOSCOutput();
@@ -40,15 +40,15 @@ public:
 	int getKymaMode();
 	void setKymaMode(bool m);
 	void setKymaPort(int p);
-
+	
 	void connect();
-
-    // SoundplaneOutput
-    void beginOutputFrame(time_point<system_clock> now) override;
-    void processTouch(int i, int offset, const Touch& m) override;
-    void processController(int z, int offset, const Controller& m) override;
-    void endOutputFrame() override;
-
+	
+	// SoundplaneOutput
+	void beginOutputFrame(time_point<system_clock> now) override;
+	void processTouch(int i, int offset, const Touch& m) override;
+	void processController(int z, int offset, const Controller& m) override;
+	void endOutputFrame() override;
+	
 	void setDataRate(int r) { mDataRate = r; }
 	
 	void setActive(bool v);
@@ -56,29 +56,29 @@ public:
 	
 	void setSerialNumber(int s) { mSerialNumber = s; }
 	void notify(int connected);
-    void doInfrequentTasks();
-    
-    void processMatrix(const MLSignal& m);
-    
+	void doInfrequentTasks();
+	
+	void processMatrix(const MLSignal& m);
+	
 private:
 	void initializeSocket(int port);
 	osc::OutboundPacketStream* getPacketStreamForOffset(int offset);
 	UdpTransmitSocket* getTransmitSocketForOffset(int portOffset);
 	
-    void sendFrame();
-    void sendFrameToKyma();
-
+	void sendFrame();
+	void sendFrameToKyma();
+	
 	void sendInfrequentData();
 	void sendInfrequentDataToKyma();
-
-	int mMaxTouches;	
+	
+	int mMaxTouches;
 	
 	std::array< TouchArray, kNumUDPPorts > mTouchesByPort;
-    std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
-    
-    int mDataRate{100};
-    time_point<system_clock> mFrameTime;
-
+	std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
+	
+	int mDataRate{100};
+	time_point<system_clock> mFrameTime;
+	
 	std::vector< std::vector < char > > mUDPBuffers;
 	std::vector< std::unique_ptr< osc::OutboundPacketStream > > mUDPPacketStreams;
 	std::vector< std::unique_ptr< UdpTransmitSocket > > mUDPSockets;
@@ -93,3 +93,4 @@ private:
 
 
 #endif // __SOUNDPLANE_OSC_OUTPUT_H_
+

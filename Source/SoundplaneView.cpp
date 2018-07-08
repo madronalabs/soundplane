@@ -331,7 +331,7 @@ SoundplaneView::SoundplaneView (SoundplaneModel* pModel, MLWidget::Listener* pRe
 
 	pB = page0->addToggleButton("matrix", toggleRect.withCenter(10.75, bottomDialsY), "osc_send_matrix", c2);
 	
-	mpOSCServicesButton = page0->addMenuButton("destination", textButtonRect3.withCenter(9.75, 9.), "osc_service_name");
+	mpOSCServicesButton = page0->addMenuButton("destination port", textButtonRect3.withCenter(9.75, 9.), "osc_service_name");
 	
 	// additional parameter views allow us to adapt UI based on Model properties.
 	page0->addPropertyView("midi_mpe", this, ml::Symbol("mpe")); 	
