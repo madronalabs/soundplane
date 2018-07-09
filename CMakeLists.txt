@@ -31,7 +31,7 @@ endif()
 
 set(ML_JUCE_HEADER_PATH "${CMAKE_SOURCE_DIR}/Source")
 if(NOT SP_MADRONALIB_DIR)
-  set(SP_MADRONALIB_DIR "${CMAKE_SOURCE_DIR}/external/madronalib")
+  set(SP_MADRONALIB_DIR "${CMAKE_SOURCE_DIR}/../madronalib")
 endif()
 
 # set options to turn off extras and include madronalib
@@ -40,7 +40,7 @@ set(BUILD_NEW_ONLY OFF CACHE BOOL "Build the examples" FORCE)
 set(ML_BUILD_EXAMPLES OFF CACHE BOOL "Build the examples" FORCE)
 set(ML_BUILD_TESTS OFF CACHE BOOL "Build the examples" FORCE)
 
-add_subdirectory(${SP_MADRONALIB_DIR})
+add_subdirectory(${SP_MADRONALIB_DIR} madronalib)
 add_subdirectory(SoundplaneLib)
 
 # add_subdirectory(${SP_MADRONALIB_DIR}/external/juce)
@@ -94,15 +94,20 @@ add_executable(
   ${SP_DATA}
   ${SP_SOURCES})
 
-target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/")
-target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/external/")
-target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/external/juce/JUCE")
+include_directories("${SP_MADRONALIB_DIR}/external")
+include_directories("${SP_MADRONALIB_DIR}/external/utf")
 
-target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/core")
-target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/DSP")
-target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/MLApp")
-target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/MLJuceApp")
-target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/LookAndFeel")
+#target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/")
+#target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/external/")
+#target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/external/juce/JUCE")
+#target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/core")
+#target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/DSP")
+#target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/MLApp")
+#target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/MLJuceApp")
+#target_include_directories(${EXECUTABLE_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/external/madronalib/source/LookAndFeel")
+
+
+target_include_directories(${EXECUTABLE_NAME} PRIVATE Data/SoundplaneBinaryData)
 
 target_include_directories(${EXECUTABLE_NAME} PRIVATE "${ML_JUCE_DIR}")
 target_include_directories(${EXECUTABLE_NAME} PRIVATE Data/SoundplaneBinaryData)
