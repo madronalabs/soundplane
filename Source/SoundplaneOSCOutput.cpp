@@ -46,8 +46,7 @@ void SoundplaneOSCOutput::reconnect()
 {
 	try
 	{
-		// MLTEST
-		std::cout  << "SoundplaneOSCOutput: connecting to host " << mHostName << " starting at port " << mCurrentBaseUDPPort << " \n";
+		MLConsole() << "SoundplaneOSCOutput: connecting to host " << mHostName << " starting at port " << mCurrentBaseUDPPort << " \n";
 		
 		for(int portOffset = 0; portOffset < kNumUDPPorts; portOffset++)
 		{
@@ -69,14 +68,12 @@ void SoundplaneOSCOutput::reconnect()
 			*p << osc::EndBundle;
 			socket->Send( p->Data(), p->Size() );
 			
-			// MLTEST
-			std::cout << "                     connected to port " << mCurrentBaseUDPPort + portOffset << "\n";
+			MLConsole() << "                     connected to port " << mCurrentBaseUDPPort + portOffset << "\n";
 		}
 	}
 	catch(std::runtime_error err)
 	{
-		// MLTEST
-		std::cout << "                     connect error: " << err.what() << "\n";
+		MLConsole() << "                     connect error: " << err.what() << "\n";
 		mCurrentBaseUDPPort = kDefaultUDPPort;
 	}
 }

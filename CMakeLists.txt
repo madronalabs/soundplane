@@ -30,6 +30,9 @@ if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release")
 endif()
 
 set(ML_JUCE_HEADER_PATH "${CMAKE_SOURCE_DIR}/Source")
+
+# set the path to madronalib here
+
 if(NOT SP_MADRONALIB_DIR)
   set(SP_MADRONALIB_DIR "${CMAKE_SOURCE_DIR}/../madronalib")
 endif()
