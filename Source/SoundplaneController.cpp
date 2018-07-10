@@ -228,8 +228,6 @@ void SoundplaneController::showMenu (ml::Symbol menuName, ml::Symbol instigatorN
 		else if (menuName == "osc_service_name")
 		{
 			menu->clear();
-			// mpSoundplaneModel->refreshServices();
-			
 			const std::vector<std::string>& services = mpSoundplaneModel->getServicesList();
 			menu->addItems(services);
 		}
