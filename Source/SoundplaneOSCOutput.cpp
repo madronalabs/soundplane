@@ -16,8 +16,7 @@ SoundplaneOSCOutput::SoundplaneOSCOutput() :
 mCurrentBaseUDPPort(kDefaultUDPPort),
 mFrameId(0),
 mSerialNumber(0),
-mKymaMode(false),
-mKymaPort(8000)
+mKymaMode(false)
 {
 	try
 	{
@@ -43,23 +42,24 @@ SoundplaneOSCOutput::~SoundplaneOSCOutput()
 {
 }
 
-void SoundplaneOSCOutput::connect()
+void SoundplaneOSCOutput::reconnect()
 {
-	if(mKymaMode)
+	try
 	{
-		try
+		// MLTEST
+		std::cout  << "SoundplaneOSCOutput: connecting to host " << mHostName << " starting at port " << mCurrentBaseUDPPort << " \n";
+		
+		for(int portOffset = 0; portOffset < kNumUDPPorts; portOffset++)
 		{
-			MLConsole() << "SoundplaneOSCOutput: trying connect to Kyma on port " << mKymaPort << "\n";
+			mUDPPacketStreams[portOffset] = std::unique_ptr< osc::OutboundPacketStream >
+				(new osc::OutboundPacketStream( mUDPBuffers[portOffset].data(), kUDPOutputBufferSize ));
 			
-			// use first socket for Kyma
-			mUDPPacketStreams[0] = std::unique_ptr< osc::OutboundPacketStream >
-			(new osc::OutboundPacketStream( mUDPBuffers[0].data(), kUDPOutputBufferSize ));
-			mUDPSockets[0] = std::unique_ptr< UdpTransmitSocket >
-			(new UdpTransmitSocket(IpEndpointName(kDefaultHostnameString, mKymaPort)));
+			mUDPSockets[portOffset] = std::unique_ptr< UdpTransmitSocket >
+				(new UdpTransmitSocket(IpEndpointName(mHostName.c_str(), mCurrentBaseUDPPort + portOffset)));
 			
-			osc::OutboundPacketStream* p = getPacketStreamForOffset(0);
+			osc::OutboundPacketStream* p = getPacketStreamForOffset(portOffset);
 			if(!p) return;
-			UdpTransmitSocket* socket = getTransmitSocketForOffset(0);
+			UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
 			if(!socket) return;
 			
 			*p << osc::BeginBundleImmediate;
@@ -68,46 +68,16 @@ void SoundplaneOSCOutput::connect()
 			*p << osc::EndMessage;
 			*p << osc::EndBundle;
 			socket->Send( p->Data(), p->Size() );
-			MLConsole() << "                     connected to port " << mKymaPort << "\n";
-		}
-		catch(std::runtime_error err)
-		{
-			MLConsole() << "                     connect error: " << err.what() << "\n";
+			
+			// MLTEST
+			std::cout << "                     connected to port " << mCurrentBaseUDPPort + portOffset << "\n";
 		}
 	}
-	else
+	catch(std::runtime_error err)
 	{
-		// TODO open all sockets here ?
-		try
-		{
-			MLConsole() << "SoundplaneOSCOutput: trying connect to ports starting at " << mCurrentBaseUDPPort << " \n";
-			
-			for(int portOffset = 0; portOffset < kNumUDPPorts; portOffset++)
-			{
-				mUDPPacketStreams[portOffset] = std::unique_ptr< osc::OutboundPacketStream >
-				(new osc::OutboundPacketStream( mUDPBuffers[portOffset].data(), kUDPOutputBufferSize ));
-				mUDPSockets[portOffset] = std::unique_ptr< UdpTransmitSocket >
-				(new UdpTransmitSocket(IpEndpointName(kDefaultHostnameString, mCurrentBaseUDPPort + portOffset)));
-				
-				osc::OutboundPacketStream* p = getPacketStreamForOffset(portOffset);
-				if(!p) return;
-				UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
-				if(!socket) return;
-				
-				*p << osc::BeginBundleImmediate;
-				*p << osc::BeginMessage( "/t3d/dr" );
-				*p << (osc::int32)mDataRate;
-				*p << osc::EndMessage;
-				*p << osc::EndBundle;
-				socket->Send( p->Data(), p->Size() );
-				MLConsole() << "                     connected to port " << mCurrentBaseUDPPort + portOffset << "\n";
-			}
-		}
-		catch(std::runtime_error err)
-		{
-			MLConsole() << "                     connect error: " << err.what() << "\n";
-			mCurrentBaseUDPPort = kDefaultUDPPort;
-		}
+		// MLTEST
+		std::cout << "                     connect error: " << err.what() << "\n";
+		mCurrentBaseUDPPort = kDefaultUDPPort;
 	}
 }
 
@@ -118,15 +88,7 @@ int SoundplaneOSCOutput::getKymaMode()
 
 void SoundplaneOSCOutput::setKymaMode(bool m)
 {
-	// MLTEST
-	MLConsole() << "SoundplaneOSCOutput: kyma mode " << m << "\n";
 	mKymaMode = m;
-}
-
-void SoundplaneOSCOutput::setKymaPort(int p)
-{
-	MLConsole() << "SoundplaneOSCOutput: setting kyma port " << p << "\n";
-	mKymaPort = p;
 }
 
 void SoundplaneOSCOutput::setActive(bool v)

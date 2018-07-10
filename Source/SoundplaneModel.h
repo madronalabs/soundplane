@@ -69,9 +69,7 @@ public:
 	void ProcessBundle(const osc::ReceivedBundle &b, const IpEndpointName& remoteEndpoint) override;
 	
 	// OSC services
-	void refreshServices();
 	const std::vector<std::string>& getServicesList();
-	void formatServiceName(const std::string& inName, std::string& outName);
 	
 	MLFileCollection& getZonePresetsCollection() { return *mZonePresets; }
 	
@@ -248,9 +246,6 @@ private:
 	
 	std::unique_ptr<MLFileCollection> mTouchPresets;
 	std::unique_ptr<MLFileCollection> mZonePresets;
-	
-	// OSC services
-	std::vector<std::string> mServiceNames;
 	
 	bool mVerbose;
 	

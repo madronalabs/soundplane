@@ -39,9 +39,10 @@ public:
 	
 	int getKymaMode();
 	void setKymaMode(bool m);
-	void setKymaPort(int p);
 	
-	void connect();
+	void setHostName(const std::string& str) { mHostName = str; }
+	void setPort(int p) { mCurrentBaseUDPPort = p; }
+	void reconnect();
 	
 	// SoundplaneOutput
 	void beginOutputFrame(time_point<system_clock> now) override;
@@ -83,12 +84,13 @@ private:
 	std::vector< std::unique_ptr< osc::OutboundPacketStream > > mUDPPacketStreams;
 	std::vector< std::unique_ptr< UdpTransmitSocket > > mUDPSockets;
 	
+	std::string mHostName;
 	int mCurrentBaseUDPPort;
+	
 	osc::int32 mFrameId;
 	int mSerialNumber;
 	
 	bool mKymaMode;
-	int mKymaPort;
 };
 
 

@@ -127,17 +127,6 @@ mKymaMode(false)
 	clearZones();
 	setAllPropertiesToDefaults();
 	
-	// setup OSC default
-	//setProperty("osc_service_name", kOSCDefaultStr);
-	
-	// start Browsing OSC services
-	
-	mServiceNames.clear();
-	
-	//	mServices.clear();
-	//mServices.push_back(std::string(kOSCDefaultStr.getText()));
-	//	Browse(kLocalDotDomain, kUDPType);
-	
 	MLConsole() << "SoundplaneModel: listening for OSC on port " << kDefaultUDPReceivePort << "...\n";
 	listenToOSC(kDefaultUDPReceivePort);
 	
@@ -310,31 +299,11 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 				mMIDIOutput.setBendRange(v);
 				sendParametersToZones();
 			}
-			
 			else if (p == "verbose")
 			{
 				bool b = v;
 				mVerbose = b;
 			}
-			
-			/*
-			 // MLTEST no manual connect
-			 else if (p == "kyma")
-			 {
-			 bool b = v;
-			 
-			 // MLTEST
-			 MLConsole() << "SoundplaneModel: kyma active " << b << "\n";
-			 
-			 if(b)
-			 {
-			 MLConsole() << "     listening for OSC on port " << kDefaultUDPReceivePort << "...\n";
-			 }
-			 
-			 listenToOSC(b ? kDefaultUDPReceivePort : 0);
-			 }
-			 */
-			
 			else if (p == "override_carriers")
 			{
 				bool b = v;
@@ -356,23 +325,12 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			
 			if(p == "osc_service_name")
 			{
-				/*
-				 if(strText == ml::Text(kOSCDefaultStr))
-				 {
-				 mOSCOutput.connect();
-				 }
-				 else
-				 {
-				 // resolve service for named port
-				 MLNetServiceHub::Resolve(kLocalDotDomain, kUDPType, str.c_str());
-				 
-				 }
-				 
-				 // MLTEST reconnect
-				 
-				 */
-				
-				
+				std::string serviceName = unformatServiceName(str);
+				std::string hostName = MLNetServiceHub::getHostName(serviceName);
+				int port = MLNetServiceHub::getPort(serviceName);
+				mOSCOutput.setHostName(hostName);
+				mOSCOutput.setPort(port);
+				mOSCOutput.reconnect();
 			}
 			if (p == "viewmode")
 			{
@@ -788,6 +746,13 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	
 	setProperty("kyma_poll", 0);
 	
+
+	{
+		std::stringstream nameStream;
+		nameStream << "default" << " (" << kDefaultUDPPort << ")";
+		setProperty("osc_service_name", nameStream.str().c_str());
+	}
+
 	setProperty("osc_active", 1);
 	setProperty("osc_raw", 0);
 	
@@ -865,25 +830,9 @@ void SoundplaneModel::ProcessBundle(const osc::ReceivedBundle &b, const IpEndpoi
 	
 }
 
-void SoundplaneModel::refreshServices()
-{
-	/*
-	 mServiceNames.clear();
-	 mServiceNames.push_back(std::string(kOSCDefaultStr.getText()));
-	 
-	 
-	 for(auto it = MLNetServiceHub::mServiceNames.begin(); it != MLNetServiceHub::mServiceNames.end(); it++)
-	 {
-	 const std::string& serviceName = *it;
-	 mServiceNames.push_back(serviceName);
-	 }
-	 */
-	
-}
-
 const std::vector<std::string>& SoundplaneModel::getServicesList()
 {
-	return MLNetServiceHub::getServiceNames();
+	return MLNetServiceHub::getFormattedServiceNames();
 }
 
 void SoundplaneModel::initialize()
