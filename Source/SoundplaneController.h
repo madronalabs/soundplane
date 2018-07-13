@@ -36,13 +36,13 @@ public:
     ~SoundplaneController();
 
 	// MLWidget::Listener
-	void handleWidgetAction(MLWidget* w, ml::Symbol action, ml::Symbol target, const MLProperty& val = MLProperty());
+	void handleWidgetAction(MLWidget* w, ml::Symbol action, ml::Symbol target, const MLProperty& val = MLProperty()) override;
 	
 	// MLFileCollection::Listener
 	void processFileFromCollection (ml::Symbol action, const MLFile& f, const MLFileCollection& collection, int idx, size_t size) override;
 	
 	// juce::Timer
-	void timerCallback();
+	void timerCallback() override;
 
 	void initialize();
 	void shutdown();

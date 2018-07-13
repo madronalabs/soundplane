@@ -116,8 +116,6 @@ private:
 	// page 0
 	SoundplaneGridView mGridView;
 	SoundplaneTouchGraphView mTouchView;
-	MLTextButton* mpCalibrateButton;
-	MLTextButton* mpClearButton;
 	MLMenuButton* mpViewModeButton;
 	
 	// page 1

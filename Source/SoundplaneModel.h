@@ -146,8 +146,13 @@ private:
 	
 	// TODO order!
 	void process(time_point<system_clock> now);
+	void outputTouches(TouchArray touches, time_point<system_clock> now);
+	void dumpOutputsByZone();
 	
 	TouchArray trackTouches(const SensorFrame& frame);
+	TouchArray getTestTouchesFromTracker(time_point<system_clock> now);
+	void saveTouchHistory(const TouchArray& t);
+
 	void initialize();
 	bool findNoteChanges(TouchArray t0, TouchArray t1);
 	TouchArray scaleTouchPressureData(TouchArray in);
@@ -191,6 +196,9 @@ private:
 	MLSignal mTouchHistory;
 	
 	bool mCalibrating;
+	bool mTestTouchesOn;
+	bool mTestTouchesWasOn;
+	bool mRequireSendNextFrame{false};
 	bool mSelectingCarriers;
 	bool mRaw;
 	bool mSendMatrixData;

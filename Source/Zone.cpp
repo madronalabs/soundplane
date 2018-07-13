@@ -314,6 +314,9 @@ void Zone::processTouchesNoteOffs(std::bitset<kMaxTouches>& freedTouches)
         {
             if(!isActive)
             {
+							
+//							std::cout << "OFF" << i << " \n";
+							
                 // on note off, retain last note for release
                 float lastScaleNote;
                 if(mQuantize)

@@ -11,8 +11,8 @@ SoundplaneGridView::SoundplaneGridView(MLWidget* pContainer) :
 	mpModel(nullptr),
 	mInitialized(false),
 	mResized(false),
-	mSensorWidth(64),
 	mSensorHeight(8),
+	mSensorWidth(64),
 	mCount(0),
 	mMaxRawTouches(0)
 

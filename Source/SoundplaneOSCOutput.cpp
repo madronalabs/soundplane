@@ -249,9 +249,6 @@ void SoundplaneOSCOutput::sendFrame()
 				*p << osc::BeginMessage( address.c_str() );
 				*p << t.x << t.y << t.z << t.note;
 				*p << osc::EndMessage;
-				
-				// MLTEST
-				// std::cout << "tch " << voiceIdx << ":" << t.state << " / " << t.x << ", " << t.y << ", " << t.z << ", " << t.note << "\n";
 			}
 		}
 		

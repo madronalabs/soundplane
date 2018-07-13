@@ -45,11 +45,11 @@ private:
 	void setDefaultWindowSize();
 	
 	// using raw ptrs because we need to control destruction order 
-	SoundplaneModel* mpModel;	
-	SoundplaneView* mpView;
-	SoundplaneController* mpController;	
-	MLAppWindow* mpWindow;
-	MLAppBorder* mpBorder;
+	SoundplaneModel* mpModel{nullptr};
+	SoundplaneView* mpView{nullptr};
+	SoundplaneController* mpController{nullptr};
+	MLAppWindow* mpWindow{nullptr};
+	MLAppBorder* mpBorder{nullptr};
 	
 	std::unique_ptr<MLAppState> mpModelState;
 	std::unique_ptr<MLAppState> mpViewState;

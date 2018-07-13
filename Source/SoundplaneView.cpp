@@ -454,6 +454,8 @@ mpMidiChannelDial(0)
 	pD->setRange(0.01, 1.0, 0.01);
 	pD->setDefault(0.5);
 	
+	pB = page2->addToggleButton("test touches", toggleRect.withCenter(11, dialY), "test_touches", c2);
+	
 	pB = page2->addToggleButton("verbose", toggleRect.withCenter(13, dialY), "verbose", c2);
 	
 	setWantsKeyboardFocus(true);

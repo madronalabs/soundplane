@@ -12,33 +12,33 @@
 #include "MLVectorDeprecated.h"
 
 #ifdef _WIN32
- #include <windows.h>
+#include <windows.h>
 #endif
 
 #include "MLGL.h"
 
 #ifndef GL_BGRA_EXT
- #define GL_BGRA_EXT 0x80e1
+#define GL_BGRA_EXT 0x80e1
 #endif
 
-class SoundplaneZoneView  : 
-    public Component,
-	public MLWidget
+class SoundplaneZoneView  :
+public Component,
+public MLWidget
 {
 public:
-    SoundplaneZoneView(MLWidget*);
-    ~SoundplaneZoneView();
-    
-    void mouseDrag (const MouseEvent& e);
- 	void setModel(SoundplaneModel* m);
-
+	SoundplaneZoneView(MLWidget*);
+	~SoundplaneZoneView();
+	
+	void mouseDrag (const MouseEvent& e) override;
+	void setModel(SoundplaneModel* m);
+	
 	void renderOpenGL() override;
-
+	
 private:
-    void drawDot(Vec2 pos, float r);
-    void renderGrid();
-    void renderZones();
-
+	void drawDot(Vec2 pos, float r);
+	void renderGrid();
+	void renderZones();
+	
 	SoundplaneModel* mpModel;
 };
 

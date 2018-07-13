@@ -43,10 +43,10 @@ static void makeStandardCarrierSet(SoundplaneDriver::Carriers &carriers, int set
 	}
 }
 
-void touchArrayToFrame(TouchArray* pArray, MLSignal* pFrame)
+void touchArrayToFrame(const TouchArray* pArray, MLSignal* pFrame)
 {
 	// get references for syntax
-	TouchArray& array = *pArray;
+	const TouchArray& array = *pArray;
 	MLSignal& frame = *pFrame;
 	
 	for(int i = 0; i < kMaxTouches; ++i)
@@ -95,8 +95,9 @@ mSurface(SensorGeometry::width, SensorGeometry::height),
 mRawSignal(SensorGeometry::width, SensorGeometry::height),
 mCalibratedSignal(SensorGeometry::width, SensorGeometry::height),
 mSmoothedSignal(SensorGeometry::width, SensorGeometry::height),
-
 mCalibrating(false),
+mTestTouchesOn(false),
+mTestTouchesWasOn(false),
 mSelectingCarriers(false),
 mHasCalibration(false),
 mZoneIndexMap(kSoundplaneAKeyWidth, kSoundplaneAKeyHeight),
@@ -315,8 +316,14 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 				makeStandardCarrierSet(mOverrideCarriers, v);
 				mNeedsCarriersSet = true;
 			}
+			else if (p == "test_touches")
+			{
+				bool b = v;
+				mTestTouchesOn = b;
+				mRequireSendNextFrame = true;
+			}
 		}
-			break;
+		break;
 		case MLProperty::kTextProperty:
 		{
 			// TODO clean up, use text for everything
@@ -495,59 +502,81 @@ void SoundplaneModel::processThread()
 	}
 }
 
+
 void SoundplaneModel::process(time_point<system_clock> now)
 {
-	if (mSensorFrameQueue->pop(mSensorFrame))
+	static int tc = 0;
+	tc++;
+	
+	TouchArray touches{};
+	if(mTestTouchesOn || mTestTouchesWasOn)
 	{
-		mSurface = sensorFrameToSignal(mSensorFrame);
-		
-		// store surface for raw output
+		touches = getTestTouchesFromTracker(now);
+		mTestTouchesWasOn = mTestTouchesOn;
+		outputTouches(touches, now);
+	}
+	else
+	{
+		if(mSensorFrameQueue->pop(mSensorFrame))
 		{
-			std::lock_guard<std::mutex> lock(mRawSignalMutex);
-			mRawSignal.copy(mSurface);
-		}
-		
-		if (mCalibrating)
-		{
-			mStats.accumulate(mSensorFrame);
-			if (mStats.getCount() >= kSoundplaneCalibrateSize)
-			{
-				endCalibrate();
-			}
-		}
-		else if (mSelectingCarriers)
-		{
-			mStats.accumulate(mSensorFrame);
+			mSurface = sensorFrameToSignal(mSensorFrame);
 			
-			if (mStats.getCount() >= kSoundplaneCalibrateSize)
+			// store surface for raw output
 			{
-				nextSelectCarriersStep();
+				std::lock_guard<std::mutex> lock(mRawSignalMutex);
+				mRawSignal.copy(mSurface);
 			}
-		}
-		else if(mOutputEnabled)
-		{
-			if (mHasCalibration)
+			
+			if(mCalibrating)
 			{
-				mCalibratedFrame = subtract(multiply(mSensorFrame, mCalibrateMeanInv), 1.0f);
-				TouchArray touches = trackTouches(mCalibratedFrame);
-				
-				// let Zones process touches. This is always done at the controller's frame rate.
-				sendTouchesToZones(touches);
-				
-				// determine if incoming frame could start or end a touch
-				bool notesChangedThisFrame = findNoteChanges(touches, mTouchArray1);
-				mTouchArray1 = touches;
-				
-				const int dataPeriodMicrosecs = 1000*1000 / mDataRate;
-				int microsSinceSend = duration_cast<microseconds>(now - mPrevProcessTouchesTime).count();
-				bool timeForNewFrame = (microsSinceSend >= dataPeriodMicrosecs);
-				if(notesChangedThisFrame || timeForNewFrame)
+				mStats.accumulate(mSensorFrame);
+				if (mStats.getCount() >= kSoundplaneCalibrateSize)
 				{
-					mPrevProcessTouchesTime = now;
-					sendFrameToOutputs(now);
+					endCalibrate();
+				}
+			}
+			else if (mSelectingCarriers)
+			{
+				mStats.accumulate(mSensorFrame);
+				
+				if (mStats.getCount() >= kSoundplaneCalibrateSize)
+				{
+					nextSelectCarriersStep();
+				}
+			}
+			else if(mOutputEnabled)
+			{
+				if (mHasCalibration)
+				{
+					mCalibratedFrame = subtract(multiply(mSensorFrame, mCalibrateMeanInv), 1.0f);
+					
+					TouchArray touches = trackTouches(mCalibratedFrame);
+					outputTouches(touches, now);
 				}
 			}
 		}
+	}
+}
+
+void SoundplaneModel::outputTouches(TouchArray touches, time_point<system_clock> now)
+{
+	saveTouchHistory(touches);
+	
+	// let Zones process touches. This is always done at the controller's frame rate.
+	sendTouchesToZones(touches);
+	
+	// determine if incoming frame could start or end a touch
+	bool notesChangedThisFrame = findNoteChanges(touches, mTouchArray1);
+	mTouchArray1 = touches;
+	
+	const int dataPeriodMicrosecs = 1000*1000 / mDataRate;
+	int microsSinceSend = duration_cast<microseconds>(now - mPrevProcessTouchesTime).count();
+	bool timeForNewFrame = (microsSinceSend >= dataPeriodMicrosecs);
+	if(notesChangedThisFrame || timeForNewFrame || mRequireSendNextFrame)
+	{
+		mRequireSendNextFrame = false;
+		mPrevProcessTouchesTime = now;
+		sendFrameToOutputs(now);
 	}
 }
 
@@ -556,7 +585,7 @@ void SoundplaneModel::process(time_point<system_clock> now)
 //
 void SoundplaneModel::sendTouchesToZones(TouchArray touches)
 {
-	const int maxTouches = getFloatProperty("max_touches");
+	// const int maxTouches = getFloatProperty("max_touches");
 	const float hysteresis = getFloatProperty("hysteresis");
 	
 	// clear incoming touches and push touch history in each zone
@@ -566,7 +595,10 @@ void SoundplaneModel::sendTouchesToZones(TouchArray touches)
 	}
 	
 	// add any active touches to the Zones they are over
-	for(int i=0; i<maxTouches; ++i)
+	// MLTEST for(int i=0; i<maxTouches; ++i)
+	
+	// iterate on all possible touches so touches will turn off when max_touches is lowered
+	for(int i=0; i<kMaxTouches; ++i)
 	{
 		float x = touches[i].x;
 		float y = touches[i].y;
@@ -620,7 +652,7 @@ void SoundplaneModel::sendTouchesToZones(TouchArray touches)
 	std::bitset<kMaxTouches> freedTouches;
 	
 	// process note offs for each zone
-	// this happens before processTouches() to allow touches to be freed
+	// this happens before processTouches() to allow touches to be freed for reuse in this frame
 	for(auto& zone : mZones)
 	{
 		zone.processTouchesNoteOffs(freedTouches);
@@ -631,6 +663,50 @@ void SoundplaneModel::sendTouchesToZones(TouchArray touches)
 	{
 		zone.processTouches(freedTouches);
 	}
+}
+
+void SoundplaneModel::dumpOutputsByZone()
+{
+	// count touches in zones
+	int activeTouches = 0;
+	for(auto& zone : mZones)
+	{
+		// touches
+		for(int i=0; i<kMaxTouches; ++i)
+		{
+			Touch t = zone.mOutputTouches[i];
+			if(touchIsActive(t))
+			{
+				activeTouches++;
+			}
+		}
+	}
+	
+	if(activeTouches)
+	{
+		int zc = 0;
+		
+		// send messages to outputs about each zone
+		for(auto& zone : mZones)
+		{
+			
+			std::cout << "[zone " << zc++ << ": ";
+			
+			// touches
+			for(int i=0; i<kMaxTouches; ++i)
+			{
+				Touch t = zone.mOutputTouches[i];
+				if(touchIsActive(t))
+				{
+					std::cout << i << ":" << t.state << ":" << t.z << " ";
+				}
+			}
+
+			std::cout << "]";
+		}
+		std::cout << "\n";
+	}
+	
 }
 
 void SoundplaneModel::sendFrameToOutputs(time_point<system_clock> now)
@@ -1122,11 +1198,20 @@ TouchArray SoundplaneModel::trackTouches(const SensorFrame& frame)
 {
 	SensorFrame curvature = mTracker.preprocess(frame);
 	TouchArray t = mTracker.process(curvature, mMaxTouches);
-	
 	mSmoothedSignal = sensorFrameToSignal(curvature);
-	
 	t = scaleTouchPressureData(t);
-	
+	return t;
+}
+
+TouchArray SoundplaneModel::getTestTouchesFromTracker(time_point<system_clock> now)
+{
+	TouchArray t = mTracker.getTestTouches(now, mMaxTouches);
+	t = scaleTouchPressureData(t);
+	return t;
+}
+
+void SoundplaneModel::saveTouchHistory(const TouchArray& t)
+{
 	// convert array of touches to Signal for display, history
 	{
 		std::lock_guard<std::mutex> lock(mTouchFrameMutex);
@@ -1136,8 +1221,6 @@ TouchArray SoundplaneModel::trackTouches(const SensorFrame& frame)
 	mHistoryCtr++;
 	if (mHistoryCtr >= kSoundplaneHistorySize) mHistoryCtr = 0;
 	mTouchHistory.setFrame(mHistoryCtr, mTouchFrame);
-	
-	return t;
 }
 
 void SoundplaneModel::doInfrequentTasks()

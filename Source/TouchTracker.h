@@ -8,6 +8,8 @@
 #include "SensorFrame.h"
 #include "Touch.h"
 
+using namespace std::chrono;
+
 class TouchTracker
 {
 public:
@@ -16,37 +18,41 @@ public:
 	~TouchTracker();
 	
 	void clear();
-	void setRotate(bool b);	
+	void setRotate(bool b);
 	void setThresh(float f);
-	void setLopassZ(float k); 	
+	void setLopassZ(float k);
 	
-    // preprocess input to get curvature
-    SensorFrame preprocess(const SensorFrame& in);
-    
+	// preprocess input to get curvature
+	SensorFrame preprocess(const SensorFrame& in);
+	
 	// process input and get touches. returns one frame of touch data. changes history of many filters.
 	TouchArray process(const SensorFrame& in, int maxTouches);
 	
+	TouchArray getTestTouches(time_point<system_clock> t, int maxTouches);
+	
 private:
-
-	float mSampleRate;	
+	
+	float mSampleRate;
 	int mMaxTouchesPerFrame;
-	float mLopassZ;	
-	bool mRotate;	
+	bool mClearNextFrame{false};
+	float mLopassZ;
+	bool mRotate;
 	
 	float mFilterThreshold;
 	float mOnThreshold;
 	float mOffThreshold;
 	
-    SensorFrame mInput{};
-    SensorFrame mInputZ1{};
+	SensorFrame mInput{};
+	SensorFrame mInputZ1{};
 	
-    TouchArray mTouches{};
-    TouchArray mTouchesMatch1{};
-    TouchArray mTouches2{}; 
+	TouchArray mTouches{};
+	TouchArray mTouchesMatch1{};
+	TouchArray mTouches2{};
 	
 	std::array<int, kMaxTouches> mRotateShuffleOrder;
 	
-	void setMaxTouches(int t);		
+	void clearAndSendNextFrameIfNeeded();
+	void setMaxTouches(int t);
 	TouchArray findTouches(const SensorFrame& in);
 	TouchArray rotateTouches(const TouchArray& t);
 	TouchArray matchTouches(const TouchArray& x, const TouchArray& x1);

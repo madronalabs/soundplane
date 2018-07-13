@@ -5,14 +5,8 @@
 
 #include "SoundplaneApp.h"
 
-SoundplaneApp::SoundplaneApp() :
-	mpModel(0),
-	mpView(0),
-	mpController(0),
-	mpBorder(0),
-	mpWindow(0)
+SoundplaneApp::SoundplaneApp()
 {
-   
 }
 
 SoundplaneApp::~SoundplaneApp()
