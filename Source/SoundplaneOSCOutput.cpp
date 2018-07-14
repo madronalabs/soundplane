@@ -27,10 +27,8 @@ mKymaMode(false)
 			mUDPBuffers[i].resize(kUDPOutputBufferSize);
 		}
 		mUDPPacketStreams.resize(kNumUDPPorts);
-		
 		mUDPSockets.clear();
 		mUDPSockets.resize(kNumUDPPorts);
-		
 	}
 	catch(std::runtime_error err)
 	{
@@ -40,6 +38,7 @@ mKymaMode(false)
 
 SoundplaneOSCOutput::~SoundplaneOSCOutput()
 {
+	
 }
 
 void SoundplaneOSCOutput::reconnect()
@@ -70,6 +69,8 @@ void SoundplaneOSCOutput::reconnect()
 			
 			MLConsole() << "                     connected to port " << mCurrentBaseUDPPort + portOffset << "\n";
 		}
+		
+		setActive(true);
 	}
 	catch(std::runtime_error err)
 	{
@@ -128,6 +129,7 @@ const ml::Symbol nullSym;
 
 void SoundplaneOSCOutput::beginOutputFrame(time_point<system_clock> now)
 {
+	if(!mActive) return;
 	mFrameTime = now;
 	
 	// update all voice states
@@ -146,12 +148,14 @@ void SoundplaneOSCOutput::beginOutputFrame(time_point<system_clock> now)
 
 void SoundplaneOSCOutput::processTouch(int i, int offset, const Touch& t)
 {
+	if(!mActive) return;
 	// store incoming touch by port offset and index
 	mTouchesByPort[offset][i] = t;
 }
 
 void SoundplaneOSCOutput::processController(int zoneID, int h, const Controller& m)
 {
+	if(!mActive) return;
 	// store incoming controller by zone ID
 	mControllersByZone[zoneID] = m;
 	
@@ -163,12 +167,30 @@ void SoundplaneOSCOutput::processController(int zoneID, int h, const Controller&
 
 void SoundplaneOSCOutput::endOutputFrame()
 {
+	if(!mActive) return;
+	
 	if(mKymaMode)
 	{
 		sendFrameToKyma();
 	}
 	else
 	{
+		sendFrame();
+	}
+}
+
+void SoundplaneOSCOutput::clear()
+{
+	if(mKymaMode)
+	{
+		sendFrameToKyma();
+	}
+	else
+	{
+		// TODO should add critical section on mActive, and wait for frames to finish, but this seems to work now
+		setActive(false);
+		
+		clearTouches();
 		sendFrame();
 	}
 }
@@ -257,6 +279,21 @@ void SoundplaneOSCOutput::sendFrame()
 	}
 }
 
+void SoundplaneOSCOutput::clearTouches()
+{
+	for(int portOffset=0; portOffset<kNumUDPPorts; ++portOffset)
+	{
+		for(int voiceIdx=0; voiceIdx < kMaxTouches; ++voiceIdx)
+		{
+			Touch& t = mTouchesByPort[portOffset][voiceIdx];
+			
+			// clear
+			t.z = 0.f;
+			t.state = kTouchStateOff;
+		}
+	}
+}
+
 void SoundplaneOSCOutput::sendFrameToKyma()
 {
 	osc::OutboundPacketStream* p = getPacketStreamForOffset(0);
@@ -270,17 +307,12 @@ void SoundplaneOSCOutput::sendFrameToKyma()
 		osc::int32 touchID = voiceIdx; // 0-based for Kyma
 		osc::int32 offOn = 1;
 		
-		
 		if(t.state == kTouchStateOn)
 		{
-			MLConsole() << "Kyma: voice " << voiceIdx << " ON \n";
-			
 			offOn = -1;
 		}
 		else if(t.state == kTouchStateOff)
 		{
-			MLConsole() << "Kyma: voice " << voiceIdx << " OFF \n";
-			
 			offOn = 0; // TODO periodically turn off silent voices
 		}
 		// note this is called for on and off

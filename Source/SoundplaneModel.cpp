@@ -91,7 +91,6 @@ SensorFrame signalToSensorFrame(const MLSignal& in)
 SoundplaneModel::SoundplaneModel() :
 mOutputEnabled(false),
 mSurface(SensorGeometry::width, SensorGeometry::height),
-
 mRawSignal(SensorGeometry::width, SensorGeometry::height),
 mCalibratedSignal(SensorGeometry::width, SensorGeometry::height),
 mSmoothedSignal(SensorGeometry::width, SensorGeometry::height),
@@ -328,10 +327,12 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 		{
 			// TODO clean up, use text for everything
 			ml::Text strText = newVal.getTextValue();
-			std::string str (strText.getText());
+			std::string str (strText.getText()); 
 			
 			if(p == "osc_service_name")
 			{
+				mOSCOutput.clear();
+				
 				std::string serviceName = unformatServiceName(str);
 				std::string hostName = MLNetServiceHub::getHostName(serviceName);
 				int port = MLNetServiceHub::getPort(serviceName);
@@ -579,7 +580,6 @@ void SoundplaneModel::outputTouches(TouchArray touches, time_point<system_clock>
 		sendFrameToOutputs(now);
 	}
 }
-
 
 // send raw touches to zones in order to generate touch and controller states within the Zones.
 //

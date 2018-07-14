@@ -49,7 +49,8 @@ public:
 	void processTouch(int i, int offset, const Touch& m) override;
 	void processController(int z, int offset, const Controller& m) override;
 	void endOutputFrame() override;
-	
+	void clear() override;
+
 	void setDataRate(int r) { mDataRate = r; }
 	
 	void setActive(bool v);
@@ -67,6 +68,7 @@ private:
 	UdpTransmitSocket* getTransmitSocketForOffset(int portOffset);
 	
 	void sendFrame();
+	void clearTouches();
 	void sendFrameToKyma();
 	
 	void sendInfrequentData();

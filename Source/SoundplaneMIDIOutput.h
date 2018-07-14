@@ -39,10 +39,10 @@ public:
 	float startY;
 	float startNote;
 	float vibrato;
-
+	
 	int mMIDINote;
 	int mPreviousMIDINote;
-	int mMIDIVel;	
+	int mMIDIVel;
 	int mMIDIBend;
 	int mMIDIXCtrl;
 	int mMIDIYCtrl;
@@ -56,7 +56,7 @@ public:
 	bool mSendXCtrl;
 	bool mSendYCtrl;
 	
-    TouchState mState;
+	TouchState mState;
 };
 
 class MIDIDevice
@@ -78,18 +78,19 @@ private:
 typedef std::shared_ptr<MIDIDevice> MIDIDevicePtr;
 
 class SoundplaneMIDIOutput :
-	public SoundplaneOutput
+public SoundplaneOutput
 {
 public:
 	SoundplaneMIDIOutput();
 	~SoundplaneMIDIOutput();
 	void initialize();
-    
-    // SoundplaneOutput
-    void beginOutputFrame(time_point<system_clock> now) override;
-    void processTouch(int i, int offset, const Touch& m) override;
-    void processController(int z, int offset, const Controller& m) override;
-    void endOutputFrame() override; 
+	
+	// SoundplaneOutput
+	void beginOutputFrame(time_point<system_clock> now) override;
+	void processTouch(int i, int offset, const Touch& m) override;
+	void processController(int z, int offset, const Controller& m) override;
+	void endOutputFrame() override;
+	void clear() override;
 	
 	void findMIDIDevices ();
 	void setDevice(int d);
@@ -100,20 +101,20 @@ public:
 	
 	void setActive(bool v);
 	void setPressureActive(bool v);
-
+	
 	void setMaxTouches(int t);
 	void setBendRange(int r);
 	void setTranspose(int t) { mTranspose = t; }
 	void setGlissando(int t) { mGlissando = t; }
 	void setAbsRel(int t) { mAbsRel = t; }
 	void setHysteresis(float t) { mHysteresis = t; }
-
+	
 	void setMPEExtended(bool v);
 	void setMPE(bool v);
 	void setStartChannel(int v);
 	void setKymaMode(bool v);
-    
-    void setDataRate(float r) { mDataRate = r; }
+	
+	void setDataRate(float r) { mDataRate = r; }
 	
 	void doInfrequentTasks();
 	
@@ -125,16 +126,16 @@ private:
 	int getMIDIVelocity(MIDIVoice* pVoice);
 	int getRetriggerVelocity(MIDIVoice* pVoice);
 	int getMostRecentVoice();
-
+	
 	int getMIDIPressure(MIDIVoice* pVoice);
-
+	
 	void sendMIDIChannelPressure(int chan, int p);
 	void sendAllMIDIChannelPressures(int p);
 	void sendAllMIDINotesOff();
 	
 	void sendMPEChannels();
-    void sendPitchbendRange();
-
+	void sendPitchbendRange();
+	
 	void setupVoiceChannels();
 	void updateVoiceStates();
 	void sendMIDIVoiceMessages();
@@ -145,18 +146,18 @@ private:
 	int mVoices;
 	
 	MIDIVoice mMIDIVoices[kMaxMIDIVoices];
-    
-    std::array< TouchArray, kSoundplaneAMaxZones > mTouchesByZone;
-    std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
-
+	
+	std::array< TouchArray, kSoundplaneAMaxZones > mTouchesByZone;
+	std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
+	
 	std::vector<MIDIDevicePtr> mDevices;
 	std::vector<std::string> mDeviceList;
 	juce::MidiOutput* mpCurrentDevice;
-
-    bool mGotControllerChanges;
-    
-    int mDataRate{100};
-    
+	
+	bool mGotControllerChanges;
+	
+	int mDataRate{100};
+	
 	bool mPressureActive;
 	int mBendRange;
 	int mTranspose;
@@ -165,7 +166,7 @@ private:
 	float mHysteresis;
 	
 	bool mMPEExtended;
-    bool mMPEMode;
+	bool mMPEMode;
 	int mMPEChannels;
 	
 	// channel to be used for single-channel output
@@ -177,3 +178,4 @@ private:
 
 
 #endif // __SOUNDPLANE_MIDI_OUTPUT_H_
+

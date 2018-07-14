@@ -17,17 +17,18 @@ using namespace std::chrono;
 class SoundplaneOutput
 {
 public:
-    SoundplaneOutput() : mActive(false) {}
-    virtual ~SoundplaneOutput() {}
- 
-    bool isActive() { return mActive; }
-    
-    virtual void beginOutputFrame(time_point<system_clock> now) = 0;
-    virtual void processTouch(int i, int offset, const Touch& m) = 0;
-    virtual void processController(int z, int offset, const Controller& m) = 0;
-    virtual void endOutputFrame() = 0;
-
+	SoundplaneOutput() : mActive(false) {}
+	virtual ~SoundplaneOutput() {}
+	
+	bool isActive() { return mActive; }
+	
+	virtual void beginOutputFrame(time_point<system_clock> now) = 0;
+	virtual void processTouch(int i, int offset, const Touch& m) = 0;
+	virtual void processController(int z, int offset, const Controller& m) = 0;
+	virtual void endOutputFrame() = 0;	
+	virtual void clear() = 0;
+	
 protected:
-    bool mActive;
+	bool mActive;
 };
 

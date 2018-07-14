@@ -512,10 +512,14 @@ void SoundplaneMIDIOutput::processController(int zoneID, int h, const Controller
 
 void SoundplaneMIDIOutput::endOutputFrame()
 {
-    sendMIDIVoiceMessages();
-    if(mGotControllerChanges) sendMIDIControllerMessages();
-    if(mVerbose) dumpVoices();
-    updateVoiceStates();
+	sendMIDIVoiceMessages();
+	if(mGotControllerChanges) sendMIDIControllerMessages();
+	if(mVerbose) dumpVoices();
+	updateVoiceStates();
+}
+
+void SoundplaneMIDIOutput::clear()
+{
 }
 
 void SoundplaneMIDIOutput::setupVoiceChannels()
