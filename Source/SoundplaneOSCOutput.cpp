@@ -38,7 +38,7 @@ mKymaMode(false)
 
 SoundplaneOSCOutput::~SoundplaneOSCOutput()
 {
-	
+	clear();
 }
 
 void SoundplaneOSCOutput::reconnect()
