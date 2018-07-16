@@ -289,8 +289,7 @@ void SoundplaneMIDIOutput::setStartChannel(int v)
 }
 
 void SoundplaneMIDIOutput::setKymaMode(bool v)
-{ 
-	// MLTEST
+{
 	MLConsole() << "SoundplaneMIDIOutput: kyma mode " << v << "\n";
 	mKymaMode = v; 
 }

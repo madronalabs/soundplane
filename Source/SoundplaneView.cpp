@@ -321,7 +321,7 @@ mpMidiChannelDial(0)
 	mpMidiChannelDial = page0->addDial("channel", dialRect.withCenter(5.25, bottomDialsY2), "midi_channel", c2);
 	mpMidiChannelDial->setRange(1., 16., 1.);
 	
-	MLRect textButtonRect3(0, 0, 3., 0.4);
+	MLRect textButtonRect3(0, 0, 4., 0.4);
 	mpMIDIDeviceButton = page0->addMenuButton("device", textButtonRect3.withCenter(4.25, 9.), "midi_device");
 	
 	

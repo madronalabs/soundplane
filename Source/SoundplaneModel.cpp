@@ -326,7 +326,9 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			else if (p == "test_touches")
 			{
 				bool b = v;
+				MLConsole() << "test touches: " << b << "\n";
 				mTestTouchesOn = b;
+				mSensorFrameQueue->clear();
 				mRequireSendNextFrame = true;
 			}
 		}
@@ -456,7 +458,10 @@ void SoundplaneModel::onStartup()
 // just put the new frame in the queue.
 void SoundplaneModel::onFrame(const SensorFrame& frame)
 {
-	mSensorFrameQueue->push(frame);
+	if(!mTestTouchesOn)
+	{
+		mSensorFrameQueue->push(frame);
+	}
 }
 
 void SoundplaneModel::onError(int error, const char* errStr)
@@ -506,23 +511,23 @@ void SoundplaneModel::processThread()
 		mProcessCounter++;
 		
 		size_t queueSize = mSensorFrameQueue->elementsAvailable();
-		if(queueSize > kMaxQueueSize)
+		if(queueSize > mMaxRecentQueueSize)
 		{
-			kMaxQueueSize = queueSize;
+			mMaxRecentQueueSize = queueSize;
 		}
 		
 		if(mProcessCounter >= 1000)
 		{
 			if(mVerbose)
 			{
-				if(kMaxQueueSize >= kSensorFrameQueueSize)
+				if(mMaxRecentQueueSize >= kSensorFrameQueueSize)
 				{
 					MLConsole() << "warning: input queue full \n";
 				}
 			}
 			
 			mProcessCounter = 0;
-			kMaxQueueSize = 0;
+			mMaxRecentQueueSize = 0;
 		}
 		
 		// sleep, less than one frame interval

@@ -262,7 +262,7 @@ private:
 	void processThread();
 	std::thread mProcessThread;
 	
-	size_t kMaxQueueSize{0};
+	size_t mMaxRecentQueueSize{0};
 	
 	int mDataRate{100};
 	time_point<system_clock> mPrevProcessTouchesTime{};

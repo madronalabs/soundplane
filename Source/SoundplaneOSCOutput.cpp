@@ -44,10 +44,16 @@ SoundplaneOSCOutput::~SoundplaneOSCOutput()
 
 void SoundplaneOSCOutput::reconnect()
 {
+	setActive(false);
+	
+	std::string kymaStr("beslime");
+	int kymaLen = kymaStr.length();
+	setKymaMode(mHostName.substr(0, kymaLen) == kymaStr);
+	
 	try
 	{
 		MLConsole() << "SoundplaneOSCOutput: connecting to host " << mHostName << " starting at port " << mCurrentBaseUDPPort << " \n";
-		
+
 		for(int portOffset = 0; portOffset < kNumUDPPorts; portOffset++)
 		{
 			mUDPPacketStreams[portOffset] = std::unique_ptr< osc::OutboundPacketStream >
@@ -87,6 +93,7 @@ int SoundplaneOSCOutput::getKymaMode()
 
 void SoundplaneOSCOutput::setKymaMode(bool m)
 {
+	MLConsole() << "Kyma mode: " << m << "\n";
 	mKymaMode = m;
 }
 
@@ -182,19 +189,20 @@ void SoundplaneOSCOutput::endOutputFrame()
 
 void SoundplaneOSCOutput::clear()
 {
+	// TODO should add critical section on mActive, currently we're
+	// not using it anywhere else so we're OK
+	setActive(false);
+	
+	// allow process thread frames to finish
+	std::this_thread::sleep_for(std::chrono::microseconds(2000));
+	
 	if(mKymaMode)
 	{
+		clearTouches();
 		sendFrameToKyma();
 	}
 	else
 	{
-		// TODO should add critical section on mActive, currently we're
-		// not using it anywhere else so we're OK
-		setActive(false);
-		
-		// allow process thread frames to finish
-		std::this_thread::sleep_for(std::chrono::microseconds(2000));
-		
 		clearTouches();
 		sendFrame();
 	}
