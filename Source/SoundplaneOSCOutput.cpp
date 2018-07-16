@@ -4,6 +4,7 @@
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
 #include "SoundplaneOSCOutput.h"
+#include <thread>
 
 using namespace ml;
 
@@ -187,8 +188,12 @@ void SoundplaneOSCOutput::clear()
 	}
 	else
 	{
-		// TODO should add critical section on mActive, and wait for frames to finish, but this seems to work now
+		// TODO should add critical section on mActive, currently we're
+		// not using it anywhere else so we're OK
 		setActive(false);
+		
+		// allow process thread frames to finish
+		std::this_thread::sleep_for(std::chrono::microseconds(2000));
 		
 		clearTouches();
 		sendFrame();

@@ -22,6 +22,14 @@ const unsigned char kModelDefaultCarriers[kModelDefaultCarriersSize] =
 	39, 40, 41, 42, 43
 };
 
+
+std::string makeDefaultServiceName()
+{
+	std::stringstream nameStream;
+	nameStream << "default" << " (" << kDefaultUDPPort << ")";
+	return nameStream.str();
+}
+
 // make one of the possible standard carrier sets, skipping a range of carriers out of the
 // middle of the 40 defaults.
 //
@@ -333,8 +341,35 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			{
 				mOSCOutput.clear();
 				
+				// we only save the formatted service name.
 				std::string serviceName = unformatServiceName(str);
 				std::string hostName = MLNetServiceHub::getHostName(serviceName);
+
+				if(hostName == "")
+				{
+					// wait a bit for service to be resolved on startup
+					time_point<system_clock> waitStartTime = system_clock::now();
+					bool stopWaiting = false;
+					while(hostName == "" && !stopWaiting)
+					{
+						std::this_thread::sleep_for(std::chrono::milliseconds(500));
+						time_point<system_clock> now = system_clock::now();
+						int waitDuration = duration_cast<milliseconds>(now - waitStartTime).count();
+						if(waitDuration > 2000) stopWaiting = true;
+						hostName = MLNetServiceHub::getHostName(serviceName);
+					}
+				}
+				
+				if(hostName == "")
+				{
+					std::cout << "OSC service not resolved: falling back to default\n";
+					hostName = "localhost";
+					serviceName = "default";
+					
+					std::string defaultService = makeDefaultServiceName();
+					setProperty("osc_service_name", defaultService.c_str());
+				}
+				
 				int port = MLNetServiceHub::getPort(serviceName);
 				mOSCOutput.setHostName(hostName);
 				mOSCOutput.setPort(port);
@@ -822,11 +857,9 @@ void SoundplaneModel::setAllPropertiesToDefaults()
 	
 	setProperty("kyma_poll", 0);
 	
-
 	{
-		std::stringstream nameStream;
-		nameStream << "default" << " (" << kDefaultUDPPort << ")";
-		setProperty("osc_service_name", nameStream.str().c_str());
+		std::string defaultService = makeDefaultServiceName();
+		setProperty("osc_service_name", defaultService.c_str());
 	}
 
 	setProperty("osc_active", 1);
