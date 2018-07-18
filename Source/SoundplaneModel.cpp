@@ -1264,10 +1264,11 @@ void SoundplaneModel::saveTouchHistory(const TouchArray& t)
 void SoundplaneModel::doInfrequentTasks()
 {
 	MLNetServiceHub::PollNetServices();
+	mOSCOutput.doInfrequentTasks();
+	mMIDIOutput.doInfrequentTasks();
+
 	if(getDeviceState() == kDeviceHasIsochSync)
 	{
-		mOSCOutput.doInfrequentTasks();
-		mMIDIOutput.doInfrequentTasks();
 		
 		if(mCarrierMaskDirty)
 		{
