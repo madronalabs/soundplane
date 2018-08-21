@@ -21,8 +21,8 @@
 #include "Controller.h"
 #include "Touch.h"
 
-#include "OSC/osc/OscOutboundPacketStream.h"
-#include "OSC/ip/UdpSocket.h"
+#include "OscOutboundPacketStream.h"
+#include "UdpSocket.h"
 
 extern const char* kDefaultHostnameString;
 

@@ -12,8 +12,6 @@
 #include "SoundplaneModelA.h"
 #include "SoundplaneDriver.h"
 #include "MLOSCListener.h"
-#include "OSC/zeroconf/NetService.h"
-#include "OSC/zeroconf/NetServiceBrowser.h"
 #include "TouchTracker.h"
 #include "Controller.h"
 #include "SoundplaneMIDIOutput.h"
@@ -26,6 +24,9 @@
 #include <map>
 
 #include "cJSON/cJSON.h"
+
+#include "NetService.h"
+#include "NetServiceBrowser.h"
 
 enum ZoneType
 {

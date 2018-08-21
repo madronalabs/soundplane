@@ -1,4 +1,4 @@
-	
+
 // Part of the Soundplane client software by Madrona Labs.
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
@@ -20,22 +20,22 @@ SoundplaneApp::~SoundplaneApp()
 
 void SoundplaneApp::initialise (const String& commandLine)
 {
-	MLConsole() << "Starting Soundplane...\n";		
+	MLConsole() << "Starting Soundplane...\n";
 	mpModel = new SoundplaneModel();
-
+	
 	mpController = new SoundplaneController(mpModel);
 	mpView = new SoundplaneView(mpModel, mpController, mpController);
 	
 	mpBorder = new MLAppBorder(mpView);
 	mpBorder->makeResizer(mpView);
 	mpBorder->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
-    mpBorder->setBounds(mpView->getBounds());
-    
-    mpWindow = new MLAppWindow(mpView);
-    
+	mpBorder->setBounds(mpView->getBounds());
+	
+	mpWindow = new MLAppWindow(mpView);
+	
 	// add view to window but retain ownership here
 	bool resizeToFit = true;
-    
+	
 	mpWindow->setContentNonOwned(mpBorder, resizeToFit);
 	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
 	mpWindow->setUsingOpenGL(true);
@@ -45,22 +45,23 @@ void SoundplaneApp::initialise (const String& commandLine)
 	
 	mpBorder->addAndMakeVisible(mpView);
 	mpController->setView(mpView);
-
-	mpController->initialize();	
+	
+	mpController->initialize();
 	mpView->initialize();
-
+	
 	// generate a persistent state for the Model
 	mpModelState = std::unique_ptr<MLAppState>(new MLAppState(mpModel, "", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
 	if (!mpModelState->loadStateFromAppStateFile())
 	{
-        // there is no app state saved, run "welcome to Soundplane" with carrier select
+		// there is no app state saved, run "welcome to Soundplane" with carrier select
 		setDefaultWindowSize();
-		mpController->doWelcomeTasks(); 
+		mpController->doWelcomeTasks();
 	}
-    mpModel->updateAllProperties();
- 
-    // generate a persistent state for the application's view.
-    mpViewState = std::unique_ptr<MLAppState>(new MLAppState(mpView, "View", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
+	mpModel->updateAllProperties();
+	
+	// generate a persistent state for the application's view.
+	mpViewState = std::unique_ptr<MLAppState>(new MLAppState(mpView, "View", MLProjectInfo::makerName, MLProjectInfo::projectName, MLProjectInfo::versionNumber));
+	
 	ModifierKeys k = ModifierKeys::getCurrentModifiersRealtime();
 	if((k.isCommandDown()) || (!mpViewState->loadStateFromAppStateFile()))
 	{
@@ -68,13 +69,13 @@ void SoundplaneApp::initialise (const String& commandLine)
 	}
 	else
 	{
-		mpView->updateAllProperties();	
+		mpView->updateAllProperties();
 	}
-    
-    mpController->fetchAllProperties();
-    mpView->goToPage(0);
-}
 	
+	mpController->fetchAllProperties();
+	mpView->goToPage(0);
+}
+
 void SoundplaneApp::shutdown()
 {
 	mpModelState->updateAllProperties();
@@ -82,8 +83,8 @@ void SoundplaneApp::shutdown()
 	
 	mpViewState->updateAllProperties();
 	mpViewState->saveStateToStateFile();
-
-    mpWindow->setVisible(false);
+	
+	mpWindow->setVisible(false);
 	if(mpController) mpController->setView(0);
 }
 
@@ -99,3 +100,4 @@ bool SoundplaneApp::moreThanOneInstanceAllowed()
 {
 	return false;
 }
+

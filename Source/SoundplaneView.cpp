@@ -473,7 +473,7 @@ SoundplaneView::~SoundplaneView()
 //
 void SoundplaneView::doPropertyChangeAction(ml::Symbol p, const MLProperty & val)
 {
-	debug() << "SoundplaneView::doPropertyChangeAction: " << p << " -> " << val << "\n";
+	// debug() << "SoundplaneView::doPropertyChangeAction: " << p << " -> " << val << "\n";
 	
 	bool handled = false;
 	if(p == "viewmode")

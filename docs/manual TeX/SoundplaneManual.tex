@@ -300,6 +300,8 @@ The Soundplane is a capacitive sensor, but unlike inflexible touchscreen sensors
 
 The USB specification defines certain device classes, which allow some pieces of hardware to be recognized without any special software.  Some of these are printers, audio interfaces, and mass storage devices.  But none of these were really sufficient to convey all the data that Soundplane has to offer.  So we wrote a custom software application, the Soundplane client, that reads raw pressure data and translates it into OSC (Open Sound Control) and MIDI data.   
 
+When first launched, the application's window appears in the center of the main monitor. When moved, the window's location will be remembered the next time the application is launched. 
+
 \section{Calibrating}
 
 When first launched, the client shows the Touches page and calibrates the Soundplane by grabbing pressure readings and averaging these over several seconds.  This is just like taring (zeroing) a scale—but with 512 scales, one for each of the Soundplane’s sensing elements!  During calibration a progress bar is shown.  \emph{Do not touch the surface during this time!}  Pressing the recalibrate button at any time will clear the current touches and redo this process. 
@@ -352,7 +354,7 @@ The note number can be fractional-- the behavior of the fraction will be set by 
 
 \section{Expert page}
 
-Another page with some dials you may not want to mess with.  
+Another page with some dials you may not want to mess with. A work in progress. 
 
 
 \section{Working with sound engines}
@@ -427,12 +429,14 @@ The walnut playing surface is finished with a product called Howard’s Butcher 
 
 For oiling cutting boards the saying is ”once every day for a week, once every week for a month, and once a month forever.”  This might also apply to Soundplanes.  How oily you want to keep the surface is a matter of taste.  
 
-Excess oil, as well as dust, crumbs, etc, may get into the cracks between keys.  Though they don't really do any harm, they can be unsightly.  An African porcupine quill is an ideal tool from removing them.  If you don't have a porcupine quill, a sharp stick works too.  Sharp metal sis not recommended due to the danger of scratching the surface. 
+Excess oil, as well as dust, crumbs, etc, may get into the cracks between keys.  Though they don't really do any harm, they can be unsightly.  An African porcupine quill is an ideal tool from removing them.  If you don't have a porcupine quill, a sharp stick works too.  Sharp metal is not recommended due to the danger of scratching the surface. 
 
 
 \appendix
 
 \chapter{Frequently asked questions}
+
+If the application window is ever missing when launched, it may be remembering its position on an external monitor that is not currently connected. To reset the window setting, launch the Soundplane app while holding the Command key. 
 
 
 \question{Question
