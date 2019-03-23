@@ -3,6 +3,7 @@
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
+#include "SoundplaneModelA.h"
 #include "SoundplaneModel.h"
 #include "ThreadUtility.h"
 #include "SensorFrame.h"
@@ -21,7 +22,6 @@ const unsigned char kModelDefaultCarriers[kModelDefaultCarriersSize] =
 	34, 35, 36, 37, 38,
 	39, 40, 41, 42, 43
 };
-
 
 std::string makeDefaultServiceName()
 {
@@ -183,7 +183,7 @@ SoundplaneModel::~SoundplaneModel()
 
 void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
 {
-	//  debug() << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
+	std::cout << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
 	
 	int propertyType = newVal.getType();
 	switch(propertyType)
@@ -971,6 +971,9 @@ int SoundplaneModel::getDeviceState(void)
 // get a string that explains what Soundplane hardware and firmware and client versions are running.
 const char* SoundplaneModel::getHardwareStr()
 {
+	// TODO get model name along with dimensions from driver
+	const char * soundplaneModelName = "Soundplane Model A";
+	
 	long v;
 	unsigned char a, b, c;
 	std::string serial_number;
@@ -987,7 +990,7 @@ const char* SoundplaneModel::getHardwareStr()
 			a = v >> 8 & 0x0F;
 			b = v >> 4 & 0x0F,
 			c = v & 0x0F;
-			snprintf(mHardwareStr, kMiscStringSize, "%s #%s, firmware %d.%d.%d", kSoundplaneAName, serial_number.c_str(), a, b, c);
+			snprintf(mHardwareStr, kMiscStringSize, "%s #%s, firmware %d.%d.%d", soundplaneModelName, serial_number.c_str(), a, b, c);
 			break;
 		default:
 			snprintf(mHardwareStr, kMiscStringSize, "?");

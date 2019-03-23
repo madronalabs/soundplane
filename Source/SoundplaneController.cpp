@@ -7,18 +7,18 @@
 
 static void menuItemChosenCallback (int result, WeakReference<SoundplaneController> wpC, ml::Symbol menuName);
 
+
 SoundplaneController::SoundplaneController(SoundplaneModel* pModel) :
 	mpSoundplaneModel(pModel),
 	mpSoundplaneView(0),
 	MLReporter()
 {
 	MLReporter::listenTo(mpSoundplaneModel);
-	startTimer(250);
+	mTimer.start([&](){ fetchChangedProperties();	}, milliseconds(250));
 }
 
 SoundplaneController::~SoundplaneController()
 {
-	stopTimer();
 	masterReference.clear();
 }
 	
@@ -106,11 +106,6 @@ void SoundplaneController::shutdown()
 	
 }
 
-void SoundplaneController::timerCallback()
-{
-	fetchChangedProperties();
-	MLConsole().display();
-}
 	
 // process a file from one of the Model's collections. Currenlty unused but will be used when file
 // collections update menus constantly in the background. 

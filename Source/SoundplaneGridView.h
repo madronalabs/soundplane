@@ -13,19 +13,19 @@
 #include "MLLookAndFeel.h"
 
 #ifndef GL_BGRA_EXT
- #define GL_BGRA_EXT 0x80e1
+#define GL_BGRA_EXT 0x80e1
 #endif
 
 // This is the view of the Soundplane surface used on the "Touches" page. It can be a perspective view of the
-// surface or an xy view from directly overhead. 
+// surface or an xy view from directly overhead.
 
-class SoundplaneGridView  : 
-	public Component,
-	public MLWidget
+class SoundplaneGridView  :
+public Component,
+public MLWidget
 {
 public:
-    SoundplaneGridView(MLWidget* pContainer);
-    ~SoundplaneGridView();
+	SoundplaneGridView(MLWidget* pContainer);
+	~SoundplaneGridView();
 	
 	// MLModelListener implementation
 	void doPropertyChangeAction(ml::Symbol , const MLProperty & );
@@ -33,7 +33,7 @@ public:
 	void setModel(SoundplaneModel* m);
 	
 private:
- 
+	
 	void resizeWidget(const MLRect& b, const int);
 	void doResize();
 	
@@ -41,15 +41,15 @@ private:
 	void setupOrthoView();
 	void drawSurfaceOverlay();
 	void renderXYGrid();
-
+	
 	void renderTouches(const TouchArray& t);
 	
 	void renderZGrid();
- 	
-	Vec2 worldToScreen(const Vec3& world); 
+	
+	Vec2 worldToScreen(const Vec3& world);
 	
 	void drawInfoBox(Vec3 pos, char* text, int colorIndex);
-
+	
 	SoundplaneModel* mpModel;
 	bool mInitialized;
 	bool mResized;
@@ -66,8 +66,9 @@ private:
 	
 	int mCount; // TEMP
 	int mMaxRawTouches;
-
+	
 };
 
 #endif // __SOUNDPLANE_GRID_VIEW__
+
 

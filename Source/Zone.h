@@ -23,7 +23,7 @@
 #include <list>
 #include <map>
 
-#include "cJSON/cJSON.h"
+#include "cJSON.h"
 
 #include "NetService.h"
 #include "NetServiceBrowser.h"

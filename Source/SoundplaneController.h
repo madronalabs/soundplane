@@ -20,14 +20,15 @@
 #include "MLNetServiceHub.h"
 #include "MLFileCollection.h"
 
+#include "MLTimer.h"
+
 extern const char *kUDPType;
 extern const char *kLocalDotDomain;
 
 class SoundplaneController  : 
 	public MLWidget::Listener,
 	public MLFileCollection::Listener,
-    public MLReporter,
-	public juce::Timer
+	public MLReporter
 {
 public:
 	friend class SoundplaneApp;
@@ -40,9 +41,6 @@ public:
 	
 	// MLFileCollection::Listener
 	void processFileFromCollection (ml::Symbol action, const MLFile& f, const MLFileCollection& collection, int idx, size_t size) override;
-	
-	// juce::Timer
-	void timerCallback() override;
 
 	void initialize();
 	void shutdown();
@@ -74,7 +72,11 @@ private:
 
 	MLMenuMapT mMenuMap; 	
 
-    int mZoneMenuStartItems;
+	int mZoneMenuStartItems;
+	
+	ml::Timer mTimer;
+	
+	int mTest{0};
 };
 
 

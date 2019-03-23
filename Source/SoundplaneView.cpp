@@ -10,8 +10,7 @@
 #pragma mark header view
 
 SoundplaneHeaderView::SoundplaneHeaderView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep) :
-MLAppView(pResp, pRep),
-mpModel(pModel)
+MLAppView(pResp, pRep)
 {
 	setWidgetName("soundplane_header_view");
 	
@@ -54,7 +53,6 @@ void SoundplaneHeaderView::paint (Graphics& g)
 
 SoundplaneFooterView::SoundplaneFooterView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep) :
 MLAppView(pResp, pRep),
-mpModel(pModel),
 mpDevice(0),
 mpStatus(0),
 mCalibrateState(0),
@@ -153,14 +151,14 @@ mTouchView(this),
 mGLView3(this),
 mpFooter(0),
 mpPages(0),
-mpModel(pModel),
 mCalibrateState(-1),
 mSoundplaneClientState(-1),
 mSoundplaneDeviceState(-1),
 mpViewModeButton(0),
 mpMIDIDeviceButton(0),
 mpOSCServicesButton(0),
-mpMidiChannelDial(0)
+mpMidiChannelDial(0),
+mpModel(pModel)
 {
 	setWidgetName("soundplane_view");
 	//pModel->addListener(this);
@@ -261,6 +259,7 @@ mpMidiChannelDial(0)
 	
 	mGLView3.setModel(pModel);
 	MLRect zoneViewRect(0, 2.f, pageWidth, 3.75);
+	
 	page0->addWidgetToView (&mGLView3, zoneViewRect, "zone_view");
 	
 	MLRect zoneLabelRect(0, 0, 3., 0.25);
@@ -462,18 +461,13 @@ mpMidiChannelDial(0)
 	pDebug->setWantsKeyboardFocus(true);
 }
 
-SoundplaneView::~SoundplaneView()
-{
-	stopTimer();
-}
-
 // --------------------------------------------------------------------------------
 // MLModelListener implementation
 // an updateChangedParams() or updateAllParams() is needed to get these actions sent by the Model.
 //
 void SoundplaneView::doPropertyChangeAction(ml::Symbol p, const MLProperty & val)
 {
-	// debug() << "SoundplaneView::doPropertyChangeAction: " << p << " -> " << val << "\n";
+	//debug() << "SoundplaneView::doPropertyChangeAction: " << p << " -> " << val << "\n";
 	
 	bool handled = false;
 	if(p == "viewmode")
@@ -525,13 +519,14 @@ void SoundplaneView::doPropertyChangeAction(ml::Symbol p, const MLProperty & val
 
 void SoundplaneView::initialize()
 {
-	startTimer(50);
 	MLAppView::initialize();
+	mTimer.start([&](){ getModelUpdates(); }, milliseconds(100));
 }
 
 // TODO take this away and use Model Properties and doPropertyChangeAction() instead.
-void SoundplaneView::timerCallback()
+void SoundplaneView::getModelUpdates()
 {
+	if(!mpModel) return;
 	// poll soundplane status and get info.
 	// we don't have to know what the states mean -- just an index.
 	// if the status changes, pull current info from Soundplane and redraw.

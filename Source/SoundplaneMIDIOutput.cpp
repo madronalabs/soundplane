@@ -3,8 +3,8 @@
 // Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
-#include "MLDebug.h"
 #include "SoundplaneMIDIOutput.h"
+#include "MLDebug.h"
 
 const std::string kSoundplaneMIDIDeviceName("Soundplane IAC out");
 

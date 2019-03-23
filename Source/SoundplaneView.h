@@ -29,71 +29,70 @@ const int kSoundplaneViewGridUnitsY = 10;
 // --------------------------------------------------------------------------------
 #pragma mark header view
 
-class SoundplaneHeaderView : 
-	public MLAppView
+class SoundplaneHeaderView :
+public MLAppView
 {
 public:
-    SoundplaneHeaderView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep);
-    ~SoundplaneHeaderView();
-    void paint (Graphics& g);
- 
+	SoundplaneHeaderView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep);
+	~SoundplaneHeaderView();
+	void paint (Graphics& g);
+	
 private:
-	SoundplaneModel* mpModel;
+	//SoundplaneModel* mpModel;
 };
 
 // --------------------------------------------------------------------------------
 #pragma mark footer view
 
-class SoundplaneFooterView : 
-	public MLAppView
+class SoundplaneFooterView :
+public MLAppView
 {
 public:
-    SoundplaneFooterView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep);
-    ~SoundplaneFooterView();
-    void paint (Graphics& g);
- 	void setStatus(const char* stat, const char* client);
+	SoundplaneFooterView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep);
+	~SoundplaneFooterView();
+	void paint (Graphics& g);
+	void setStatus(const char* stat, const char* client);
 	void setHardware(const char* s);
 	void setCalibrateProgress(float p);
 	void setCalibrateState(bool b);
-
+	
 private:
-	SoundplaneModel* mpModel;
+	//SoundplaneModel* mpModel;
 	
 	float mCalibrateProgress;
 	bool mCalibrateState;
 	MLLabel* mpDevice;
 	MLLabel* mpStatus;
 	MLLabel* mpCalibrateText;
-	MLProgressBar* mpCalibrateProgress; 
+	MLProgressBar* mpCalibrateProgress;
 	String mStatusStr;
 };
 
 // --------------------------------------------------------------------------------
 #pragma mark main view
 
-class SoundplaneView : 
-	public MLAppView,
-	public Timer
+class SoundplaneView :
+public MLAppView
 {
 public:
 	const Colour bg1;
 	const Colour bg2;
-
+	
 	// pModel: TODO remove! Currently we are looking at some Model Properties directly. should use Reporter.
-	// pResp: will implement HandleWidgetAction() to handle actions from any Widgets added to the view. 
+	// pResp: will implement HandleWidgetAction() to handle actions from any Widgets added to the view.
 	// pRep: will listen to the Model and visualize its Properties by setting Attributes of Widgets.
-    SoundplaneView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep);
-    ~SoundplaneView();
+	SoundplaneView(SoundplaneModel* pModel, MLWidget::Listener* pResp, MLReporter* pRep);
+	~SoundplaneView() = default;
 	
 	// MLModelListener implementation
 	void doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal);
-
-    void initialize();
-	void timerCallback();
-
+	
+	void initialize();
+	void getModelUpdates();
+	
 	void makeCarrierTogglesVisible(int v);
 	
-    int getCurrentPage();
+	int getCurrentPage();
 	
 	// to go away
 	void setMIDIDeviceString(const std::string& str);
@@ -102,28 +101,34 @@ public:
 	void prevPage();
 	void nextPage();
 	void goToPage (int page);
-
+	
 private:
 	SoundplaneFooterView* mpFooter;
 	MLPageView* mpPages;
-
+	
 	// TODO remove!!
-	SoundplaneModel* mpModel;
+	SoundplaneModel* mpModel{nullptr};
 	
 	MLDrawableButton* mpPrevButton;
 	MLDrawableButton* mpNextButton;
 	
 	// page 0
+	SoundplaneZoneView mGLView3;
+
+
 	SoundplaneGridView mGridView;
 	SoundplaneTouchGraphView mTouchView;
+	
+	
 	MLMenuButton* mpViewModeButton;
 	
 	// page 1
-	SoundplaneZoneView mGLView3;
+	
+	
 	MLMenuButton* mpMIDIDeviceButton;
 	MLMenuButton* mpOSCServicesButton;
 	MLDial* mpMidiChannelDial;
-
+	
 	// misc
 	std::vector<MLWidget*> mpCarrierToggles; // TEMP TODO use getWidget()
 	std::vector<MLWidget*> mpCarrierLabels; // TEMP TODO use getWidget()
@@ -132,8 +137,11 @@ private:
 	
 	int mCalibrateState;
 	int mSoundplaneClientState;
-	int mSoundplaneDeviceState;	
+	int mSoundplaneDeviceState;
+	
+	ml::Timer mTimer;
 };
 
 
 #endif // __SOUNDPLANE_VIEW_H__
+

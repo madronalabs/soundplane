@@ -11,20 +11,23 @@
 #include <thread>
 #include <stdint.h>
 
+#include "cJSON.h"
 #include "MLModel.h"
-#include "SoundplaneModelA.h"
-#include "SoundplaneDriver.h"
 #include "MLOSCListener.h"
 #include "MLNetServiceHub.h"
+#include "MLSymbol.h"
+#include "MLFileCollection.h"
+#include "MLQueue.h"
+
+#include "SoundplaneModelA.h"
+#include "SoundplaneDriver.h"
+
 #include "TouchTracker.h"
 #include "SoundplaneMIDIOutput.h"
 #include "SoundplaneOSCOutput.h"
-#include "MLSymbol.h"
-#include "MLFileCollection.h"
-#include "cJSON/cJSON.h"
-#include "Zone.h"
 #include "SoundplaneBinaryData.h"
-#include "MLQueue.h"
+#include "Zone.h"
+
 
 using namespace ml;
 using namespace std::chrono;

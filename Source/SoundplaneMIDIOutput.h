@@ -6,7 +6,7 @@
 #ifndef __SOUNDPLANE_MIDI_OUTPUT_H_
 #define __SOUNDPLANE_MIDI_OUTPUT_H_
 
-//#include "JuceHeader.h"
+#include "JuceHeader.h"
 
 #include <vector>
 #include <memory>
