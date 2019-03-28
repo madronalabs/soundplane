@@ -202,20 +202,20 @@ public:
 		
 		const bool isUpdating = needsUpdate.compareAndSetBool (0, 1);
 		
+
 		mmLock = new MessageManagerLock (this);  // need to acquire this before locking the context.
-		if (! mmLock->lockWasGained())
-			return false;
-		
 
 		if (context.renderComponents && isUpdating)
 		{
-			// This avoids hogging the message thread when doing intensive rendering.
-			if (lastMMLockReleaseTime + 1 >= Time::getMillisecondCounter())
-				Thread::sleep (2);
-			
 			updateViewportSize (false);
 		}
+
+		// This avoids hogging the message thread when doing intensive rendering.
+		if (lastMMLockReleaseTime + 1 >= Time::getMillisecondCounter())
+			Thread::sleep (2);		
 		
+		if (! mmLock->lockWasGained())
+			return false;		
 		if (! context.makeActive())
 			return false;
 		
@@ -238,8 +238,6 @@ public:
 			if (isUpdating)
 			{
 				paintComponent();
-				//           mmLock = nullptr; // ML
-				lastMMLockReleaseTime = Time::getMillisecondCounter();
 			}
 			
 			glViewport (0, 0, viewportArea.getWidth(), viewportArea.getHeight());
@@ -248,9 +246,10 @@ public:
 		
 		context.swapBuffers();
 		
-		OpenGLContext::deactivateCurrentContext();
-		
+		lastMMLockReleaseTime = Time::getMillisecondCounter();
 		mmLock = nullptr;
+
+		OpenGLContext::deactivateCurrentContext();
 		
 		return true;
 	}

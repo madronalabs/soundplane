@@ -183,7 +183,7 @@ SoundplaneModel::~SoundplaneModel()
 
 void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
 {
-	std::cout << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
+	//std::cout << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
 	
 	int propertyType = newVal.getType();
 	switch(propertyType)
@@ -746,7 +746,6 @@ void SoundplaneModel::dumpOutputsByZone()
 		}
 		std::cout << "\n";
 	}
-	
 }
 
 void SoundplaneModel::sendFrameToOutputs(time_point<system_clock> now)
@@ -766,11 +765,15 @@ void SoundplaneModel::sendFrameToOutputs(time_point<system_clock> now)
 			}
 		}
 		
-		// controller
-		if(zone.mOutputController.active)
+		// controllers
+		//if(zone.mOutputController.active)
+		
+		if(isControllerZoneType(zone.mType))
 		{
 			sendControllerToOutputs(zone.mZoneID, zone.mOffset, zone.mOutputController);
 		}
+		
+		
 	}
 	
 	// send optional calibrated matrix to OSC output
@@ -1078,16 +1081,7 @@ void SoundplaneModel::loadZonesFromString(const std::string& zoneStr)
 			if(pZoneType)
 			{
 				// get zone type and type specific attributes
-				ml::Symbol typeSym(pZoneType->valuestring);
-				int zoneTypeNum = Zone::symbolToZoneType(typeSym);
-				if(zoneTypeNum >= 0)
-				{
-					pz->mType = zoneTypeNum;
-				}
-				else
-				{
-					MLConsole() << "Unknown type " << typeSym << " for zone!\n";
-				}
+				pz->mType = pZoneType->valuestring;
 			}
 			else
 			{

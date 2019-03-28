@@ -4,6 +4,8 @@
 // Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
 #include "SoundplaneOSCOutput.h"
+#include "MLTextUtils.h"
+
 #include <thread>
 
 using namespace ml;
@@ -152,6 +154,14 @@ void SoundplaneOSCOutput::beginOutputFrame(time_point<system_clock> now)
 			}
 		}
 	}
+	
+	// clear controller array
+	// TODO refactor, this Controller stuff is dumb
+	for(int i=0; i<kSoundplaneAMaxZones; ++i)
+	{
+		mControllersByZone[i] = Controller{};
+	}
+		
 }
 
 void SoundplaneOSCOutput::processTouch(int i, int offset, const Touch& t)
@@ -164,10 +174,9 @@ void SoundplaneOSCOutput::processTouch(int i, int offset, const Touch& t)
 void SoundplaneOSCOutput::processController(int zoneID, int h, const Controller& m)
 {
 	if(!mActive) return;
+	
 	// store incoming controller by zone ID
 	mControllersByZone[zoneID] = m;
-	
-	mControllersByZone[zoneID].active = true;
 	
 	// store offset into Controller
 	mControllersByZone[zoneID].offset = h;
@@ -214,44 +223,49 @@ void SoundplaneOSCOutput::sendFrame()
 	// to the output port for that zone. controller messages are not sent in bundles.
 	for(int i=0; i<kSoundplaneAMaxZones; ++i)
 	{
-		Controller& c = mControllersByZone[i];
-		if(c.active)
+		const Controller c = mControllersByZone[i];
+		const Controller d = mSentControllersByZone[i];
+		if(c != d)
 		{
 			int portOffset = c.offset;
 			
-			// send controller message: /t3d/[zoneName] val1 (val2) on port (kDefaultUDPPort + offset).
+			// send controller message: /zoneName val1 (val2) on port (kDefaultUDPPort + offset).
 			osc::OutboundPacketStream* p = getPacketStreamForOffset(portOffset);
 			UdpTransmitSocket* socket = getTransmitSocketForOffset(portOffset);
 			if((!p) || (!socket)) return;
 			
-			TextFragment ctrlStr(TextFragment("/"), c.name);
+			TextFragment ctrlStr(TextFragment("/"), c.name.getTextFragment());
 			
 			*p << osc::BeginMessage( ctrlStr.getText() );
-			switch(c.type)
+			
+			Symbol t = c.type;
+			
+			if(t == "x")
 			{
-				case kControllerX:
-					*p << c.x;
-					break;
-				case kControllerY:
-					*p << c.y;
-					break;
-				case kControllerXY:
-					*p << c.x << c.y;
-					break;
-				case kControllerZ:
-					*p << c.z;
-					break;
-				case kControllerToggle:
-					int t = (c.x > 0.5f);
-					*p << t;
-					break;
+				*p << c.x;
 			}
+			else if(t == "y")
+			{
+				*p << c.y;
+			}
+			else if(t == "xy")
+			{
+				*p << c.x << c.y;
+			}
+			else if(t == "z")
+			{
+				*p << c.z;
+			}
+			else if(t == "toggle")
+			{
+				int t = (c.x > 0.5f);
+					*p << t;
+			}
+			
 			*p << osc::EndMessage;
 			
 			socket->Send( p->Data(), p->Size() );
-			
-			// clear
-			c.active = false;
+			mSentControllersByZone[i] = c;
 		}
 	}
 	
@@ -279,9 +293,8 @@ void SoundplaneOSCOutput::sendFrame()
 			if(touchIsActive(t))
 			{
 				osc::int32 touchID = voiceIdx + 1; // 1-based for OSC
-				
-				std::string address("/t3d/tch" + std::to_string(touchID));
-				*p << osc::BeginMessage( address.c_str() );
+				TextFragment address("/t3d/tch", ml::textUtils::naturalNumberToText(touchID));
+				*p << osc::BeginMessage( address.getText() );
 				*p << t.x << t.y << t.z << t.note;
 				*p << osc::EndMessage;
 			}

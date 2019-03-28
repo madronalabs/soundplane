@@ -5,7 +5,6 @@
 // Madrona Labs specific flags for Soundplane app
 
 #define	ML_BUILD_STANDALONE	1
-#define GLX 1   // OpenGL blitting
 
 //==============================================================================
 #define JUCE_STANDALONE_APPLICATION ML_BUILD_STANDALONE

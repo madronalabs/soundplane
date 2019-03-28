@@ -38,7 +38,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 	
 	mpWindow->setContentNonOwned(mpBorder, resizeToFit);
 	mpWindow->setGridUnits(kSoundplaneViewGridUnitsX, kSoundplaneViewGridUnitsY);
-//	mpWindow->setUsingOpenGL(true);
 	mpWindow->setVisible(true);
 	
 	mpWindow->setConstrainer (mpBorder->getConstrainer());

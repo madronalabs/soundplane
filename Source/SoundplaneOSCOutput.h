@@ -18,7 +18,6 @@
 #include "SoundplaneModelA.h"
 #include "JuceHeader.h"
 
-#include "Controller.h"
 #include "Touch.h"
 
 #include "OscOutboundPacketStream.h"
@@ -67,8 +66,9 @@ private:
 	osc::OutboundPacketStream* getPacketStreamForOffset(int offset);
 	UdpTransmitSocket* getTransmitSocketForOffset(int portOffset);
 	
-	void sendFrame();
 	void clearTouches();
+
+	void sendFrame();
 	void sendFrameToKyma();
 	
 	void sendInfrequentData();
@@ -78,6 +78,7 @@ private:
 	
 	std::array< TouchArray, kNumUDPPorts > mTouchesByPort;
 	std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
+	std::array< Controller, kSoundplaneAMaxZones > mSentControllersByZone;
 	
 	int mDataRate{100};
 	time_point<system_clock> mFrameTime;

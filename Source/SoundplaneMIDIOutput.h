@@ -149,7 +149,8 @@ private:
 	
 	std::array< TouchArray, kSoundplaneAMaxZones > mTouchesByZone;
 	std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
-	
+	std::array< Controller, kSoundplaneAMaxZones > mSentControllersByZone;
+
 	std::vector<MIDIDevicePtr> mDevices;
 	std::vector<std::string> mDeviceList;
 	juce::MidiOutput* mpCurrentDevice;

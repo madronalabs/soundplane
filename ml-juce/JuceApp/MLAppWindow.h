@@ -14,36 +14,32 @@ class MLAppWindow : public DocumentWindow
 {
 public:
 	MLAppWindow(MLAppView* v);
-    ~MLAppWindow();
+	~MLAppWindow();
 	
 	void initialize();
-
+	
 	void mouseDown (const MouseEvent& e);
-	void mouseDrag (const MouseEvent& e);	
+	void mouseDrag (const MouseEvent& e);
 	void setGridUnits(int gx, int gy);
 	
-//    void setContent(MLAppView* v) { mpAppView = v; }
-    void closeButtonPressed();
-    void moved();
-    void resized();
-    void setUsingOpenGL(bool);
-
+	void closeButtonPressed();
+	void moved();
+	void resized();
+	
 private:
- 	MLAppView* mpAppView;
-
+	MLAppView* mpAppView;
+	
 	// the command manager object used to dispatch command events
 	ApplicationCommandManager commandManager;
 	
-	ComponentDragger myDragger;	
-
+	ComponentDragger myDragger;
+	
 	int mGridUnitsX;
-	int mGridUnitsY;	
-	bool mUsingGL;
-
-    //juce::OpenGLContext openGLContext;
-
- };
+	int mGridUnitsY;
+	
+};
 
 
 #endif // __ML_JUCE_APP_WINDOW__
+
 

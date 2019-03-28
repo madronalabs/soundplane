@@ -165,9 +165,9 @@ void SoundplaneZoneView::renderZones()
 		float x, y;
 		int toggle;
 		const Controller& c = zone.getController();
-		switch(zone.getType())
+		Symbol t = zone.getType();
+		if(t == "note_row")
 		{
-			case kZoneNoteRow:
 				for(int i = 0; i < kMaxTouches; ++i)
 				{
 					Touch t = zone.touchToKeyPos(zone.getTouch(i));
@@ -180,27 +180,27 @@ void SoundplaneZoneView::renderZones()
 						MLGL::drawDot(Vec2(dx, dy), dz*smallDotSize);
 					}
 				}
-				break;
-				
-			case kZoneControllerX:
+		}
+		else if(t == "x")
+		{
 				x = xRange(unityToKeyX(c.x));
 				glColor4fv(&zoneStroke[0]);
 				glLineWidth(thinLineWidth);
 				MLGL::strokeRect(MLRect(x, zoneRectInView.top(), 0., zoneRectInView.height()), viewScale);
 				glColor4fv(&activeFill[0]);
 				MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), x - zoneRectInView.left(), zoneRectInView.height()));
-				break;
-				
-			case kZoneControllerY:
+		}
+		else if(t == "y")
+		{
 				y = yRange(unityToKeyY(c.y));
 				glColor4fv(&zoneStroke[0]);
 				glLineWidth(thinLineWidth);
 				MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.), viewScale);
 				glColor4fv(&activeFill[0]);
 				MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), zoneRectInView.width(), y - zoneRectInView.top()));
-				break;
-				
-			case kZoneControllerXY:
+		}
+		else if(t == "xy")
+		{
 				x = xRange(unityToKeyX(c.x));
 				y = yRange(unityToKeyY(c.y));
 				glColor4fv(&zoneStroke[0]);
@@ -210,18 +210,18 @@ void SoundplaneZoneView::renderZones()
 				MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.), viewScale);
 				glColor4fv(&dotFill[0]);
 				MLGL::drawDot(Vec2(x, y), smallDotSize*0.25f);
-				break;
-				
-			case kZoneControllerZ:
+		}
+		else if(t == "z")
+		{
 				y = yRange(unityToKeyY(c.z)); // look at z value over y range
 				glColor4fv(&zoneStroke[0]);
 				glLineWidth(thinLineWidth);
 				MLGL::strokeRect(MLRect(zoneRectInView.left(), y, zoneRectInView.width(), 0.), viewScale);
 				glColor4fv(&activeFill[0]);
 				MLGL::fillRect(MLRect(zoneRectInView.left(), zoneRectInView.top(), zoneRectInView.width(), y - zoneRectInView.top()));
-				break;
-				
-			case kZoneToggle:
+		}
+		else if(t == "toggle")
+		{
 				toggle = c.x; // toggle is controller x
 				glColor4fv(&zoneStroke[0]);
 				glLineWidth(thinLineWidth);
@@ -234,12 +234,9 @@ void SoundplaneZoneView::renderZones()
 					glColor4fv(&dotFill[0]);
 					MLGL::drawDot(zoneCenter, smallDotSize*0.25f);
 				}
-				break;
-				
 		}
 	}
 }
-
 
 void SoundplaneZoneView::renderOpenGL()
 {
@@ -255,10 +252,4 @@ void SoundplaneZoneView::renderOpenGL()
 		renderZones();
 	}
 }
-
-
-
-
-
-
 

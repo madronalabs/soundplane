@@ -41,12 +41,12 @@ using namespace ml;
 #define force_inline  inline
 #endif
 
-// logs for Windows.   
+// logs for Windows.
 #ifdef _WIN32
-inline double log2( double n )   
-{       
-	return log( n ) / log( 2. );   
-} 
+inline double log2( double n )
+{
+	return log( n ) / log( 2. );
+}
 inline float log2f(float n)
 {
 	return logf(n) / 0.693147180559945309417232121458176568f;
@@ -199,16 +199,16 @@ inline __m128 exp2Approx4(__m128 x)
 	x = _mm_min_ps(x, _mm_set1_ps( 129.00000f));
 	x = _mm_max_ps(x, _mm_set1_ps(-126.99999f));
 	
-	// ipart = int(x - 0.5) 
+	// ipart = int(x - 0.5)
 	ipart = _mm_cvtps_epi32(_mm_sub_ps(x, _mm_set1_ps(0.5f)));
 	
-	// fpart = x - ipart 
+	// fpart = x - ipart
 	fpart = _mm_sub_ps(x, _mm_cvtepi32_ps(ipart));
 	
-	// expipart = (float) (1 << ipart) 
+	// expipart = (float) (1 << ipart)
 	expipart = _mm_castsi128_ps(_mm_slli_epi32(_mm_add_epi32(ipart, _mm_set1_epi32(127)), 23));
 	
-	// minimax polynomial fit of 2**x, in range [-0.5, 0.5[ 
+	// minimax polynomial fit of 2**x, in range [-0.5, 0.5[
 #if EXP_POLY_DEGREE == 5
 	expfpart = POLY5(fpart, 9.9999994e-1f, 6.9315308e-1f, 2.4015361e-1f, 5.5826318e-2f, 8.9893397e-3f, 1.8775767e-3f);
 #elif EXP_POLY_DEGREE == 4
@@ -241,7 +241,7 @@ inline __m128 log2Approx4(__m128 x)
 	
 	__m128 p;
 	
-	// Minimax polynomial fit of log2(x)/(x - 1), for x in range [1, 2[ 
+	// Minimax polynomial fit of log2(x)/(x - 1), for x in range [1, 2[
 #if LOG_POLY_DEGREE == 6
 	p = POLY5( m, 3.1157899f, -3.3241990f, 2.5988452f, -1.2315303f,  3.1821337e-1f, -3.4436006e-2f);
 #elif LOG_POLY_DEGREE == 5
@@ -275,22 +275,22 @@ class MLRange
 public:
 	MLRange() : mA(0.f), mB(1.f), mScale(1.f), mOffset(0.f), mClip(false), mMinOutput(0), mMaxOutput(0) {}
 	MLRange(float a, float b) : mA(a), mB(b), mScale(1.f), mOffset(0.f), mClip(false), mMinOutput(0), mMaxOutput(0) {}
-	MLRange(float a, float b, float c, float d, bool clip = false) : 
-	mA(a), mB(b), mScale(1.f), mOffset(0.f), mClip(clip), mMinOutput(0), mMaxOutput(0) 
+	MLRange(float a, float b, float c, float d, bool clip = false) :
+	mA(a), mB(b), mScale(1.f), mOffset(0.f), mClip(clip), mMinOutput(0), mMaxOutput(0)
 	{
 		convertTo(MLRange(c, d));
 	}
 	~MLRange(){}
 	float getA() const {return mA;}
 	float getB() const {return mB;}
-	void setA(float f){mA = f;} 
-	void setB(float f){mB = f;}  
+	void setA(float f){mA = f;}
+	void setB(float f){mB = f;}
 	void set(float a, float b){mA = a; mB = b;}
 	void setClip(bool c)
 	{
 		mClip = c;
-	} 
-	bool getClip() const { return mClip; } 
+	}
+	bool getClip() const { return mClip; }
 	
 	// no
 	void convertFrom(const MLRange& r)
@@ -320,7 +320,7 @@ public:
 		mMaxOutput = ml::max(c, d);
 	}
 	
-	float operator()(float f) const 
+	float operator()(float f) const
 	{
 		float r = f*mScale + mOffset;
 		if(mClip) r = ml::clamp(r, mMinOutput, mMaxOutput);
@@ -362,19 +362,19 @@ extern const MLRange UnityRange;
 inline MLSignal reciprocalEst(const MLSignal& x)
 {
 	int frames = x.getWidth();
-	MLSignal y(frames); 
+	MLSignal y(frames);
 	for(int n=0; n<frames; ++n)
 	{
 		// MLTEST use SSE
 		y[n] = 1.f/x[n];
 	}
 	return y;
-}		
+}
 
 
 inline void scaleAndAccumulate(MLSignal& a, const MLSignal& b, float k)
 {
-	int vectors = a.getSize() >> kMLSamplesPerSSEVectorBits;	
+	int vectors = a.getSize() >> kMLSamplesPerSSEVectorBits;
 	float* pa = a.getBuffer();
 	const float* pb = b.getConstBuffer();
 	__m128 va, vb, vk;
@@ -393,7 +393,7 @@ inline void scaleAndAccumulate(MLSignal& a, const MLSignal& b, float k)
 
 inline void scaleByConstant(MLSignal& a, const MLSignal& b, float k)
 {
-	int vectors = a.getSize() >> kMLSamplesPerSSEVectorBits;	
+	int vectors = a.getSize() >> kMLSamplesPerSSEVectorBits;
 	float* pa = a.getBuffer();
 	const float* pb = b.getConstBuffer();
 	__m128 vb, vk;
@@ -411,19 +411,19 @@ inline void scaleByConstant(MLSignal& a, const MLSignal& b, float k)
 
 // keep scalar version? make some macros? :-P
 /*
-inline MLSignal abs(const MLSignal& x)
-{
-	int frames = x.getWidth();
-	MLSignal y(frames); 
-	for(int n=0; n<frames; ++n)
-	{
-		y[n] = fabs(x[n]);
-	}
-	return y;
-}		
-*/
+ inline MLSignal abs(const MLSignal& x)
+ {
+ int frames = x.getWidth();
+ MLSignal y(frames);
+ for(int n=0; n<frames; ++n)
+ {
+ y[n] = fabs(x[n]);
+ }
+ return y;
+ }
+ */
 
-inline void abs(MLSignal& x) 
+inline void abs(MLSignal& x)
 {
 	int frames = x.getWidth();
 	int vectors = frames >> kMLSamplesPerSSEVectorBits;
@@ -431,7 +431,7 @@ inline void abs(MLSignal& x)
 	__m128 vx;
 	
 	static const __m128 sign_mask = _mm_set1_ps(-0.f); // -0.f = 1 << 31
-		
+	
 	for(int v=0; v<vectors; ++v)
 	{
 		vx = _mm_load_ps(px);
@@ -448,36 +448,36 @@ inline MLSignal lerp(const MLSignal& b, const MLSignal& c, const MLSignal& m)
 	int frames = b.getWidth();
 	
 	// SETDIMS
-	MLSignal y(frames); 
+	MLSignal y(frames);
 	for(int n=0; n<frames; ++n)
 	{
 		float fb = b[n];
 		float fc = c[n];
 		float fm = m[n];
-		y[n] = (fb + (fc - fb)*fm);		
+		y[n] = (fb + (fc - fb)*fm);
 	}
 	return y;
-}		
+}
 
 inline MLSignal lerp(const MLSignal& b, const MLSignal& c, const float m)
 {
 	int frames = b.getWidth();
-	MLSignal y(frames); 
+	MLSignal y(frames);
 	for(int n=0; n<frames; ++n)
 	{
 		float fb = b[n];
 		float fc = c[n];
-		y[n] = (fb + (fc - fb)*m);		
+		y[n] = (fb + (fc - fb)*m);
 	}
 	return y;
-}		
+}
 
 inline MLSignal lerpBipolar(const MLSignal& a, const MLSignal& b, const MLSignal& c, const MLSignal& m)
 {
 	int frames = a.getWidth();
 	
 	// SETDIMS
-	MLSignal y(frames); 
+	MLSignal y(frames);
 	for(int n=0; n<frames; ++n)
 	{
 		float fa = a[n];
@@ -493,20 +493,20 @@ inline MLSignal lerpBipolar(const MLSignal& a, const MLSignal& b, const MLSignal
 		
 	}
 	return y;
-}		
+}
 
 inline MLSignal clamp(const MLSignal& a, const float b, const float c)
 {
 	int frames = a.getWidth();
 	
 	// SETDIMS
-	MLSignal y(frames); 
+	MLSignal y(frames);
 	for(int n=0; n<frames; ++n)
 	{
-		y[n] = ml::clamp(a[n], b, c);		
+		y[n] = ml::clamp(a[n], b, c);
 	}
 	return y;
-}		
+}
 
 
 // ----------------------------------------------------------------
@@ -561,7 +561,7 @@ public:
 	inline MLSignal operator()(const MLSignal& in)
 	{
 		int frames = in.getWidth();
-		MLSignal y(frames); 
+		MLSignal y(frames);
 		for(int n=0; n<frames; ++n)
 		{
 			const float x = in[n];
@@ -571,7 +571,7 @@ public:
 			y2 = y1;
 			y1 = out;
 			y[n] = out;
-		}		
+		}
 		return y;
 	}
 	
@@ -588,7 +588,7 @@ public:
 			y2 = y1;
 			y1 = out;
 			in[n] = out;
-		}		
+		}
 	}
 	
 	// MLTEST to DSPVector
@@ -596,7 +596,7 @@ public:
 	inline MLSignal operator()(const MLSignal& in, const MLSignal& coeffs)
 	{
 		int frames = in.getWidth();
-		MLSignal y(frames); 
+		MLSignal y(frames);
 		
 		// 5 rows of coefficients
 		const float* pB = coeffs.getConstBuffer();
@@ -616,7 +616,7 @@ public:
 			y2 = y1;
 			y1 = out;
 			y[n] = out;
-		}		
+		}
 		return y;
 	}
 	
@@ -639,7 +639,7 @@ public:
 	MLBandpass() { mInvSr = 1.f; clear(); }
 	~MLBandpass() {}
 	
-	void clear() 
+	void clear()
 	{
 		mInState = mLoState = mBandState = 0.f;
 		mOmega = 0.f;
@@ -647,7 +647,7 @@ public:
 	void setSampleRate(float sr) { mSr = sr; mInvSr = 1.f/sr; }
 	void setBandpass(float f, float q)
 	{
-		const float oversample = 1.f/kOversample; 
+		const float oversample = 1.f/kOversample;
 		const float invOver = mInvSr*oversample;
 		
 		const float maxQ = 0.95f;
@@ -656,17 +656,17 @@ public:
 		float clampedFreq = ml::clamp(f, 20.f, maxFreq);
 		mOneMinusQ = 1.f - (maxQ*q);
 		mOneMinusQ = ml::clamp(mOneMinusQ, 0.f, 0.9f);
-		mOmega = 2.0f * fsin1(ml::kPi * clampedFreq * invOver);		
+		mOmega = 2.0f * fsin1(ml::kPi * clampedFreq * invOver);
 	}
 	
 	inline float processSample(float x)
-	{	
+	{
 		const float k3 = mInvSr*2.f; // TODO tune to match SEM lo freq res damping
-		mInState = x;		
+		mInState = x;
 		//for(int i=0; i<kOversample; ++i) // TODO verify this is unrolled
 		{
 			mLoState += mOmega * mBandState;
-			mLoState -= mLoState*mLoState*mLoState*k3;						
+			mLoState -= mLoState*mLoState*mLoState*k3;
 			mBandState += mOmega*(mInState - mLoState - mBandState*mOneMinusQ); // SEMclip(mBandState, oneMinusQ);
 		}
 		return mBandState;
@@ -676,11 +676,11 @@ public:
 	inline MLSignal operator()(const MLSignal& x)
 	{
 		int frames = x.getWidth();
-		MLSignal y(frames); 
+		MLSignal y(frames);
 		for(int n=0; n<frames; ++n)
 		{
 			y[n] = processSample(x[n]);
-		}		
+		}
 		return y;
 	}
 	
@@ -694,12 +694,12 @@ public:
 class MLAsymmetricOnepole
 {
 public:
-    MLAsymmetricOnepole() : ka(0), kb(0), y1(0){};
-    ~MLAsymmetricOnepole(){};
-    void clear()
-    {
-        y1 = 0.f;
-    }
+	MLAsymmetricOnepole() : ka(0), kb(0), y1(0){};
+	~MLAsymmetricOnepole(){};
+	void clear()
+	{
+		y1 = 0.f;
+	}
 	void setSampleRate(float sr) { mInvSr = 1.f / sr; }
 	void setCutoffs(float fa, float fb)
 	{
@@ -713,15 +713,15 @@ public:
 	}
 	
 	// TODO deprecate
-    inline float processSample(float x)
-    {
-        float dxdt = x - y1;
-        float s = (dxdt < 0.f ? -1.f : 1.f);
-        float k = ((1.f - s)*kb + (1.f + s)*ka)*0.5f;
-        float out = y1 + k*dxdt;
-        y1 = out;
-        return(out);
-    }
+	inline float processSample(float x)
+	{
+		float dxdt = x - y1;
+		float s = (dxdt < 0.f ? -1.f : 1.f);
+		float k = ((1.f - s)*kb + (1.f + s)*ka)*0.5f;
+		float out = y1 + k*dxdt;
+		y1 = out;
+		return(out);
+	}
 	
 	inline float operator()(float x)
 	{
@@ -731,8 +731,8 @@ public:
 		float out = y1 + k*dxdt;
 		y1 = out;
 		return(out);
-	}	
-    
+	}
+	
 	float ka, kb;
 	float y1;
 	float mInvSr;
@@ -760,38 +760,38 @@ private:
 // ----------------------------------------------------------------
 #pragma mark MLSineOsc
 
-// this sine generator makes a looping counter by letting a 32 bit word overflow. The frequency 
+// this sine generator makes a looping counter by letting a 32 bit word overflow. The frequency
 // resolution of this counter is good enough for most uses: around 0.000005 Hz.
 class MLSineOsc
 {
 public:
-    static const float kIntDomain, kRootX, kOneSixth, kRange, kDomain, kScale, kDomainScale, kPhaseInvScale, kFlipOffset;
-    MLSineOsc() : mOmega32(0), mStep32(0) { }
-    ~MLSineOsc(){}
-    
-    inline void setSampleRate(int sr) { mInvSrDomain = (float)kIntDomain / (float)sr; }
-    inline void setFrequency(float f) { mStep32 = (int)(mInvSrDomain * f); }
+	static const float kIntDomain, kRootX, kOneSixth, kRange, kDomain, kScale, kDomainScale, kPhaseInvScale, kFlipOffset;
+	MLSineOsc() : mOmega32(0), mStep32(0) { }
+	~MLSineOsc(){}
+	
+	inline void setSampleRate(int sr) { mInvSrDomain = (float)kIntDomain / (float)sr; }
+	inline void setFrequency(float f) { mStep32 = (int)(mInvSrDomain * f); }
 	inline void setPhase(float f) { mOmega32 = f*kPhaseInvScale; }
 	
-    inline float processSample()
-    {
-        float x, fOmega;
-        
-        // add increment with wrap
-        mOmega32 += mStep32;
-        
-        // scale to sin approx domain
-        fOmega = mOmega32 * kDomainScale + kRootX;
-        
-        // reverse upper half to make sin wave approx
-        x = fOmega + ml::fSignBit(mOmega32)*(kFlipOffset - fOmega - fOmega);
-        
-        // sine approx.
-        return x*(1.0f - kOneSixth*x*x) * kScale;
-    }
+	inline float processSample()
+	{
+		float x, fOmega;
+		
+		// add increment with wrap
+		mOmega32 += mStep32;
+		
+		// scale to sin approx domain
+		fOmega = mOmega32 * kDomainScale + kRootX;
+		
+		// reverse upper half to make sin wave approx
+		x = fOmega + ml::fSignBit(mOmega32)*(kFlipOffset - fOmega - fOmega);
+		
+		// sine approx.
+		return x*(1.0f - kOneSixth*x*x) * kScale;
+	}
 private:
 	int32_t mOmega32, mStep32;
-    float mInvSrDomain;
+	float mInvSrDomain;
 };
 
 // ----------------------------------------------------------------
@@ -867,39 +867,39 @@ private:
 class floatDelay
 {
 public:
-    floatDelay() { clear(); }
+	floatDelay() { clear(); }
 	~floatDelay() {}
-    
+	
 	void resize(float duration);
 	
-	inline void clear(){ mBuffer.clear(); mWriteIndex = 0; }	
+	inline void clear(){ mBuffer.clear(); mWriteIndex = 0; }
 	inline void setSampleRate(int sr) { mSR = sr; mInvSr = 1.0f / (float)sr; }
-    inline void setDelay(float d) { mDelayInSamples = (int)(d*(float)mSR); }
-
-    inline float processSample(const float x)
-    {
-        mWriteIndex &= mLengthMask;
-        mBuffer[mWriteIndex] = x;
-        mWriteIndex++;        
-        uintptr_t readIndex = mWriteIndex - (uintptr_t)mDelayInSamples;
-        readIndex &= mLengthMask;        
-        float a = mBuffer[readIndex];        
-        return a;
-    }
-    
+	inline void setDelay(float d) { mDelayInSamples = (int)(d*(float)mSR); }
+	
+	inline float processSample(const float x)
+	{
+		mWriteIndex &= mLengthMask;
+		mBuffer[mWriteIndex] = x;
+		mWriteIndex++;
+		uintptr_t readIndex = mWriteIndex - (uintptr_t)mDelayInSamples;
+		readIndex &= mLengthMask;
+		float a = mBuffer[readIndex];
+		return a;
+	}
+	
 private:
-    MLSignal mBuffer;
-    
-    int mSR;
-    float mInvSr;
+	MLSignal mBuffer;
+	
+	int mSR;
+	float mInvSr;
 	uintptr_t mWriteIndex;
 	uintptr_t mLengthMask;
-    int mDelayInSamples;
+	int mDelayInSamples;
 };
 
 // ----------------------------------------------------------------
 #pragma mark MLModDelay
-// a delay with one linear interpolated modulation tap. 
+// a delay with one linear interpolated modulation tap.
 
 class MLModDelay
 {
@@ -916,9 +916,9 @@ public:
 		mLengthMask = (1 << mBuffer.getWidthBits()) - 1;
 		clear();
 	}
-	inline void setDelayTime(float delayInSeconds) 
-	{ 
-		mModDelayInSamples = delayInSeconds*(float)mSR; 
+	inline void setDelayTime(float delayInSeconds)
+	{
+		mModDelayInSamples = delayInSeconds*(float)mSR;
 		float fDelayInt = floorf(mModDelayInSamples);
 		mDelayInt = static_cast<int>(fDelayInt);
 		
@@ -930,7 +930,7 @@ public:
 	{
 		mBuffer[mWriteIndex & mLengthMask] = x;
 		mWriteIndex++;
-				
+		
 		const uintptr_t readIndex = mWriteIndex - mDelayInt;
 		const uintptr_t readIndex2 = readIndex - 1;
 		
@@ -945,7 +945,7 @@ public:
 		int frames = x.getWidth();
 		
 		// SETDIMS
-		MLSignal y(frames); 
+		MLSignal y(frames);
 		for(int n=0; n<frames; ++n)
 		{
 			y[n] = processSample(x[n]);
@@ -957,7 +957,7 @@ public:
 	inline MLSignal operator()(const MLSignal& x, const MLSignal& delay)
 	{
 		int frames = x.getWidth();
-		MLSignal y(frames); 
+		MLSignal y(frames);
 		for(int n=0; n<frames; ++n)
 		{
 			// MLTEST slow!
@@ -1062,29 +1062,29 @@ private:
 class MLAllpassDelay
 {
 public:
-    MLAllpassDelay() { clear(); }
+	MLAllpassDelay() { clear(); }
 	~MLAllpassDelay() {}
-    
+	
 	inline void clear()
-    {
-        mBuffer.clear();
-        mX1 = 0.f;
-        mY1 = 0.f;
-        mFixedTapOut = 0.;
-    }
-    inline void setSampleRate(int sr) { mSR = sr; mInvSr = 1.0f / (float)sr; }
-    void resize(float duration);
-    inline void setMixParams(float b, float ff, float fb) { mBlend = b; mFeedForward = ff; mFeedback = fb; }
-    inline void setFixedDelay(float d) { mFixedDelayInSamples = (int)(d*(float)mSR); }
+	{
+		mBuffer.clear();
+		mX1 = 0.f;
+		mY1 = 0.f;
+		mFixedTapOut = 0.;
+	}
+	inline void setSampleRate(int sr) { mSR = sr; mInvSr = 1.0f / (float)sr; }
+	void resize(float duration);
+	inline void setMixParams(float b, float ff, float fb) { mBlend = b; mFeedForward = ff; mFeedback = fb; }
+	inline void setFixedDelay(float d) { mFixedDelayInSamples = (int)(d*(float)mSR); }
 	inline void setModDelay(float d) { mModDelayInSamples = d*(float)mSR; }
-    
-    float processSample(const float x);
+	
+	float processSample(const float x);
 	
 	// MLTEST towards DSPVectors
 	inline MLSignal operator()(const MLSignal& x)
 	{
 		int frames = x.getWidth();
-		MLSignal y(frames); 
+		MLSignal y(frames);
 		for(int n=0; n<frames; ++n)
 		{
 			y[n] = processSample(x[n]);
@@ -1093,17 +1093,17 @@ public:
 	}
 	
 private:
-    MLSignal mBuffer;
-    int mSR;
-    float mInvSr;
-    
+	MLSignal mBuffer;
+	int mSR;
+	float mInvSr;
+	
 	uintptr_t mWriteIndex;
 	uintptr_t mLengthMask;
-    
-    int mFixedDelayInSamples;
-    float mModDelayInSamples;
-    
-    float mBlend, mFeedForward, mFeedback;	
+	
+	int mFixedDelayInSamples;
+	float mModDelayInSamples;
+	
+	float mBlend, mFeedForward, mFeedback;
 	float mFixedTapOut;
 	float mX1;
 	float mY1;
@@ -1117,39 +1117,39 @@ private:
 class MLFDN
 {
 public:
-    MLFDN() :
-        mSize(0),
-		mSR(44100),
-        mFeedbackAmp(0),
-        mFreqMul(0.925)
-        {}
+	MLFDN() :
+	mSize(0),
+	mSR(44100),
+	mFeedbackAmp(0),
+	mFreqMul(0.925)
+	{}
 	~MLFDN()
-        {}
-    
-    // set the number of delay lines.
-    void resize(int n);
-    void setIdentityMatrix();
-    void clear();
-    void setSampleRate(int sr);
-    void setFreqMul(float m) { mFreqMul = m; }
-    void setDelayLengths(float maxLength);
-    void setFeedbackAmp(float f) { mFeedbackAmp = f; }
-    void setLopass(float f);
+	{}
+	
+	// set the number of delay lines.
+	void resize(int n);
+	void setIdentityMatrix();
+	void clear();
+	void setSampleRate(int sr);
+	void setFreqMul(float m) { mFreqMul = m; }
+	void setDelayLengths(float maxLength);
+	void setFeedbackAmp(float f) { mFeedbackAmp = f; }
+	void setLopass(float f);
 	float processSample(const float x);
 	MLSignal operator()(const MLSignal& x);
-    
+	
 private:
-    int mSize;
-    int mSR;
-    //std::vector<MLAllpassDelay> mDelays;
-    std::vector<MLLinearDelay> mDelays;
-    std::vector<MLBiquad> mFilters; // TODO onepole bank object
-    MLSignal mMatrix;
-    MLSignal mDelayOutputs;
-    float mDelayTime;
-    float mFeedbackAmp;
-    float mFreqMul;
-    float mInvSr;
+	int mSize;
+	int mSR;
+	//std::vector<MLAllpassDelay> mDelays;
+	std::vector<MLLinearDelay> mDelays;
+	std::vector<MLBiquad> mFilters; // TODO onepole bank object
+	MLSignal mMatrix;
+	MLSignal mDelayOutputs;
+	float mDelayTime;
+	float mFeedbackAmp;
+	float mFreqMul;
+	float mInvSr;
 };
 
 
@@ -1159,73 +1159,73 @@ private:
 class MLHalfBandFilter
 {
 public:
-    static const float ka0, ka1, kb0, kb1;
-
-    class AllpassSection
-    {
-    public:
-        AllpassSection();
-        ~AllpassSection();
-        void clear();
-        
-        inline float processSample(const float x)
-        {
-            x1=x0;
-            y1=y0;
-            x0=x;
-            y0 = x1 + (x0 - y1)*a;            
-            return y0;
-        }
-        
-        float x0, x1, y0, y1;
-        float a;        
-    };
-    
-    MLHalfBandFilter();
-    ~MLHalfBandFilter();
-    void clear();
-    inline float processSampleDown(const float x)
-    {
-        float y;
-        
-        if(k)
-        {
-            a0 = apa1.processSample(apa0.processSample(x));
-        }
-        else
-        {
-            b0 = apb1.processSample(apb0.processSample(x));
-        }
-        
-        y = (a0 + b1)*0.5f;
-        b1 = b0;
-        k = !k;
-        return y;
-    }
-    
-    inline float processSampleUp(const float x)
-    {
-        float y;
-        
-        if(k)
-        {
-            y = apa1.processSample(apa0.processSample(x));
-        }
-        else
-        {
-            y = apb1.processSample(apb0.processSample(x));
-        }
-
-        k = !k;
-        return y;
-    }
-    
+	static const float ka0, ka1, kb0, kb1;
+	
+	class AllpassSection
+	{
+	public:
+		AllpassSection();
+		~AllpassSection();
+		void clear();
+		
+		inline float processSample(const float x)
+		{
+			x1=x0;
+			y1=y0;
+			x0=x;
+			y0 = x1 + (x0 - y1)*a;
+			return y0;
+		}
+		
+		float x0, x1, y0, y1;
+		float a;
+	};
+	
+	MLHalfBandFilter();
+	~MLHalfBandFilter();
+	void clear();
+	inline float processSampleDown(const float x)
+	{
+		float y;
+		
+		if(k)
+		{
+			a0 = apa1.processSample(apa0.processSample(x));
+		}
+		else
+		{
+			b0 = apb1.processSample(apb0.processSample(x));
+		}
+		
+		y = (a0 + b1)*0.5f;
+		b1 = b0;
+		k = !k;
+		return y;
+	}
+	
+	inline float processSampleUp(const float x)
+	{
+		float y;
+		
+		if(k)
+		{
+			y = apa1.processSample(apa0.processSample(x));
+		}
+		else
+		{
+			y = apb1.processSample(apb0.processSample(x));
+		}
+		
+		k = !k;
+		return y;
+	}
+	
 private:
-    AllpassSection apa0, apa1, apb0, apb1;
-    MLBiquad apab;
-    float x0, x1;
-    float a0, b0, b1;
-    bool k;
+	AllpassSection apa0, apa1, apb0, apb1;
+	MLBiquad apab;
+	float x0, x1;
+	float a0, b0, b1;
+	bool k;
 };
 
 // ----------------------------------------------------------------
@@ -1234,24 +1234,24 @@ private:
 class MLDownsample2x
 {
 public:
-    MLDownsample2x(){}
-    ~MLDownsample2x(){}
-    void clear();
-    
-    // process n input samples from src and generate n / 2 output samples in dest.
-    inline void processVector(const float* src, float* dest, int n)
-    {
-        int j = 0;
-        int nn = n >> 1;
-        for(int i = 0; i < nn; ++i)
-        {
-            f.processSampleDown(src[j++]);
-            dest[i] = f.processSampleDown(src[j++]);
-        }
-    }
-    
+	MLDownsample2x(){}
+	~MLDownsample2x(){}
+	void clear();
+	
+	// process n input samples from src and generate n / 2 output samples in dest.
+	inline void processVector(const float* src, float* dest, int n)
+	{
+		int j = 0;
+		int nn = n >> 1;
+		for(int i = 0; i < nn; ++i)
+		{
+			f.processSampleDown(src[j++]);
+			dest[i] = f.processSampleDown(src[j++]);
+		}
+	}
+	
 private:
-    MLHalfBandFilter f;
+	MLHalfBandFilter f;
 };
 
 // ----------------------------------------------------------------
@@ -1260,23 +1260,24 @@ private:
 class MLUpsample2x
 {
 public:
-    MLUpsample2x(){}
-    ~MLUpsample2x(){}
-    void clear();
-    
-    // process n input samples from src and generate 2n output samples in dest.
-    inline void processVector(const float* src, float* dest, int n)
-    {
-        int j = 0;
-        for(int i = 0; i < n; ++i)
-        {
-            dest[j++] = f.processSampleUp(src[i]);
-            dest[j++] = f.processSampleUp(src[i]);
-        }
-    }
-    
+	MLUpsample2x(){}
+	~MLUpsample2x(){}
+	void clear();
+	
+	// process n input samples from src and generate 2n output samples in dest.
+	inline void processVector(const float* src, float* dest, int n)
+	{
+		int j = 0;
+		for(int i = 0; i < n; ++i)
+		{
+			dest[j++] = f.processSampleUp(src[i]);
+			dest[j++] = f.processSampleUp(src[i]);
+		}
+	}
+	
 private:
-    MLHalfBandFilter f;
+	MLHalfBandFilter f;
 };
+
 
 
