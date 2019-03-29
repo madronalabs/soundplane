@@ -55,10 +55,6 @@ add_compile_definitions(MADRONALIB_TIMERS_USE_JUCE)
 
 set(ML_JUCE_HEADER_PATH "${CMAKE_SOURCE_DIR}/Source")
 
-# set the path to madronalib here
-
-
-
 #--------------------------------------------------------------------
 # Enforce out of source build
 #--------------------------------------------------------------------

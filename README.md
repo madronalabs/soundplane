@@ -2,7 +2,7 @@
 
 Client application for the Madrona Labs Soundplane.
 
-Copyright (c) 2013 Madrona Labs LLC. http://www.madronalabs.com
+Copyright (c) 2019 Madrona Labs LLC. http://www.madronalabs.com
 
 Distributed under the MIT license: http://madrona-labs.mit-license.org/
 
@@ -15,27 +15,23 @@ Xcode Command Line Tools can be downloaded and installed from the "Downloads"
 tab in Xcode's settings. An easy way of installing CMake is to do it via
 Homebrew: With Homebrew installed, type `brew install cmake` in a terminal.
 
-The madronalib project at (https://github.com/madronalabs/madronalib) is currently
-required and must be downloaded separately. If the madronalib project is located within
-the same directory as the soundplane project, it should be found by the relative path
-SP_MADRONALIB_DIR as specified in CMakeLists.txt.
+The madronalib and soundplanelib projects at (https://github.com/madronalabs/) are also required. Follow the directions in these projects to build them and to install the headers and libraries to /usr/local.
 
-In order to prepare the build, the following commands
-can be used. The BUILD_NEW_ONLY option is set OFF to include the JUCE libraries needed.
+In order to prepare the build, the following commands can be used.
 
     $ mkdir build
     $ cd build
-    $ cmake .. -DBUILD_NEW_ONLY=OFF -GXcode
+    $ cmake -GXcode ..
 
 
-At this point, there is an Xcode project `soundplane.xcodeproj` ready for coding
-and compiling in `build/`. If you just want to build the application and run it
-from the comfort of the terminal, these commands can be used
+At this point, cmake should have created an Xcode project `soundplane.xcodeproj` ready for compiling in `build/`. You can change to the build directory and open it in the XCode app, or if you just want to build the application and run it from the comfort of the terminal, these commands can be used
 
-    $ xcodebuild -project soundplane.xcodeproj -target Soundplane -configuration MinSizeRel
-    $ open ./MinSizeRel/Soundplane.app
+    $ xcodebuild -project soundplane.xcodeproj -target Soundplane -configuration RelWithDebInfo
+    $ open ./RelWithDebInfo/Soundplane.app
 
 ### Linux
+
+note: untested. CMake files may need work. 
 
 On Linux, the Soundplane application requires a few packages to be installed in
 order to be built. GCC is required, but that is bundled with most Linux
