@@ -88,7 +88,7 @@ public:
 	// SoundplaneOutput
 	void beginOutputFrame(time_point<system_clock> now) override;
 	void processTouch(int i, int offset, const Touch& m) override;
-	void processController(int z, int offset, const Controller& m) override;
+	void processController(int z, int offset, const ZoneMessage& m) override;
 	void endOutputFrame() override;
 	void clear() override;
 	
@@ -148,8 +148,8 @@ private:
 	MIDIVoice mMIDIVoices[kMaxMIDIVoices];
 	
 	std::array< TouchArray, kSoundplaneAMaxZones > mTouchesByZone;
-	std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
-	std::array< Controller, kSoundplaneAMaxZones > mSentControllersByZone;
+	std::array< ZoneMessage, kSoundplaneAMaxZones > mControllersByZone;
+	std::array< ZoneMessage, kSoundplaneAMaxZones > mSentControllersByZone;
 
 	std::vector<MIDIDevicePtr> mDevices;
 	std::vector<std::string> mDeviceList;

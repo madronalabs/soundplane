@@ -176,16 +176,9 @@ endif()
 # ml-juce adapters 
 target_link_libraries("${EXECUTABLE_NAME}" "ml-juce")
 
-# platform frameworks
+# platform frameworks not included by ml-juce
 if(APPLE)
-  target_link_libraries("${EXECUTABLE_NAME}" "-framework Carbon")
   target_link_libraries("${EXECUTABLE_NAME}" "-framework IOKit")
-  target_link_libraries("${EXECUTABLE_NAME}" "-framework CoreServices")
-  target_link_libraries("${EXECUTABLE_NAME}" "-framework AudioToolbox")
-  target_link_libraries("${EXECUTABLE_NAME}" "-framework AudioUnit")
-  target_link_libraries("${EXECUTABLE_NAME}" "-framework CoreAudio")
-  target_link_libraries("${EXECUTABLE_NAME}" "-framework Foundation")
-  target_link_libraries("${EXECUTABLE_NAME}" "-framework OpenGL")
   target_link_libraries("${EXECUTABLE_NAME}" "-framework GLUT")
 else(APPLE)
   #target_link_libraries("${EXECUTABLE_NAME}" ${DNSSD_LIBRARIES})

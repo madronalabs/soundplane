@@ -28,7 +28,6 @@
 #include "SoundplaneBinaryData.h"
 #include "Zone.h"
 
-
 using namespace ml;
 using namespace std::chrono;
 
@@ -165,7 +164,7 @@ private:
 	void sendFrameToOutputs(time_point<system_clock> now);
 	void beginOutputFrame(time_point<system_clock> now);
 	void sendTouchToOutputs(int i, int offset, const Touch& t);
-	void sendControllerToOutputs(int zoneID, int offset, const Controller& m);
+	void sendControllerToOutputs(int zoneID, int offset, const ZoneMessage& m);
 	void endOutputFrame();
 	
 	void clearZones();

@@ -814,7 +814,7 @@ void SoundplaneModel::sendTouchToOutputs(int i, int offset, const Touch& t)
 	}
 }
 
-void SoundplaneModel::sendControllerToOutputs(int zoneID, int offset, const Controller& m)
+void SoundplaneModel::sendControllerToOutputs(int zoneID, int offset, const ZoneMessage& m)
 {
 	if(mMIDIOutput.isActive())
 	{

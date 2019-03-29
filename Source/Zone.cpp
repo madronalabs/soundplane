@@ -67,7 +67,6 @@ void Zone::newFrame()
 		mTouches0[i] = Touch{};
 		mOutputTouches[i] = Touch{};
 	}
-	//mOutputController = Controller{};
 }
 
 void Zone::addTouchToFrame(int i, Touch t)

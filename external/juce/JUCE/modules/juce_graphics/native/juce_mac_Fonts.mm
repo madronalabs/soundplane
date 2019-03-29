@@ -374,35 +374,47 @@ namespace CoreTextTypeLayout
 
         return range.getLength();
     }
-
-    static void drawToCGContext (const AttributedString& text, const Rectangle<float>& area,
-                                 const CGContextRef& context, const float flipHeight)
-    {
-        CTFrameRef frame = createCTFrame (text, CGRectMake ((CGFloat) area.getX(), flipHeight - (CGFloat) area.getBottom(),
-                                                            (CGFloat) area.getWidth(), (CGFloat) area.getHeight()));
-
-        const int verticalJustification = text.getJustification().getOnlyVerticalFlags();
-
-        if (verticalJustification == Justification::verticallyCentred
-             || verticalJustification == Justification::bottom)
-        {
-            float adjust = area.getHeight() - findCTFrameHeight (frame);
-
-            if (verticalJustification == Justification::verticallyCentred)
-                adjust *= 0.5f;
-
-            CGContextSaveGState (context);
-            CGContextTranslateCTM (context, 0, -adjust);
-            CTFrameDraw (frame, context);
-            CGContextRestoreGState (context);
-        }
-        else
-        {
-            CTFrameDraw (frame, context);
-        }
-
-        CFRelease (frame);
-    }
+		
+		static void drawToCGContext (const AttributedString& text, const Rectangle<float>& area,
+																 const CGContextRef& context, const float flipHeight)
+		{
+			Rectangle<float> ctFrameArea;
+			
+			const int verticalJustification = text.getJustification().getOnlyVerticalFlags();
+			
+			// Ugly hack to fix a bug in OS X Sierra where the CTFrame needs to be slightly
+			// larger than the font height - otherwise the CTFrame will be invalid
+			if (verticalJustification == Justification::verticallyCentred)
+				ctFrameArea = area.withSizeKeepingCentre (area.getWidth(), area.getHeight() * 1.1f);
+			else if (verticalJustification == Justification::bottom)
+				ctFrameArea = area.withTop (area.getY() - (area.getHeight() * 0.1f));
+			else
+				ctFrameArea = area.withHeight (area.getHeight() * 1.1f);
+			
+			CTFrameRef frame = createCTFrame (text, CGRectMake ((CGFloat) ctFrameArea.getX(), flipHeight - (CGFloat) ctFrameArea.getBottom(),
+																													(CGFloat) ctFrameArea.getWidth(), (CGFloat) ctFrameArea.getHeight()));
+			
+			if (verticalJustification == Justification::verticallyCentred
+					|| verticalJustification == Justification::bottom)
+			{
+				float adjust = ctFrameArea.getHeight() - findCTFrameHeight (frame);
+				
+				if (verticalJustification == Justification::verticallyCentred)
+					adjust *= 0.5f;
+				
+				CGContextSaveGState (context);
+				CGContextTranslateCTM (context, 0, -adjust);
+				CTFrameDraw (frame, context);
+				CGContextRestoreGState (context);
+			}
+			else
+			{
+				CTFrameDraw (frame, context);
+			}
+			
+			CFRelease (frame);
+		}
+		
 
     static void createLayout (TextLayout& glyphLayout, const AttributedString& text)
     {

@@ -495,13 +495,13 @@ void SoundplaneMIDIOutput::processTouch(int i, int offset, const Touch& t)
 	}
 }
 
-void SoundplaneMIDIOutput::processController(int zoneID, int h, const Controller& m)
+void SoundplaneMIDIOutput::processController(int zoneID, int h, const ZoneMessage& m)
 {
 	// when a controller message comes in, make a local copy of the message and store by zone ID.
 	// store incoming controller by zone ID
 	mControllersByZone[zoneID] = m;
 	
-	// store offset into Controller
+	// store offset into ZoneMessage
 	mControllersByZone[zoneID].offset = h;
 	
 	mGotControllerChanges = true;
@@ -593,8 +593,8 @@ void SoundplaneMIDIOutput::sendMIDIControllerMessages()
 	// for each zone, send and clear any controller messages received since last frame
 	for(int i=0; i<kSoundplaneAMaxZones; ++i)
 	{
-		Controller& c = mControllersByZone[i];
-		Controller& d = mSentControllersByZone[i];
+		ZoneMessage& c = mControllersByZone[i];
+		ZoneMessage& d = mSentControllersByZone[i];
 		
 		//if(c.active)
 		if(c != d)
@@ -663,7 +663,7 @@ void SoundplaneMIDIOutput::pollKymaViaMIDI()
 	mpCurrentDevice->sendMessageNow(juce::MidiMessage::controllerEvent(16, 98, 0xFF));
 	
 	// MLTEST Kyma debug
-	MLConsole() << "polling Kyma via MIDI: " << mVoices << " voices.\n";
+	//MLConsole() << "polling Kyma via MIDI: " << mVoices << " voices.\n";
 }
 
 void SoundplaneMIDIOutput::updateVoiceStates()

@@ -9,7 +9,7 @@
 #include "SoundplaneDriver.h"
 #include "SoundplaneModelA.h"
 #include "Touch.h"
-#include "Controller.h"
+#include "Zone.h"
 
 #include <chrono>
 using namespace std::chrono;
@@ -24,7 +24,7 @@ public:
 	
 	virtual void beginOutputFrame(time_point<system_clock> now) = 0;
 	virtual void processTouch(int i, int offset, const Touch& m) = 0;
-	virtual void processController(int z, int offset, const Controller& m) = 0;
+	virtual void processController(int z, int offset, const ZoneMessage& m) = 0;
 	virtual void endOutputFrame() = 0;	
 	virtual void clear() = 0;
 	

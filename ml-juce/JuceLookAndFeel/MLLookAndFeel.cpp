@@ -595,8 +595,6 @@ void MLLookAndFeel::drawButtonTextML (Graphics& g, MLButton& button,
 																		
 																		bool, bool)
 {
-	
-	
 	Colour textColor = Colours::black; // MLTEST
 	
 	const float alpha = button.isEnabled() ? 1.f : 0.33f;

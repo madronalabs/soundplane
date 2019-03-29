@@ -131,7 +131,7 @@ static void menuItemChosenCallback (int result, WeakReference<SoundplaneControll
 {
 	SoundplaneController* pC = wpC;
 	
-	// get Controller ptr from weak reference
+	// get Controllerr ptr from weak reference
 	if(pC == nullptr)
 	{
 		debug() << "    null SoundplaneController ref!\n";

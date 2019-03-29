@@ -22,6 +22,8 @@ mpComp(std::unique_ptr<CodeEditorComponent>(new CodeEditorComponent(*mpDoc, null
 	mpComp->setWantsKeyboardFocus(true);
 	mpComp->loadContent("");
 	mpComp->setScrollbarThickness(12);
+	mpComp->setFont (Font (Font::getDefaultMonospacedFontName(), 12.0f, Font::plain));
+	
 	
 	mTimer.start([&](){ display(); }, milliseconds(250));
 	
@@ -44,7 +46,7 @@ void MLDebugDisplay::display()
 	mStream.flush();
 	std::string outStr = mStream.str();
 	const char* pOutput = outStr.c_str();
-	String newStr(pOutput);
+	juce::String newStr(pOutput);
 	
 	// erase stream contents
 	mStream.str(std::string());
@@ -66,7 +68,7 @@ void MLDebugDisplay::display()
 		int endLine = startLine + mpComp->getNumLinesOnScreen();
 		mpComp->moveCaretToEnd(false);
 		mpComp->insertTextAtCaret(newStr);
-		
+		mpComp->repaint();
 		// if end of doc is off screen, reset saved position (don't scroll to text)
 		if(lastDocLine > endLine + 1)
 		{

@@ -46,7 +46,7 @@ public:
 	// SoundplaneOutput
 	void beginOutputFrame(time_point<system_clock> now) override;
 	void processTouch(int i, int offset, const Touch& m) override;
-	void processController(int z, int offset, const Controller& m) override;
+	void processController(int z, int offset, const ZoneMessage& m) override;
 	void endOutputFrame() override;
 	void clear() override;
 
@@ -77,8 +77,8 @@ private:
 	int mMaxTouches;
 	
 	std::array< TouchArray, kNumUDPPorts > mTouchesByPort;
-	std::array< Controller, kSoundplaneAMaxZones > mControllersByZone;
-	std::array< Controller, kSoundplaneAMaxZones > mSentControllersByZone;
+	std::array< ZoneMessage, kSoundplaneAMaxZones > mControllersByZone;
+	std::array< ZoneMessage, kSoundplaneAMaxZones > mSentControllersByZone;
 	
 	int mDataRate{100};
 	time_point<system_clock> mFrameTime;

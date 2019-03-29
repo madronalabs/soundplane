@@ -479,7 +479,9 @@ void CodeEditorComponent::paint (Graphics& g)
     const int gutterSize = getGutterSize();
     g.reduceClipRegion (gutterSize, 0, verticalScrollBar.getX() - gutterSize, horizontalScrollBar.getY());
 
-    g.setFont (font);
+		g.setColour (findColour (CodeEditorComponent::defaultTextColourId)); // ML
+
+		g.setFont (font);
 
     const Rectangle<int> clip (g.getClipBounds());
     const int firstLineToDraw = jmax (0, clip.getY() / lineHeight);

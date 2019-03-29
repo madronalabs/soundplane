@@ -155,11 +155,10 @@ void SoundplaneOSCOutput::beginOutputFrame(time_point<system_clock> now)
 		}
 	}
 	
-	// clear controller array
-	// TODO refactor, this Controller stuff is dumb
+	// clear controller message array
 	for(int i=0; i<kSoundplaneAMaxZones; ++i)
 	{
-		mControllersByZone[i] = Controller{};
+		mControllersByZone[i] = ZoneMessage{};
 	}
 		
 }
@@ -171,14 +170,14 @@ void SoundplaneOSCOutput::processTouch(int i, int offset, const Touch& t)
 	mTouchesByPort[offset][i] = t;
 }
 
-void SoundplaneOSCOutput::processController(int zoneID, int h, const Controller& m)
+void SoundplaneOSCOutput::processController(int zoneID, int h, const ZoneMessage& m)
 {
 	if(!mActive) return;
 	
 	// store incoming controller by zone ID
 	mControllersByZone[zoneID] = m;
 	
-	// store offset into Controller
+	// store offset into ZoneMessage
 	mControllersByZone[zoneID].offset = h;
 }
 
@@ -223,8 +222,8 @@ void SoundplaneOSCOutput::sendFrame()
 	// to the output port for that zone. controller messages are not sent in bundles.
 	for(int i=0; i<kSoundplaneAMaxZones; ++i)
 	{
-		const Controller c = mControllersByZone[i];
-		const Controller d = mSentControllersByZone[i];
+		const ZoneMessage c = mControllersByZone[i];
+		const ZoneMessage d = mSentControllersByZone[i];
 		if(c != d)
 		{
 			int portOffset = c.offset;

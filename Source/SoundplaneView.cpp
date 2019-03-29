@@ -447,6 +447,7 @@ mpModel(pModel)
 	
 	// console
 	MLDebugDisplay* pDebug = page2->addDebugDisplay(MLRect(7., 2., 7., 5.));
+	pDebug->setBufferedToImage(true);
 	MLConsole().sendOutputToListener(pDebug);
 	
 	pD = page2->addDial("hysteresis", dialRect.withCenter(0.5, dialY), "hysteresis", c2);

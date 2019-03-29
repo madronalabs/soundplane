@@ -87,7 +87,6 @@ void MLTextStream::display()
 		//	Logger::outputDebugString(mLocalStream.str().c_str());
 
 
-
 		}
 #endif // DEBUG
 	}
@@ -133,8 +132,10 @@ MLDummyStream& debug()
 #endif 
 
 #endif // DEBUG_TO_COUT
-#if 0
 
+
+
+/*
 class MLDebugThread : public juce::Thread
 {
 public:
@@ -154,7 +155,7 @@ public:
 		{
 			if (threadShouldExit())
 				return;
-			////debug().display();
+			debug().display();
 			wait(10);
 		}
 	}
@@ -166,4 +167,4 @@ MLDebugThread& theDebugThread()
 	return theDebugThreadObject;
 }
 
-#endif
+*/

@@ -14,10 +14,6 @@
 #include "MLOSCListener.h"
 #include "TouchTracker.h"
 
-#include "Controller.h"
-
-#include "SoundplaneMIDIOutput.h"
-#include "SoundplaneOSCOutput.h"
 #include "MLSymbol.h"
 #include "MLParameter.h"
 #include "MLFileCollection.h"
@@ -30,6 +26,29 @@
 #include "NetService.h"
 #include "NetServiceBrowser.h"
 
+// Zone messages - currently used only for Controllers. TODO use for touches?
+
+struct ZoneMessage
+{
+	Symbol name{};
+	Symbol type{};
+	int number1{0};
+	int number2{0};
+	int offset{0};
+	float x{0.f};
+	float y{0.f};
+	float z{0.f};
+};
+
+inline bool operator==(const ZoneMessage& a, const ZoneMessage& b)
+{
+	return (memcmp(&a, &b, sizeof(ZoneMessage)) == 0);
+}
+
+inline bool operator!=(const ZoneMessage& a, const ZoneMessage& b)
+{
+	return !(a == b);
+}
 
 inline bool isControllerZoneType(Symbol t)
 {
@@ -74,7 +93,7 @@ public:
 	Symbol getType() const { return mType; }
 	int getOffset() const { return mOffset; }
 	
-	const Controller& getController() const { return mOutputController; }
+	const ZoneMessage& getController() const { return mOutputController; }
 	
 	void setZoneID(int z) { mZoneID = z; }
 	void setSnapFreq(float f);
@@ -117,7 +136,7 @@ protected:
 	
 	// states read by the Model to generate output
 	TouchArray mOutputTouches{};
-	Controller mOutputController;
+	ZoneMessage mOutputController;
 	
 private:
 	int getNumberOfActiveTouches() const;

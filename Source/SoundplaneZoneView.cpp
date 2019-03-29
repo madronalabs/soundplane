@@ -164,7 +164,7 @@ void SoundplaneZoneView::renderZones()
 		// draw zone-specific things
 		float x, y;
 		int toggle;
-		const Controller& c = zone.getController();
+		const ZoneMessage& c = zone.getController();
 		Symbol t = zone.getType();
 		if(t == "note_row")
 		{
