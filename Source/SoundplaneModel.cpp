@@ -489,6 +489,18 @@ void SoundplaneModel::onError(int error, const char* errStr)
 			{
 				MLConsole() << "payload failed at sequence " << errStr << "\n";
 			}
+    case kDevNoInterface:
+      MLConsole() << "error: could not create device interface: " << errStr << "\n";
+      break;
+    case kDevInsufficientPower:
+      MLConsole() << "error: insufficient USB power: " << errStr << "\n";
+      break;
+    case kDevUnableToOpenDevice:
+      MLConsole() << "error: unable to open device: " << errStr << "\n";
+      break;
+    default:
+      MLConsole() << "unknown error: " << errStr << "\n";
+
 			break;
 	}
 }

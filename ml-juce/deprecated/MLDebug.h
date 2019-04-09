@@ -59,7 +59,10 @@ public:
 #endif // ML_WINDOWS
 		
 		if(mActive)
-		{		
+		{
+			
+			// TODO make stream independent of listeners
+			
 			// If we have a listener Widget, send the item to
 			// the Listener’s stream. 
 			if(mpListener)
