@@ -10,7 +10,6 @@ include_directories(deprecated)
 include_directories(JuceApp)
 include_directories(JuceLookAndFeel)
 
-
 # add madronalib headers location. TODO use find_package for cross-platform support
 include_directories(/usr/local/include/madronalib)
 

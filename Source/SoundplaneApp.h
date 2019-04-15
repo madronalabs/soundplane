@@ -14,45 +14,53 @@
 #include "MLDebug.h"
 #include "MLAppState.h"
 #include "MLAppWindow.h"
-//#include "modules/juce_gui_basics/keyboard/juce_ModifierKeys.h"
 
-class SoundplaneApp : 
-	public JUCEApplication
+#include "madronalib.h"
+
+class SoundplaneApp :
+public JUCEApplication,
+public juce::Timer
 {
 public:
-    SoundplaneApp();
-	~SoundplaneApp();
-	
-	// real init and shutdown should be done here, according to JUCE docs
-	void initialise (const String& commandLine);
-	void shutdown();
-	
-    const String getApplicationName()
-    {
-		return MLProjectInfo::projectName;
-	}
+  SoundplaneApp();
+  ~SoundplaneApp();
 
-    const String getApplicationVersion()
-    {
-        return MLProjectInfo::versionString;
-    }
+  void timerCallback()
+  {
+    ml::Timers &t = ml::Timers::theTimers();
+    t.tick();
+  }
 
-    bool moreThanOneInstanceAllowed();
-    void anotherInstanceStarted (const String& commandLine){}
+  // real init and shutdown should be done here, according to JUCE docs
+  void initialise (const String& commandLine);
+  void shutdown();
 
-private:	
-	
-	void setDefaultWindowSize();
-	
-	// using raw ptrs because we need to control destruction order 
-	SoundplaneModel* mpModel{nullptr};
-	SoundplaneView* mpView{nullptr};
-	SoundplaneController* mpController{nullptr};
-	MLAppWindow* mpWindow{nullptr};
-	MLAppBorder* mpBorder{nullptr};
-	
-	std::unique_ptr<MLAppState> mpModelState;
-	std::unique_ptr<MLAppState> mpViewState;
+  const String getApplicationName()
+  {
+    return MLProjectInfo::projectName;
+  }
+
+  const String getApplicationVersion()
+  {
+    return MLProjectInfo::versionString;
+  }
+
+  bool moreThanOneInstanceAllowed();
+  void anotherInstanceStarted (const String& commandLine){}
+
+private:
+
+  void setDefaultWindowSize();
+
+  // using raw ptrs because we need to control destruction order
+  SoundplaneModel* mpModel{nullptr};
+  SoundplaneView* mpView{nullptr};
+  SoundplaneController* mpController{nullptr};
+  MLAppWindow* mpWindow{nullptr};
+  MLAppBorder* mpBorder{nullptr};
+
+  std::unique_ptr<MLAppState> mpModelState;
+  std::unique_ptr<MLAppState> mpViewState;
 
 };
 
@@ -61,3 +69,4 @@ START_JUCE_APPLICATION (SoundplaneApp)
 
 
 #endif // __SOUNDPLANE_APP__
+

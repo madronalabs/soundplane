@@ -16,7 +16,7 @@
 #include "MLMenu.h"
 #include "MLProperty.h"
 #include "MLTextUtils.h"
-#include "MLResourceMap.h"
+
 
 // a collection of files matching some kind of criteria. Uses the PropertySet interface
 // to report progress for searches.
@@ -26,7 +26,7 @@
 
 namespace ml
 {
-	typedef ResourceMap<MLFile, textUtils::SymbolCollator> FileTree;
+	typedef Tree<MLFile, textUtils::SymbolCollator> FileTree;
 	
 	class MLFileCollection :
 	public MLPropertySet
@@ -115,7 +115,7 @@ namespace ml
 		
 		// build a menu of all the files.
 		// TODO no reason to know about menus here. We should be returning a raw tree structure.
-		// or better, the menu just has a reference to a resourceMap, that can be constantly updating itself.
+		// or better, the menu just has a reference to a Tree, that can be constantly updating itself.
 		MLMenuPtr buildMenu() const;
 		
 		void dump() const;

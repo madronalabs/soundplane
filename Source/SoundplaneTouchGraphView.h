@@ -13,30 +13,31 @@
 #include "MLGL.h"
 
 #ifdef _WIN32
- #include <windows.h>
+#include <windows.h>
 #endif
 
 #ifndef GL_BGRA_EXT
- #define GL_BGRA_EXT 0x80e1
+#define GL_BGRA_EXT 0x80e1
 #endif
 
-class SoundplaneTouchGraphView  : 
-	public juce::Component,
-	public MLWidget
+class SoundplaneTouchGraphView  :
+public juce::Component,
+public MLWidget
 {
 public:
-    SoundplaneTouchGraphView(MLWidget* pContainer);
-    ~SoundplaneTouchGraphView();
- 
-	void setupOrthoView();
-    void mouseDrag (const MouseEvent& e);
-    void renderTouchBarGraphs();
-    void renderOpenGL();
- 	void setModel(SoundplaneModel* m);
-	
+  SoundplaneTouchGraphView(MLWidget* pContainer);
+  ~SoundplaneTouchGraphView();
+
+  void setupOrthoView();
+  void mouseDrag (const MouseEvent& e);
+  void renderTouchBarGraphs();
+  void renderOpenGL();
+  void setModel(SoundplaneModel* m);
+
 private:
-	SoundplaneModel* mpModel;
+  SoundplaneModel* mpModel;
 };
 
 #endif // __SOUNDPLANE_TOUCH_GRAPH_VIEW__
+
 

@@ -13,11 +13,11 @@
 
 class MLMenu;
 
-// TODO use ml::ResourceMap. Possibly just create the menu tree from an external map every time we show the menu. 
-// or, add method to set contents from a tree / resourceMap value. 
+// TODO use ml::Tree. Possibly just create the menu tree from an external map every time we show the menu.
+// or, add method to set contents from a tree value. 
 // need to be able to add arbitrary submaps .
 // TODO add forward / back button option and persist a current selection. 
-// Use index or store using new bidirectional ml::ResourceMap iterator .
+// Use index or store using new bidirectional ml::Tree iterator .
 
 typedef std::shared_ptr<MLMenu> MLMenuPtr;
 typedef std::map<ml::Symbol, MLMenuPtr> MLMenuMapT;
