@@ -63,12 +63,12 @@
  #endif
 #elif JUCE_MAC
  #if defined (MAC_OS_X_VERSION_10_7) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7)
-//  #define JUCE_OPENGL3 1
+  #define JUCE_OPENGL3 1
 // ML
-//  #include <OpenGL/gl3.h>
- // #include <OpenGL/gl3ext.h>
-#include <OpenGL/gl.h>
-#include <OpenGL/glext.h>
+  #include <OpenGL/gl3.h>
+  #include <OpenGL/gl3ext.h>
+//#include <OpenGL/gl.h>
+//#include <OpenGL/glext.h>
 
  #else
   #include <OpenGL/gl.h>

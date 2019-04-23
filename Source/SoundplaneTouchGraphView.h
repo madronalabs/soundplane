@@ -36,6 +36,7 @@ public:
 
 private:
   SoundplaneModel* mpModel;
+  ml::Timer mTimer;
 };
 
 #endif // __SOUNDPLANE_TOUCH_GRAPH_VIEW__

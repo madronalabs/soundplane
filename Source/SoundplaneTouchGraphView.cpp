@@ -12,6 +12,8 @@ mpModel(nullptr)
   setInterceptsMouseClicks (false, false);
   MLWidget::setComponent(this);
   setupGL();
+
+  mTimer.start([&](){ triggerRepaint(); }, milliseconds(1000/60));
 }
 
 SoundplaneTouchGraphView::~SoundplaneTouchGraphView()

@@ -121,6 +121,9 @@ public:
 	void setContainer(MLWidget* c) { mpContainer = c; }
 	void setWidgetName(const ml::Symbol& n) { mName = n; }
 
+  // MLTEST
+  void triggerRepaint();
+
 protected:
 	void setWidgetGridUnitSize(const int w) { mGridUnitSize = w; }
 

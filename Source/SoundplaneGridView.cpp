@@ -20,6 +20,8 @@ mMaxRawTouches(0)
 	setInterceptsMouseClicks (false, false);
 	setComponent(this);
 	setupGL();
+
+  mTimer.start([&](){ triggerRepaint(); }, milliseconds(1000/60));
 }
 
 SoundplaneGridView::~SoundplaneGridView()

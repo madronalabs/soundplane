@@ -66,6 +66,8 @@ private:
 	
 	int mCount; // TEMP
 	int mMaxRawTouches;
+
+  ml::Timer mTimer;
 	
 };
 

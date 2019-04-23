@@ -68,9 +68,6 @@ void MLWidget::setupGL()
 		
 		mpGLContext->setRenderer (this);
 		mpGLContext->setComponentPaintingEnabled (false);
-		mpGLContext->setContinuousRepainting(true);
-
-		mpGLContext->setSwapInterval(2);
 	}
 }
 
@@ -192,11 +189,18 @@ void MLWidget::setWidgetVisible(bool v)
 
 void MLWidget::setWidgetEnabled(bool v)
 {
-	if(pComponent)
-	{
-		pComponent->setEnabled(v);
-		pComponent->repaint();
-	}
+  if(pComponent)
+  {
+    pComponent->setEnabled(v);
+    pComponent->repaint();
+  }
+}
+
+
+
+void MLWidget::triggerRepaint()
+{
+    mpGLContext->triggerRepaint();
 }
 
 

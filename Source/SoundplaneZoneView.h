@@ -40,6 +40,7 @@ private:
 	void renderZones();
 	
 	SoundplaneModel* mpModel;
+  ml::Timer mTimer;
 };
 
 #endif // __SOUNDPLANE_ZONE_VIEW__
