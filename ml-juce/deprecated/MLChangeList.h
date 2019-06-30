@@ -6,7 +6,7 @@
 #pragma once
 
 #include "mldsp.h"
-#include "MLSignal.h"
+#include "MLMatrix.h"
 
 // RESEARCH
 // We are really reinventing wavelets here, in a sense.  So a
@@ -30,7 +30,7 @@ public:
 	void setGlideTime(float time);
 	void setSampleRate(unsigned rate);
 	
-	void writeToSignal(MLSignal& y, int frames);
+	void writeToSignal(ml::Matrix& y, int frames);
 	
 	void dump();
 	
@@ -53,7 +53,7 @@ private:
 	MLSample mGlideStartValue;
 	MLSample mGlideEndValue;
 	
-	MLSignal mValueSignal;
-	MLSignal mTimeSignal;
+	ml::Matrix mValueSignal;
+	ml::Matrix mTimeSignal;
 };
 

@@ -29,7 +29,7 @@ SoundplaneGridView::~SoundplaneGridView()
 }
 
 // MLModelListener implementation
-void SoundplaneGridView::doPropertyChangeAction(ml::Symbol p, const MLProperty & v)
+void SoundplaneGridView::doPropertyChangeAction(ml::Symbol p, const ml::Value & v)
 {
 }
 
@@ -202,7 +202,7 @@ void SoundplaneGridView::setModel(SoundplaneModel* m)
 void SoundplaneGridView::renderXYGrid()
 {
 	float viewScale = mpModel->getFloatProperty("display_scale");
-	MLSignal calSignal = mpModel->getSmoothedSignal();
+	ml::Matrix calSignal = mpModel->getSmoothedSignal();
 	
 	if((calSignal.getHeight() != mSensorHeight) || (calSignal.getWidth() != mSensorWidth)) return;
 	calSignal.scale(0.25f);
@@ -257,7 +257,7 @@ void SoundplaneGridView::renderXYGrid()
 	// render current touch dots
 	//
 	const int nt = mpModel->getFloatProperty("max_touches");
-	const MLSignal& touches = mpModel->getTouchFrame();
+	const ml::Matrix& touches = mpModel->getTouchFrame();
 	for(int t=0; t<nt; ++t)
 	{
 		int age = touches(ageColumn, t);
@@ -280,7 +280,7 @@ void SoundplaneGridView::renderXYGrid()
 	}
 	
 	// render touch position history xy lines
-	const MLSignal& touchHistory = mpModel->getTouchHistory();
+	const ml::Matrix& touchHistory = mpModel->getTouchHistory();
 	
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
@@ -408,7 +408,7 @@ void SoundplaneGridView::renderZGrid()
 	ySensorRange.convertTo(MLRange(-sh, sh));
 	
 	const ml::Text viewMode = getTextProperty("viewmode");
-	MLSignal viewSignal;
+	ml::Matrix viewSignal;
 	if(viewMode == "raw data")
 	{
 		viewSignal = mpModel->getRawSignal();

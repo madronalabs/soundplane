@@ -17,7 +17,7 @@ MLPropertyView::~MLPropertyView()
 {
 }
 
-void MLPropertyView::view(const MLProperty& p) const
+void MLPropertyView::view(const ml::Value& p) const
 {
 	// widget properties must be set immediately because they have no timers to propagate changes.
 	// We use the ReporterTimer to ensure that changes come from the message thread.
@@ -26,7 +26,7 @@ void MLPropertyView::view(const MLProperty& p) const
 
 // MLReporter::PropertyListener
 
-void MLReporter::PropertyListener::doPropertyChangeAction(ml::Symbol property, const MLProperty& newVal)
+void MLReporter::PropertyListener::doPropertyChangeAction(ml::Symbol property, const ml::Value& newVal)
 {
 	// note that property names will collide across different PropertyListeners!
 	mpOwnerReporter->enqueuePropertyChange(property, newVal);
@@ -45,7 +45,7 @@ MLReporter::~MLReporter()
 {
 }
 
-void MLReporter::enqueuePropertyChange(ml::Symbol prop, const MLProperty& newVal)
+void MLReporter::enqueuePropertyChange(ml::Symbol prop, const ml::Value& newVal)
 {
 	// enqueue change
 #if DEBUG

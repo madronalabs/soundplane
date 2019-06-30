@@ -85,7 +85,7 @@ public:
 	~SoundplaneView() = default;
 	
 	// MLModelListener implementation
-	void doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal);
+	void doPropertyChangeAction(ml::Symbol p, const ml::Value & newVal);
 	
 	void initialize();
 	void getModelUpdates();

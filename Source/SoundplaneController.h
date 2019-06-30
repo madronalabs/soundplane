@@ -37,7 +37,7 @@ public:
     ~SoundplaneController();
 
 	// MLWidget::Listener
-	void handleWidgetAction(MLWidget* w, ml::Symbol action, ml::Symbol target, const MLProperty& val = MLProperty()) override;
+	void handleWidgetAction(MLWidget* w, ml::Symbol action, ml::Symbol target, const ml::Value& val = ml::Value()) override;
 	
 	// MLFileCollection::Listener
 	void processFileFromCollection (ml::Symbol action, const MLFile& f, const MLFileCollection& collection, int idx, size_t size) override;

@@ -53,7 +53,7 @@ public:
 	void initialize();
 	
 	// MLWidget::MLPropertyListener
-	void doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal);
+	void doPropertyChangeAction(ml::Symbol p, const ml::Value & newVal);
 
 	virtual bool isWidgetContainer(void) { return true; }
 
@@ -106,7 +106,7 @@ public:
 
 	void resized();
 	void setViewBoundsProperty();
-	void setWindowBounds(const MLSignal& bounds);
+	void setWindowBounds(const ml::Matrix& bounds);
 
 	// sent by the AppWindow 
 	void windowMoved();

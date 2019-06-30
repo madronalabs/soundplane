@@ -194,7 +194,7 @@ void MLButton::setToggleValues(float lo, float hi)
 	mOnValue = hi;
 }
 
-void MLButton::doPropertyChangeAction(ml::Symbol property, const MLProperty& val)
+void MLButton::doPropertyChangeAction(ml::Symbol property, const ml::Value& val)
 {
 	if (property == "value")
 	{

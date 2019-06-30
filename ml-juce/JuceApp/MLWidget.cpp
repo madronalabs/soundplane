@@ -32,7 +32,7 @@ MLWidget::~MLWidget()
 	
 }
 
-void MLWidget::doPropertyChangeAction(ml::Symbol param, const MLProperty& newVal)
+void MLWidget::doPropertyChangeAction(ml::Symbol param, const ml::Value& newVal)
 {
 	if(pComponent)
 	{
@@ -46,7 +46,7 @@ void MLWidget::addListener(MLWidget::Listener* pL)
 	mpListeners.push_back(pL);
 }
 
-void MLWidget::sendAction(ml::Symbol msg, ml::Symbol targetProperty, const MLProperty& val)
+void MLWidget::sendAction(ml::Symbol msg, ml::Symbol targetProperty, const ml::Value& val)
 {
 	std::vector<MLWidget::Listener*>::iterator it;
 	for(it = mpListeners.begin(); it != mpListeners.end(); it++)

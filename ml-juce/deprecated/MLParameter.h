@@ -12,8 +12,8 @@
 #include "MLDSPDeprecated.h"
 #include "MLSymbol.h"
 #include "MLPath.h"
-#include "MLSignal.h"
-#include "MLProperty.h"
+#include "MLMatrix.h"
+#include "MLValue.h"
 
 // MLPublishedParam: a parameter of one of the Procs in a DSP graph that is settable through the plugin wrapper.
 // There are two concepts wrapped up in this that should be factored out.
@@ -22,7 +22,6 @@
 // the Property might be a string, so there is no way to route it to multiple procs within the graph.
 // if there were, we could remove the "alsosets" and use proc connections. 
 // "alsosets" should check to see if Properties are of compatible types... sort of an ugliness point. 
-
 
 typedef enum
 {
@@ -73,8 +72,8 @@ public:
 	ml::Symbol getType() { return mType; }
 	float getValue();
 	
-	const MLProperty& getValueProperty();
-	void setValueProperty(const MLProperty& val);
+	const ml::Value& getValueProperty();
+	void setValueProperty(const ml::Value& val);
 	
 	float getValueAsLinearProportion() const;
 	float setValueAsLinearProportion (float p);
@@ -106,7 +105,7 @@ protected:
 	
 private:
 	std::list<ParamAddress> mAddresses;
-	MLProperty mParamValue;
+	ml::Value mParamValue;
 	float mTempValue;
 	
 	ml::Symbol mPublishedAlias;

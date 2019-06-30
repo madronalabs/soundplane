@@ -8,7 +8,7 @@
 #include "MLUI.h"
 #include "MLVectorDeprecated.h"
 #include "MLSymbol.h"
-#include "MLSignal.h"
+#include "MLMatrix.h"
 #include "MLPropertySet.h"
 #include "JuceHeader.h"
 
@@ -29,7 +29,7 @@ public:
 	{
 		public:
 		virtual ~Listener() {}
-		virtual void handleWidgetAction (MLWidget*, ml::Symbol action, ml::Symbol target, const MLProperty& val) = 0;
+		virtual void handleWidgetAction (MLWidget*, ml::Symbol action, ml::Symbol target, const ml::Value& val) = 0;
 	};
 
 	MLWidget(MLWidget* pC);
@@ -37,7 +37,7 @@ public:
 	
 	// MLPropertyListener methods.
 	// a Widget's local properties must be set in Immediate mode. There is no timer to propagate changes.
-	virtual void doPropertyChangeAction(ml::Symbol param, const MLProperty& newVal) override;
+	virtual void doPropertyChangeAction(ml::Symbol param, const ml::Value& newVal) override;
 	
 	// in order to function, a Widget's Component must get set.
 	void setComponent(Component* pC) { pComponent = pC; }
@@ -47,7 +47,7 @@ public:
 	void addListener (MLWidget::Listener* const p);
 	
 	// send an action to all of our listeners.
-	void sendAction(ml::Symbol m, ml::Symbol target, const MLProperty& val = MLPropertySet::nullProperty);
+	void sendAction(ml::Symbol m, ml::Symbol target, const ml::Value& val = MLPropertySet::nullProperty);
 
 	// return true if this Widget contains other Widgets. Used to search recursively for Widgets.
 	virtual bool isWidgetContainer(void) { return false; }
@@ -56,7 +56,7 @@ public:
 	virtual MLWidget* getWidget(ml::Symbol name) { return nullptr; }
 	
 	// A signal viewer, not required. This is called repeatedly to view a Signal.
-	virtual void viewSignal(ml::Symbol, const MLSignal&, int frames, int voices) {}
+	virtual void viewSignal(ml::Symbol, const ml::Matrix&, int frames, int voices) {}
 
 	// TODO widgets should not own GL contexts
 	void setupGL();

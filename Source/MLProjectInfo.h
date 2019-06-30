@@ -9,8 +9,8 @@ namespace MLProjectInfo
 {
     const char* const makerName	= "Madrona Labs";
     const char* const projectName = "Soundplane";
-    const char* const versionString = "1.8.2";
-    const int versionNumber = 0x010801;
+    const char* const versionString = "1.8.3";
+    const int versionNumber = 0x010803;
 }
 
 #endif // __ML_PROJECT_INFO_H__

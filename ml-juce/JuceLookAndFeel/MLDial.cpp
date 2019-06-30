@@ -114,7 +114,7 @@ MLDial::~MLDial()
 
 // MLWidget methods
 
-void MLDial::doPropertyChangeAction(ml::Symbol property, const MLProperty& val)
+void MLDial::doPropertyChangeAction(ml::Symbol property, const ml::Value& val)
 {
 	if (property == "value")
 	{

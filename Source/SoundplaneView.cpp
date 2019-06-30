@@ -466,7 +466,7 @@ mpModel(pModel)
 // MLModelListener implementation
 // an updateChangedParams() or updateAllParams() is needed to get these actions sent by the Model.
 //
-void SoundplaneView::doPropertyChangeAction(ml::Symbol p, const MLProperty & val)
+void SoundplaneView::doPropertyChangeAction(ml::Symbol p, const ml::Value & val)
 {
 	//debug() << "SoundplaneView::doPropertyChangeAction: " << p << " -> " << val << "\n";
 	

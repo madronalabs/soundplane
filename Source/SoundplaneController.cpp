@@ -24,7 +24,7 @@ SoundplaneController::~SoundplaneController()
 	
 #pragma mark MLWidget::Listener
 
-void SoundplaneController::handleWidgetAction(MLWidget* w, ml::Symbol action, ml::Symbol p, const MLProperty& val)
+void SoundplaneController::handleWidgetAction(MLWidget* w, ml::Symbol action, ml::Symbol p, const ml::Value& val)
 {
 	if(action == "click") // handle momentary buttons.
 	{

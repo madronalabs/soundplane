@@ -28,7 +28,7 @@ public:
 	~SoundplaneGridView();
 	
 	// MLModelListener implementation
-	void doPropertyChangeAction(ml::Symbol , const MLProperty & );
+	void doPropertyChangeAction(ml::Symbol , const ml::Value & );
 	
 	void setModel(SoundplaneModel* m);
 	

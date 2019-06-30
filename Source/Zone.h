@@ -124,7 +124,7 @@ protected:
 	int mScaleNoteOffset = 0;
 	
 	// TODO make a scale object instead
-	MLSignal mScaleMap{};
+	ml::Matrix mScaleMap{};
 	
 	int mControllerNum1{0};
 	int mControllerNum2{0};

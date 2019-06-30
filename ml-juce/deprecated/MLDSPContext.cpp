@@ -5,6 +5,7 @@
 
 #include "MLDSPContext.h"
 
+using namespace ml;
 
 #pragma mark MLDSPContext
 
@@ -40,12 +41,12 @@ void MLDSPContext::setSampleRate(float newRate)
 	mInvSampleRate = 1.0f / mSampleRate;
 }
 
-MLSignal& MLDSPContext::getNullInput()
+ml::Matrix& MLDSPContext::getNullInput()
 {
 	return mNullInput;
 }
 
-MLSignal& MLDSPContext::getNullOutput()
+ml::Matrix& MLDSPContext::getNullOutput()
 {
 	return mNullOutput;
 }

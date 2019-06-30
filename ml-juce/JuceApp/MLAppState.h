@@ -33,7 +33,7 @@ public:
 	~MLAppState();
 	
 	// MLPropertyListener interface
-	void doPropertyChangeAction(ml::Symbol property, const MLProperty& newVal);
+	void doPropertyChangeAction(ml::Symbol property, const ml::Value& newVal);
 	
 	void ignoreProperty(ml::Symbol property);
 	

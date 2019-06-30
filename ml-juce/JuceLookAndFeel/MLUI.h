@@ -10,7 +10,7 @@
 
 using namespace juce;
 
-#include "MLSignal.h"
+#include "MLMatrix.h"
 #include "MLVectorDeprecated.h"
 #include <memory>
 
@@ -114,7 +114,7 @@ const juce::Colour brighterColor (const juce::Colour& c);
 const juce::Colour darkColor (const juce::Colour& c);
 const juce::Colour darkerColor (const juce::Colour& c);
 
-inline juce::Colour signalToJuceColor(const MLSignal& sig)
+inline juce::Colour signalToJuceColor(const ml::Matrix& sig)
 {
 	if(sig.getSize() < 4)
 	{
@@ -123,9 +123,9 @@ inline juce::Colour signalToJuceColor(const MLSignal& sig)
 	return juce::Colour::fromFloatRGBA(sig[0], sig[1], sig[2], sig[3]);
 }
 
-inline MLSignal juceColorToSignal(const juce::Colour& v)
+inline ml::Matrix juceColorToSignal(const juce::Colour& v)
 {
-	return MLSignal{v.getFloatRed(), v.getFloatGreen(), v.getFloatBlue(), v.getFloatAlpha()};
+	return ml::Matrix{v.getFloatRed(), v.getFloatGreen(), v.getFloatBlue(), v.getFloatAlpha()};
 }
 
 

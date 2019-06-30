@@ -10,7 +10,7 @@
 #include <map>
 
 //#include "MLDebug.h"
-#include "MLProperty.h"
+#include "MLValue.h"
 
 // MLPropertySet: a Set of Properties. Property names are stored as keys to the property map.
 
@@ -35,10 +35,10 @@ public:
 	MLPropertySet();
 	virtual ~MLPropertySet();
 
-	const MLProperty& getProperty(ml::Symbol p) const;
+	const ml::Value& getProperty(ml::Symbol p) const;
 	const float getFloatProperty(ml::Symbol p) const;
 	const ml::Text getTextProperty(ml::Symbol p) const;
-	const MLSignal& getSignalProperty(ml::Symbol p) const;
+	const ml::Matrix& getSignalProperty(ml::Symbol p) const;
 	
 	// set the property and allow it to propagate to Listeners the next time
 	// each Listener calls updateChangedProperties().
@@ -52,7 +52,7 @@ public:
 		}
 		else
 		{
-			std::map<ml::Symbol, MLProperty>::const_iterator it = mProperties.find(p);
+			std::map<ml::Symbol, ml::Value>::const_iterator it = mProperties.find(p);
 			if(it != mProperties.end())
 			{
 				mProperties[p].setValue(v);
@@ -72,7 +72,7 @@ public:
 		}
 		else
 		{
-			std::map<ml::Symbol, MLProperty>::const_iterator it = mProperties.find(p);
+			std::map<ml::Symbol, ml::Value>::const_iterator it = mProperties.find(p);
 			if(it != mProperties.end())
 			{
 				mProperties[p].setValue(v);
@@ -93,7 +93,7 @@ public:
 		}
 		else
 		{
-			std::map<ml::Symbol, MLProperty>::const_iterator it = mProperties.find(p);
+			std::map<ml::Symbol, ml::Value>::const_iterator it = mProperties.find(p);
 			if(it != mProperties.end())
 			{
 				mProperties[p].setValue(v);
@@ -105,16 +105,16 @@ public:
 	void broadcastAllProperties();
 	void allowNewProperties(bool b) { mAllowNewProperties = b; }
 	
-	static const MLProperty nullProperty;
+	static const ml::Value nullProperty;
 	
 	void dumpProperties()
 	{
-		std::map<ml::Symbol, MLProperty>::const_iterator it;
+		std::map<ml::Symbol, ml::Value>::const_iterator it;
 		std::cout<< "\n" << mProperties.size() << " properties: \n";
 		for(it = mProperties.begin(); it != mProperties.end(); it++)
 		{
 			ml::Symbol name = it->first;
-			MLProperty val = it->second;
+			ml::Value val = it->second;
 			std::cout << name << ": " << val << "\n";
 		}		
 	}
@@ -124,7 +124,7 @@ protected:
 	void removePropertyListener(MLPropertyListener* pToRemove);
 	
 private:
-	std::map<ml::Symbol, MLProperty> mProperties;
+	std::map<ml::Symbol, ml::Value> mProperties;
 	std::list<MLPropertyListener*> mpListeners;
 	bool mAllowNewProperties;
 	
@@ -157,7 +157,7 @@ public:
 	}
 	
 	// override to do whatever this PropertyListener needs to do based on the values of properties.
-	virtual void doPropertyChangeAction(ml::Symbol param, const MLProperty & newVal) = 0;
+	virtual void doPropertyChangeAction(ml::Symbol param, const ml::Value & newVal) = 0;
 	
 	// call periodically to do actions for any properties that have changed since the last call.
 	void updateChangedProperties();
@@ -183,7 +183,7 @@ protected:
 		~PropertyState() {}
 		
 		bool mChangedSinceUpdate;
-		MLProperty mValue;
+		ml::Value mValue;
 	};
 	
 	std::map<ml::Symbol, PropertyState> mPropertyStates;

@@ -44,8 +44,8 @@ void SoundplaneTouchGraphView::renderTouchBarGraphs()
   int viewH = getBackingLayerHeight();
   int viewScale = getRenderingScale();
 
-  const MLSignal& currentTouch = mpModel->getTouchFrame();
-  const MLSignal& touchHistory = mpModel->getTouchHistory();
+  const ml::Matrix& currentTouch = mpModel->getTouchFrame();
+  const ml::Matrix& touchHistory = mpModel->getTouchHistory();
   const int frames = mpModel->getFloatProperty("max_touches");
   if (!frames) return;
 

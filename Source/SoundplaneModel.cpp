@@ -51,11 +51,11 @@ static void makeStandardCarrierSet(SoundplaneDriver::Carriers &carriers, int set
 	}
 }
 
-void touchArrayToFrame(const TouchArray* pArray, MLSignal* pFrame)
+void touchArrayToFrame(const TouchArray* pArray, ml::Matrix* pFrame)
 {
 	// get references for syntax
 	const TouchArray& array = *pArray;
-	MLSignal& frame = *pFrame;
+	ml::Matrix& frame = *pFrame;
 	
 	for(int i = 0; i < kMaxTouches; ++i)
 	{
@@ -68,9 +68,9 @@ void touchArrayToFrame(const TouchArray* pArray, MLSignal* pFrame)
 	}
 }
 
-MLSignal sensorFrameToSignal(const SensorFrame &f)
+ml::Matrix sensorFrameToSignal(const SensorFrame &f)
 {
-	MLSignal out(SensorGeometry::width, SensorGeometry::height);
+	ml::Matrix out(SensorGeometry::width, SensorGeometry::height);
 	for(int j = 0; j < SensorGeometry::height; ++j)
 	{
 		const float* srcStart = f.data() + SensorGeometry::width*j;
@@ -80,7 +80,7 @@ MLSignal sensorFrameToSignal(const SensorFrame &f)
 	return out;
 }
 
-SensorFrame signalToSensorFrame(const MLSignal& in)
+SensorFrame signalToSensorFrame(const ml::Matrix& in)
 {
 	SensorFrame out;
 	for(int j = 0; j < SensorGeometry::height; ++j)
@@ -181,14 +181,14 @@ SoundplaneModel::~SoundplaneModel()
 
 
 
-void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
+void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const ml::Value & newVal)
 {
 	//std::cout << "SoundplaneModel::doPropertyChangeAction: " << p << " -> " << newVal << "\n";
 	
 	int propertyType = newVal.getType();
 	switch(propertyType)
 	{
-		case MLProperty::kFloatProperty:
+		case ml::Value::kFloatValue:
 		{
 			float v = newVal.getFloatValue();
 			if (ml::textUtils::stripFinalNumber(p) == ml::Symbol("carrier_toggle"))
@@ -333,7 +333,7 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			}
 		}
 		break;
-		case MLProperty::kTextProperty:
+		case ml::Value::kTextValue:
 		{
 			// TODO clean up, use text for everything
 			ml::Text strText = newVal.getTextValue();
@@ -418,9 +418,9 @@ void SoundplaneModel::doPropertyChangeAction(ml::Symbol p, const MLProperty & ne
 			}
 		}
 			break;
-		case MLProperty::kSignalProperty:
+		case ml::Value::kMatrixValue:
 		{
-			const MLSignal& sig = newVal.getSignalValue();
+			const ml::Matrix& sig = newVal.getMatrixValue();
 			if(p == ml::Symbol("carriers"))
 			{
 				// get carriers from signal
@@ -791,7 +791,7 @@ void SoundplaneModel::sendFrameToOutputs(time_point<system_clock> now)
 	// send optional calibrated matrix to OSC output
 	if(mSendMatrixData)
 	{
-		MLSignal calibratedPressure = getCalibratedSignal();
+		ml::Matrix calibratedPressure = getCalibratedSignal();
 		if(calibratedPressure.getHeight() == SensorGeometry::height)
 		{
 			// send to OSC output only
@@ -1307,7 +1307,7 @@ void SoundplaneModel::doInfrequentTasks()
 
 void SoundplaneModel::setDefaultCarriers()
 {
-	MLSignal cSig(kSoundplaneNumCarriers);
+	ml::Matrix cSig(kSoundplaneNumCarriers);
 	for (int car=0; car<kSoundplaneNumCarriers; ++car)
 	{
 		cSig[car] = kModelDefaultCarriers[car];
@@ -1502,7 +1502,7 @@ void SoundplaneModel::endSelectCarriers()
 	
 	// set chosen carriers as model parameter so they will be saved
 	// this will trigger a recalibrate
-	MLSignal cSig(kSoundplaneNumCarriers);
+	ml::Matrix cSig(kSoundplaneNumCarriers);
 	for (int car=0; car<kSoundplaneNumCarriers; ++car)
 	{
 		cSig[car] = mCarriers[car];

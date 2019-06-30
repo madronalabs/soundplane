@@ -19,7 +19,7 @@
 #ifndef _ML_DSP_CONTEXT_H
 #define _ML_DSP_CONTEXT_H
 
-#include "MLSignal.h"
+#include "MLMatrix.h"
 #include "MLClock.h"
 #include "MLPropertySet.h"
 
@@ -42,8 +42,8 @@ public:
 	int setVectorSize(unsigned newSize);
 	void setSampleRate(float newRate);	
 
-	MLSignal& getNullInput();
-	MLSignal& getNullOutput();
+	ml::Matrix& getNullInput();
+	ml::Matrix& getNullOutput();
 
 	// ----------------------------------------------------------------
 	#pragma mark enable / disable
@@ -79,8 +79,8 @@ protected:
 	// two null signals: every context has them.
 	// the null input is for receiving a signal guaranteed to be 0. 
 	// the null output is for dumping unused outputs from procs. 
-	MLSignal mNullInput;
-	MLSignal mNullOutput;	
+	ml::Matrix mNullInput;
+	ml::Matrix mNullOutput;	
 	
 	int mMaxVoices;
 

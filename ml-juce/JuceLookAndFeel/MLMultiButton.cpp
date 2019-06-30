@@ -28,7 +28,7 @@ MLMultiButton::~MLMultiButton()
 	deleteAllChildren();
 }
 
-void MLMultiButton::doPropertyChangeAction(ml::Symbol property, const MLProperty& val)
+void MLMultiButton::doPropertyChangeAction(ml::Symbol property, const ml::Value& val)
 {
 	if (ml::textUtils::stripFinalNumber(property) == "value")
 	{

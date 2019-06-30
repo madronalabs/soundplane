@@ -555,10 +555,10 @@ MLSample MLFDN::processSample(const MLSample x)
 	return outputSum;
 }
 
-MLSignal MLFDN::operator()(const MLSignal& x)
+ml::Matrix MLFDN::operator()(const ml::Matrix& x)
 {
 	int frames=x.getWidth();
-	MLSignal y(frames);
+	ml::Matrix y(frames);
 	for(int n=0; n<frames; ++n)
 	{
 		y[n] = processSample(x[n]);

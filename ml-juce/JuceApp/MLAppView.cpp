@@ -33,22 +33,22 @@ void MLAppView::initialize()
 	mInitialized = true;
 }
 
-void MLAppView::doPropertyChangeAction(ml::Symbol p, const MLProperty & newVal)
+void MLAppView::doPropertyChangeAction(ml::Symbol p, const ml::Value & newVal)
 {
 	int propertyType = newVal.getType();
 	switch(propertyType)
 	{
-		case MLProperty::kFloatProperty:
+		case ml::Value::kFloatValue:
 		{
 		}
 		break;
-		case MLProperty::kTextProperty:
+		case ml::Value::kTextValue:
 		{
 		}
 		break;
-		case MLProperty::kSignalProperty:
+		case ml::Value::kMatrixValue:
 		{
-			const MLSignal& sig = newVal.getSignalValue();
+			const ml::Matrix& sig = newVal.getMatrixValue();
 			if(p == ml::Symbol("view_bounds"))
 			{
 				setWindowBounds(sig);
@@ -332,7 +332,7 @@ void MLAppView::setViewBoundsProperty()
 {
 	if(!mInitialized) return;
 	
-	MLSignal bounds(4);
+	ml::Matrix bounds(4);
 	ComponentPeer* p = getPeer();
 	if(!p) return;	
 	Rectangle<int> peerBounds = p->getBounds();	
@@ -345,7 +345,7 @@ void MLAppView::setViewBoundsProperty()
 	setPropertyImmediateExcludingListener("view_bounds", bounds, this);
 }
 
-void MLAppView::setWindowBounds(const MLSignal& bounds)
+void MLAppView::setWindowBounds(const ml::Matrix& bounds)
 {
 	ComponentPeer* p = getPeer();
 	if(!p) return;

@@ -412,7 +412,7 @@ void SoundplaneOSCOutput::sendInfrequentDataToKyma()
 }
 
 
-void SoundplaneOSCOutput::processMatrix(const MLSignal& m)
+void SoundplaneOSCOutput::processMatrix(const ml::Matrix& m)
 {
 	osc::OutboundPacketStream* p = getPacketStreamForOffset(0);
 	UdpTransmitSocket* socket = getTransmitSocketForOffset(0);

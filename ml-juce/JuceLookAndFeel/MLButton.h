@@ -41,7 +41,7 @@ public:
 	void setToggleValues(float, float);
 
 	// MLPropertyListener
-	virtual void doPropertyChangeAction(ml::Symbol property, const MLProperty& newVal);
+	virtual void doPropertyChangeAction(ml::Symbol property, const ml::Value& newVal);
 	
 protected:
 	bool mDoRollover;

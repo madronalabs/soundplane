@@ -31,7 +31,7 @@
 using namespace ml;
 using namespace std::chrono;
 
-MLSignal sensorFrameToSignal(const SensorFrame &f);
+Matrix sensorFrameToSignal(const SensorFrame &f);
 
 typedef enum
 {
@@ -62,7 +62,7 @@ public:
 	void onClose() override;
 	
 	// MLModel
-	void doPropertyChangeAction(ml::Symbol , const MLProperty & ) override;
+	void doPropertyChangeAction(ml::Symbol , const ml::Value & ) override;
 	
 	void setAllPropertiesToDefaults();
 	
@@ -116,12 +116,12 @@ public:
 	
 	void getMinMaxHistory(int n);
 	
-	const MLSignal& getTouchFrame() { return mTouchFrame; }
-	const MLSignal& getTouchHistory() { return mTouchHistory; }
-	const MLSignal getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
-	const MLSignal getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex); return sensorFrameToSignal(mCalibratedFrame); }
+	const ml::Matrix& getTouchFrame() { return mTouchFrame; }
+	const ml::Matrix& getTouchHistory() { return mTouchHistory; }
+	const ml::Matrix getRawSignal() { std::lock_guard<std::mutex> lock(mRawSignalMutex); return mRawSignal; }
+	const ml::Matrix getCalibratedSignal() { std::lock_guard<std::mutex> lock(mCalibratedSignalMutex); return sensorFrameToSignal(mCalibratedFrame); }
 	
-	const MLSignal getSmoothedSignal() { std::lock_guard<std::mutex> lock(mSmoothedSignalMutex); return mSmoothedSignal; }
+	const ml::Matrix getSmoothedSignal() { std::lock_guard<std::mutex> lock(mSmoothedSignalMutex); return mSmoothedSignal; }
 	
 	const TouchArray& getTouchArray() { return mTouchArray1; }
 	
@@ -171,7 +171,7 @@ private:
 	void sendParametersToZones();
 	
 	std::vector< Zone > mZones;
-	MLSignal mZoneIndexMap;
+	ml::Matrix mZoneIndexMap;
 	
 	bool mOutputEnabled;
 	
@@ -189,13 +189,13 @@ private:
 	SensorFrame mSensorFrame{};
 	SensorFrame mCalibratedFrame{};
 	
-	MLSignal mSurface;
+	ml::Matrix mSurface;
 	
 	int	mMaxTouches;
 	
-	MLSignal mTouchFrame;
+	ml::Matrix mTouchFrame;
 	std::mutex mTouchFrameMutex;
-	MLSignal mTouchHistory;
+	ml::Matrix mTouchHistory;
 	
 	bool mCalibrating;
 	bool mTestTouchesOn;
@@ -212,14 +212,14 @@ private:
 	SensorFrameStats mStats;
 	SensorFrame mCalibrateMeanInv{};
 	
-	MLSignal mRawSignal;
+	ml::Matrix mRawSignal;
 	std::mutex mRawSignalMutex;
 	
-	MLSignal mCalibratedSignal;
+	ml::Matrix mCalibratedSignal;
 	std::mutex mCalibratedSignalMutex;
 	
 	SensorFrame mSmoothedFrame{};
-	MLSignal mSmoothedSignal;
+	ml::Matrix mSmoothedSignal;
 	std::mutex mSmoothedSignalMutex;
 	
 	int mCalibrateStep; // calibrate step from 0 - end

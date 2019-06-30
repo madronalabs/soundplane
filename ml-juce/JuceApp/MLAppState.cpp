@@ -36,7 +36,7 @@ void MLAppState::ignoreProperty(ml::Symbol property)
 // MLPropertyListener implementation
 // an updateChangedProperties() is needed to get these actions sent by the Model.
 // 
-void MLAppState::doPropertyChangeAction(ml::Symbol p, const MLProperty & val)
+void MLAppState::doPropertyChangeAction(ml::Symbol p, const ml::Value & val)
 {
     // nothing to do here, but we do need to be an MLPropertyListener in order to
     // know the update states of all the Properties.
@@ -148,17 +148,17 @@ cJSON* MLAppState::getStateAsJSON()
 			
 			switch(state.mValue.getType())
 			{
-				case MLProperty::kFloatProperty:
+				case ml::Value::kFloatValue:
 					cJSON_AddNumberToObject(root, keyStr, state.mValue.getFloatValue());
 					break;
-				case MLProperty::kTextProperty:
+				case ml::Value::kTextValue:
 					cJSON_AddStringToObject(root, keyStr, state.mValue.getTextValue().getText());
 					break;
-				case MLProperty::kSignalProperty:
+				case ml::Value::kMatrixValue:
 					{
 						// make and populate JSON object representing signal
 						cJSON* signalObj = cJSON_CreateObject();
-						const MLSignal& sig = state.mValue.getSignalValue();
+						const ml::Matrix& sig = state.mValue.getMatrixValue();
 						cJSON_AddStringToObject(signalObj, "type", "signal");
 						cJSON_AddNumberToObject(signalObj, "width", sig.getWidth());
 						cJSON_AddNumberToObject(signalObj, "height", sig.getHeight());
@@ -268,7 +268,7 @@ void MLAppState::setStateFromJSON(cJSON* pNode, int depth)
 							int sigDepth = cJSON_GetObjectItem(child, "depth")->valueint;
 							
 							// read data into signal and set model param
-							MLSignal signalValue(width, height, sigDepth);
+							ml::Matrix signalValue(width, height, sigDepth);
 							float* pSigData = signalValue.getBuffer();
 							if(pSigData)
 							{

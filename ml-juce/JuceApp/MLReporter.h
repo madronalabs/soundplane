@@ -21,7 +21,7 @@ class MLPropertyView
 public:
 	MLPropertyView(MLWidget* w, ml::Symbol attr);
 	~MLPropertyView();
-	void view(const MLProperty& v) const;
+	void view(const ml::Value& v) const;
 	
 private:
 	MLWidget* mpWidget;
@@ -63,13 +63,13 @@ private:
 			mpOwnerReporter(p)
 			{}
 		~PropertyListener()  {}
-		void doPropertyChangeAction(ml::Symbol property, const MLProperty& newVal);
+		void doPropertyChangeAction(ml::Symbol property, const ml::Value& newVal);
 
 	private:
 		MLReporter* mpOwnerReporter;
 	};
 	
-	void enqueuePropertyChange(ml::Symbol property, const MLProperty& newVal);
+	void enqueuePropertyChange(ml::Symbol property, const ml::Value& newVal);
 
 	std::vector<MLPropertyListenerPtr> pListeners;
 	MLPropertySet mCurrentProperties;

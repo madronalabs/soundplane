@@ -35,7 +35,7 @@ MLMultiSlider::~MLMultiSlider()
 	deleteAllChildren();
 }
 
-void MLMultiSlider::doPropertyChangeAction(ml::Symbol property, const MLProperty& val)
+void MLMultiSlider::doPropertyChangeAction(ml::Symbol property, const ml::Value& val)
 {
 	if (ml::textUtils::stripFinalNumber(property) == "value")
 	{

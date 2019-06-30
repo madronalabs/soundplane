@@ -9,7 +9,7 @@
 #pragma once
 
 #include "MLProc.h"
-#include "MLSignal.h"
+#include "MLMatrix.h"
 #include "MLScalarMath.h"
 using namespace ml;
 
@@ -359,10 +359,10 @@ extern const MLRange UnityRange;
 // old DSPUtils
 
 
-inline MLSignal reciprocalEst(const MLSignal& x)
+inline ml::Matrix reciprocalEst(const ml::Matrix& x)
 {
 	int frames = x.getWidth();
-	MLSignal y(frames);
+	ml::Matrix y(frames);
 	for(int n=0; n<frames; ++n)
 	{
 		// MLTEST use SSE
@@ -372,7 +372,7 @@ inline MLSignal reciprocalEst(const MLSignal& x)
 }
 
 
-inline void scaleAndAccumulate(MLSignal& a, const MLSignal& b, float k)
+inline void scaleAndAccumulate(ml::Matrix& a, const ml::Matrix& b, float k)
 {
 	int vectors = a.getSize() >> kMLSamplesPerSSEVectorBits;
 	float* pa = a.getBuffer();
@@ -391,7 +391,7 @@ inline void scaleAndAccumulate(MLSignal& a, const MLSignal& b, float k)
 	}
 }
 
-inline void scaleByConstant(MLSignal& a, const MLSignal& b, float k)
+inline void scaleByConstant(ml::Matrix& a, const ml::Matrix& b, float k)
 {
 	int vectors = a.getSize() >> kMLSamplesPerSSEVectorBits;
 	float* pa = a.getBuffer();
@@ -411,10 +411,10 @@ inline void scaleByConstant(MLSignal& a, const MLSignal& b, float k)
 
 // keep scalar version? make some macros? :-P
 /*
- inline MLSignal abs(const MLSignal& x)
+ inline ml::Matrix abs(const ml::Matrix& x)
  {
  int frames = x.getWidth();
- MLSignal y(frames);
+ ml::Matrix y(frames);
  for(int n=0; n<frames; ++n)
  {
  y[n] = fabs(x[n]);
@@ -423,7 +423,7 @@ inline void scaleByConstant(MLSignal& a, const MLSignal& b, float k)
  }
  */
 
-inline void abs(MLSignal& x)
+inline void abs(ml::Matrix& x)
 {
 	int frames = x.getWidth();
 	int vectors = frames >> kMLSamplesPerSSEVectorBits;
@@ -443,12 +443,12 @@ inline void abs(MLSignal& x)
 
 // MLTEST
 // TODO: fixed size DSPVectors, SSE
-inline MLSignal lerp(const MLSignal& b, const MLSignal& c, const MLSignal& m)
+inline ml::Matrix lerp(const ml::Matrix& b, const ml::Matrix& c, const ml::Matrix& m)
 {
 	int frames = b.getWidth();
 	
 	// SETDIMS
-	MLSignal y(frames);
+	ml::Matrix y(frames);
 	for(int n=0; n<frames; ++n)
 	{
 		float fb = b[n];
@@ -459,10 +459,10 @@ inline MLSignal lerp(const MLSignal& b, const MLSignal& c, const MLSignal& m)
 	return y;
 }
 
-inline MLSignal lerp(const MLSignal& b, const MLSignal& c, const float m)
+inline ml::Matrix lerp(const ml::Matrix& b, const ml::Matrix& c, const float m)
 {
 	int frames = b.getWidth();
-	MLSignal y(frames);
+	ml::Matrix y(frames);
 	for(int n=0; n<frames; ++n)
 	{
 		float fb = b[n];
@@ -472,12 +472,12 @@ inline MLSignal lerp(const MLSignal& b, const MLSignal& c, const float m)
 	return y;
 }
 
-inline MLSignal lerpBipolar(const MLSignal& a, const MLSignal& b, const MLSignal& c, const MLSignal& m)
+inline ml::Matrix lerpBipolar(const ml::Matrix& a, const ml::Matrix& b, const ml::Matrix& c, const ml::Matrix& m)
 {
 	int frames = a.getWidth();
 	
 	// SETDIMS
-	MLSignal y(frames);
+	ml::Matrix y(frames);
 	for(int n=0; n<frames; ++n)
 	{
 		float fa = a[n];
@@ -495,12 +495,12 @@ inline MLSignal lerpBipolar(const MLSignal& a, const MLSignal& b, const MLSignal
 	return y;
 }
 
-inline MLSignal clamp(const MLSignal& a, const float b, const float c)
+inline ml::Matrix clamp(const ml::Matrix& a, const float b, const float c)
 {
 	int frames = a.getWidth();
 	
 	// SETDIMS
-	MLSignal y(frames);
+	ml::Matrix y(frames);
 	for(int n=0; n<frames; ++n)
 	{
 		y[n] = ml::clamp(a[n], b, c);
@@ -533,7 +533,7 @@ public:
 	void setLoShelf(float f, float q, float gain);
 	void setHiShelf(float f, float q, float gain);
 	void setCoefficients(float, float, float, float, float);
-	void setCoefficients(const MLSignal& coeffs)
+	void setCoefficients(const ml::Matrix& coeffs)
 	{
 		a0 = coeffs[0];
 		a1 = coeffs[1];
@@ -558,10 +558,10 @@ public:
 	}
 	
 	// MLTEST to DSPVector
-	inline MLSignal operator()(const MLSignal& in)
+	inline ml::Matrix operator()(const ml::Matrix& in)
 	{
 		int frames = in.getWidth();
-		MLSignal y(frames);
+		ml::Matrix y(frames);
 		for(int n=0; n<frames; ++n)
 		{
 			const float x = in[n];
@@ -576,7 +576,7 @@ public:
 	}
 	
 	// MLTEST to DSPVector
-	inline void processSignalInPlace(MLSignal& in)
+	inline void processSignalInPlace(ml::Matrix& in)
 	{
 		int frames = in.getWidth();
 		for(int n=0; n<frames; ++n)
@@ -593,10 +593,10 @@ public:
 	
 	// MLTEST to DSPVector
 	// use an interpolated coefficient matrix that must contain input width x 5 rows
-	inline MLSignal operator()(const MLSignal& in, const MLSignal& coeffs)
+	inline ml::Matrix operator()(const ml::Matrix& in, const ml::Matrix& coeffs)
 	{
 		int frames = in.getWidth();
-		MLSignal y(frames);
+		ml::Matrix y(frames);
 		
 		// 5 rows of coefficients
 		const float* pB = coeffs.getConstBuffer();
@@ -673,10 +673,10 @@ public:
 	}
 	
 	// MLTEST to DSPVector
-	inline MLSignal operator()(const MLSignal& x)
+	inline ml::Matrix operator()(const ml::Matrix& x)
 	{
 		int frames = x.getWidth();
-		MLSignal y(frames);
+		ml::Matrix y(frames);
 		for(int n=0; n<frames; ++n)
 		{
 			y[n] = processSample(x[n]);
@@ -888,7 +888,7 @@ public:
 	}
 	
 private:
-	MLSignal mBuffer;
+	ml::Matrix mBuffer;
 	
 	int mSR;
 	float mInvSr;
@@ -940,12 +940,12 @@ public:
 	}
 	
 	// MLTEST towards DSPVectors
-	inline MLSignal operator()(const MLSignal& x)
+	inline ml::Matrix operator()(const ml::Matrix& x)
 	{
 		int frames = x.getWidth();
 		
 		// SETDIMS
-		MLSignal y(frames);
+		ml::Matrix y(frames);
 		for(int n=0; n<frames; ++n)
 		{
 			y[n] = processSample(x[n]);
@@ -954,10 +954,10 @@ public:
 	}
 	
 	// MLTEST towards DSPVectors
-	inline MLSignal operator()(const MLSignal& x, const MLSignal& delay)
+	inline ml::Matrix operator()(const ml::Matrix& x, const ml::Matrix& delay)
 	{
 		int frames = x.getWidth();
-		MLSignal y(frames);
+		ml::Matrix y(frames);
 		for(int n=0; n<frames; ++n)
 		{
 			// MLTEST slow!
@@ -969,7 +969,7 @@ public:
 	}
 	
 private:
-	MLSignal mBuffer;
+	ml::Matrix mBuffer;
 	
 	int mSR;
 	uintptr_t mWriteIndex;
@@ -1039,7 +1039,7 @@ public:
 	}
 	
 private:
-	MLSignal mBuffer;
+	ml::Matrix mBuffer;
 	
 	int mSR;
 	float mInvSr;
@@ -1081,10 +1081,10 @@ public:
 	float processSample(const float x);
 	
 	// MLTEST towards DSPVectors
-	inline MLSignal operator()(const MLSignal& x)
+	inline ml::Matrix operator()(const ml::Matrix& x)
 	{
 		int frames = x.getWidth();
-		MLSignal y(frames);
+		ml::Matrix y(frames);
 		for(int n=0; n<frames; ++n)
 		{
 			y[n] = processSample(x[n]);
@@ -1093,7 +1093,7 @@ public:
 	}
 	
 private:
-	MLSignal mBuffer;
+	ml::Matrix mBuffer;
 	int mSR;
 	float mInvSr;
 	
@@ -1136,7 +1136,7 @@ public:
 	void setFeedbackAmp(float f) { mFeedbackAmp = f; }
 	void setLopass(float f);
 	float processSample(const float x);
-	MLSignal operator()(const MLSignal& x);
+	ml::Matrix operator()(const ml::Matrix& x);
 	
 private:
 	int mSize;
@@ -1144,8 +1144,8 @@ private:
 	//std::vector<MLAllpassDelay> mDelays;
 	std::vector<MLLinearDelay> mDelays;
 	std::vector<MLBiquad> mFilters; // TODO onepole bank object
-	MLSignal mMatrix;
-	MLSignal mDelayOutputs;
+	ml::Matrix mMatrix;
+	ml::Matrix mDelayOutputs;
 	float mDelayTime;
 	float mFeedbackAmp;
 	float mFreqMul;

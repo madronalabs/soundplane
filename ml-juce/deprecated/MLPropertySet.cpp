@@ -7,7 +7,7 @@
 
 #pragma mark MLPropertySet
 
-const MLProperty MLPropertySet::nullProperty;
+const ml::Value MLPropertySet::nullProperty;
 
 MLPropertySet::MLPropertySet() : mAllowNewProperties(true)
 {
@@ -24,11 +24,11 @@ MLPropertySet::~MLPropertySet()
 	mpListeners.clear();
 }
 
-const MLProperty& MLPropertySet::getProperty(ml::Symbol p) const
+const ml::Value& MLPropertySet::getProperty(ml::Symbol p) const
 {
-	static const MLProperty nullProperty; // TODO remove this?
+	static const ml::Value nullProperty; // TODO remove this?
 	
-	std::map<ml::Symbol, MLProperty>::const_iterator it = mProperties.find(p);
+	std::map<ml::Symbol, ml::Value>::const_iterator it = mProperties.find(p);
 	if(it != mProperties.end())
 	{
 		return it->second;
@@ -43,7 +43,7 @@ const float MLPropertySet::getFloatProperty(ml::Symbol p) const
 {
 	static const float nullFloat = 0.f;
 	
-	std::map<ml::Symbol, MLProperty>::const_iterator it = mProperties.find(p);
+	std::map<ml::Symbol, ml::Value>::const_iterator it = mProperties.find(p);
 	if(it != mProperties.end())
 	{
 		return it->second.getFloatValue();
@@ -56,7 +56,7 @@ const float MLPropertySet::getFloatProperty(ml::Symbol p) const
 
 const ml::Text MLPropertySet::getTextProperty(ml::Symbol p) const
 {
-	std::map<ml::Symbol, MLProperty>::const_iterator it = mProperties.find(p);
+	std::map<ml::Symbol, ml::Value>::const_iterator it = mProperties.find(p);
 	if(it != mProperties.end())
 	{
 		return it->second.getTextValue();
@@ -67,16 +67,16 @@ const ml::Text MLPropertySet::getTextProperty(ml::Symbol p) const
 	}
 }
 
-const MLSignal& MLPropertySet::getSignalProperty(ml::Symbol p) const
+const ml::Matrix& MLPropertySet::getSignalProperty(ml::Symbol p) const
 {
-	std::map<ml::Symbol, MLProperty>::const_iterator it = mProperties.find(p);
+	std::map<ml::Symbol, ml::Value>::const_iterator it = mProperties.find(p);
 	if(it != mProperties.end())
 	{
-		return it->second.getSignalValue();
+		return it->second.getMatrixValue();
 	}
 	else
 	{
-		return MLProperty::nullSignal;
+		return ml::Value::nullSignal;
 	}
 }
 
@@ -125,7 +125,7 @@ void MLPropertySet::broadcastPropertyExcludingListener(ml::Symbol p, bool immedi
 
 void MLPropertySet::broadcastAllProperties()
 {
-	std::map<ml::Symbol, MLProperty>::const_iterator it;
+	std::map<ml::Symbol, ml::Value>::const_iterator it;
 	for(it = mProperties.begin(); it != mProperties.end(); it++)
 	{
 		ml::Symbol p = it->first;
@@ -151,7 +151,7 @@ void MLPropertyListener::updateChangedProperties()
 		
 		if(state.mChangedSinceUpdate)
 		{
-			const MLProperty& newValue = mpPropertyOwner->getProperty(key);
+			const ml::Value& newValue = mpPropertyOwner->getProperty(key);
 			doPropertyChangeAction(key, newValue);
 			state.mChangedSinceUpdate = false;			
 			state.mValue = newValue;
@@ -184,7 +184,7 @@ void MLPropertyListener::propertyChanged(ml::Symbol propName, bool immediate)
 	PropertyState& state = mPropertyStates[propName];
 	
 	// check for change in property. Note that this also compares signals and strings, which may possibly be slow.
-	const MLProperty& ownerValue = mpPropertyOwner->getProperty(propName);	
+	const ml::Value& ownerValue = mpPropertyOwner->getProperty(propName);	
 	if(ownerValue != state.mValue)
 	{
 		if(immediate)

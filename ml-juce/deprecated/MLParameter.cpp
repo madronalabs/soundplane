@@ -94,19 +94,19 @@ float MLPublishedParam::getValue(void)
 	return mParamValue.getFloatValue();
 }
 
-const MLProperty& MLPublishedParam::getValueProperty()
+const ml::Value& MLPublishedParam::getValueProperty()
 {
 	return mParamValue;
 }
 
 // set the value of the parameter to a float, string or signal property. Once
 // allocated initially the property cannot be resized.
-void MLPublishedParam::setValueProperty(const MLProperty& paramProp)
+void MLPublishedParam::setValueProperty(const ml::Value& paramProp)
 {
-	MLProperty::Type type = paramProp.getType();
+	ml::Value::Type type = paramProp.getType();
 	switch(type)
 	{
-		case MLProperty::kFloatProperty:
+		case ml::Value::kFloatValue:
 		{
 			const float val = paramProp.getFloatValue();
 			float clampedVal = ml::clamp(val, mRangeLo, mRangeHi);
@@ -117,14 +117,14 @@ void MLPublishedParam::setValueProperty(const MLProperty& paramProp)
 			mParamValue.setValue(clampedVal);
 			break;
 		}
-		case MLProperty::kTextProperty:
+		case ml::Value::kTextValue:
 		{
 			mParamValue.setValue(paramProp.getTextValue());
 			break;
 		}
-		case MLProperty::kSignalProperty:
+		case ml::Value::kMatrixValue:
 		{
-			mParamValue.setValue(paramProp.getSignalValue());
+			mParamValue.setValue(paramProp.getMatrixValue());
 			break;
 		}
 		default:

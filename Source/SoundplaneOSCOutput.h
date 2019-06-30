@@ -59,7 +59,7 @@ public:
 	void notify(int connected);
 	void doInfrequentTasks();
 	
-	void processMatrix(const MLSignal& m);
+	void processMatrix(const ml::Matrix& m);
 	
 private:
 	void initializeSocket(int port);
