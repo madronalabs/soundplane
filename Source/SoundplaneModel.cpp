@@ -686,7 +686,7 @@ void SoundplaneModel::sendTouchesToZones(TouchArray touches)
 			
 			// send index, xyz, dz to zone
 			int zoneIdx = mZoneIndexMap(mCurrentKeyX[i], mCurrentKeyY[i]);
-			if(zoneIdx >= 0)
+			if((zoneIdx >= 0) && (zoneIdx < mZones.size()))
 			{
 				Touch t = touches[i];
 				t.kx = mCurrentKeyX[i];

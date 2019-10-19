@@ -161,17 +161,9 @@ target_link_libraries("${EXECUTABLE_NAME}" "${MADRONA_LIB}")
 #TEMP
 message("madronalib:" ${MADRONA_LIB} )
 
-
 # soundplanelib
 find_library(SOUNDPLANE_LIB soundplane)
 target_link_libraries("${EXECUTABLE_NAME}" "${SOUNDPLANE_LIB}")
-
-# oscpack
- if(APPLE)
-  find_library(OSCPACK_LIB oscpack)
-  target_link_libraries("${EXECUTABLE_NAME}" "${OSCPACK_LIB}")
-else()
-endif()
 
 # ml-juce adapters 
 target_link_libraries("${EXECUTABLE_NAME}" "ml-juce")
