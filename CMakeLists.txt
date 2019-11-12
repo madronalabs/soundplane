@@ -18,7 +18,7 @@ project(soundplane)
 set(PROJECT_NAME Soundplane)
 set(SP_VERSION_MAJOR 1)
 set(SP_VERSION_MINOR 8)
-set(SP_VERSION_UPDATE 3)
+set(SP_VERSION_UPDATE 4)
 set(SP_VERSION "${SP_VERSION_MAJOR}.${SP_VERSION_MINOR}.${SP_VERSION_UPDATE}")
 
 if(APPLE)
@@ -111,9 +111,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/ml-juce)
 # Add executable code signing and icon
 #--------------------------------------------------------------------
 
-set(ICON_FULL_PATH "Data/soundplane.icns")
+set(ICON_FULL_PATH "data/soundplane.icns")
 
-set(PLIST_FULL_PATH "Data/Info.plist.in")
+set(PLIST_FULL_PATH "data/Info.plist.in")
 set(SP_DATA
   ${ICON_FULL_PATH}
   ${PLIST_FULL_PATH}
@@ -146,8 +146,8 @@ set_target_properties(${EXECUTABLE_NAME}
   MACOSX_BUNDLE_GUI_IDENTIFIER "com.madronalabs.soundplane"
   MACOSX_BUNDLE_SHORT_VERSION_STRING "${SP_VERSION}"
   MACOSX_BUNDLE_BUNDLE_NAME "${PROJECT_NAME}"
+  XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
   )
-
 
 
 #--------------------------------------------------------------------
@@ -188,7 +188,7 @@ target_link_libraries("${EXECUTABLE_NAME}" juce_opengl)
 
 
 #--------------------------------------------------------------------
-# Install
+# Install  
 #--------------------------------------------------------------------
 
 
@@ -205,9 +205,9 @@ endif()
 # Linux package generation
 #--------------------------------------------------------------------
 
-install(FILES Data/59-soundplane.rules DESTINATION /lib/udev/rules.d)
+install(FILES data/59-soundplane.rules DESTINATION /lib/udev/rules.d)
 install(
-  FILES Data/postinst
+  FILES data/postinst
   PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   DESTINATION DEBIAN)
 

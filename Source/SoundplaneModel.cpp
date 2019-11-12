@@ -1278,7 +1278,6 @@ void SoundplaneModel::doInfrequentTasks()
 
 	if(getDeviceState() == kDeviceHasIsochSync)
 	{
-		
 		if(mCarrierMaskDirty)
 		{
 			enableCarriers(mCarriersMask);

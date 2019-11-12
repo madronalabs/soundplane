@@ -289,12 +289,25 @@ void SoundplaneOSCOutput::sendFrame()
 		{
 			Touch& t = mTouchesByPort[portOffset][voiceIdx];
 			
-			if(touchIsActive(t))
+			if(t.state != kTouchStateInactive)
 			{
+        // send dz on first frame of a new touch for note on.
+        // when scaled the dz values are close to z, so when using z directly
+        // the error in the first frame is not a problem
+        constexpr float dzScale = 10.f;
+        float zOut = (t.state == kTouchStateOn) ? t.dz*dzScale : t.z;
+        
+        /*
+        if(t.state == kTouchStateOn)
+        {
+          std::cout << "ON " << voiceIdx << " : z=" << t.z << " dz=" << t.dz << "\n";
+        }
+      */
+        
 				osc::int32 touchID = voiceIdx + 1; // 1-based for OSC
 				TextFragment address("/t3d/tch", ml::textUtils::naturalNumberToText(touchID));
 				*p << osc::BeginMessage( address.getText() );
-				*p << t.x << t.y << t.z << t.note;
+				*p << t.x << t.y << zOut << t.note;
 				*p << osc::EndMessage;
 			}
 		}

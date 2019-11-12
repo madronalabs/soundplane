@@ -1,0 +1,73 @@
+
+
+Protocols
+---------
+
+All Madrona Labs synths can receive notes and control information over one of three protocols: MIDI, MPE, and OSC. 
+
+MIDI stands for Musical Instrument Digital Interface, it's been around since 1983, most synths understand it and you are probably familiar with it. 
+
+MPE, which stands for Multidimensional Polyphonic Expression, is a more recent way of using MIDI to enable new controllers like the Linnstrument, Continuum and Soundplane. The short story with MPE is, each note gets its own channel. There are a lot of details to enable this to perform well---see the MPE specification (currently at expressiveness.org) if you are interested in them. 
+
+OSC stands for Open Sound Control. It's a very cleverly designed protocol that takes advantage of what modern computers and ubiquitous networking hardware can do to provide high-resolution, jitter-free connections. The newest protocol of the bunch, not as many synths and controllers understand it as MIDI, but it has a bright future ahead of it. For more info, see http://opensoundcontrol.org.
+
+KEY module signals by protocol
+------------------------------
+
+
+Selecting different protocols in the setting (gear) menu of Madrona Labs instruments causes different kinds of incoming information to be turned into signals and sent out of the KEY module. Here is a table of what 
+information each protocol sends.
+
+			out1	out2	out3	out4	out5	out6	out7	out8	
+					(Kaivo 
+					only)
+
+			------- ------ ---------------------------------------------------
+
+	MIDI	pitch	gate	vel		vox		after	modcc	modcc+1	modcc+2
+
+
+	MPE		pitch	gate	vel		vox		after	modcc	cc73	cc74
+
+
+	OSC		pitch	gate	vel		vox		z		dy		x		y
+
+pitch: The pitch of the played note, on our familiar 1.0 / octave scale. 
+
+gate: High while the key is held down, low otherwise. Kaivo only.
+
+vel: This signal represents the velocity of each note. It goes to a new value when the note starts, then stays at that value, even after the note is released. Very useful for controlling sounds that may ring out after the key is released.
+
+vox: Which voice of the synthesizer is playing. Voices have values 0.0, 1.0, 2.0...
+
+after: MIDI aftertouch. In MIDI mode, channel pressure and poly key pressure (aftertouch) are added to make this signal. In MPE mode, only channel pressure is used. Using poly key pressure, each note can have its own envelope played live, even with all notes on the same MIDI channel.
+
+modcc: The MIDI continuous controller with the number selected in the KEY interface. 
+
+modcc+1: The MIDI continuous controller with the number selected in the KEY interface plus one.
+
+modcc+2: The MIDI continuous controller with the number selected in the KEY interface plus two.
+
+cc73, cc74: Continuous controllers 73, 74. From the Soundplane app these are how x and y are sent over MIDI. 74 is the standard per-note expression control in the MPE specification.
+
+z: Per-note pressure from the Soundplane or any t3d touch messages.
+
+dy: Change in y for each touch. This control is 0 at the start of each touch, then changes as the touch moves up or down. Calculated from y in the t3d messages. 
+
+x, y: The x and y positions for each touch. The behavior of these signals may be configurable through the app or instrument sending t3d data. For example, x and y may range over the entire playing surface, or over each note, be unipolar or bipolar.
+
+
+Limitations
+-----------
+
+In MIDI mode without MPE, all the touches will be on the same channel, so touches cannot send pitch bend or other controllers independently. In this case the most recently played touch is used to control the pitch or controller value of all held touches. 
+
+Ableton Live, unfortunately, has a simplified approach to MIDI in which all MIDI notes play on the same channel internally. As far as Aalto or other synths can see, all MIDI notes sent to them from Ableton Live are on channel 1. So it is currently impossible to implement MPE mode in Live. Soundplane players who want to use Live can choose between MIDI without MPE (no independent pitch or controllers, but recordable) or OSC (great individual control, but not recordable). 
+
+In addition, Ableton does not pay attention to the Poly Key Pressure (Poly Aftertouch) part of the MIDI specification. So in single-channel MIDI mode, there is no control possible over invididual notes. 
+
+
+
+
+
+

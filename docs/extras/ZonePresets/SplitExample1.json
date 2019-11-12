@@ -1,0 +1,72 @@
+{
+	"zone":	{
+		"name":	"B2-0",
+		"type":	"note_row",
+		"rect":	[0, 0, 15, 1],
+		"note": 50,
+		"offset": 0
+	},
+	"zone":	{
+		"name":	"E2-0",
+		"type":	"note_row",
+		"rect":	[0, 1, 15, 1],
+		"note": 55,
+		"offset": 0
+	},
+	"zone":	{
+		"name":	"A2-0",
+		"type":	"note_row",
+		"rect":	[0, 2, 15, 1],
+		"note": 60,
+		"offset": 0
+	},
+	"zone":	{
+		"name":	"D3-0",
+		"type":	"note_row",
+		"rect":	[0, 3, 15, 1],
+		"note": 65,
+		"offset": 0
+	},
+	"zone":	{
+		"name":	"G3-0",
+		"type":	"note_row",
+		"rect":	[0, 4, 15, 1],
+		"note": 70,
+		"offset": 0
+	},
+	"zone":	{
+		"name":	"B2-1",
+		"type":	"note_row",
+		"rect":	[15, 0, 15, 1],
+		"note": 65,
+		"offset": 1
+	},
+	"zone":	{
+		"name":	"E2-1",
+		"type":	"note_row",
+		"rect":	[15, 1, 15, 1],
+		"note": 70,
+		"offset": 1
+	},
+	"zone":	{
+		"name":	"A2-1",
+		"type":	"note_row",
+		"rect":	[15, 2, 15, 1],
+		"note": 75,
+		"offset": 1
+	},
+	"zone":	{
+		"name":	"D3-1",
+		"type":	"note_row",
+		"rect":	[15, 3, 15, 1],
+		"note": 80,
+		"offset": 1
+	},
+	"zone":	{
+		"name":	"G3-1",
+		"type":	"note_row",
+		"rect":	[15, 4, 15, 1],
+		"note": 85,
+		"offset": 1
+	}
+}
