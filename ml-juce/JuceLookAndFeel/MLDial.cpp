@@ -1180,7 +1180,7 @@ void MLDial::restoreMouseIfHidden()
         for (int i = Desktop::getInstance().getNumMouseSources(); --i >= 0;)
             Desktop::getInstance().getMouseSource(i)->enableUnboundedMouseMovement (false);
 
-        Point<int> mousePos;
+        juce::Point<int> mousePos;
 		mousePos = Desktop::getLastMouseDownPosition();
         Desktop::setMousePosition (mousePos);
     }

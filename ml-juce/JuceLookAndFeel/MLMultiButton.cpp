@@ -174,7 +174,7 @@ void MLMultiButton::mouseExit (const MouseEvent& )
 // change state of all buttons under drag to match first button clicked, after click.
 void MLMultiButton::mouseDrag(const MouseEvent& e)
 {
-	int b = getButtonUnderPoint(Point<int>(e.x, e.y));
+	int b = getButtonUnderPoint(juce::Point<int>(e.x, e.y));
 	
     if (isEnabled())
     {		
@@ -209,7 +209,7 @@ void MLMultiButton::mouseDrag(const MouseEvent& e)
     }
 }
 
-int MLMultiButton::getButtonUnderPoint(const Point<int>& p)
+int MLMultiButton::getButtonUnderPoint(const juce::Point<int>& p)
 {
 	return mPos.getElementUnderPoint(Vec2(p.getX(), p.getY()));
 }
