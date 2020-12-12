@@ -12,7 +12,7 @@
 #include <array>
 #include <cmath>
 
-#include "MLScalarMath.h"
+#include "MLDSPScalarMath.h"
 
 //#include "MLText.h"
 

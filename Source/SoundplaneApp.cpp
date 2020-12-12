@@ -5,6 +5,7 @@
 
 #include "SoundplaneApp.h"
 
+
 SoundplaneApp::SoundplaneApp()
 {
 }
@@ -73,9 +74,10 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpController->fetchAllProperties();
 	mpView->goToPage(0);
 
-  startTimer(ml::Timers::kMillisecondsResolution);
-  MLConsole() << "Starting Soundplane v." << MLProjectInfo::versionString << "...\n";
 
+  startTimer(ml::Timers::kMillisecondsResolution);
+  theTimers.start(true);
+  MLConsole() << "Starting Soundplane v." << MLProjectInfo::versionString << "...\n";
 }
 
 void SoundplaneApp::shutdown()

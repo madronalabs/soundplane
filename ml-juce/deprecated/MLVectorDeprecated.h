@@ -12,7 +12,7 @@
 // of MLSignals would be too big. 
 
 //#include "mldsp.h"
-#include "MLScalarMath.h"
+#include "MLDSPScalarMath.h"
 #include <cmath>
 #include <algorithm>
 
