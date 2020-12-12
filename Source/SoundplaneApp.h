@@ -27,9 +27,7 @@ public:
 
   void timerCallback()
   {
-    ml::Timers &t = theTimers;
-      // ml::Timers &t = ml::Timers::theTimers();
-    // t.tick();
+    theTimers->tick();
   }
 
   // real init and shutdown should be done here, according to JUCE docs
@@ -63,8 +61,7 @@ private:
   std::unique_ptr<MLAppState> mpModelState;
   std::unique_ptr<MLAppState> mpViewState;
 
-  ml::Timers theTimers;
-
+  ml::SharedResourcePointer<ml::Timers> theTimers;
 };
 
 // This macro creates the application's main() function.

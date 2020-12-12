@@ -76,7 +76,7 @@ void SoundplaneApp::initialise (const String& commandLine)
 
 
   startTimer(ml::Timers::kMillisecondsResolution);
-  theTimers.start(true);
+  theTimers->start(true);
   MLConsole() << "Starting Soundplane v." << MLProjectInfo::versionString << "...\n";
 }
 
