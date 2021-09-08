@@ -222,12 +222,22 @@ public:
 		for(auto it = begin(); it != end(); it++)
 		{
 			if(it.nodeHasValue())
-			{		
-				std::cout << ml::textUtils::spaceStr(it.getDepth()) << it.getLeafName() << " [" << it->getValue() << "]\n";
+			{
+        int d = it.getDepth();
+        for (int i = 0; i < d; ++i)
+        {
+          std::cout << "    ";
+        }
+				std::cout << it.getLeafName() << " [" << it->getValue() << "]\n";
 			}
 			else
 			{
-				std::cout << ml::textUtils::spaceStr(it.getDepth()) << "/" << it.getLeafName() << "\n";
+        int d = it.getDepth();
+        for (int i = 0; i < d; ++i)
+        {
+          std::cout << "    ";
+        }
+				std::cout <<  "/" << it.getLeafName() << "\n";
 			}
 		}
 	}

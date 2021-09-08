@@ -76,7 +76,7 @@ const ml::Matrix& MLPropertySet::getSignalProperty(ml::Symbol p) const
 	}
 	else
 	{
-		return ml::Value::nullSignal;
+		return ml::Matrix::nullSignal;
 	}
 }
 

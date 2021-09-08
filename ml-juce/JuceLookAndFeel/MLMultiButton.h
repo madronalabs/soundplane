@@ -53,7 +53,7 @@ public:
 	void resizeWidget(const MLRect& b, const int );
 
 private:
-	int getButtonUnderPoint(const Point<int>& p);
+	int getButtonUnderPoint(const juce::Point<int>& p);
 	int getButtonUnderMouse();
 
 	int mNumButtons;

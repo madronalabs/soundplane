@@ -16,6 +16,10 @@ The Soundplane application is open-source, available under a permissive license.
 
 changes:
 
+1.8.5:
+
+- improved note-on velocity consistency
+
 1.8.4:
 
 - fix a bug that could cause crashes on first launch when no Zone files were present

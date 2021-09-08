@@ -76,16 +76,16 @@ const int kMLTreeViewItemSize = 15;
 
 inline juce::Rectangle<float> MLToJuceRect(const MLRect& b) { return juce::Rectangle<float>(b.left(), b.top(), b.width(), b.height()); }
 inline juce::Rectangle<int> MLToJuceRectInt(const MLRect& b) { return juce::Rectangle<int>(b.left(), b.top(), b.width(), b.height()); }
-inline Point<float> MLToJucePoint(const Vec2& b) { return Point<float>(b.x(), b.y()); }
+inline juce::Point<float> MLToJucePoint(const Vec2& b) { return juce::Point<float>(b.x(), b.y()); }
 	
 inline MLRect juceToMLRect(const juce::Rectangle<int>& b) { return MLRect(b.getX(), b.getY(), b.getWidth(), b.getHeight()); }
 inline MLRect juceToMLRect(const juce::Rectangle<float>& b) { return MLRect(b.getX(), b.getY(), b.getWidth(), b.getHeight()); }
-inline MLPoint juceToMLPoint(const Point<int>& b) { return MLPoint(b.getX(), b.getY()); }
-inline MLPoint juceToMLPoint(const Point<float>& b) { return MLPoint(b.getX(), b.getY()); }
+inline MLPoint juceToMLPoint(const juce::Point<int>& b) { return MLPoint(b.getX(), b.getY()); }
+inline MLPoint juceToMLPoint(const juce::Point<float>& b) { return MLPoint(b.getX(), b.getY()); }
 
 MLPoint getPixelCenter(const MLRect& r);
 
-inline MLPoint floatPointToInt(Point<float> fp)
+inline MLPoint floatPointToInt(juce::Point<float> fp)
 {
 	return(MLPoint(fp.getX(), fp.getY()));
 }

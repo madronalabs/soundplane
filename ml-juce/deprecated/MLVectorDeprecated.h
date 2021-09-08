@@ -12,9 +12,14 @@
 // of MLSignals would be too big. 
 
 //#include "mldsp.h"
-#include "MLScalarMath.h"
+
+#include "MLDSPScalarMath.h"
+
+//#include "MLMath2D.h"
+
 #include <cmath>
 #include <algorithm>
+
 
 #if MLVECTOR_SSE
 
@@ -253,7 +258,7 @@ public:
 	float height() const { return val.f[3]; }
 	
 	inline float area() const { return width()*height(); }
-	inline bool contains(const Vec2& p) const { return (ml::within(p.x(), left(), right()) && ml::within(p.y(), top(), bottom())); }
+  	inline bool contains(const Vec2& p) const { return (ml::within(p.x(), left(), right()) && ml::within(p.y(), top(), bottom())); }
 	MLRect intersect(const MLRect& b) const;
 	MLRect unionWith(const MLRect& b) const;
 	bool intersects(const MLRect& p) const;

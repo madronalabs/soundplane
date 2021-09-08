@@ -2051,8 +2051,8 @@ void MLLookAndFeel::setBackgroundGradient(Graphics& g, MLRect bounds, MLRect bor
 	if (mGradientMode < 2)
 	{
 		ColourGradient cg;
-		cg.point1 = Point<float>(0, borderRect.top());
-		cg.point2 = Point<float>(0, borderRect.bottom());
+		cg.point1 = juce::Point<float>(0, borderRect.top());
+		cg.point2 = juce::Point<float>(0, borderRect.bottom());
 		cg.isRadial = false;
 		switch(mGradientMode)
 		{

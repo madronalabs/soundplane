@@ -20,6 +20,9 @@ SoundplaneApp::~SoundplaneApp()
 
 void SoundplaneApp::initialise (const String& commandLine)
 {
+  ml::SharedResourcePointer<ml::Timers> t;
+  t->start(true); // defer to main thread
+  
 	mpModel = new SoundplaneModel();
 	
 	mpController = new SoundplaneController(mpModel);
@@ -73,7 +76,6 @@ void SoundplaneApp::initialise (const String& commandLine)
 	mpController->fetchAllProperties();
 	mpView->goToPage(0);
 
-  startTimer(ml::Timers::kMillisecondsResolution);
   MLConsole() << "Starting Soundplane v." << MLProjectInfo::versionString << "...\n";
 
 }

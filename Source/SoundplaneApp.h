@@ -18,18 +18,11 @@
 #include "madronalib.h"
 
 class SoundplaneApp :
-public JUCEApplication,
-public juce::Timer
+public JUCEApplication
 {
 public:
   SoundplaneApp();
   ~SoundplaneApp();
-
-  void timerCallback()
-  {
-    ml::Timers &t = ml::Timers::theTimers();
-    t.tick();
-  }
 
   // real init and shutdown should be done here, according to JUCE docs
   void initialise (const String& commandLine);
